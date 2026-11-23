@@ -17,3 +17,4 @@
 - **Update**: Forced essence sources and free by-products (E11).
 - **Update**: Potions and enchants (E10).
 - **Update**: Levelling and prestige (E12).
+- **Update**: Party order and rotation timing results (E14a).

@@ -196,6 +196,9 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
   Odin 8.9% → 19.8% of its HP removed at the lowest point in the 2-minute budget, 33.5% unbounded (288 s), still
   0% wins. Desolation Wolf was already 100% with the best party alone; Gnoll Vendetta asc 1 stays at 93% wins.
   Better rotations, not gear, gave most of the gain: Odin is out of reach for this roster, not misconfigured.
+- Party order, row swaps and rotation timing (E14a): Odin 33.5% → 35.1% HP removed (Mage rotation one turn later
+  alone: score 791 → 918), Archon 6.3% → ~10%. No fight flipped to a win. Enemy rotations are fixed 5-turn cycles
+  that heroes can't interrupt (E13), so timing cleanses, heals and big hits against them is the lever.
 
 ### Equal gear
 

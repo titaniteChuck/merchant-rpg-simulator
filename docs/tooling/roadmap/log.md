@@ -25,3 +25,4 @@
 - **Update**: E12 committing; U12 levelling page queued.
 - **Update**: Schedule-aware optimisation approved by the user (must): E13, E14a, E14b, E15, U11.
 - **Update**: E12, U8, U9, U10, U12 done; E14a built, merging after E13.
+- **Update**: E13, E14a done; E14b and U11 in progress.
