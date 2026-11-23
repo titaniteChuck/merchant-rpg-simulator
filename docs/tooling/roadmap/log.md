@@ -30,3 +30,6 @@
 - **Update**: User batch: U14 titles bug + width, U15 battle layout v2, U16 colour theme, U17 save viewer v3; Profit/Farming/Levelling frozen.
 - **Update**: E14b committing; E15 started.
 - **Update**: E14b, U13, U17 done; U14 committing; U18 small moves, U19 wiki v3 (agent) from the user's batch.
+- **Update**: U20 phone navs + example save; U19 chains limited to equipment. The user approved publishing an anonymised copy of their save as the example dataset.
+- **Update**: U14–U16, U18, U19 done; U20 partly done (the UI session went offline; its work was verified and committed by the release agent).
+- **Update**: User batch: U21 wiki enemy/map fixes, U22 hero page v2, U23 battle v3 + page headers; map HP carry-over question sent to the engine.
