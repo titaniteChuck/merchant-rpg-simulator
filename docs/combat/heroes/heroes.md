@@ -15,6 +15,7 @@ Rules for the fight itself: [combat](../combat.md).
 ## Table of contents
 
 - [Stats](#stats)
+- [Experience](#experience)
 - [Prestige](#prestige)
 - [Gear](#gear)
 - [Skills and action points](#skills-and-action-points)
@@ -32,11 +33,26 @@ Rules for the fight itself: [combat](../combat.md).
 4. Class base + growth: `stat += base + statPlv × level` for HP, atk, matk, acc, def, mdef, crit.
 5. Percent stats (`atkPct`, `hpPct`…) multiply the totals.
 
-Max level 60 per tier (`heroLevelRequirement`).
+Max level 50 / 50 / 60 at tier 1 / 2 / 3 (`maxHeroLevel`); XP per level in `heroLevelRequirement[tier][level]`.
+
+## Experience
+
+- **Quest won**: every living hero gets `round(exp / heroes in party) × amount` (`expB` for the rare variant), then
+  `× (1 + expMod / 100) × questXpMod`, floored (`Hero:addExperience`). A hero at its tier's max level gets nothing.
+- **Map run**: each room won gives `round(questData.exp × mapStats._mod × 0.2 / heroes)` per living hero.
+- **Quest lost**: the whole party dies. Reviving costs `level × 10` gold, `× tier` from tier 2; there is no free
+  revive timer.
+- **Access**: a hero may take a quest when `level > min(levelReq − 5, 0.75 × levelReq)` (`heroPartyLevelReq`) and its
+  region is open: `regionLevelReqs[region] ≤ level + 2 × (tier − 1)` (`regionUnlockLevelMet`).
+- XP Boost potions add to `expMod` (+30 / +60 / +100).
 
 ## Prestige
 
 - 3 tiers (`prestigeLevel` 1–3). Each tier has its own growth (`hpPlv[tier]`…) and str/int/dex multipliers.
+- **Requirement and cost** (`canHeroPrestige`): level `heroPrestigeLevelRequirement[tier + 1]` (40 for tier 2, 50 for
+  tier 3) and `heroPrestigeCost[tier]` gold (10,000 then 50,000). Max tier: `heroMaxPrestigeLevel` = 3.
+- **Effect** (`Hero:prestigeUp`): back to level 1 with 0 XP; the potion, enchants and skill choices are removed; the
+  new tier's growth and max level apply. Quest amount cap becomes `2 × tier − 1` (1, 3, 5).
 - Max permanent enchants: `8 + 4 × (tier − 1)`.
 - Hiring cost by hero count: `heroCost` 200, 400, 750, 1500, 2500, 4000, 7500, 15000.
 
@@ -76,4 +92,4 @@ Max level 60 per tier (`heroLevelRequirement`).
 
 - `decompiled/obj.Hero.lua` (`determineStats`, `loadSkillList`, `calculateAPRemainder`).
 - `decompiled/data.HeroData.lua` (classes), `decompiled/data.AbilityFunc.lua` (`passiveData`), `decompiled/data.Default.lua`
-  (`attackListUnlocked`, `heroMaxActionPoints`, `heroCost`).
+  (`attackListUnlocked`, `heroMaxActionPoints`, `heroCost`, `heroPartyLevelReq`, `canHeroPrestige`, `heroPrestigeCost`).

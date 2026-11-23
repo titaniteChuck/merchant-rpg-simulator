@@ -21,6 +21,7 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [Search API](#search-api)
 - [Search methods](#search-methods)
 - [Class balance on equal gear](#class-balance-on-equal-gear)
+- [Levelling and prestige](#levelling-and-prestige)
 - [Validation](#validation)
 - [Limits](#limits)
 - [From Python to TypeScript](#from-python-to-typescript)
@@ -213,6 +214,32 @@ summarizeByClass(rows, threshold = 0.9): ClassSummary[]
   rotation hides skills, so compare classes with `search`; a rotation searched on one quest is not the best on
   another; `fit` is a stat proxy, not a fight-tested gear search.
 
+## Levelling and prestige
+
+`web/src/tools/levelling.ts` (pure, worker-safe, progress and cancel through `SearchControl`). XP rules:
+[heroes](../../combat/heroes/heroes.md#experience).
+
+```ts
+xpBetween(tier, from, to): number          // XP from level `from` to `to`
+availableQuests(level, tier): number[]      // quests with an enemy the hero may take
+questXpRate(sim, hero, front, back, quest, amount = 1, n = 30): XpSource   // win, xpPerRun, hoursPerRun, reviveGold, xpPerHour
+levellingPlan(sim, raw, { from, to, band = 5, companions, n, quests, amounts, minWin = 0.5, expModBonus }, ctl): LevellingPlan
+prestigePayoff(sim, raw, { quest, n }, levellingOptions, ctl): PrestigePayoff
+```
+
+- **XP rate**: the hero's own share over seeds 1..n, wins only, nothing at max level; hours = quest time.
+- **Plan**: every `band` levels the hero is rebuilt at that level and the quest × amount (1 and the party's max by
+  default) with the best XP/h among those won at least `minWin` is kept; runs = XP needed / XP per run. `stuckAt`
+  marks a band with no usable source.
+- **Prestige payoff**: stats, enchant slots, amount cap and a solo reference fight at each tier's max level (the next
+  tier without enchants), plus level required, gold, enchants lost and the hours to level back up (`relevel`).
+- **Farming report**: rows add `xp_per_run` and `xp_per_hour` (per hero) and `revive_gold`; map runs report the XP
+  each hero earned (`heroes[].xp`, TypeScript only, ignored by the Lua difftest).
+- Example (real save, tier-3 Berserker, solo 1 → 60): 34 h, 334 quests, from Forest Gathering ×5 (~6k XP/h) to
+  Murlok Monarch ×5 (~41k XP/h). Prestige 2 → 3 for that hero: HP 823 → 1183, atk 919 → 1159, enchant slots 12 → 16,
+  amount cap 3 → 5, for 50,000 g and 34 h of levelling.
+- Limits: quests only (map runs are not candidates); a fixed party per plan; gear is kept as is, whatever its level.
+
 ## Validation
 
 - Computed max HP equals saved HP for the 7 heroes at full health; the 10 wounded ones are all below it.
@@ -255,4 +282,5 @@ The first version (2026-11-23) ran the game's decompiled Lua through `lupa` from
 
 - `web/src/tools/combat.ts`, `engine.ts`; engine in `web/src/sim/`; page: `web/src/ui/battle*.ts`.
 - `web/src/tools/classes.ts` (equal-gear class balance).
+- `web/src/tools/levelling.ts` (levelling and prestige), tests in `web/test/levelling.test.ts`.
 - Tests: `web/test/tools.test.ts`, `web/test/search.test.ts`, `web/test/classes.test.ts` (catalog data only, runs in CI); Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.

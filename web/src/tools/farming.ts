@@ -9,6 +9,7 @@
  * Pure: no output, no Node APIs; progress and cancel through SearchControl (as the searches in combat.ts).
  */
 import { G } from "../sim/data.ts";
+import { D } from "../sim/defaults.ts";
 import { checkAmount, SearchCancelled, type SearchControl } from "./combat.ts";
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 import { type Game, gameFromData } from "./gamedata.ts";
@@ -50,6 +51,12 @@ export interface FarmRow {
   essence_value: number;
   /** Average hero death rate over the party. */
   death_rate: number;
+  /** XP per run and per hour, averaged over the party's heroes (with their expMod and the mode's questXpMod;
+   * a hero at its tier's max level gains nothing in game). */
+  xp_per_run: number;
+  xp_per_hour: number;
+  /** Gold per run to revive dead heroes (level x 10 x tier each; a lost quest kills the whole party). */
+  revive_gold: number;
   /** Per hour: gold (loot value - cost), essence, and both together (essence at its unit cost). */
   gold_per_hour: number;
   essence_per_hour: number;
@@ -63,6 +70,12 @@ export interface FarmingOptions {
   seed0?: number;
   /** Prices for costs and essence value (default: a Solver at grade 3, solved once). */
   solver?: Solver;
+}
+
+/** default.heroReviveCost: level x 10, x tier from tier 2. */
+export function reviveGold(h: { level: number; prestige?: number; prestigeLevel?: number }): number {
+  const p = h.prestige ?? h.prestigeLevel ?? 1;
+  return p > 1 ? h.level * 10 * p : h.level * 10;
 }
 
 const isEssence = (g: Game, itype: string, iid: number) => itype === "material" && g.items.material?.get(iid)?.subType === "essence";
@@ -102,11 +115,25 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
       const times: number[] = [], grades: number[] = [], deaths: number[] = [];
       const gradeCount = new Map<number, number>();
       const loot = new Map<string, number>();
+      const members = [...party.front, ...party.back].filter((h): h is Any => Boolean(h));
+      const baseExp = (src.rare ? q.expB ?? q.exp : q.exp) ?? 0;
+      // Quest:calculateExperience: round(exp / heroes) x amount per living hero of a won quest
+      const share = Math.round(baseExp / Math.max(members.length, 1)) * amount;
+      let xp = 0, revive = 0;
       for (let k = 0; k < n; k++) {
         step();
         const res = sim.fight(src.quest, party.front, party.back, { seed: seed0 + k, isRare: src.rare ?? false, amount });
         times.push(res.questTime / 3600);
         deaths.push(mean(res.heroes.map((h) => (h.dead ? 1 : 0))));
+        if (res.won) {
+          for (const h of res.heroes) {
+            const m = members.find((x) => x.name === h.name && x.class === h.class);
+            // Hero:addExperience: nothing at the tier's max level
+            if (!h.dead && m && m.level < D.maxHeroLevel[m.prestigeLevel]) xp += share * (1 + (m.expMod ?? 0) / 100) * D.questXpMod;
+          }
+        }
+        // Quest:updateHeroAfterQuest: a lost quest kills every hero; a dead hero is revived for gold
+        for (const h of res.heroes) if (!res.won || h.dead) revive += reviveGold(h);
         if (res.won) {
           wins++;
           grades.push(res.grade);
@@ -122,6 +149,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         kind: "quest", id: src.quest, asc: 0,
         label: `${src.rare ? (q.nameB || q.name) + " [rare]" : q.name}${amount > 1 ? ` x${amount}` : ""}`,
         n, errors: 0, wins, grades, gradeCount, time_h: mean(times), death_rate: mean(deaths),
+        xp: xp / n / Math.max(members.length, 1), revive: revive / n,
         cost: { gold, map: 0, scrolls: 0 },
         rewards: [...loot].map(([key, amt]) => {
           const [itype, iid] = key.split("|");
@@ -133,7 +161,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
       const scrolls = src.scrolls?.length ? src.scrolls : null;
       const m = sim.makeMap(src.map, 1);
       const mapId = m.id as number, asc = (m.prestigeLevel ?? 0) as number;
-      let wins = 0, errors = 0;
+      let wins = 0, errors = 0, xp = 0, revive = 0;
       const times: number[] = [], grades: number[] = [], deaths: number[] = [];
       const gradeCount = new Map<number, number>();
       const rewards = new Map<string, number>();
@@ -149,6 +177,8 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         }
         times.push(res.time / 3600);
         deaths.push(mean(res.heroes.map((h) => (h.dead ? 1 : 0))));
+        xp += mean(res.heroes.map((h: Any) => h.xp ?? 0)); // Campaign: per room won, living heroes
+        for (const h of res.heroes) if (h.dead) revive += reviveGold(h);
         if (res.won) {
           wins++;
           grades.push(res.grade);
@@ -166,6 +196,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         kind: "map", id: mapId, asc,
         label: `${m.name}${asc ? ` asc ${asc}` : ""}${scrolls ? ` + ${scrolls.map((x) => G.itemData.consumable[x.id]?.name ?? x.id).join(", ")}` : ""}`,
         n: ok, errors, wins, grades, gradeCount, time_h: mean(times), death_rate: mean(deaths),
+        xp: ok ? xp / ok : 0, revive: ok ? revive / ok : 0,
         cost: { gold: 0, map: unit("map", mapId, asc), scrolls: scrollCost },
         rewards: ok ? [...rewards].map(([key, amt]) => {
           const [itype, iid, p] = key.split("|");
@@ -189,6 +220,8 @@ interface Partial_ {
   gradeCount: Map<number, number>;
   time_h: number;
   death_rate: number;
+  xp: number;
+  revive: number;
   cost: { gold: number; map: number; scrolls: number };
   /** Expected amount per run of each reward. */
   rewards: { itemType: string; itemID: number; amount: number; prestigeLevel: number }[];
@@ -221,6 +254,7 @@ function finish(g: Game, unit: (t: string, i: number, p?: number) => number, x: 
     cost: { ...x.cost, total: costTotal },
     loot_value: lootValue, essence, essence_total: essTotal, essence_value: essValue,
     death_rate: x.death_rate,
+    xp_per_run: x.xp, xp_per_hour: perHour(x.xp), revive_gold: x.revive,
     gold_per_hour: perHour(lootValue - costTotal),
     essence_per_hour: perHour(essTotal),
     value_per_hour: perHour(lootValue + essValue - costTotal),

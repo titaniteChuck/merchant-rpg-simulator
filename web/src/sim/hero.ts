@@ -153,6 +153,8 @@ export class Hero extends Combatant {
   /** Hero:addExperience: returns true when the hero levelled up. */
   addExperience(expToAdd: number): boolean | void {
     if (this.level !== D.maxHeroLevel[this.prestigeLevel]) {
+      // XP actually gained, for reports (map runs restore exp and level afterwards)
+      this._xpGained = (this._xpGained ?? 0) + expToAdd * (1 + this.expMod / 100) * D.questXpMod;
       this.exp = Math.floor(this.exp + expToAdd * (1 + this.expMod / 100) * D.questXpMod);
       if (this.levelUp()) return true;
     } else {

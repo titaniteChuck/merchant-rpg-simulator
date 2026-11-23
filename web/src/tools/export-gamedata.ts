@@ -22,6 +22,7 @@ export const GLOBALS = [
   "itemData", "abilityData", "passiveData", "heroList", "questData", "parcelData",
   "prefixList", "suffixList", "rarityMod", "gradeBonus", "gradeParcelBonus", "gradeTime",
   "heroLevelRequirement", "itemFormula", "default", "currentQuestType", "crafterData",
+  "heroPrestigeLevelRequirement", "heroPrestigeCost", "heroMaxPrestigeLevel",
 ];
 export const DEFAULT_LOCALS = ["av", "ascStat", "potionStat", "potionStatPlaces", "bonusStatNames", "prestigeItemID",
   "mapPrestigeMod", "mapPercentStats", "mapModStats", "fibo"];

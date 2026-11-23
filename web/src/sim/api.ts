@@ -272,6 +272,7 @@ export function mapRun(spec: MapSpec | string, front: (Hero | null | undefined)[
         tP: [h.totalPhysicalDmgDealt, h.totalMagicDmgDealt, h.totalPhysicalDmgTaken, h.totalMagicDmgTaken],
       });
       h._runHeal = 0;
+      h._xpGained = 0;
       h._skillDmg = {};
       h._skillUses = {};
       if (!h._keepBoost) h.boost = false;
@@ -329,6 +330,7 @@ export function mapRun(spec: MapSpec | string, front: (Hero | null | undefined)[
       s.magicDmgDealt = h.totalMagicDmgDealt - st.tP[1];
       s.dmgTaken = h.totalPhysicalDmgTaken + h.totalMagicDmgTaken - st.taken;
       s.healingDone = h._runHeal ?? 0;
+      s.xp = h._xpGained ?? 0; // XP gained over the run (rooms won, alive), before the restore below
       s.hp = h.questHP;
       s.dead = (h.questHP ?? 0) <= 0;
       out.heroes.push(s);

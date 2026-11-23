@@ -20,6 +20,10 @@ export interface GameData {
   gradeParcelBonus: Table;
   gradeTime: Table;
   heroLevelRequirement: Table;
+  /** Level needed to reach each tier, gold to prestige from each tier, and the last tier (data.Default). */
+  heroPrestigeLevelRequirement: Table;
+  heroPrestigeCost: Table;
+  heroMaxPrestigeLevel: number;
   itemFormula: Table;
   default: Table;
   currentQuestType: Table;

@@ -41,6 +41,9 @@ function diffEntry(exp: Any, got: TraceEntry | undefined, rngOffset: number): st
   return undefined;
 }
 
+/** Result fields the TypeScript engine adds and the Lua recorder never produced (nothing to compare). */
+const TS_ONLY = new Set(["xp"]);
+
 /** Deep compare of the whole result (lists in order, numbers with a float tolerance). */
 function deepDiff(exp: Any, got: Any, path: string): string | undefined {
   if (Array.isArray(exp) || (exp && typeof exp === "object")) {
@@ -53,7 +56,7 @@ function deepDiff(exp: Any, got: Any, path: string): string | undefined {
       const d = deepDiff(exp[k], got[k], `${path}.${k}`);
       if (d) return d;
     }
-    for (const k of gk) if (!(k in exp) && got[k] !== undefined && got[k] !== false) return `${path}.${k}: missing in game, ts ${JSON.stringify(got[k])}`;
+    for (const k of gk) if (!(k in exp) && !TS_ONLY.has(k) && got[k] !== undefined && got[k] !== false) return `${path}.${k}: missing in game, ts ${JSON.stringify(got[k])}`;
     return undefined;
   }
   return near(exp, got) ? undefined : `${path}: game ${JSON.stringify(exp)} vs ts ${JSON.stringify(got)}`;

@@ -45,6 +45,10 @@ export interface HeroResult {
   slot: string;
   name: string;
   class: number;
+  level: number;
+  prestige: number;
+  /** Map runs: XP gained over the run (rooms won while alive), before the engine restores the hero. */
+  xp?: number;
   hp: number;
   maxHP: number;
   dead: boolean;
