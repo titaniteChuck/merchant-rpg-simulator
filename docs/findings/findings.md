@@ -24,6 +24,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
 - [Losers](#losers)
 - [Top earners](#top-earners)
 - [Class balance](#class-balance)
+  - [Equal gear](#equal-gear)
 - [Map runs](#map-runs)
   - [Scrolls](#scrolls)
 - [Open questions](#open-questions)
@@ -158,6 +159,32 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
   self-heal 1× matk, twice per rotation, growing with the stacking Unleashed Power) heals it back to full; Soul Barrier
   reflects hits for 2 turns. The 0% is the end-of-fight HP. Game design, not a bug; the port matches the Lua
   (32 reference Archon fights).
+
+### Equal gear
+
+Every class at level 60, prestige 3, same-rule catalog gear (`fit`: grade 5, asc 0, the item that maximises the
+class's main offence per slot), rotation and passive searched per quest, 50 fights per cell, same seeds
+(`classMatrix`, `web/src/tools/classes.ts`, 2026-11-23). 10 quests from level 40 to 54.
+
+| Class | Mean win | Soloable (≥ 90%) | Enemy HP removed | Damage dealt / fight | Damage taken / fight |
+|---|---|---|---|---|---|
+| Warrior | 79% | 8/10 | 88% | 6514 | 607 |
+| Rogue | 79% | 8/10 | 88% | 6761 | 461 |
+| Cleric | 78% | 7/10 | 85% | 6009 | 635 |
+| Berserker | 77% | 7/10 | 88% | 6378 | 499 |
+| Mage | 77% | 6/10 | 86% | 6506 | 508 |
+| Dark Knight | 74% | 6/10 | 85% | 5975 | 647 |
+| Paladin | 73% | 7/10 | 82% | 5581 | 1207 |
+| Assassin | 67% | 5/10 | 82% | 5582 | 764 |
+| Bard | 48% | 5/10 | 73% | 5045 | 971 |
+
+- With gear equalised, **Bard is clearly the weakest solo class** (48% vs 73–79%): it loses Cerberus, Oni and
+  Pumpking outright. Solo only, so its party support is not credited.
+- **Assassin** trails mainly on Pumpking (0%, 83% HP removed); **Paladin** wins slowly (Pumpking in 18 turns) and takes
+  twice the damage of the others.
+- Your roster's Assassin ranked 3rd: its standing there came from gear, not class.
+- Level-54 region-6 bosses (Desolation Wolf, Skorge) can't be soloed by any class at level 60.
+- The game's default rotation is all Basic for every class; ranking with it measures stats + passive only.
 
 ## Map runs
 
