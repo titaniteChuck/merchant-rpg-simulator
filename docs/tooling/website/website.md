@@ -92,10 +92,14 @@ flowchart LR
   `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
   is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
   `battle-mode`). Under 560px the modes are two compact columns (hint in the title).
-- Step 2: the party in two columns, back row left and front row right (the enemy stands further right), three slots
-  each, filled from the save's heroes; per hero a radar and an optional rotation and passive editor with the AP budget
-  (`api.skillInfo`). Over budget, the game falls back to the default rotation: shown as a warning. The opponent card is
-  on the right (stacked under the party below 960px; alone when the mode picks the party):
+- Step 2 (U15), the same arrangement in every mode: the opponent card on the left, the six hero slots on the right
+  (back row 1-3 | front row 1-3; stacked, opponent first, below 960px). A hero card: avatar, class and level, a
+  compact stat strip (HP, Atk, Matk, Def, Mdef, Acc, Crit), the rotation as 5 small skill chips with their AP (wiki
+  link and summary on hover), the passive as a chip, and "Edit rotation and passive" in a fold-out (5 turns within the
+  AP budget, `api.skillInfo`; over budget, the game falls back to the default rotation: shown as a warning). In Best
+  party and Optimise everything the slots are the search's: empty ones read "to be found", and a filled slot has a
+  🔒 toggle (a hero picked by hand is locked; locked heroes stay in the party and follow their hero when the search
+  moves it). The opponent:
   - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
     strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
     placeholders are not offered (`isEnemy`).
@@ -119,7 +123,8 @@ flowchart LR
   - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
     ascension (`catalogGearCandidates`); now vs best, and the item per slot.
   - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
-    ticked in "Leave heroes out", with the ones in "Must be in the party" locked (`lock`); "Use this party" fills the slots.
+    ticked in "Leave heroes out", the locked slots' heroes kept (`lock`); the result fills the slots at once, with
+    "Put back the previous party" (party and rotations as before the search).
   - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
   - Best potion / enchant (quest or map, U9): potions and enchants: `rankConsumables` (`web/src/tools/consumables.ts`)
     rank what a hero should drink or enchant for a fight. Per party hero: potions (one at a time, last 3 quests) or one
@@ -133,8 +138,10 @@ flowchart LR
     rotation phase shifts may still move it), with it on it is the party to beat. Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
     the party (back, front), each member's rotation and passive, gear to equip (the page can't change the save),
     scrolls, and the step trace (hero ids shown as names; E14a steps "Order within rows", "Swap rows", "Phase of X";
-    score gain, time). "Use this setup" fills the party, the
-    rotations and the map's scrolls. When the budget runs out, the best setup so far is shown.
+    score gain, time). The result fills the slots, the rotations and the map's scrolls at once, with "Put back the
+    previous party". When the budget runs out, the best setup so far is shown. The battle worker loads
+    `data/timelines.json` at start, so `searchSkills` / `optimiseFight` pre-filter rotations by their schedule score
+    (E14b, 10-19x faster); without the file the searches run in full.
   - Progress per stage (throttled to ~10 updates per second), fight counts editable (smaller = faster). The searches
     are synchronous in the worker, so Cancel terminates it. Results show the enemy's lowest HP point (`enemy_dmg_peak`)
     when the enemy heals back; the Simulate results do too.
@@ -149,7 +156,7 @@ flowchart LR
     cast turn, wrapping from T5 to T1 (Soul Barrier cast on T4 covers T5 and T1). Tooltips: duration, stats, cleanse /
     dispel, and the rules (durations count in the owner's own actions; the enemy always follows its rotation and hits
     the front row, split evenly, unless the skill says otherwise).
-  - 5-turn plan (under the party, modes with a party, quest opponent): one row per actor in the real action order
+  - 5-turn plan (under the party, every mode, quest opponent): one row per actor in the real action order
     (back 1, front 1, back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), each hero's
     slot k under turn k, with `scoreSchedule`'s notes per cell (✓ helps, ⚠ hurts: "into Soul Barrier", "cleanses
     Alternate Reality", "heals after enemy damage") and the score per turn; stats from `scheduleContext`.

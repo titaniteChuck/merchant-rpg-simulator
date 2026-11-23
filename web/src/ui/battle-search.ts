@@ -43,6 +43,8 @@ export interface SearchContext {
   poolSkills(): Record<number, SkillChoice>;
   /** Set the map run's scrolls in step 2. */
   applyScrolls(ids: number[]): void;
+  /** Save hero ids of the locked slots (Best party / Optimise everything keep them). */
+  locks(): number[];
 }
 
 export type SearchKey = "skills" | "gear" | "party" | "scrolls" | "optimise" | "consumables";
@@ -228,22 +230,20 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       form = [field("heroes", size), field(isMap ? "runs per candidate" : "fights per candidate", quick), field(isMap ? "runs for the result" : "fights for the result", final)];
       const excl = excludePicker(sv);
       form = [...form, excl.node];
-      intro += " Every hero of the save is a candidate, except the ones you leave out; this can take a few minutes.";
-      start = () => runSearch({ ...base(), search: "party", pool: excl.pool(), lock: excl.lock(), poolSkills: ctx.poolSkills(), ...ctx.target(), size: intOf(size, 1, 6),
-        nQuick: intOf(quick), nFinal: intOf(final) }, out, (r) => {
-        if (r.search !== "party") return [];
-        const p = r.result;
-        const name = (id: number | null) => (id === null ? "—" : sv.raw.hero.find((h: Any) => h.id === id)?.name ?? `#${id}`);
-        const use = el("button", { type: "button", class: "secondary" }, "Use this party");
-        use.addEventListener("click", () => {
+      intro += " Every hero of the save is a candidate, except the ones you leave out; locked slots (🔒) keep their hero. "
+        + "The result fills the six slots above. This can take a few minutes.";
+      start = () => {
+        const undo = snapshot();
+        const locks = ctx.locks();
+        runSearch({ ...base(), search: "party", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...ctx.target(), size: intOf(size, 1, 6),
+          nQuick: intOf(quick), nFinal: intOf(final) }, out, (r) => {
+          if (r.search !== "party") return [];
+          const p = r.result;
           ctx.applyParty(p.party.front, p.party.back);
-          use.textContent = "✓ Party set";
-          use.setAttribute("disabled", "");
+          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the slots above"), evLine(p.ev)), undo),
+            el("p", { class: "muted small" }, `${p.added.length} heroes added, ${p.improvements} improvement${p.improvements === 1 ? "" : "s"} by swapping or moving.`)];
         });
-        return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "Best party found"), evLine(p.ev)),
-          partyLayout(p.party, name), use),
-        el("p", { class: "muted small" }, `${p.added.length} heroes added, ${p.improvements} improvement${p.improvements === 1 ? "" : "s"} by swapping or moving.`)];
-      });
+      };
     }
 
     if (key === "scrolls") {
@@ -347,10 +347,11 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
           out.replaceChildren(el("p", { class: "error", role: "alert" }, "With the party step off, put the party in step 2 first (the optimiser keeps it)."));
           return;
         }
-        runSearch({ ...base(), search: "optimise", pool: excl.pool(placed), lock: excl.lock(), poolSkills: ctx.poolSkills(), ...ctx.target(), save: sv,
+        const undo = snapshot();
+        runSearch({ ...base(), search: "optimise", pool: excl.pool(placed), lock: ctx.locks(), poolSkills: ctx.poolSkills(), ...ctx.target(), save: sv,
           size: intOf(size, 1, 6), timeBudgetMs: budgetMs, ...(placed.length ? { startParty } : {}),
           steps: { party: sParty.c.checked, skills: sSkills.c.checked, gear: sGear.c.checked, scrolls: isMap && sScrolls.c.checked } }, out,
-        (r) => (r.search === "optimise" ? optimiseResult(r.result, sv) : []), budgetMs);
+        (r) => (r.search === "optimise" ? optimiseResult(r.result, sv, undo) : []), budgetMs);
       };
     }
 
@@ -402,47 +403,55 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
     return r ? notesFor(r.score, locationOf(row, i)) : null;
   }
 
-  /**
-   * Candidate chips: "Leave heroes out" (not candidates) and "Must be in the party" (lock). A locked hero, or one
-   * of `keep` (the starting party), stays a candidate even when it is also left out.
-   */
-  function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[]; lock(): number[] } {
-    const chips = (cls: string) => sv.raw.hero.map((h: Any) => {
+  /** "Leave heroes out" chips: ticked heroes are not candidates, unless kept (`keep`: locked or starting heroes). */
+  function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[] } {
+    const out = sv.raw.hero.map((h: Any) => {
       const c = el("input", { type: "checkbox", value: String(h.id) }) as HTMLInputElement;
-      return { h, c, node: el("label", { class: `chip-check ${cls}` }, c, ` ${h.name}`) };
+      return { h, c, node: el("label", { class: "chip-check out" }, c, ` ${h.name}`) };
     });
-    const out = chips("out"), locked = chips("lock");
-    const lock = () => locked.filter((b: Any) => b.c.checked).map((b: Any) => Number(b.h.id));
-    const node = el("div", { class: "pickers" },
-      el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),
-        el("div", { class: "chip-checks" }, ...out.map((b: Any) => b.node))),
-      el("details", { class: "exclude" }, el("summary", { class: "small" }, "Must be in the party"),
-        el("div", { class: "chip-checks" }, ...locked.map((b: Any) => b.node))));
+    const node = el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),
+      el("div", { class: "chip-checks" }, ...out.map((b: Any) => b.node)));
     return {
-      node, lock,
+      node,
       pool: (keep = []) => {
-        const must = new Set([...lock(), ...keep]);
+        const must = new Set(keep);
         return out.filter((b: Any) => !b.c.checked || must.has(Number(b.h.id))).map((b: Any) => b.h);
       },
     };
   }
 
+  /** A "Put back the previous party" button for the slots and rotations as they are now (before a search fills them). */
+  function snapshot(): HTMLElement {
+    const p = ctx.party();
+    const front = p.front.map((h) => h?.id ?? null), back = p.back.map((h) => h?.id ?? null);
+    const rot = p.members.map((m) => {
+      const own = api.newHero(m.raw);
+      const sk = p.skills[m.row][m.i];
+      return { idx: m.idx, rotation: sk?.attackList ?? own.attackList.slice(1, 6), passive: sk?.passive ?? own.passiveSelect };
+    });
+    const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
+    b.addEventListener("click", () => {
+      ctx.applyParty(front, back);
+      for (const r of rot) ctx.applyRotation(r.idx, r.rotation, r.passive);
+      b.textContent = "✓ Previous party back";
+      b.setAttribute("disabled", "");
+    });
+    return b;
+  }
+
   /** The optimiser's result: before/after, the setup (party, rotations, gear, scrolls), Use this setup, the trace. */
-  function optimiseResult(res: OptimiseResult, sv: Save): Node[] {
+  function optimiseResult(res: OptimiseResult, sv: Save, undo: HTMLElement): Node[] {
     const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
     const name = (id: number | null) => (id === null ? "—" : hero(id)?.name ?? `#${id}`);
     // "Guerrier (#3)" (the optimiser's labels) → "Guerrier"; a bare "#3" → its name.
     const named = (s: string) => s.replace(/ \(#\d+\)/g, "").replace(/#(\d+)/g, (_, id) => name(Number(id)));
     const placed = [...res.config.party.front, ...res.config.party.back].filter((x): x is number => x !== null);
-    const use = el("button", { type: "button", class: "primary" }, "Use this setup");
-    use.addEventListener("click", () => {
-      ctx.applyParty(res.config.party.front, res.config.party.back);
-      const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
-      for (const [id, s] of Object.entries(res.config.skills)) ctx.applyRotation(idx(Number(id)), s.rotation, s.passive);
-      if (res.config.scrolls) ctx.applyScrolls(res.config.scrolls.map((x) => x.id));
-      use.textContent = "✓ Party and rotations set in step 2";
-      use.setAttribute("disabled", "");
-    });
+    // The setup fills the slots right away (party, rotations, scrolls); `undo` puts the previous one back.
+    ctx.applyParty(res.config.party.front, res.config.party.back);
+    const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
+    for (const [id, s] of Object.entries(res.config.skills)) ctx.applyRotation(idx(Number(id)), s.rotation, s.passive);
+    if (res.config.scrolls) ctx.applyScrolls(res.config.scrolls.map((x) => x.id));
+    const use = el("p", { class: "small" }, "✓ Party and rotations are in the slots above. ", undo);
     // "Why this rotation": the schedule notes of the optimised party against the quest's enemy timeline.
     const q = ctx.target().quest;
     const where = new Map<number, { row: "front" | "back"; i: number }>();

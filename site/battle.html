@@ -17,7 +17,7 @@
   </div>
   <header>
     <h1>Battle simulator</h1>
-    <p class="lead">Choose what to do, set up the party and the opponent, and simulate hundreds of fights or let the page search for the best rotation, gear, party or scrolls.</p>
+    <p class="lead">Choose what to do and the opponent, put your heroes in the six slots (or let a search fill them), and simulate hundreds of fights or search for the best rotation, gear, party, scrolls or potion.</p>
   </header>
 
   <main>
@@ -36,12 +36,8 @@
       </section>
 
       <section>
-        <h2><span class="step">2</span> <span id="setup-title">Party and opponent</span></h2>
+        <h2><span class="step">2</span> <span id="setup-title">Opponent and party</span></h2>
         <div id="setup-grid" class="setup-grid">
-          <div id="party-col" class="party-col">
-            <div id="party"></div>
-            <div id="plan" aria-live="polite"></div>
-          </div>
           <div id="opp-col" class="opp-col">
             <h3 class="col-title">👹 Opponent</h3>
             <div class="mode-switch" id="opp-switch" role="radiogroup" aria-label="Opponent">
@@ -49,6 +45,10 @@
               <label><input type="radio" name="opp" value="map"> 🗺️ Map run</label>
             </div>
             <div id="target"></div>
+          </div>
+          <div id="party-col" class="party-col">
+            <div id="party"></div>
+            <div id="plan" aria-live="polite"></div>
           </div>
         </div>
       </section>

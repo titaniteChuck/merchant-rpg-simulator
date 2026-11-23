@@ -9,6 +9,7 @@ import {
   type PartySearch, type ScrollLoadout, searchGear, searchParty, searchScrolls, searchSkills, type SkillSearch,
 } from "../tools/combat.ts";
 import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
+import { loadTimelines } from "../tools/schedule.ts";
 import { type ConsumableKind, type ConsumableRanking, rankConsumables } from "../tools/consumables.ts";
 import { gameFromData } from "../tools/gamedata.ts";
 import { Solver } from "../tools/profit.ts";
@@ -73,10 +74,16 @@ export type BattleResponse =
 
 let loaded: Promise<void> | null = null;
 function loadData(): Promise<void> {
-  loaded ??= fetch(new URL("../data/gamedata.json", self.location.href)).then((r) => {
-    if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-    return r.json();
-  }).then((json) => api.loadGameData(json));
+  loaded ??= Promise.all([
+    fetch(new URL("../data/gamedata.json", self.location.href)).then((r) => {
+      if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
+      return r.json();
+    }).then((json) => api.loadGameData(json)),
+    // Enemy timelines: with them, searchSkills / optimiseFight pre-filter rotations by their schedule score (E14b,
+    // 10-19x faster); without them the searches still run, in full.
+    fetch(new URL("../data/timelines.json", self.location.href)).then((r) => (r.ok ? r.json() : null))
+      .then((json) => json && loadTimelines(json)).catch(() => {}),
+  ]).then(() => {});
   return loaded;
 }
 

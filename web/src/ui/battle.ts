@@ -16,7 +16,7 @@ import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
 import { initSaveSource } from "./save-source.ts";
-import { enemyLink, href, isEnemy, itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
+import { enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -51,15 +51,17 @@ interface State {
   saveName: string;
   slots: Record<string, number | null>; // "front0" -> hero index in sv.raw.hero
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
+  /** Slots whose hero Best party / Optimise everything must keep (slot key -> true). */
+  locked: Record<string, boolean>;
   worker: Worker | null;
 }
-const state: State = { mode: MODES[0], sv: null, saveName: "", slots: {}, skills: {}, worker: null };
+const state: State = { mode: MODES[0], sv: null, saveName: "", slots: {}, skills: {}, locked: {}, worker: null };
 
 // The party and edited rotations, remembered per save in this browser (convenience only).
 const partyKey = () => `battle-party:${state.saveName}`;
 function persistParty(): void {
   try {
-    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills }));
+    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, locked: state.locked }));
   } catch { /* storage blocked: the party just isn't remembered */ }
 }
 function restoreParty(heroes: number): void {
@@ -69,24 +71,12 @@ function restoreParty(heroes: number): void {
     const ok = (i: unknown) => i === null || (typeof i === "number" && i >= 0 && i < heroes);
     state.slots = Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as State["slots"];
     state.skills = Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as State["skills"];
+    state.locked = Object.fromEntries(Object.entries(p.locked ?? {}).filter(([, v]) => v === true)) as State["locked"];
   } catch { /* ignore */ }
 }
 
-const RADAR: [string, string][] = [["maxHP", "HP"], ["atk", "Atk"], ["matk", "Matk"], ["def", "Def"], ["mdef", "Mdef"], ["acc", "Acc"], ["crit", "Crit"]];
-/** Strongest value of each stat among the save's heroes (radar rims), computed once per save. */
-let best: Record<string, { max: number; who: string }> = {};
-function computeBest(sv: Save): void {
-  best = {};
-  sv.raw.hero.forEach((h: Any) => {
-    let st: Record<string, number>;
-    try {
-      st = api.heroStats(api.newHero(h));
-    } catch {
-      return;
-    }
-    for (const [k] of RADAR) if ((st[k] ?? 0) > (best[k]?.max ?? 0)) best[k] = { max: st[k], who: h.name };
-  });
-}
+/** The combat stats on a hero card, in the game's order. */
+const CARD_STATS: [string, string][] = [["maxHP", "HP"], ["atk", "Atk"], ["matk", "Matk"], ["def", "Def"], ["mdef", "Mdef"], ["acc", "Acc"], ["crit", "Crit"]];
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
@@ -160,6 +150,9 @@ function skillEditor(i: number): HTMLElement {
     state.skills[i] = { attackList: [...current.attackList], passive: current.passive };
     persistParty();
     renderPlan();
+    // The card's chips follow the editor.
+    const chips = document.querySelector(`[data-chips="${i}"]`);
+    if (chips && raw) chips.replaceWith(rotationChips(i, raw));
   };
   const slots = current.attackList.map((name, k) => {
     const s = select({ "aria-label": `Turn ${k + 1} skill` },
@@ -184,48 +177,86 @@ function skillEditor(i: number): HTMLElement {
     el("div", { class: "toolbar" }, el("label", { class: "turn" }, el("span", { class: "muted small" }, "Passive"), passive), apText));
 }
 
-function renderParty(): void {
+/** The hero's rotation (edited or its own) as 5 small chips with their AP, and its passive as one chip. */
+function rotationChips(idx: number, raw: Any): HTMLElement {
+  const hero = api.newHero(raw);
+  const ap = Object.fromEntries(api.skillInfo(hero).skills.map((x: Any) => [x.name, x.ap]));
+  const rot: string[] = state.skills[idx]?.attackList ?? hero.attackList.slice(1, 6);
+  const passive = state.skills[idx]?.passive ?? hero.passiveSelect;
+  return el("div", { class: "chips", "data-chips": String(idx) },
+    el("ol", { class: "skill-chips", "aria-label": "Rotation, turns 1 to 5" }, ...rot.map((sk, k) => el("li", { class: `skill-chip${sk === "Basic" ? " basic" : ""}`, title: `Turn ${k + 1}` },
+      sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk), ...(ap[sk] ? [el("span", { class: "ap", "aria-label": `${ap[sk]} AP` }, String(ap[sk]))] : [])))),
+    ...(passive && passive !== "None" ? [el("span", { class: "passive-chip" }, passiveLink(passive))] : []));
+}
+
+/** A hero's combat stats as a compact two-line table (labels, values). */
+function statStrip(raw: Any): HTMLElement {
+  const st = api.heroStats(api.newHero(raw));
+  return el("table", { class: "stat-strip" }, el("thead", {}, el("tr", {}, ...CARD_STATS.map(([, l]) => el("th", { scope: "col" }, l)))),
+    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k]) => el("td", {}, fmt.format(st[k] ?? 0))))));
+}
+
+/** The six slots, back row (left) and front row (right). In the modes that choose the party (Best party, Optimise
+ * everything), empty slots are "to be found" and a filled slot can be locked: the search keeps its hero. */
+function renderParty(refreshSearch = true): void {
   const sv = state.sv!;
-  const options: [string, string][] = [["", "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
+  const picks = !state.mode.party;
+  const options: [string, string][] = [["", picks ? "— to be found —" : "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
   const slot = (row: "front" | "back", i: number) => {
     const key = slotKey(row, i);
     const s = select({ "aria-label": `${row} row slot ${i + 1}` }, options);
     s.value = state.slots[key] === null || state.slots[key] === undefined ? "" : String(state.slots[key]);
-    const details = el("div", { class: "slot-details" });
     const idx = state.slots[key];
     const raw = heroRaw(idx ?? null);
-    if (idx !== null && idx !== undefined && raw) {
-      const stats = api.heroStats(api.newHero(raw));
-      const axes: RadarAxis[] = RADAR.map(([k, label]) => ({ label, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
-      details.append(radar(axes, { title: `${raw.name}'s combat stats`, size: 200 }));
-      const edit = el("details", {}, el("summary", { class: "small" }, "Rotation and passive"));
-      edit.addEventListener("toggle", () => {
-        if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
-      });
-      details.append(edit);
-    }
     s.addEventListener("change", () => {
       const v = s.value === "" ? null : Number(s.value);
       // A hero can stand in one slot only: clear it elsewhere.
-      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) state.slots[k] = null;
+      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) (state.slots[k] = null, delete state.locked[k]);
       state.slots[key] = v;
+      // Picking a hero by hand in a search mode locks it (the search keeps it); clearing a slot unlocks it.
+      if (v === null) delete state.locked[key];
+      else if (picks) state.locked[key] = true;
       persistParty();
       renderParty();
     });
-    const label = el("span", { class: "slot-name" },
+    const lock = picks && raw ? (() => {
+      const on = Boolean(state.locked[key]);
+      const b = el("button", { type: "button", class: `lock${on ? " on" : ""}`, "aria-pressed": String(on),
+        title: on ? "Locked: the search keeps this hero (click to let it change)" : "Not locked: the search may replace this hero (click to keep it)" }, on ? "🔒" : "🔓");
+      b.setAttribute("aria-label", `Keep ${raw.name} in the party`);
+      b.addEventListener("click", () => {
+        if (on) delete state.locked[key];
+        else state.locked[key] = true;
+        persistParty();
+        renderParty();
+      });
+      return b;
+    })() : null;
+    const head = el("div", { class: "slot-head" }, el("span", { class: "slot-name" },
       ...(raw ? [withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))] : []),
-      `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(className(raw.class))] : []));
-    return el("div", { class: raw ? `slot filled cls-${raw.class}` : "slot empty" }, label, s, details);
+      `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(`${className(raw.class)} · ${raw.level}`)] : [])), ...(lock ? [lock] : []));
+    const body: Node[] = [];
+    if (idx !== null && idx !== undefined && raw) {
+      body.push(statStrip(raw), rotationChips(idx, raw));
+      const edit = el("details", { class: "slot-edit" }, el("summary", { class: "small" }, "Edit rotation and passive"));
+      edit.addEventListener("toggle", () => {
+        if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
+      });
+      body.push(edit);
+    } else if (picks) body.push(el("p", { class: "muted small slot-hint" }, "The search fills this slot."));
+    return el("div", { class: raw ? `slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot empty" }, head, s, ...body);
   };
-  // Back row on the left, front row on the right: the enemy stands further right (step 2's opponent card).
   const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
     el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
       el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
     el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
-  $("#party").replaceChildren(el("div", { class: "party-cols" }, ...cols));
+  $("#party").replaceChildren(...(picks ? [el("p", { class: "muted small party-note" },
+    "The search fills the six slots. 🔒 Locked heroes stay in the party; pick a hero in a slot to lock it.")] : []),
+  el("div", { class: "party-cols" }, ...cols));
   syncAmount();
   renderPlan();
-  search?.refresh();
+  // Not after a search filled the slots: rebuilding the search panel would wipe its results.
+  if (refreshSearch) search?.refresh();
 }
 
 // ---------------------------------------------------------------- target
@@ -368,7 +399,7 @@ function renderPlan(): void {
   const box = document.querySelector<HTMLElement>("#plan");
   if (!box || !state.sv) return;
   box.replaceChildren();
-  if (!state.mode.party || oppKind() !== "quest" || !document.querySelector("#quest")) return;
+  if (oppKind() !== "quest" || !document.querySelector("#quest")) return;
   const t = targetOf().quest!;
   const members: PlanMember[] = partyOf().members.map((m) => ({
     row: m.row, i: m.i, raw: m.raw,
@@ -398,9 +429,6 @@ function setMode(key: string): void {
     localStorage.setItem(MODE_KEY, state.mode.key);
   } catch { /* not remembered */ }
   const m = state.mode;
-  $("#party-col").hidden = !m.party;
-  $("#setup-grid").classList.toggle("no-party", !m.party);
-  $("#setup-title").textContent = m.party ? "Party and opponent" : "Opponent";
   $("#run-title").textContent = m.label;
   let kindChanged = false;
   document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => {
@@ -417,6 +445,7 @@ function setMode(key: string): void {
   document.querySelector<HTMLElement>(".simulate")!.hidden = !sim;
   $("#results").hidden = !sim;
   if (state.sv) {
+    renderParty(false); // locks and "to be found" slots in the modes that choose the party
     renderTarget(); // the opponent card depends on the mode (quest size cap, scrolls)
     search?.show(sim ? null : m.key as SearchKey);
   }
@@ -578,7 +607,6 @@ async function loadSave(text: string, name: string): Promise<void> {
   state.slots = {};
   state.skills = {};
   restoreParty(sv.raw.hero.length);
-  computeBest(sv);
   $("#setup").hidden = false;
   $("#results").replaceChildren();
   renderParty();
@@ -608,16 +636,21 @@ function init(): void {
     applyRotation: (idx, rotation, passive) => {
       state.skills[idx] = { attackList: rotation, passive };
       persistParty();
-      renderParty();
+      renderParty(false);
     },
     applyParty: (front, back) => {
       const index = (id: number | null) => (id === null ? null : state.sv!.raw.hero.findIndex((h: Any) => h.id === id));
+      // Locks follow their hero to wherever the search put it.
+      const lockedIdx = new Set(Object.keys(state.locked).map((k) => state.slots[k]).filter((x): x is number => x !== null && x !== undefined));
       state.slots = {};
+      state.locked = {};
       front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
       back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
+      for (const [k, v] of Object.entries(state.slots)) if (v !== null && lockedIdx.has(v)) state.locked[k] = true;
       persistParty();
-      renderParty();
+      renderParty(false);
     },
+    locks: () => Object.keys(state.locked).map((k) => heroRaw(state.slots[k] ?? null)?.id).filter((x): x is number => typeof x === "number"),
     poolSkills: () => Object.fromEntries(Object.entries(state.skills).map(([i, s]) => [state.sv!.raw.hero[Number(i)].id, s])),
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
