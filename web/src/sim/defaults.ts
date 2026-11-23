@@ -50,7 +50,7 @@ export function setMode(mode = "Standard"): void {
   D.craftSuffixOdds = craftSuffixOddsStandard;
 }
 
-// Crafting odds are only used by makeItem, which forces them to 0 (like the harness).
+// Crafting odds are only used by makeItem, which forces them to 0 (as the former Lua harness did).
 function craftPrefixOddsStandard(charLevel: number): [number, number] {
   return [0, charLevel];
 }
@@ -132,7 +132,7 @@ export function consumablePrestigeStat(stats: Any, prestigeLevel: number): Any {
 
 // ---------------------------------------------------------------- item stat rolls (makeItem)
 // The game draws these with a `random` captured at load time (C rand), so they are
-// not reproducible against the reference harness; here they use the shared generator.
+// not reproducible against the former reference harness; here they use the shared generator.
 
 function baseStatFunc(baseField: string, levelField: string, level: number, subType: string,
   isCraft: boolean, grade: number, charLevelDiff?: number): number {

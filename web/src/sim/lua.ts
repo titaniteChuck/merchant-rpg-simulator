@@ -2,9 +2,9 @@
  * Lua 5.1 / Solar2D semantics the combat rules depend on.
  *
  * The random generator is a Park-Miller LCG with Lua 5.1 `math.random`
- * argument handling. tools/sim/harness.lua installs the same generator in the
- * real game code (sim.useLcg), so both engines draw identical sequences and
- * fights can be compared roll by roll.
+ * argument handling. The reference fixtures (test/fixtures/) were recorded from
+ * the real game code with this same generator installed (by the former Lua
+ * harness), so fights can be compared with them roll by roll.
  */
 
 const MOD = 2147483647;

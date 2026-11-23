@@ -1,6 +1,6 @@
 /**
  * Tables shown by the save viewer, one row object per line (port of the table
- * builders of tools/savegame.py: hero_rows, hero_gear_rows, inventory_rows,
+ * builders of the former Python savegame.py: hero_rows, hero_gear_rows, inventory_rows,
  * map_rows, the crafter and summary parts of print_report).
  *
  * Needs the game data loaded (api.loadGameData) first.

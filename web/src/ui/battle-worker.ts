@@ -1,7 +1,7 @@
 /**
  * Web worker for the battle page: runs many fights or map runs off the main
- * thread with the TypeScript engine (same evaluators and seeds as the CLI,
- * web/src/tools/combat.ts), so the page stays responsive and can cancel.
+ * thread with the TypeScript engine (evaluators of web/src/tools/combat.ts,
+ * seeds 1..n), so the page stays responsive and can cancel.
  */
 import * as api from "../sim/api.ts";
 import { evaluate, evaluateMap, type FightEval, type MapEval } from "../tools/combat.ts";

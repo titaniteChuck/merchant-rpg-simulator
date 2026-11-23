@@ -1,5 +1,5 @@
 /**
- * Game data tables (inventory/gamedata.json, written by tools/export_gamedata.py).
+ * Game data tables (inventory/gamedata.json, written by `npm run export:gamedata`).
  * Tables keep their Lua keys, so `G.heroList[cls].hpPlv[prestigeLevel]` reads like the game.
  */
 

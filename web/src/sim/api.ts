@@ -1,5 +1,6 @@
 /**
- * Simulator API, mirroring tools/sim/harness.lua (`sim.*`).
+ * Simulator API, mirroring the `sim.*` API of the former Lua harness (tools/sim/harness.lua,
+ * which ran the game's own code and recorded the reference fixtures).
  *
  *   loadGameData(json)               // inventory/gamedata.json
  *   setMode("Standard")              // the save's gameMode
@@ -193,7 +194,7 @@ export { D, len };
 
 // ---------------------------------------------------------------- map runs
 // Map runs fold combat statistics into lifetime totals after every room; keep the
-// healing too (sim harness: Hero.addToTotals wrapper).
+// healing too (as the former harness's Hero.addToTotals wrapper did).
 const origAddToTotals = Hero.prototype.addToTotals;
 Hero.prototype.addToTotals = function (this: Any) {
   this._runHeal = (this._runHeal ?? 0) + (this.combatStatistics.healingDone ?? 0);
@@ -307,7 +308,7 @@ export function mapRun(spec: MapSpec | string, front: (Hero | null | undefined)[
     out.rewards.push({ itemType: r.itemType, itemID: r.itemID, amount: r.amount ?? 1, prestigeLevel: r.prestigeLevel ?? 0 });
   }
   for (let i = 1; i <= 3; i++) {
-    // harness: pairs({["back"..i] = back[i], ["front"..i] = front[i]}) -> Lua's order for that constructor
+    // former harness: pairs({["back"..i] = back[i], ["front"..i] = front[i]}) -> Lua's order for that constructor
     const slots = LuaTable.fromRecord([[`back${i}`, b[i]], [`front${i}`, f[i]]]);
     for (const [slot, h] of slots.entries() as [string, Any][]) {
       const s = heroSummary(h);

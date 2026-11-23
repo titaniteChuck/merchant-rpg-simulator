@@ -316,7 +316,7 @@ function questResults(ev: FightEval, ms: number): HTMLElement[] {
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
     heroTable(ev.heroes, "fight"),
-    el("p", { class: "muted small" }, `${ev.n} fights in ${fmt.format(ms)} ms, seeds 1–${ev.n} (same as the command-line tool).`),
+    el("p", { class: "muted small" }, `${ev.n} fights in ${fmt.format(ms)} ms, seeds 1–${ev.n}: every setting is tested on the same rolls.`),
   ];
 }
 
@@ -339,7 +339,7 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
     ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
     ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
     heroTable(ev.heroes, "run"),
-    el("p", { class: "muted small" }, `${ev.n} map runs in ${fmt.format(ms)} ms, seeds 1–${ev.n + ev.errors} (same as the command-line tool).`),
+    el("p", { class: "muted small" }, `${ev.n} map runs in ${fmt.format(ms)} ms, seeds 1–${ev.n + ev.errors}: every setting is tested on the same rolls.`),
   ];
 }
 

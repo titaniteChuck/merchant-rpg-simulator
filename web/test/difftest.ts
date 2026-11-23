@@ -1,6 +1,6 @@
 /**
  * Differential test: replay fights recorded from the game's own code
- * (tools/sim/fixtures.py -> test/fixtures/fights.json) and compare action by action.
+ * (frozen test/fixtures/fights.json, from the former Lua harness) and compare action by action.
  *
  *   node test/difftest.ts [--only N] [--verbose] [--fixtures path]
  */

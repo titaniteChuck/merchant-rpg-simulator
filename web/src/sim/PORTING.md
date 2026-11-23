@@ -8,7 +8,8 @@ generator, must give the same trace as the game's own code. So the port is
 ## Reference fixtures
 
 `web/test/fixtures/{fights,maps,items}.json` were recorded from the game's own code
-(`tools/sim/fixtures.py`, running `harness.lua` in Lua 5.1 with the shared LCG) and are frozen:
+(the former `tools/sim/fixtures.py` + `harness.lua`, running it in Lua 5.1 with the shared LCG;
+removed with the Python tools, so the set can't be re-recorded) and are frozen:
 final set of 2026-11-23, 3000 fights, 400 map runs, 1949 item rolls, all matching.
 They embed the player's heroes, so they stay local (git-ignored). `npm test` runs all three
 comparisons when the fixtures are present (`test/lua-parity.test.ts`) and fails on any difference;
@@ -29,7 +30,7 @@ without them (CI) those three tests are skipped. Any change to `web/src/sim/` mu
 | `obj.combat.Campaign`, `lootService`, `QuestInventory`, `ScrollsComponent`, `data.ScrollsData`, map timings of `questService` | `campaign.ts` |
 | Lua 5.1 table internals (`pairs` order, `#` with holes) | `lua-table.ts` |
 | `data.AbilityFunc` (skills, passives) | `abilities/*.ts` |
-| `tools/sim/harness.lua` API (`sim.*`) | `api.ts` (public slot arrays are 0-based: `[h1, h2, h3]`) |
+| the former `tools/sim/harness.lua` API (`sim.*`) | `api.ts` (public slot arrays are 0-based: `[h1, h2, h3]`) |
 
 ## Conventions
 

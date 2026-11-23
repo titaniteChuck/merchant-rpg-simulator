@@ -1,6 +1,7 @@
 /**
  * Differential test for api.makeItem against rolls recorded from the game's code
- * (tools/sim/fixtures.py --items, shared LCG installed before the game loads).
+ * (frozen test/fixtures/items.json, from the former Lua harness with the shared LCG
+ * installed before the game loaded).
  *
  *   node test/difftest-items.ts [--fixtures test/fixtures/items.json] [--verbose]
  */

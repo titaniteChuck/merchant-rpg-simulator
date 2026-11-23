@@ -37,7 +37,7 @@ const statToPct: Record<string, string> = {
 
 const toAmplify: Record<string, boolean> = { atk: true, matk: true, eva: true, def: true, mdef: true };
 
-/** Optional hook called after every action (trace / per-skill damage, like harness.lua). */
+/** Optional hook called after every action (trace / per-skill damage, as the former Lua harness recorded them). */
 export const hooks: { afterAction?: (c: Combatant, name: Any, before: Any) => void; beforeAction?: (c: Combatant) => Any } = {};
 
 export class Combatant {

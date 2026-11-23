@@ -1,6 +1,6 @@
 /**
  * Differential test for map runs: replay runs recorded from the game's own code
- * (tools/sim/fixtures.py --maps -> test/fixtures/maps.json) and compare every
+ * (frozen test/fixtures/maps.json, from the former Lua harness) and compare every
  * action of every room, then the whole result.
  *
  *   node test/difftest-maps.ts [--only N] [--verbose] [--fixtures path]
@@ -44,7 +44,7 @@ function diffEntry(exp: Any, got: TraceEntry | undefined, rngOffset: number): st
 /** Deep compare of the whole result (lists in order, numbers with a float tolerance). */
 function deepDiff(exp: Any, got: Any, path: string): string | undefined {
   if (Array.isArray(exp) || (exp && typeof exp === "object")) {
-    // Lua tables that became [] in Python can be empty objects in TS (skillDmg of a hero that never acted)
+    // Lua tables recorded as [] can be empty objects in TS (skillDmg of a hero that never acted)
     const ek = Object.keys(exp), gk = got && typeof got === "object" ? Object.keys(got) : [];
     if (ek.length === 0 && gk.length === 0) return undefined;
     if (got === undefined || got === null || typeof got !== "object") return `${path}: game ${JSON.stringify(exp)} vs ts ${got}`;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { LuaTable } from "../src/sim/lua-table.ts";
 
-// Reference cases recorded from real Lua 5.1 (lupa): random sequences of t[k] = v,
+// Reference cases recorded once from real Lua 5.1 (via lupa): random sequences of t[k] = v,
 // t[k] = nil, table.insert(t, pos, v / nil), on `{}` or a presized constructor.
 // Each case checks `#t` after every operation and the final pairs() order.
 const cases = JSON.parse(readFileSync(new URL("./data/lua-table-cases.json", import.meta.url), "utf8"));
