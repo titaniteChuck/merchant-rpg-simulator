@@ -1,0 +1,466 @@
+parcel,nilOdds,itemType,itemID,item,odds,chance%_grade3,amount
+Region1Gathering,75,material,9,Tuvale Moss,10,10.0,"[1, 80, 2, 20]"
+Region1Gathering,75,material,10,Ashe Root,10,10.0,"[1, 80, 2, 20]"
+Region1Gathering,75,material,31,Forest Crystal,5,5.0,[1]
+Region1Basic,62,material,9,Tuvale Moss,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Region1Basic,62,material,10,Ashe Root,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Region1Basic,62,material,31,Forest Crystal,8,8.0,[1]
+Region1Adv,40,material,1,Iron Ore,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region1Adv,40,material,3,Iron Chunk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region1Adv,40,material,5,Ashe Log,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region1Adv,40,material,7,Hempen Thread,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region1Adv,40,material,30,Emerald,5,5.0,[1]
+Region1Adv,40,material,31,Forest Crystal,10,10.0,[1]
+Region1Adv,40,material,32,Nature Rune,5,5.0,[1]
+Region1Rare,60,material,30,Emerald,10,10.0,"[1, 80, 2, 20]"
+Region1Rare,60,material,31,Forest Crystal,20,20.0,"[1, 80, 2, 20]"
+Region1Rare,60,material,32,Nature Rune,10,10.0,"[1, 80, 2, 20]"
+Arachne,50,equipment,259,Arachne's Ring,30,30.0,[1]
+Arachne,50,material,12,Spider Silk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Arachne,50,material,13,Spider Leg,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Venom,50,material,17,Venom's Fang,30,30.0,[1]
+Venom,50,material,15,Snake Scale,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Venom,50,material,16,Snake Fang,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Hogger,50,material,20,Hogger's Fur,30,30.0,[1]
+Hogger,50,material,18,Boar Fur,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Hogger,50,material,19,Boar Tusk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Goblin,50,equipment,260,Goblin Ring,5,5.0,[1]
+Goblin,50,material,21,Goblin Plate,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Goblin,50,material,22,Goblin Blade,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Goblin,50,material,24,Goblin Cloth,5,5.0,"[1, 80, 2, 20]"
+Goblin,50,material,25,Goblin Hilt,5,5.0,"[1, 80, 2, 20]"
+Goblin,50,material,31,Forest Crystal,5,5.0,[1]
+Grok,50,equipment,261,Grok's Amulet,30,30.0,[1]
+Grok,50,material,21,Goblin Plate,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Grok,50,material,22,Goblin Blade,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Siru,50,material,26,Siru's Cloth,30,30.0,[1]
+Siru,50,material,24,Goblin Cloth,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Siru,50,material,25,Goblin Hilt,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Chieftain,30,material,21,Goblin Plate,10,12.5,"[1, 30, 2, 50, 3, 20]"
+Chieftain,30,material,22,Goblin Blade,10,12.5,"[1, 30, 2, 50, 3, 20]"
+Chieftain,30,material,27,Chieftain's Blade,30,37.5,[1]
+Gronok,10,material,21,Goblin Plate,10,12.5,"[2, 60, 3, 40]"
+Gronok,10,material,22,Goblin Blade,10,12.5,"[2, 60, 3, 40]"
+Gronok,10,material,27,Chieftain's Blade,20,25.0,"[1, 80, 2, 20]"
+Gronok,10,material,28,Gronok's Plate,30,37.5,[1]
+Maexna,30,material,29,Maexna's Leg,35,35.0,[1]
+Maexna,30,material,31,Forest Crystal,25,25.0,"[1, 80, 2, 20]"
+Maexna,30,material,12,Spider Silk,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Maexna,30,material,13,Spider Leg,5,5.0,"[1, 30, 2, 50, 3, 20]"
+QueenMaexna,40,equipment,262,Queen's Amulet,30,30.0,[1]
+QueenMaexna,40,material,12,Spider Silk,15,15.0,"[1, 30, 2, 50, 3, 20]"
+QueenMaexna,40,material,13,Spider Leg,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Region2Basic,50,material,42,Coral Moss,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Region2Basic,50,material,43,Willow Root,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Region2Basic,50,material,65,Water Crystal,10,10.0,[1]
+Region2Adv,40,material,34,Mithril Ore,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region2Adv,40,material,36,Mithril Chunk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region2Adv,40,material,38,Willow Log,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region2Adv,40,material,40,Silk Thread,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region2Adv,40,material,65,Water Crystal,10,10.0,[1]
+Region2Adv,40,material,44,Sapphire,5,5.0,[1]
+Region2Adv,40,material,48,Water Rune,5,5.0,[1]
+Region2Rare,60,material,65,Water Crystal,20,20.0,"[1, 80, 2, 20]"
+Region2Rare,60,material,44,Sapphire,10,10.0,"[1, 80, 2, 20]"
+Region2Rare,60,material,48,Water Rune,10,10.0,"[1, 80, 2, 20]"
+Snapper,70,equipment,263,Turtle Ring,5,5.0,[1]
+Snapper,70,material,65,Water Crystal,5,5.0,[1]
+Snapper,70,material,45,Turtle Shell,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Snapper,70,material,46,Turtle Claw,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Turtle,40,material,47,Wild Shell,40,40.0,"[1, 80, 2, 20]"
+Turtle,40,material,65,Water Crystal,10,10.0,[1]
+Turtle,40,material,44,Sapphire,5,5.0,[1]
+Turtle,40,material,48,Water Rune,5,5.0,[1]
+Murlok,55,material,49,Murlok Cloth,5,5.0,"[1, 80, 2, 20]"
+Murlok,55,material,50,Murlok Hilt,5,5.0,"[1, 80, 2, 20]"
+Murlok,55,material,56,Murlok Plate,5,5.0,"[1, 80, 2, 20]"
+Murlok,55,material,57,Murlok Blade,5,5.0,"[1, 80, 2, 20]"
+Murlok,55,material,64,Murlok Scale,25,25.0,"[1, 70, 2, 30]"
+Tidecaller,30,material,51,Tidecaller's Hilt,30,30.0,[1]
+Tidecaller,30,material,49,Murlok Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Tidecaller,30,material,50,Murlok Hilt,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Tidecaller,30,material,64,Murlok Scale,30,30.0,"[1, 70, 2, 30]"
+Lizard,70,equipment,264,Lizard Amulet,5,5.0,[1]
+Lizard,70,material,52,Lizard Scale,15,15.0,"[1, 80, 2, 20]"
+Lizard,70,material,53,Lizard Fang,10,10.0,"[1, 80, 2, 20]"
+Lizzy,50,material,54,Leaping Scale,30,30.0,[1]
+Lizzy,50,material,52,Lizard Scale,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Lizzy,50,material,53,Lizard Fang,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Lizzy,50,material,44,Sapphire,5,5.0,[1]
+Lizzy,50,material,48,Water Rune,5,5.0,[1]
+Warleader,30,material,58,Warleader's Plate,30,30.0,[1]
+Warleader,30,material,64,Murlok Scale,30,30.0,"[1, 30, 2, 50, 3, 20]"
+Warleader,30,material,56,Murlok Plate,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Warleader,30,material,57,Murlok Blade,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Tidehunter,30,material,59,Tidehunter's Blade,30,30.0,[1]
+Tidehunter,30,material,64,Murlok Scale,30,30.0,"[1, 30, 2, 50, 3, 20]"
+Tidehunter,30,material,49,Murlok Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Tidehunter,30,material,57,Murlok Blade,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Highpriest,20,material,60,High Priest's Cloth,30,30.0,[1]
+Highpriest,20,material,49,Murlok Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Highpriest,20,material,50,Murlok Hilt,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Highpriest,20,material,64,Murlok Scale,40,40.0,"[1, 60, 2, 40]"
+Nami,20,material,60,High Priest's Cloth,20,20.0,[1]
+Nami,20,material,61,Nami's Hilt,30,30.0,[1]
+Nami,20,material,49,Murlok Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Nami,20,material,50,Murlok Hilt,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Nami,20,material,64,Murlok Scale,20,20.0,"[1, 70, 2, 30]"
+Basamus,50,material,62,Basamus' Claw,20,20.0,[1]
+Basamus,50,material,44,Sapphire,5,5.0,[1]
+Basamus,50,material,48,Water Rune,5,5.0,[1]
+Basamus,50,material,52,Lizard Scale,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Basamus,50,material,53,Lizard Fang,10,10.0,"[1, 30, 2, 50, 3, 20]"
+BasamusPrime,25,material,62,Basamus' Claw,25,25.0,"[1, 80, 2, 20]"
+BasamusPrime,25,material,63,Prime Fang,30,30.0,[1]
+BasamusPrime,25,material,44,Sapphire,10,10.0,[1]
+BasamusPrime,25,material,48,Water Rune,10,10.0,[1]
+Region3Basic,50,material,74,Highland Moss,20,20.0,"[1, 80, 2, 20]"
+Region3Basic,50,material,75,Oak Root,20,20.0,"[1, 80, 2, 20]"
+Region3Basic,50,material,97,Earth Crystal,10,10.0,[1]
+Region3Adv,40,material,66,Adaman Ore,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region3Adv,40,material,68,Adaman Chunk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region3Adv,40,material,70,Oak Log,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region3Adv,40,material,72,Cashmere Thread,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region3Adv,40,material,97,Earth Crystal,10,10.0,[1]
+Region3Adv,40,material,88,Topaz,5,5.0,[1]
+Region3Adv,40,material,92,Earth Rune,5,5.0,[1]
+Region3Rare,60,material,97,Earth Crystal,20,20.0,"[1, 80, 2, 20]"
+Region3Rare,60,material,88,Topaz,10,10.0,"[1, 80, 2, 20]"
+Region3Rare,60,material,92,Earth Rune,10,10.0,"[1, 80, 2, 20]"
+Ram,60,equipment,265,Ram Ring,5,5.0,[1]
+Ram,60,material,77,Ram Fur,20,20.0,"[1, 80, 2, 20]"
+Ram,60,material,78,Ram Horn,15,15.0,[1]
+Ceros,50,material,79,Ceros' Horn,30,30.0,[1]
+Ceros,50,material,77,Ram Fur,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Ceros,50,material,78,Ram Horn,10,10.0,"[1, 80, 2, 20]"
+Tunneler,60,equipment,266,Worm Ring,5,5.0,[1]
+Tunneler,60,material,81,Worm Silk,20,20.0,"[1, 80, 2, 20]"
+Tunneler,60,material,82,Worm Fang,15,15.0,[1]
+Terros,50,material,83,Terros' Fang,30,30.0,[1]
+Terros,50,material,81,Worm Silk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Terros,50,material,82,Worm Fang,10,10.0,"[1, 80, 2, 20]"
+Gnoll,50,equipment,267,Gnoll Ring,5,5.0,[1]
+Gnoll,50,material,98,Gnoll Fur,25,25.0,"[1, 70, 2, 30]"
+Gnoll,50,material,85,Gnoll Plate,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Gnoll,50,material,86,Gnoll Blade,5,5.0,"[1, 80, 2, 20]"
+Gnoll,50,material,89,Gnoll Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Gnoll,50,material,90,Gnoll Hilt,5,5.0,"[1, 80, 2, 20]"
+Reygar,30,material,87,Reygar's Plate,30,30.0,[1]
+Reygar,30,material,85,Gnoll Plate,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Reygar,30,material,86,Gnoll Blade,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Reygar,30,material,98,Gnoll Fur,25,25.0,"[1, 70, 2, 30]"
+Kaldar,30,material,91,Kaldar's Fur,30,30.0,[1]
+Kaldar,30,material,85,Gnoll Plate,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Kaldar,30,material,86,Gnoll Blade,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Kaldar,30,material,98,Gnoll Fur,25,25.0,"[1, 70, 2, 30]"
+Overlord,30,material,93,Overlord's Blade,20,20.0,[1]
+Overlord,30,material,85,Gnoll Plate,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Overlord,30,material,86,Gnoll Blade,5,5.0,"[1, 80, 2, 20]"
+Overlord,30,material,98,Gnoll Fur,40,40.0,"[1, 70, 2, 30]"
+Drahgar,20,material,94,Drahgar's Fur,30,30.0,[1]
+Drahgar,20,material,93,Overlord's Blade,20,20.0,"[1, 80, 2, 20]"
+Drahgar,20,material,88,Topaz,5,5.0,"[1, 80, 2, 20]"
+Drahgar,20,material,92,Earth Rune,5,5.0,"[1, 80, 2, 20]"
+Drahgar,20,material,98,Gnoll Fur,20,20.0,"[1, 70, 2, 30]"
+Ares,50,material,95,Ares' Fur,30,30.0,[1]
+Ares,50,material,88,Topaz,10,10.0,"[1, 80, 2, 20]"
+Ares,50,material,92,Earth Rune,10,10.0,"[1, 80, 2, 20]"
+AresPrime,40,material,96,Ares' Horn,40,36.36,[1]
+AresPrime,40,material,95,Ares' Fur,30,27.27,"[1, 80, 2, 20]"
+Region4Basic,50,material,107,Badlands Moss,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Region4Basic,50,material,108,Deadwood Root,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Region4Basic,50,material,129,Necro Crystal,10,10.0,[1]
+Region4Adv,40,material,99,Darksteel Ore,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region4Adv,40,material,101,Darksteel Chunk,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region4Adv,40,material,103,Deadwood Log,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region4Adv,40,material,105,Necro Thread,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Region4Adv,40,material,129,Necro Crystal,10,10.0,[1]
+Region4Adv,40,material,126,Amethyst,5,5.0,[1]
+Region4Adv,40,material,127,Death Rune,5,5.0,[1]
+Region4Rare,60,material,129,Necro Crystal,20,20.0,"[1, 80, 2, 20]"
+Region4Rare,60,material,126,Amethyst,10,10.0,"[1, 80, 2, 20]"
+Region4Rare,60,material,127,Death Rune,10,10.0,"[1, 80, 2, 20]"
+Scorpinox,50,material,112,Scorpinox Shell,30,30.0,[1]
+Scorpinox,50,material,110,Scorpion Shell,10,10.0,"[1, 80, 2, 20]"
+Scorpinox,50,material,111,Scorpion Leg,10,10.0,"[1, 80, 2, 20]"
+NightStalker,50,material,115,Stalker's Fur,30,30.0,[1]
+NightStalker,50,material,113,Beast Fur,10,10.0,"[1, 80, 2, 20]"
+NightStalker,50,material,114,Beast Fang,10,10.0,"[1, 80, 2, 20]"
+Undead,55,material,128,Skeleton Skull,25,25.0,"[1, 80, 2, 20]"
+Undead,55,material,119,Undead Plate,10,10.0,"[1, 80, 2, 20]"
+Undead,55,material,116,Undead Cloth,10,10.0,"[1, 80, 2, 20]"
+Skeletor,30,equipment,300,Skeletor's Ring,30,30.0,[1]
+Skeletor,30,material,128,Skeleton Skull,30,30.0,"[1, 70, 2, 30]"
+Skeletor,30,material,119,Undead Plate,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Skeletor,30,material,120,Undead Blade,5,5.0,"[1, 80, 2, 20]"
+Altor,30,material,118,Altor's Cloth,30,30.0,[1]
+Altor,30,material,128,Skeleton Skull,30,30.0,"[1, 70, 2, 30]"
+Altor,30,material,116,Undead Cloth,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Altor,30,material,117,Undead Hilt,5,5.0,"[1, 80, 2, 20]"
+Antares,50,material,122,Antares' Stinger,20,20.0,[1]
+Antares,50,material,110,Scorpion Shell,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Antares,50,material,111,Scorpion Leg,15,15.0,"[1, 80, 2, 20]"
+Serket,40,material,123,Serket's Shell,30,30.0,[1]
+Serket,40,material,122,Antares' Stinger,10,10.0,"[1, 80, 2, 20]"
+Serket,40,material,110,Scorpion Shell,10,10.0,"[1, 30, 2, 50, 3, 20]"
+Serket,40,material,111,Scorpion Leg,10,10.0,"[1, 30, 2, 50, 3, 20]"
+LichKing,30,material,124,King's Blade,20,20.0,[1]
+LichKing,30,material,128,Skeleton Skull,40,40.0,"[1, 70, 2, 30]"
+LichKing,30,material,119,Undead Plate,5,5.0,"[1, 30, 2, 50, 3, 20]"
+LichKing,30,material,120,Undead Blade,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Arthus,20,material,125,Arthus' Skull,40,36.36,[1]
+Arthus,20,material,124,King's Blade,30,27.27,"[1, 80, 2, 20]"
+Arthus,20,material,119,Undead Plate,5,4.55,"[1, 30, 2, 50, 3, 20]"
+Arthus,20,material,120,Undead Blade,5,4.55,"[1, 30, 2, 50, 3, 20]"
+Arthus,20,material,128,Skeleton Skull,10,9.09,"[1, 70, 2, 30]"
+Region5Basic,60,material,138,Lava Moss,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Region5Basic,60,material,139,Lava Root,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Region5Basic,60,material,159,Grimhal Ash,5,5.0,[1]
+Region5Basic,60,material,160,Fire Crystal,5,5.0,[1]
+Region5Adv,50,material,130,Magma Ore,5,4.76,"[1, 30, 2, 50, 3, 20]"
+Region5Adv,50,material,132,Magma Chunk,5,4.76,"[1, 30, 2, 50, 3, 20]"
+Region5Adv,50,material,134,Magma Log,5,4.76,"[1, 30, 2, 50, 3, 20]"
+Region5Adv,50,material,136,Magma Thread,5,4.76,"[1, 30, 2, 50, 3, 20]"
+Region5Adv,50,material,159,Grimhal Ash,10,9.52,"[1, 80, 2, 20]"
+Region5Adv,50,material,160,Fire Crystal,15,14.29,[1]
+Region5Adv,50,material,157,Ruby,5,4.76,[1]
+Region5Adv,50,material,158,Fire Rune,5,4.76,[1]
+Region5Rare,40,material,160,Fire Crystal,20,20.0,"[1, 80, 2, 20]"
+Region5Rare,40,material,157,Ruby,10,10.0,"[1, 80, 2, 20]"
+Region5Rare,40,material,158,Fire Rune,10,10.0,"[1, 80, 2, 20]"
+Region5Rare,40,material,159,Grimhal Ash,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Whelp,50,material,141,Crimson Scale,20,20.0,"[1, 80, 2, 20]"
+Whelp,50,material,142,Crimson Claw,15,15.0,[1]
+Whelp,50,material,143,Crimson Wing,10,10.0,[1]
+Whelp,50,material,144,Molten Core,5,5.0,[1]
+Wyrm,40,material,141,Crimson Scale,20,20.0,"[1, 80, 2, 20]"
+Wyrm,40,material,142,Crimson Claw,15,15.0,"[1, 80, 2, 20]"
+Wyrm,40,material,143,Crimson Wing,15,15.0,[1]
+Wyrm,40,material,144,Molten Core,10,10.0,[1]
+DemonWarrior,40,material,145,Demon Claw,25,25.0,[1]
+DemonWarrior,40,material,148,Demon Heart,15,15.0,[1]
+DemonWarrior,40,material,146,Demon Horn,15,15.0,[1]
+DemonWarrior,40,material,159,Grimhal Ash,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Infernal,40,material,144,Molten Core,25,25.0,[1]
+Infernal,40,material,149,Molten Plate,20,20.0,"[1, 80, 2, 20]"
+Infernal,40,material,150,Molten Chain,15,15.0,[1]
+DemonMage,50,material,147,Demon Fire,25,25.0,[1]
+DemonMage,50,material,146,Demon Horn,15,15.0,[1]
+DemonMage,50,material,148,Demon Heart,10,10.0,"[1, 80, 2, 20]"
+Phoenix,40,material,160,Fire Crystal,20,22.22,[1]
+Phoenix,40,material,151,Phoenix Ash,10,11.11,[1]
+Phoenix,40,material,152,Phoenix Feather,10,11.11,[1]
+Phoenix,40,material,159,Grimhal Ash,10,11.11,"[1, 80, 2, 20]"
+Cerberus,50,material,159,Grimhal Ash,20,20.0,"[1, 30, 2, 50, 3, 20]"
+Cerberus,50,material,153,Cerberus' Fur,20,20.0,[1]
+Cerberus,50,material,154,Cerberus' Fang,10,10.0,[1]
+Leviathan,40,material,162,Azure Scale,15,15.0,[1]
+Leviathan,40,material,163,Azure Fang,15,15.0,[1]
+Leviathan,40,material,64,Murlok Scale,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Leviathan,40,material,44,Sapphire,15,15.0,"[1, 80, 2, 20]"
+Leviathan,40,material,48,Water Rune,10,10.0,"[1, 80, 2, 20]"
+Kirin,40,material,164,Kirin's Hide,15,15.0,[1]
+Kirin,40,material,165,Kirin's Horn,15,15.0,[1]
+Kirin,40,material,98,Gnoll Fur,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Kirin,40,material,88,Topaz,15,15.0,"[1, 80, 2, 20]"
+Kirin,40,material,92,Earth Rune,10,10.0,"[1, 80, 2, 20]"
+Oni,40,material,166,Oni's Fang,15,15.0,[1]
+Oni,40,material,167,Oni's Blade,15,15.0,[1]
+Oni,40,material,128,Skeleton Skull,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Oni,40,material,126,Amethyst,15,15.0,"[1, 80, 2, 20]"
+Oni,40,material,127,Death Rune,10,10.0,"[1, 80, 2, 20]"
+Hel,40,material,168,Spectral Cloth,15,15.0,[1]
+Hel,40,material,169,Hel's Blade,15,15.0,[1]
+Hel,40,material,128,Skeleton Skull,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Hel,40,material,126,Amethyst,15,15.0,"[1, 80, 2, 20]"
+Hel,40,material,127,Death Rune,10,10.0,"[1, 80, 2, 20]"
+Alkyoneus,40,material,170,Alkyoneus' Cloth,15,15.0,[1]
+Alkyoneus,40,material,171,Alkyoneus' Tooth,15,15.0,[1]
+Alkyoneus,40,material,96,Ares' Horn,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Alkyoneus,40,material,88,Topaz,15,15.0,"[1, 80, 2, 20]"
+Alkyoneus,40,material,92,Earth Rune,10,10.0,"[1, 80, 2, 20]"
+Kraken,40,material,172,Kraken's Tentacle,15,15.0,[1]
+Kraken,40,material,173,Kraken's Beak,15,15.0,[1]
+Kraken,40,material,64,Murlok Scale,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Kraken,40,material,44,Sapphire,15,15.0,"[1, 80, 2, 20]"
+Kraken,40,material,48,Water Rune,10,10.0,"[1, 80, 2, 20]"
+TwinShadow,40,material,174,Shadow Blade,15,15.0,[1]
+TwinShadow,40,material,175,Shadow Cloth,15,15.0,[1]
+TwinShadow,40,material,128,Skeleton Skull,5,5.0,"[1, 30, 2, 50, 3, 20]"
+TwinShadow,40,material,126,Amethyst,15,15.0,"[1, 80, 2, 20]"
+TwinShadow,40,material,127,Death Rune,10,10.0,"[1, 80, 2, 20]"
+Genbu,40,material,176,Genbu's Shell,15,15.0,[1]
+Genbu,40,material,177,Genbu's Jewel,15,15.0,[1]
+Genbu,40,material,64,Murlok Scale,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Genbu,40,material,44,Sapphire,15,15.0,"[1, 80, 2, 20]"
+Genbu,40,material,48,Water Rune,10,10.0,"[1, 80, 2, 20]"
+Magnotaur,40,material,178,Magnotaur's Hoove,15,15.0,[1]
+Magnotaur,40,material,179,Magnotaur's Hide,15,15.0,[1]
+Magnotaur,40,material,98,Gnoll Fur,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Magnotaur,40,material,88,Topaz,15,15.0,"[1, 80, 2, 20]"
+Magnotaur,40,material,92,Earth Rune,10,10.0,"[1, 80, 2, 20]"
+Pumpking,25,material,157,Ruby,15,15.0,[1]
+Pumpking,25,material,126,Amethyst,15,15.0,"[1, 80, 2, 20]"
+Pumpking,25,material,88,Topaz,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Pumpking,25,material,44,Sapphire,15,15.0,"[1, 30, 2, 40, 3, 30]"
+Pumpking,25,material,30,Emerald,15,15.0,"[1, 20, 2, 30, 3, 50]"
+Region5Epic,15,material,160,Fire Crystal,35,38.89,"[1, 60, 2, 30, 3, 10]"
+Region5Epic,15,material,157,Ruby,15,16.67,"[1, 80, 2, 20]"
+Region5Epic,15,material,158,Fire Rune,15,16.67,"[1, 80, 2, 20]"
+Region5Epic,15,material,159,Grimhal Ash,10,11.11,"[1, 30, 2, 50, 3, 20]"
+Skorge,55,material,191,Skorge's Scale,15,15.0,[1]
+Skorge,55,material,192,Skorge's Blade,15,15.0,[1]
+Skorge,55,material,160,Fire Crystal,15,15.0,"[1, 80, 2, 20]"
+Fafnir,55,material,193,Fafnir's Fang,15,15.0,[1]
+Fafnir,55,material,194,Fafnir's Wing,15,15.0,[1]
+Fafnir,55,material,160,Fire Crystal,15,15.0,"[1, 80, 2, 20]"
+Arkyos,55,material,195,Arkyos' Horn,15,15.0,[1]
+Arkyos,55,material,196,Arkyos' Wing,15,15.0,[1]
+Arkyos,55,material,160,Fire Crystal,15,15.0,"[1, 80, 2, 20]"
+Ozai,55,material,197,Ozai's Plate,15,15.0,[1]
+Ozai,55,material,198,Ozai's Chain,15,15.0,[1]
+Ozai,55,material,160,Fire Crystal,15,15.0,"[1, 80, 2, 20]"
+Fatalis,55,material,199,Fatalis' Crest,15,15.0,[1]
+Fatalis,55,material,200,Fatalis' Horn,15,15.0,[1]
+Fatalis,55,material,160,Fire Crystal,15,15.0,"[1, 80, 2, 20]"
+Enkidu,30,material,29,Maexna's Leg,45,34.62,[1]
+Enkidu,30,material,31,Forest Crystal,35,26.92,"[1, 80, 2, 20]"
+Enkidu,30,material,12,Spider Silk,10,7.69,"[1, 30, 2, 50, 3, 20]"
+Enkidu,30,material,13,Spider Leg,10,7.69,"[1, 30, 2, 50, 3, 20]"
+Region 6,40,material,47,Wild Shell,40,40.0,"[1, 80, 2, 20]"
+Region 6,40,material,65,Water Crystal,10,10.0,[1]
+Region 6,40,material,44,Sapphire,5,5.0,[1]
+Region 6,40,material,48,Water Rune,5,5.0,[1]
+Region6Basic,60,material,214,Glacial Moss,15,15.79,"[1, 30, 2, 50, 3, 20]"
+Region6Basic,60,material,215,Glacial Root,15,15.79,"[1, 30, 2, 50, 3, 20]"
+Region6Basic,60,material,254,Oblivion Crystal,5,5.26,[1]
+Region6Adv,50,material,206,Glacial Ore,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Region6Adv,50,material,208,Glacial Chunk,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Region6Adv,50,material,210,Balwood Log,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Region6Adv,50,material,212,Oblivion Thread,5,5.0,"[1, 30, 2, 50, 3, 20]"
+Region6Adv,50,material,252,Obsidian,10,10.0,[1]
+Region6Adv,50,material,253,Oblivion Rune,10,10.0,[1]
+Region6Adv,50,material,254,Oblivion Crystal,5,5.0,[1]
+Region6Adv,50,material,158,Fire Rune,5,5.0,[1]
+Region6Boss,25,material,254,Oblivion Crystal,30,31.58,"[1, 90, 2, 10]"
+Region6Boss,25,material,253,Oblivion Rune,20,21.05,"[1, 90, 2, 10]"
+Region6Boss,25,material,252,Obsidian,20,21.05,"[1, 90, 2, 10]"
+Region6Epic,15,material,254,Oblivion Crystal,35,35.0,"[1, 70, 2, 20, 3, 10]"
+Region6Epic,15,material,253,Oblivion Rune,25,25.0,"[1, 70, 2, 20, 3, 10]"
+Region6Epic,15,material,252,Obsidian,25,25.0,"[1, 70, 2, 20, 3, 10]"
+Region6Rare,15,material,254,Oblivion Crystal,35,35.0,"[1, 70, 2, 20, 3, 10]"
+Region6Rare,15,material,253,Oblivion Rune,25,25.0,"[1, 70, 2, 20, 3, 10]"
+Region6Rare,15,material,252,Obsidian,25,25.0,"[1, 70, 2, 20, 3, 10]"
+Torun,10,material,226,Torun Horn,30,30.0,[1]
+Torun,10,material,227,Torun Fur,60,60.0,"[1, 70, 2, 30]"
+Fenrir,10,material,228,Fenrir Fang,30,30.0,[1]
+Fenrir,10,material,229,Fenrir Fur,60,60.0,"[1, 70, 2, 30]"
+Eternus,10,material,230,Eternus Soul,30,30.0,[1]
+Eternus,10,material,231,Eternus Cloth,60,60.0,"[1, 70, 2, 30]"
+Boros,10,material,232,Boros Horn,30,30.0,[1]
+Boros,10,material,233,Boros Plate,60,60.0,"[1, 70, 2, 30]"
+Karthas,10,material,235,Karthas Soul,30,30.0,[1]
+Karthas,10,material,236,Karthas Cloth,60,60.0,"[1, 70, 2, 30]"
+Balor,10,material,237,Balor Horn,30,30.0,[1]
+Balor,10,material,238,Balor Plate,60,60.0,"[1, 70, 2, 30]"
+Azuros,0,material,239,Fang of Azuros,30,30.0,[1]
+Azuros,0,material,240,Scale of Azuros,60,60.0,"[1, 70, 2, 30]"
+Azuros,0,material,241,Eye of Azuros,10,10.0,[1]
+Balorn,70,material,243,Balorn's Fur,30,25.0,[1]
+Balorn,70,material,252,Obsidian,20,16.67,"[1, 90, 2, 10]"
+Taurus,70,material,244,Taurus' Horn,30,25.0,[1]
+Taurus,70,material,252,Obsidian,20,16.67,"[1, 90, 2, 10]"
+Amarok,70,material,245,Amarok's Fur,30,25.0,[1]
+Amarok,70,material,252,Obsidian,20,16.67,"[1, 90, 2, 10]"
+Skoll,70,material,246,Skoll's Fang,30,24.0,[1]
+Skoll,70,material,252,Obsidian,25,20.0,"[1, 70, 2, 20, 3, 10]"
+Pheramus,70,material,247,Pheramus' Soul,30,24.0,[1]
+Pheramus,70,material,252,Obsidian,25,20.0,"[1, 70, 2, 20, 3, 10]"
+Ouroboros,70,material,248,Ouroboros' Cloth,30,24.0,[1]
+Ouroboros,70,material,252,Obsidian,25,20.0,"[1, 70, 2, 20, 3, 10]"
+Gigantus,70,material,249,Gigantus' Plate,30,24.0,[1]
+Gigantus,70,material,252,Obsidian,25,20.0,"[1, 70, 2, 20, 3, 10]"
+Athos,70,material,250,Athos' Horn,30,24.0,[1]
+Athos,70,material,252,Obsidian,25,20.0,"[1, 70, 2, 20, 3, 10]"
+R5/6 Weeklies,40,material,47,Wild Shell,40,40.0,"[1, 80, 2, 20]"
+R5/6 Weeklies,40,material,65,Water Crystal,10,10.0,[1]
+R5/6 Weeklies,40,material,44,Sapphire,5,5.0,[1]
+R5/6 Weeklies,40,material,48,Water Rune,5,5.0,[1]
+Galam,40,material,256,Galam's Claw,15,15.0,[1]
+Galam,40,material,257,Galam's Fury,15,15.0,[1]
+Galam,40,material,160,Fire Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Galam,40,material,157,Ruby,10,10.0,"[1, 80, 2, 20]"
+Galam,40,material,158,Fire Rune,5,5.0,"[1, 80, 2, 20]"
+Cragus,40,material,258,Cragus' Core,15,15.0,[1]
+Cragus,40,material,259,Cragus' Jewel,15,15.0,[1]
+Cragus,40,material,160,Fire Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Cragus,40,material,157,Ruby,10,10.0,"[1, 80, 2, 20]"
+Cragus,40,material,158,Fire Rune,5,5.0,"[1, 80, 2, 20]"
+Odin,40,material,260,Odin's Horn,15,15.0,[1]
+Odin,40,material,261,Odin's Eye,15,15.0,[1]
+Odin,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Odin,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+Odin,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+Faust,40,material,262,Ethereal Cloth,15,15.0,[1]
+Faust,40,material,263,Ethereal Soul,15,15.0,[1]
+Faust,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Faust,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+Faust,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+Gods,40,material,47,Wild Shell,40,40.0,"[1, 80, 2, 20]"
+Gods,40,material,65,Water Crystal,10,10.0,[1]
+Gods,40,material,44,Sapphire,5,5.0,[1]
+Gods,40,material,48,Water Rune,5,5.0,[1]
+Goblin Warlord,40,material,265,Warlord's Edge,30,30.0,[1]
+Goblin Warlord,40,material,31,Forest Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Goblin Warlord,40,material,30,Emerald,10,10.0,"[1, 80, 2, 20]"
+Goblin Warlord,40,material,32,Nature Rune,5,5.0,"[1, 80, 2, 20]"
+Murlok Monarch,40,material,266,Tidal Hilt,30,30.0,[1]
+Murlok Monarch,40,material,65,Water Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Murlok Monarch,40,material,44,Sapphire,10,10.0,"[1, 80, 2, 20]"
+Murlok Monarch,40,material,48,Water Rune,5,5.0,"[1, 80, 2, 20]"
+Gnoll Khan,40,material,267,Khan's Horn,30,30.0,[1]
+Gnoll Khan,40,material,97,Earth Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Gnoll Khan,40,material,88,Topaz,10,10.0,"[1, 80, 2, 20]"
+Gnoll Khan,40,material,92,Earth Rune,5,5.0,"[1, 80, 2, 20]"
+Beast King,40,material,268,Beastly Fang,30,30.0,[1]
+Beast King,40,material,160,Fire Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Beast King,40,material,157,Ruby,10,10.0,"[1, 80, 2, 20]"
+Beast King,40,material,158,Fire Rune,5,5.0,"[1, 80, 2, 20]"
+The Forest,40,material,269,Log of the Protector,30,30.0,[1]
+The Forest,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+The Forest,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+The Forest,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+The Mountain,40,material,270,Ore of the King,30,30.0,[1]
+The Mountain,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+The Mountain,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+The Mountain,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+Archon,40,material,271,Aeon Soul,30,30.0,[1]
+Archon,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Archon,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+Archon,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+Boosh,40,material,271,Aeon Soul,30,30.0,[1]
+Boosh,40,material,254,Oblivion Crystal,15,15.0,"[1, 30, 2, 50, 3, 20]"
+Boosh,40,material,252,Obsidian,10,10.0,"[1, 80, 2, 20]"
+Boosh,40,material,253,Oblivion Rune,5,5.0,"[1, 80, 2, 20]"
+Treasure,40,material,47,Wild Shell,40,40.0,"[1, 80, 2, 20]"
+Treasure,40,material,65,Water Crystal,10,10.0,[1]
+Treasure,40,material,44,Sapphire,5,5.0,[1]
+Treasure,40,material,48,Water Rune,5,5.0,[1]
+Treasure1,0,material,31,Forest Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure1,0,material,30,Emerald,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure1,0,material,32,Nature Rune,10,16.67,"[1, 80, 2, 20]"
+Treasure2,0,material,65,Water Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure2,0,material,44,Sapphire,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure2,0,material,48,Water Rune,10,16.67,"[1, 80, 2, 20]"
+Treasure3,0,material,97,Earth Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure3,0,material,88,Topaz,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure3,0,material,92,Earth Rune,10,16.67,"[1, 80, 2, 20]"
+Treasure4,0,material,129,Necro Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure4,0,material,126,Amethyst,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure4,0,material,127,Death Rune,10,16.67,"[1, 80, 2, 20]"
+Treasure5,0,material,160,Fire Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure5,0,material,157,Ruby,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure5,0,material,158,Fire Rune,10,16.67,"[1, 80, 2, 20]"
+Treasure6,0,material,254,Oblivion Crystal,30,50.0,"[3, 40, 4, 30, 5, 20, 6, 10]"
+Treasure6,0,material,252,Obsidian,20,33.33,"[2, 50, 3, 30, 1, 20]"
+Treasure6,0,material,253,Oblivion Rune,10,16.67,"[1, 80, 2, 20]"

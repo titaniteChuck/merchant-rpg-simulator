@@ -1,0 +1,9 @@
+id,name,level,exp,cost,unlockLevel,maxPrestige,expPrice
+1,Blacksmith,1,0,0,0,2,
+2,Armorsmith,1,0,0,0,2,
+3,Woodworker,1,0,0,0,2,
+4,Clothworker,1,0,0,0,2,
+5,Alchemist,1,0,0,0,2,
+6,Jeweler,,,15000,15,,
+7,Enchanter,,,60000,25,,
+8,Scribe,,0,10000,40,,$2.99

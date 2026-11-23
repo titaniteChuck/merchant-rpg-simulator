@@ -1,0 +1,105 @@
+id,name,nameRare,region,questType,levelReq,party,launchGold,launchGoldRare,time_s,exp,rareChance%,hp,atk,matk,def,mdef,eva,drop1,drop2,parcel1,parcel2,rareDrop1,rareDrop2,rareParcel1,rareParcel2
+1,Forest Gathering,,1,1,1,False,0,,5,10,0,1,0,0,5,5,0,Tuvale Moss 1-1.5,Ashe Root 1-1.5,Region1Gathering,,,,,
+2,Moss Golem,,1,2,2,False,5,,12,20,0,40,15,5,10,5,5,Iron Ore 1-2,Iron Chunk 1-2,Region1Basic,,,,,
+3,Forest Treant,,1,2,2,False,5,,12,20,0,40,5,15,5,10,5,Ashe Log 1-2,Hempen Thread 1-2,Region1Basic,,,,,
+4,Grass Spider,Arachne,1,3,3,False,10,25,15,50,10,50,5,15,5,10,15,Spider Silk 1-3,Spider Leg 1-2,Region1Adv,,Spider Silk 1-3,Spider Leg 1-2,Arachne,Region1Rare
+5,Tuvale Viper,Venom,1,3,4,False,10,25,19,60,10,60,20,5,10,5,20,Snake Scale 1-3,Snake Fang 1-2,Region1Adv,,Snake Scale 1-3,Snake Fang 1-2,Venom,Region1Rare
+6,Wild Boar,Hogger,1,3,5,False,10,25,21,70,10,80,15,5,20,5,5,Boar Fur 1-3,Boar Tusk 1-2,Region1Adv,,Boar Fur 1-3,Boar Tusk 1-2,Hogger,Region1Rare
+7,Goblin Footman,Guts The Mighty,1,3,6,False,15,35,26,85,10,100,20,5,20,10,15,Goblin Plate 1-3,Goblin Blade 1-2,Goblin,Region1Adv,Goblin Plate 1-3,Goblin Blade 1-2,Goblin,Region1Rare
+8,Goblin Enchanter,Siru The Wise,1,3,7,False,15,40,33,95,10,90,5,30,10,15,15,Goblin Cloth 1-3,Goblin Hilt 1-2,Goblin,Region1Adv,Goblin Cloth 1-3,Goblin Hilt 1-2,Siru,Region1Rare
+9,Goblin Chieftain,Lord Gronok,1,4,8,False,20,40,60,125,10,130,35,5,25,15,20,Goblin Plate 1-3,Goblin Blade 1-2,Chieftain,Region1Adv,Goblin Plate 1-3,Goblin Blade 1-2,Gronok,Region1Rare
+10,Maexna,Queen Maexna,1,5,9,True,30,50,100,400,10,250,20,40,20,20,20,Spider Silk 1-2,Spider Leg 1-2,Maexna,Region1Adv,Spider Silk 2-5,Spider Leg 1-3,QueenMaexna,Region1Rare
+11,Yarsol Gathering,,2,1,10,False,10,,45,25,0,20,0,0,10,10,0,Coral Moss 1-2,Willow Root 1-2,Region2Basic,,,,,
+12,Coral Giant,,2,2,11,False,15,,60,70,0,100,20,5,25,15,20,Mithril Ore 1-2,Mithril Chunk 1-2,Region2Basic,,,,,
+13,Water Willow,,2,2,11,False,15,,60,70,0,100,5,20,15,25,20,Willow Log 1-2,Silk Thread 1-2,Region2Basic,,,,,
+14,Yarsol Snapper,Wild Turtle,2,3,12,False,20,40,90,225,10,200,15,5,35,25,20,Turtle Shell 1-3,Turtle Claw 1-2,Snapper,Region2Adv,Turtle Shell 1-3,Turtle Claw 1-2,Snapper,Turtle
+15,Murlok Priest,Murlok Tidecaller,2,3,13,False,20,40,150,300,10,160,5,30,15,20,30,Murlok Cloth 1-3,Murlok Hilt 1-2,Murlok,Region2Adv,Murlok Cloth 2-3,Murlok Hilt 1-2,Tidecaller,Region2Rare
+16,Sand Lizard,Leaping Lizzy,2,3,14,False,20,40,180,330,10,180,30,5,20,10,30,Lizard Scale 1-3,Lizard Fang 1-2,Lizard,Region2Adv,Lizard Scale 1-3,Lizard Fang 1-2,Lizard,Lizzy
+17,Murlok Spearman,Murlok Warleader,2,3,15,False,25,50,180,350,10,190,30,5,35,10,30,Murlok Plate 1-3,Murlok Blade 1-2,Murlok,Region2Adv,Murlok Plate 1-3,Murlok Blade 1-2,Warleader,Region2Rare
+18,Murlok Assassin,Murlok Tidehunter,2,3,16,False,25,50,250,400,10,160,40,10,15,20,45,Murlok Cloth 2-4,Murlok Blade 1-3,Murlok,Region2Adv,Murlok Cloth 2-4,Murlok Blade 1-3,Tidehunter,Region2Rare
+19,Murlok Highpriest,Prophet Nami,2,4,17,False,30,80,370,500,10,200,10,55,20,30,45,Murlok Cloth 2-4,Murlok Hilt 1-2,Highpriest,Region2Adv,Murlok Cloth 1-3,Murlok Hilt 1-2,Nami,Region2Rare
+20,Basamus,Basamus Prime,2,5,18,True,50,100,480,1000,10,450,90,5,60,30,40,Lizard Scale 1-2,Lizard Fang 1-2,Basamus,Region2Adv,Lizard Scale 1-3,Lizard Fang 1-3,BasamusPrime,Region2Rare
+21,Aldur Gathering,,3,1,20,False,20,,90,50,0,50,0,0,20,20,0,Highland Moss 1-2,Oak Root 1-2,Region3Basic,,,,,
+22,Highland Titan,,3,2,21,False,25,,210,150,0,200,40,5,40,20,30,Adaman Ore 1-2,Adaman Chunk 1-2,Region3Basic,,,,,
+23,Aldur Guardian,,3,2,21,False,25,,210,150,0,200,5,40,20,40,30,Oak Log 1-2,Cashmere Thread 1-2,Region3Basic,,,,,
+24,Aldur Ram,Ceros,3,3,22,False,40,50,360,330,10,240,55,5,50,20,45,Ram Fur 1-3,Ram Horn 1-2,Ram,Region3Adv,Ram Fur 1-3,Ram Horn 1-2,Ceros,Ram
+25,Highland Tunneler,Terros,3,3,23,False,40,50,420,350,10,230,5,70,35,35,40,Worm Silk 1-3,Worm Fang 1-2,Tunneler,Region3Adv,Worm Silk 1-3,Worm Fang 1-2,Terros,Tunneler
+26,Gnoll Hunter,Reygar,3,3,24,False,40,60,420,375,10,250,65,5,55,15,55,Gnoll Plate 1-3,Gnoll Blade 1-2,Gnoll,Region3Adv,Gnoll Plate 1-3,Gnoll Blade 1-2,Reygar,Region3Rare
+27,Gnoll Shaman,Kaldar,3,3,25,False,40,60,540,390,10,240,5,75,35,45,45,Gnoll Cloth 1-2,Gnoll Hilt 1-2,Gnoll,Region3Adv,Gnoll Cloth 1-3,Gnoll Hilt 1-2,Kaldar,Region3Rare
+28,Gnoll Overlord,Drahgar,3,4,26,True,50,100,600,1500,10,1200,170,10,120,50,65,Gnoll Plate 1-3,Gnoll Blade 1-2,Overlord,Region3Adv,Gnoll Plate 1-3,Gnoll Blade 1-2,Drahgar,Region3Rare
+29,Ares,Ares Prime,3,5,27,True,100,150,900,1800,10,1000,250,20,90,70,60,Ram Fur 1-3,Ram Horn 1-2,Ares,Region3Adv,Ram Fur 1-3,Ram Horn 1-2,AresPrime,Region3Rare
+30,Vulkrum Gathering,,4,1,30,False,30,,120,100,0,200,0,0,25,25,0,Badlands Moss 1-2,Deadwood Root 1-2,Region4Basic,,,,,
+31,Dark Colossus,,4,2,31,False,50,,380,200,0,320,70,5,50,30,40,Darksteel Ore 1-2,Darksteel Chunk 1-2,Region4Basic,,,,,
+32,Haunted Harwood,,4,2,31,False,50,,380,200,0,320,5,70,40,40,40,Deadwood Log 1-2,Necro Thread 1-2,Region4Basic,,,,,
+33,Nightmare Scorpion,Scorpinox,4,3,32,True,75,150,420,900,10,750,60,80,100,100,50,Scorpion Shell 1-2,Scorpion Leg 1-2,Region4Adv,,Scorpion Shell 1-3,Scorpion Leg 1-2,Scorpinox,Region4Rare
+34,Night Beast,Night Stalker,4,3,33,True,100,200,420,1000,10,850,120,20,120,70,50,Beast Fur 1-2,Beast Fang 1-2,Region4Adv,,Beast Fur 1-3,Beast Fang 1-2,NightStalker,Region4Rare
+35,Undead Warrior,Skeletor,4,3,34,True,125,225,700,2000,10,1500,180,20,160,100,70,Undead Plate 1-3,Undead Blade 1-2,Undead,Region4Adv,Undead Plate 1-3,Undead Blade 1-3,Skeletor,Region4Rare
+36,Undead Mage,Altor,4,3,35,True,150,225,700,2000,10,1300,20,200,90,130,60,Undead Cloth 1-3,Undead Hilt 1-2,Undead,Region4Adv,Undead Cloth 1-3,Undead Hilt 1-3,Altor,Region4Rare
+37,Antares,Serket,4,4,36,True,175,250,1200,4500,10,3500,160,160,150,130,70,Scorpion Shell 1-3,Scorpion Leg 1-3,Antares,Region4Adv,Scorpion Shell 1-3,Scorpion Leg 1-2,Serket,Region4Rare
+38,Lich King,Arthus,4,5,37,True,200,250,1500,5000,10,3700,260,30,190,100,75,Undead Plate 1-3,Undead Blade 1-3,LichKing,Region4Adv,Undead Plate 1-3,Undead Blade 1-3,Arthus,Region4Rare
+39,Region 4 Other,Region 4 Other,5,4,99,True,999,999,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,Undead Plate 1-3,Undead Blade 1-3,,
+40,Region 4 Other,Region 4 Other,5,4,99,True,999,999,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,Undead Plate 1-3,Undead Blade 1-3,,
+41,Region 4 Other,Region 4 Other,5,4,99,True,999,999,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,Undead Plate 1-3,Undead Blade 1-3,,
+42,Grimhal Gathering,,5,1,40,False,50,,180,100,0,200,0,0,25,25,0,Lava Moss 1-3,Lava Root 1-3,Region5Basic,,,,,
+43,Molten Giant,,5,2,41,True,80,,480,1000,0,1500,120,50,200,100,70,Magma Ore 1-3,Magma Chunk 1-3,Region5Basic,,,,,
+44,Volcanic Lumberer,,5,2,41,True,80,,480,1000,0,1400,80,120,150,150,70,Magma Log 1-3,Magma Thread 1-3,Region5Basic,,,,,
+45,Dragon Whelp,,5,4,42,True,200,,800,3000,0,2400,170,120,180,140,90,Crimson Scale 1-3,Crimson Claw 1-2,Whelp,Region5Adv,,,,
+46,Lava Beast,,5,4,43,True,250,,880,3600,0,3200,140,80,220,90,75,Molten Core 1-2,Grimhal Ash 1-2,Region5Adv,,,,,
+47,Fire Wyrm,,5,4,44,True,300,,960,4200,0,2600,190,130,190,150,100,Crimson Scale 1-3,Crimson Claw 1-3,Wyrm,Region5Adv,,,,
+48,Demon Warrior,,5,4,45,True,350,,1100,4800,0,3900,350,100,250,125,120,Demon Heart 1-3,Demon Horn 0-1,DemonWarrior,Region5Adv,,,,
+49,Infernal Guardian,,5,4,46,True,400,,1200,5400,0,4600,275,100,325,225,100,Molten Plate 1-3,Molten Chain 0-1,Infernal,Region5Adv,,,,
+50,Demon Mage,,5,4,47,True,450,,1250,6000,0,3500,75,475,150,200,110,Demon Heart 1-3,Demon Horn 0-1,DemonMage,Region5Adv,,,,
+51,Phoenix,,5,4,48,True,500,,1400,6600,0,5100,125,650,175,300,130,Phoenix Ash 1-3,Phoenix Feather 0-1,Phoenix,Region5Adv,,,,
+52,Cerberus,,5,4,49,True,550,,1450,7400,0,6000,575,125,325,225,130,Cerberus' Fur 1-3,Cerberus' Fang 0-1,Cerberus,Region5Adv,,,,
+53,Skorge,,5,5,50,True,800,,2000,8600,0,23000,450,450,300,300,160,Elder Demon Scale 1-2,Elder Demon Claw 1-2,Skorge,Region5Epic,,,,
+54,Fafnir,,5,5,50,True,900,,2250,9600,0,21000,600,250,350,275,200,Black Dragon Scale 1-2,Black Dragon Fang 1-2,Fafnir,Region5Epic,,,,
+55,Arkyos,,5,5,50,True,1000,,2500,13000,0,22000,200,800,275,375,170,Elder Demon Scale 1-2,Elder Demon Claw 1-2,Arkyos,Region5Epic,,,,
+56,Firelord Ozai,,5,5,50,True,1100,,2750,15000,0,29000,650,200,500,250,140,Molten Plate 1-3,Molten Chain 1-3,Ozai,Region5Epic,,,,
+57,Fatalis,,5,5,50,True,1200,,3000,18000,0,32000,850,350,450,350,200,Black Dragon Scale 1-2,Black Dragon Fang 1-2,Fatalis,Region5Epic,,,,
+58,Region 5,,7,5,50,True,999,,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,,,,
+59,Region 5,,7,5,50,True,999,,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,,,,
+60,Region 5,,7,5,50,True,999,,999,999,0,9999,999,99,999,999,999,Undead Plate 1-3,Undead Blade 1-3,,,,,,
+61,Leviathan,,2,6,20,True,150,,2000,2500,0,2100,130,140,100,120,50,Murlok Scale 1-3,Water Crystal 1-1,Leviathan,Region2Rare,,,,
+62,Kirin,,3,6,30,True,250,,2500,3500,0,2900,380,140,260,140,90,Gnoll Fur 1-3,Earth Crystal 1-1,Kirin,Region3Rare,,,,
+63,Oni,,4,6,40,True,400,,3000,5000,0,5400,450,150,360,200,120,Skeleton Skull 1-3,Necro Crystal 1-1,Oni,Region4Rare,,,,
+64,Hel,,4,6,40,True,400,,3000,5000,0,4200,200,540,180,280,120,Skeleton Skull 1-3,Necro Crystal 1-1,Hel,Region4Rare,,,,
+65,Alkyoneus,,3,6,30,True,250,,2500,3500,0,3600,300,80,280,160,80,Gnoll Fur 1-3,Earth Crystal 1-1,Alkyoneus,Region3Rare,,,,
+66,Kraken,,2,6,20,True,150,,2000,2000,0,1900,80,220,80,140,50,Murlok Scale 1-3,Water Crystal 1-1,Kraken,Region2Rare,,,,
+67,Twin Shadow,,4,6,40,True,400,,3000,5000,0,4700,310,310,190,190,130,Skeleton Skull 1-3,Necro Crystal 1-1,TwinShadow,Region4Rare,,,,
+68,Genbu,,2,6,20,True,150,,2000,2500,0,2800,100,50,220,120,30,Murlok Scale 1-3,Water Crystal 1-1,Genbu,Region2Rare,,,,
+69,Magnotaur,,3,6,30,True,250,,2500,3500,0,2700,310,60,260,120,70,Gnoll Fur 1-3,Earth Crystal 1-1,Magnotaur,Region3Rare,,,,
+70,Galam,,5,6,50,True,2000,,4000,15000,0,28000,900,300,400,300,250,Elder Demon Scale 1-3,Fire Crystal 1-1,Galam,Region5Epic,,,,
+71,Cragus,,5,6,50,True,2000,,4000,15000,0,32000,300,850,325,375,200,Black Dragon Scale 1-3,Fire Crystal 1-1,Cragus,Region5Epic,,,,
+72,Odin,,6,6,60,True,3000,,5000,35000,0,140000,1500,1000,800,450,400,Gigas Horn 1-3,Oblivion Crystal 1-1,Odin,Region6Epic,,,,
+73,Faust,,6,6,60,True,3000,,5000,35000,0,120000,600,2000,500,750,600,Calamity Soul 1-3,Oblivion Crystal 1-1,Faust,Region6Epic,,,,
+74,Pumpking,,4,6,40,True,500,,3600,4500,0,3000,666,666,666,666,100,Pumpking Treat 1-2,Amethyst 1-3,Pumpking,Pumpking,,,,
+75,Weekly 15,,5,6,99,True,999,,999,999,0,9999,999,99,999,999,999,,,,,,,,
+76,Region 6,,6,6,99,True,999,,999,999,0,9999,999,99,999,999,999,,,,,,,,
+77,Hoarfrost Gathering,,6,1,51,False,100,,250,200,0,200,0,0,25,25,0,Glacial Moss 1-3,Glacial Root 1-3,Region6Basic,,,,,
+78,Glacial Goliath,,6,2,52,True,250,,800,2500,0,8000,200,50,250,130,80,Glacial Ore 1-3,Glacial Chunk 1-3,Region6Basic,,,,,
+79,Mourning Balwood,,6,2,52,True,250,,800,2500,0,8000,70,200,160,220,80,Balwood Log 1-3,Oblivion Thread 1-3,Region6Basic,,,,,
+80,Nightmare Bison,Balorn,6,4,53,True,700,700,1200,8000,10,20000,500,80,280,150,150,Nightmare Fur 1-3,Nightmare Horn 1-2,Region6Adv,,Nightmare Fur 1-3,Nightmare Horn 1-2,Balorn,Region6Rare
+81,Desolation Wolf,Amarok,6,4,54,True,800,800,1320,9200,10,17000,600,80,220,120,200,Desolation Fur 1-3,Desolation Fang 1-2,Region6Adv,,Desolation Fur 1-3,Desolation Fang 1-2,Amarok,Region6Rare
+82,Calamity Wraith,Pheramus,6,4,55,True,900,900,1440,11600,10,16000,80,675,180,250,170,Calamity Cloth 1-3,Calamity Soul 1-2,Region6Adv,,Calamity Cloth 1-3,Calamity Soul 1-2,Pheramus,Region6Rare
+83,Hungering Gigas,Gigantus,6,4,56,True,1000,1000,1560,12800,10,25000,600,80,280,150,170,Gigas Plate 1-3,Gigas Horn 1-2,Region6Adv,,Gigas Plate 1-3,Gigas Horn 1-2,Gigantus,Region6Rare
+84,Torun,Taurus,6,4,57,True,1200,1200,1680,12800,10,40000,600,100,325,225,180,Nightmare Fur 1-3,Nightmare Horn 1-2,Torun,Region6Boss,Nightmare Fur 1-3,Nightmare Horn 1-2,Taurus,Region6Rare
+85,Fenrir,Skoll,6,4,58,True,1300,1300,1800,15000,10,30000,1000,80,250,200,250,Desolation Fur 1-3,Desolation Fang 1-2,Fenrir,Region6Boss,Desolation Fur 1-3,Desolation Fang 1-2,Skoll,Region6Rare
+86,Eternus,Ouroboros,6,4,59,True,1400,1400,1920,17000,10,35000,200,1100,200,325,200,Calamity Cloth 1-3,Calamity Soul 1-2,Eternus,Region6Boss,Calamity Cloth 1-3,Calamity Soul 1-2,Ouroboros,Region6Rare
+87,Boros,Athos,6,4,60,True,1500,1500,2040,18000,10,45000,1000,125,400,225,210,Gigas Plate 1-3,Gigas Horn 1-2,Boros,Region6Boss,Gigas Plate 1-3,Gigas Horn 1-2,Athos,Region6Rare
+88,Karthas,,6,4,61,True,1600,,2500,24000,0,42000,300,1500,250,450,220,Calamity Cloth 1-2,Calamity Soul 1-2,Karthas,Region6Epic,,,,
+89,Balor,,6,4,61,True,1800,,2750,26000,0,55000,1600,300,500,300,200,Gigas Plate 1-2,Gigas Horn 1-2,Balor,Region6Epic,,,,
+90,Azuros,,6,4,61,True,2000,,3000,30000,0,50000,1200,1200,400,400,280,Elder Demon Scale 1-2,Elder Demon Claw 1-2,Azuros,Region6Epic,,,,
+91,Goblin Warlord,,1,8,10,True,200,,1000,4000,0,400,50,10,25,40,20,Goblin Blade 1-3,Goblin Plate 1-3,Goblin Warlord,Region1Rare,,,,
+92,Murlok Monarch,,2,8,20,True,800,,1400,12000,0,900,10,130,60,50,60,Murlok Hilt 1-3,Murlok Cloth 1-3,Murlok Monarch,Region2Rare,,,,
+93,Gnoll Khan,,3,8,30,True,1200,,2000,16000,0,1900,350,30,150,90,80,Gnoll Fur 1-2,Gnoll Hilt 1-3,Gnoll Khan,Region3Rare,,,,
+94,Beast King,,5,8,50,True,2000,,2500,30000,0,40000,1000,300,450,350,220,Crimson Scale 1-3,Demon Claw 1-3,Beast King,Region5Rare,,,,
+95,Protector of the Forest,,1,8,60,True,3000,,3600,35000,0,130000,1000,1500,600,900,150,Eternity Stone 1-1,Balwood Log 1-5,The Forest,Region6Epic,,,,
+96,King of the Mountain,,1,8,60,True,3000,,3600,35000,0,150000,1800,400,1200,600,150,Eternity Stone 1-1,Glacial Ore 1-5,The Mountain,Region6Epic,,,,
+97,Archon,,6,8,60,True,3000,,4800,35000,0,200000,3000,3000,1200,1500,500,Eternity Stone 1-1,Oblivion Crystal 1-2,Archon,Region6Epic,,,,
+98,The Mighty Bush,,6,8,61,True,2000,,5000,30000,0,9999999,99999,99999,9999,9999,999,Eternity Stone 1-1,Balwood Log 1-5,Boosh,MapLegendary,,,,
+99,Treasure Bush,,1,8,10,True,1000,,1000,40,0,1000,1,1,1,1,1,Forest Crystal 1-3,Emerald 1-2,Treasure1,Region1Rare,,,,
+100,Treasure Bush,,2,8,20,True,1000,,1000,80,0,2000,1,1,1,1,1,Water Crystal 1-3,Sapphire 1-2,Treasure2,Region2Rare,,,,
+101,Treasure Bush,,3,8,30,True,1000,,1000,160,0,3000,1,1,1,1,1,Earth Crystal 1-3,Topaz 1-2,Treasure3,Region3Rare,,,,
+102,Treasure Bush,,4,8,40,True,1000,,1000,240,0,4000,1,1,1,1,1,Necro Crystal 1-3,Amethyst 1-2,Treasure4,Region4Rare,,,,
+103,Treasure Bush,,5,8,50,True,1000,,1000,320,0,6000,1,1,1,1,1,Fire Crystal 1-3,Ruby 1-2,Treasure5,Region5Rare,,,,
+104,Treasure Bush,,6,8,60,True,1000,,1000,480,0,8000,1,1,1,1,1,Oblivion Crystal 1-3,Obsidian 1-2,Treasure6,Region6Rare,,,,

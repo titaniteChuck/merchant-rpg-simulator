@@ -1,0 +1,34 @@
+# --- Game files: never published -------------------------------------------
+# Original build (bytecode) and its decompiled Lua belong to the game's authors.
+/merchant/
+/decompiled/
+*.lu
+*.lua
+# Our own Lua harness is the only Lua file we publish.
+!/tools/sim/harness.lua
+
+# --- Personal data ------------------------------------------------------------
+# Save snapshots and anything parsed from them.
+/saves/
+
+# --- Generated outputs (rebuild with the tools) -------------------------------
+/reports/
+
+# --- Third-party binaries (see README for how to get them) --------------------
+/tools/_vendor/
+/tools/unluac.jar
+*.jar
+
+# --- Python / editors / OS ----------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Built website (CI assembles it into _site/)
+/_site/

@@ -1,0 +1,33 @@
+id,name,subType,itemLevel,rarity,crafter,craftGold,runTime_s,craftXP,sellValue,recipe,value,enemyMod,baseMapTime_s,baseEnemyAmount,enemies,boss,rareBoss,essence
+1,Tuvale Map,Map,1,1,Scribe,500,50,25,555,6x Spider Silk + 2x Emerald + 1x Nature Rune,555,8,900,6,Moss Golem..Goblin Chieftain,Maexna,False,50x Forest Essence
+2,Hard Tuvale Map,Map,3,2,Scribe,1000,100,50,1783,1x Tuvale Map [map] + 2x Forest Crystal + 50x Forest Essence,1486,10,1800,7,Grass Spider..Goblin Chieftain,Maexna,True,200x Forest Essence
+3,Goblin's Feast Map,Map,6,3,Scribe,5000,500,250,7668,1x Tuvale Map [map] + 3x Forest Crystal + 15x Goblin Blade + 100x Forest Essence,5112,11,5400,8,Goblin Footman..Goblin Chieftain,Goblin Warlord,False,500x Forest Essence
+4,Yarsol Map,Map,10,1,Scribe,1000,100,50,1049,6x Murlok Cloth + 2x Sapphire + 1x Water Rune,1049,8,1800,7,Coral Giant..Murlok Highpriest,Basamus,False,50x Water Essence
+5,Tuvale-Yarsol Map,Map,13,1,Scribe,1500,150,75,1593,3x Spider Silk + 3x Murlok Cloth + 25x Forest Essence + 25x Water Essence,1593,9,2400,8,"Grass Spider..Goblin Chieftain, Yarsol Snapper..Murlok Highpriest",Basamus,False,"100x Forest Essence, 50x Water Essence"
+6,Hard Yarsol Map,Map,16,2,Scribe,2000,200,100,3283,1x Yarsol Map [map] + 2x Water Crystal + 50x Water Essence,2736,10,3600,9,Yarsol Snapper..Murlok Highpriest,Basamus,True,200x Water Essence
+7,Murlok Madness Map,Map,18,3,Scribe,7500,750,375,11588,1x Yarsol Map [map] + 3x Water Crystal + 15x Murlok Hilt + 100x Water Essence,7725,10,7200,9,Murlok Priest..Murlok Highpriest,Murlok Monarch,False,250x Water Essence
+8,Aldur Map,Map,20,1,Scribe,2000,200,100,1935,6x Worm Silk + 2x Topaz + 1x Earth Rune,1935,7,2700,7,Highland Titan..Gnoll Overlord,Ares,False,50x Earth Essence
+9,Yarsol-Aldur Map,Map,23,1,Scribe,3500,350,175,3299,3x Worm Silk + 3x Murlok Cloth + 25x Earth Essence + 25x Water Essence,3299,8,3300,9,"Yarsol Snapper..Murlok Highpriest, Aldur Ram..Gnoll Overlord",Ares,False,"100x Water Essence, 50x Earth Essence"
+10,Hard Aldur Map,Map,26,2,Scribe,5000,500,250,6920,1x Aldur Map [map] + 2x Earth Crystal + 50x Earth Essence,5767,9,4500,9,Aldur Ram..Gnoll Overlord,Ares,True,200x Earth Essence
+11,Gnoll Vendetta Map,Map,28,3,Scribe,10000,1000,500,15888,1x Aldur Map [map] + 3x Earth Crystal + 10x Gnoll Fur + 100x Earth Essence,10592,9,9000,9,Gnoll Hunter..Gnoll Overlord,Gnoll Khan,False,250x Earth Essence
+12,Goons of Evil Map,Map,29,4,Scribe,12000,1200,600,41402,1x Goblin's Feast Map [map] + 1x Murlok Madness Map [map] + 1x Gnoll Vendetta Map [map],23658,9,10800,11,"Goblin Footman..Goblin Chieftain, 15, 17, 18, Gnoll Hunter..Gnoll Overlord","Goblin Warlord, Murlok Monarch, Gnoll Khan",False,400x Earth Essence
+13,Vulkrum Map,Map,30,1,Scribe,4000,400,200,3673,6x Undead Cloth + 2x Amethyst + 1x Death Rune,3673,6,3600,8,Dark Colossus..Antares,Lich King,False,50x Necro Essence
+14,Aldur-Vulkrum Map,Map,35,1,Scribe,6000,600,300,5413,3x Undead Cloth + 3x Worm Silk + 25x Necro Essence + 25x Earth Essence,5413,7,4200,9,"Aldur Ram..Ares, Nightmare Scorpion..Antares",Lich King,False,"100x Earth Essence, 50x Necro Essence"
+15,Hard Vulkrum Map,Map,37,2,Scribe,8000,800,400,11311,1x Vulkrum Map [map] + 2x Necro Crystal + 50x Necro Essence,9426,7,5400,9,Nightmare Scorpion..Antares,Lich King,True,200x Necro Essence
+16,Vanquishers Map,Map,39,4,Scribe,15000,1500,750,39827,1x Hard Vulkrum Map [map] + 1x Hard Aldur Map [map] + 1x Hard Yarsol Map [map] + 500x Necro Essence,22758,7,18000,10,Leviathan..Magnotaur,"Oni, Hel, Twin Shadow",False,500x Necro Essence
+17,Grimhal Map,Map,40,1,Scribe,8000,800,400,7105,5x Phoenix Feather + 2x Ruby + 1x Fire Rune,7105,2,4500,9,Molten Giant..Cerberus,Firelord Ozai,False,50x Fire Essence
+18,Vulkrum-Grimhal Map,Map,45,1,Scribe,10000,1000,500,8475,3x Phoenix Feather + 3x Undead Cloth + 25x Fire Essence + 25x Necro Essence,8475,3,5700,10,"Nightmare Scorpion..Antares, Dragon Whelp..Cerberus",Fatalis,False,"100x Necro Essence, 50x Fire Essence"
+19,Hard Grimhal Map,Map,47,2,Scribe,12000,1500,750,17722,1x Grimhal Map [map] + 2x Fire Crystal + 50x Fire Essence,14768,4,7200,11,Dragon Whelp..Firelord Ozai,Fatalis,False,200x Fire Essence
+20,Beastly Burden Map,Map,49,3,Scribe,20000,2000,1000,31329,1x Grimhal Map [map] + 3x Fire Crystal + 20x Grimhal Ash + 100x Fire Essence,20886,5,14400,11,Dragon Whelp..Firelord Ozai,Beast King,False,250x Fire Essence
+21,Frentir Map,Map,50,1,Scribe,12000,1200,600,10611,5x Calamity Cloth + 2x Obsidian + 1x Oblivion Rune,10611,2,5400,8,Glacial Goliath..Hungering Gigas,Karthas,False,50x Glacial Essence
+22,Grimal-Frentir Map,Map,52,1,Scribe,15000,1500,750,12675,3x Calamity Cloth + 3x Phoenix Feather + 25x Glacial Essence + 25x Fire Essence,12675,2,6300,8,"Molten Giant..Arkyos, Nightmare Bison..Hungering Gigas",Balor,False,"100x Fire Essence, 50x Glacial Essence"
+23,Hard Frentir Map,Map,55,2,Scribe,20000,2000,1000,28338,1x Frentir Map [map] + 2x Oblivion Crystal + 50x Glacial Essence,23615,3,10800,9,Nightmare Bison..Boros,Azuros,False,200x Glacial Essence
+24,Treant Revenge Map,Map,58,5,Scribe,30000,3000,1500,79524,1x Hard Frentir Map [map] + 3x Oblivion Rune + 50x Balwood Log + 250x Glacial Essence,39762,4,21600,9,"3, 13, 23, 32, 44",Protector of the Forest,False,100x Glacial Essence
+25,Golem Revenge Map,Map,58,5,Scribe,30000,3000,1500,79524,1x Hard Frentir Map [map] + 3x Oblivion Rune + 50x Glacial Chunk + 250x Glacial Essence,39762,4,21600,10,"2, 12, 22, 31, 43",King of the Mountain,False,100x Glacial Essence
+26,Archon's Reality Map,Map,60,5,Scribe,40000,4000,2000,98044,1x Hard Frentir Map [map] + 3x Oblivion Rune + 3x Eternity Stone + 500x Glacial Essence,49022,4,43200,10,Nightmare Bison..Boros,Archon,False,250x Glacial Essence
+27,Hard Boss Rush Map,Map,70,5,Scribe,40000,4000,2000,113456,1x Treant Revenge Map [map] + 50x Glacial Essence,56728,10,0,8,"10, 20, 29, 38, 56, 57, 89, 90",Archon,True,300x Glacial Essence
+28,Weekly Boss Rush Map,Map,70,5,Scribe,45000,4500,2250,101050,1x Vanquishers Map [map] + 50x Glacial Essence,50525,12,0,8,Leviathan..Faust,Archon,True,400x Glacial Essence
+29,Hard Random Map,Map,70,5,Scribe,50000,5000,2500,80000,,40000,12,0,6,"Grass Spider..Maexna, Yarsol Snapper..Basamus, Aldur Ram..Ares",Archon,False,500x Glacial Essence
+30,Superhard Random Map,Map,70,5,Scribe,55000,5500,2750,88000,,44000,14,0,8,"Grass Spider..Maexna, Yarsol Snapper..Basamus, Aldur Ram..Ares",Archon,False,600x Glacial Essence
+31,Extreme Random Map,Map,70,5,Scribe,65000,6500,3250,104000,,52000,16,0,10,"Grass Spider..Maexna, Yarsol Snapper..Basamus, Aldur Ram..Ares",Archon,True,750x Glacial Essence
+32,The Mighty Bush Map,Map,70,6,Scribe,75000,7500,3750,180000,,60000,20,0,12,,The Mighty Bush,False,1000x Glacial Essence
