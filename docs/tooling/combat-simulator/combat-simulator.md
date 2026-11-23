@@ -20,6 +20,7 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [Commands](#commands)
 - [Search API](#search-api)
 - [Search methods](#search-methods)
+- [Potions and enchants in combat](#potions-and-enchants-in-combat)
 - [Class balance on equal gear](#class-balance-on-equal-gear)
 - [Levelling and prestige](#levelling-and-prestige)
 - [Validation](#validation)

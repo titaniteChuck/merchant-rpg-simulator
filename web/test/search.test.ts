@@ -99,6 +99,19 @@ test("party: picks heroes from the pool into slots", () => {
   assert.ok("win" in res.ev);
 });
 
+test("party: locked heroes stay in; a quest amount skips parties that can't take it", () => {
+  const t2 = sim.hero({ ...raw(3, 1, 45), prestigeLevel: 2 });
+  const pool = new Map([[1, warrior()], [2, cleric()], [3, t2]]);
+  const locked = searchParty(sim, pool, { quest: 2 }, { size: 2, nQuick: 3, nFinal: 5, lock: [2] });
+  assert.ok([...locked.party.front, ...locked.party.back].includes(2), "locked cleric kept");
+  // amount 3 needs a tier-2 hero: the tier-1 heroes alone are skipped, not an error
+  const amt = searchParty(sim, pool, { quest: 2, amount: 3 }, { size: 2, nQuick: 3, nFinal: 5 });
+  assert.ok([...amt.party.front, ...amt.party.back].includes(3));
+  const low = new Map([[1, warrior()], [2, cleric()]]);
+  assert.throws(() => searchParty(sim, low, { quest: 2, amount: 3 }, { size: 2, nQuick: 3, nFinal: 5 }), /prestige 2/);
+  assert.throws(() => searchParty(sim, pool, { quest: 2 }, { lock: [9] }), /not in the pool/);
+});
+
 test("shouldStop cancels a search and leaves the hero as it was", () => {
   const h = warrior();
   const before = [...h.attackList];

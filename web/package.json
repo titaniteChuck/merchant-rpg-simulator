@@ -10,7 +10,8 @@
     "difftest:maps": "node test/difftest-maps.ts",
     "difftest:items": "node test/difftest-items.ts",
     "site": "scripts/assemble-site.sh",
-    "export:gamedata": "node src/tools/export-gamedata.ts"
+    "export:gamedata": "node src/tools/export-gamedata.ts",
+    "export:timelines": "node src/tools/export-timelines.ts"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

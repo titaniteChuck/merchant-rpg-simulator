@@ -854,8 +854,13 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
   if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
   const st = stepper(ctl);
   let evaluated = 0;
+  // An item that lowers the AP budget makes the game reset the hero to its default rotation and passive
+  // (Hero:calculateAPRemainder); every candidate is scored with the hero's own rotation put back (reset again only if
+  // that candidate really can't afford it), and the hero leaves the search with it.
+  const rotation = sim.rotation(h), passive = h.passiveSelect;
   const ev = () => {
     st.check();
+    sim.setSkills(h, rotation, passive);
     const e = evaluateTarget(sim, t, front, back, n);
     evaluated++;
     st.tick();
@@ -905,6 +910,7 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
   } finally {
     h.heroInventory = original;
     h.determineStats();
+    sim.setSkills(h, rotation, passive);
   }
 }
 
@@ -1163,10 +1169,16 @@ export interface PartySearch {
  * that raises the score most (nQuick) until `size` heroes or no gain, then swap/move heroes while it helps;
  * the result is evaluated with nFinal. Progress stages: "add 1".."add N" (one tick per hero x slot tried), then
  * "improve" (one tick per swap or move tried; its total is the number of options for the current slot).
+ * `lock`: heroes that must be in the party (placed first, may move, never swapped out). With a quest amount above 1,
+ * parties whose highest prestige can't take it are skipped; it throws only if no legal party exists.
  */
 export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | MapTarget,
-  o: { size?: number; nQuick?: number; nFinal?: number } = {}, ctl: SearchControl = {}): PartySearch {
-  const nQuick = o.nQuick ?? 40, nFinal = o.nFinal ?? 500, size = o.size ?? 6;
+  o: { size?: number; nQuick?: number; nFinal?: number; lock?: number[] } = {}, ctl: SearchControl = {}): PartySearch {
+  const nQuick = o.nQuick ?? 40, nFinal = o.nFinal ?? 500;
+  const lock = [...new Set(o.lock ?? [])];
+  for (const id of lock) if (!pool.has(id)) throw new Error(`locked hero ${id} is not in the pool`);
+  if (lock.length > 6) throw new Error("at most 6 heroes can be locked");
+  const size = Math.max(o.size ?? 6, lock.length);
   const ids = [...pool.keys()];
   const st = stepper(ctl);
   const slots = ["front:0", "front:1", "front:2", "back:0", "back:1", "back:2"];
@@ -1187,29 +1199,44 @@ export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | 
   };
   const slotLabel = (x: string) => `${x.split(":")[0]} ${Number(x.split(":")[1]) + 1}`;
   const added: PartySearch["added"] = [];
+  // A quest amount above 1 needs a hero of high enough prestige in the party (maxQuestAmount): parties without one
+  // are skipped instead of evaluated (evaluate refuses them).
+  const amount = "map" in t ? 1 : t.amount ?? 1;
+  const legal = () => amount <= 1 || amount <= maxQuestAmount([...used()].map((id) => pool.get(id)), Boolean((t as QuestTarget).rare), sim.mode);
 
-  // Greedy: add the hero + slot that improves the score most, until the party
-  // is full or another hero stops helping.
+  // Greedy: add the hero + slot that improves the score most, until the party is full or another hero stops
+  // helping. Locked heroes go in first (best slot each, in the order given), whatever the score.
   let best: number | null = null;
   for (let step = 0; step < size; step++) {
-    const free = ids.filter((hid) => !used().has(hid)).length * slots.filter((x) => !placed.has(x)).length;
-    st.stage(`add ${step + 1}`, free);
+    const lockLeft = lock.filter((hid) => !used().has(hid));
+    const cands = lockLeft.length ? [lockLeft[0]] : ids.filter((hid) => !used().has(hid));
+    st.stage(`add ${step + 1}`, cands.length * slots.filter((x) => !placed.has(x)).length);
     let candBest: [number, number, string] | null = null;
-    for (const hid of ids) {
-      if (used().has(hid)) continue;
+    for (const hid of cands) {
       for (const slot of slots) {
         if (placed.has(slot)) continue;
         placed.set(slot, hid);
-        const sc = evOf(nQuick).score;
+        // an illegal party (amount) can't be scored: while locked heroes are placed, any slot will do
+        const sc = legal() ? evOf(nQuick).score : lockLeft.length ? -Infinity : null;
         placed.delete(slot);
-        if (candBest === null || sc > candBest[0]) candBest = [sc, hid, slot];
+        if (sc !== null && (candBest === null || sc > candBest[0])) candBest = [sc, hid, slot];
       }
     }
-    if (candBest === null || (best !== null && candBest[0] <= best + 1e-9)) break;
+    if (candBest === null) {
+      if (best === null && !lockLeft.length) {
+        throw new Error(`no party from these heroes can take quest amount ${amount}: it needs a hero of prestige ` +
+          `${Math.ceil((amount + 1) / 2)} or more`);
+      }
+      break;
+    }
+    const mustAdd = lockLeft.length > 0 || best === null || best === -Infinity;
+    if (!mustAdd && candBest[0] <= best! + 1e-9) break;
     best = candBest[0];
     placed.set(candBest[2], candBest[1]);
     added.push({ heroId: candBest[1], slot: slotLabel(candBest[2]), score: candBest[0] });
   }
+
+  if (!legal()) throw new Error(`no party with these locked heroes can take quest amount ${amount}`);
 
   // Local search: replace a placed hero by an unused one, or move a hero to an empty slot.
   let improvements = 0;
@@ -1221,14 +1248,15 @@ export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | 
     for (const slot of [...placed.keys()]) {
       const cur = placed.get(slot)!;
       const options: ["swap" | "move", Any][] = [
-        ...ids.filter((hid) => !used().has(hid)).map((hid) => ["swap", hid] as ["swap", number]),
+        // locked heroes may move but not leave
+        ...(lock.includes(cur) ? [] : ids.filter((hid) => !used().has(hid)).map((hid) => ["swap", hid] as ["swap", number])),
         ...slots.filter((s2) => !placed.has(s2)).map((s2) => ["move", s2] as ["move", string]),
       ];
       st.stage("improve", options.length);
       for (const [kind, x] of options) {
         if (kind === "swap") placed.set(slot, x);
         else (placed.delete(slot), placed.set(x, cur));
-        const sc = evOf(nQuick).score;
+        const sc = legal() ? evOf(nQuick).score : -Infinity;
         if (sc > base + 1e-9) {
           base = sc;
           improved = true;
