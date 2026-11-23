@@ -870,3 +870,55 @@ h2, h3 { color: var(--fg); }
   .rc-box { min-width: 150px; }
 }
 /* end wiki v3 */
+
+/* phone navs + example save */
+/*
+ * U20. Example save: "Try with an example save" under the drop zone (save-source.ts).
+ * Phone navs (600px and less): the top bar and the in-page navs (wiki section chips, the save viewer's and the profit
+ * page's tabs) stay on ONE line. The top bar keeps the coin, the theme switch, the save chip and the GitHub mark (both
+ * icon only) fixed; its page links scroll sideways. The in-page rows scroll sideways too. No scrollbar: a short fade
+ * marks the edge that has more (a scroll-driven animation: no fade when nothing overflows, and none in browsers
+ * without it). theme.js scrolls the current page / section / tab into view. Wider screens are unchanged.
+ */
+.example-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; margin: 12px 0 0; text-align: center; }
+.example-btn { white-space: nowrap; }
+.example-btn:disabled { opacity: 0.6; cursor: progress; }
+
+@property --fade-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes row-fade {
+  0% { --fade-l: 0px; --fade-r: 22px; }
+  8%, 92% { --fade-l: 22px; --fade-r: 22px; }
+  100% { --fade-l: 22px; --fade-r: 0px; }
+}
+
+@media (max-width: 600px) {
+  /* Sideways rows: one line, no scrollbar, a fade at the edge with more. */
+  .topnav, .wiki-nav, .tabs, #result > .tabs {
+    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+    animation: row-fade linear both; animation-timeline: scroll(self inline);
+  }
+  .topnav::-webkit-scrollbar, .wiki-nav::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+  .topnav > a, .wiki-nav > a, .tabs > button { flex: none; white-space: nowrap; }
+  /* The rows clip what sticks out: focus rings inside. */
+  .topnav a:focus-visible, .wiki-nav a:focus-visible, .tabs button:focus-visible { outline-offset: -2px; }
+
+  /* Top bar: one line. */
+  .topbar { flex-wrap: nowrap; gap: 8px; padding: 6px 8px; margin-bottom: 22px; }
+  .topbar .brand { flex: none; gap: 0; font-size: 0; }   /* the coin; the name stays for screen readers */
+  .topnav { flex: 1 1 auto; min-width: 0; gap: 2px; }
+  .topnav a { padding: 5px 8px; }
+  .topbar .theme-btn, .topbar .save-chip, .topbar .gh { flex: none; margin-left: 0; }
+  .topbar .theme-btn { padding: 4px 8px; }
+  .topbar .gh { padding: 5px 7px; }
+  .topbar .save-chip-btn { padding: 5px 8px; }
+  /* Icon only: the names stay for screen readers, in the tooltip and in the save menu. */
+  .topbar .gh span, .topbar .save-chip-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+
+  .wiki-nav { margin: -6px 0 18px; }
+}
+/* end phone navs + example save */

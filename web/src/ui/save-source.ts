@@ -5,10 +5,33 @@
  * "📜 PlayerData.txt ▾" button in the top bar takes over: its menu says when the save was opened and offers
  * Reload (same file, no dialog when the browser kept its handle), Choose another file and Forget. Dropping a file
  * anywhere on the page still works.
+ *
+ * Example save (U20): "Try with an example save" (a button under the drop zone, and an entry in the save menu) fetches
+ * data/example-save.txt (an anonymised real save, web/scripts/make-example-save.ts) and loads it exactly like a picked
+ * file named "Example save": same parsing, kept in IndexedDB for the other pages, Forget and choosing a file as usual.
  */
 import { el } from "./dom.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, putSave, rereadHandle, type SaveHandle } from "./save-store.ts";
+
+/** The example save, relative to the pages (site/data/example-save.txt). */
+export const EXAMPLE_URL = "data/example-save.txt";
+/** The name the example save is kept under (the save chip shows it). */
+export const EXAMPLE_NAME = "Example save";
+
+/** The example save's text; throws an Error with a readable message when it can't be fetched. */
+export async function fetchExample(fetchImpl: typeof fetch = fetch, url = EXAMPLE_URL): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, { cache: "no-cache" });
+  } catch {
+    throw new Error("the example save could not be downloaded (are you offline?). Try again, or open your own save.");
+  }
+  if (!res.ok) throw new Error(`the example save could not be downloaded (HTTP ${res.status}). Try again, or open your own save.`);
+  const text = await res.text();
+  if (!text.trim()) throw new Error("the example save is empty. Try again, or open your own save.");
+  return text;
+}
 
 export interface SaveSourceOptions {
   input: HTMLInputElement;
@@ -37,8 +60,17 @@ export function initSaveSource(o: SaveSourceOptions): void {
   const helps = () => [...document.querySelectorAll<HTMLElement>("[data-save-help]")];
   let chip: HTMLElement | null = null;
 
+  // "Try with an example save", right under the drop zone (outside its <label>, so it doesn't open the file dialog).
+  const exampleBtn = el("button", { type: "button", class: "secondary example-btn",
+    title: "Load an anonymised real save, to try the tools without your own file" }, "🧪 Try with an example save");
+  const exampleRow = el("p", { class: "example-save" }, exampleBtn,
+    el("span", { class: "muted small" }, "No save at hand? Use an anonymised one from a real game."));
+  o.drop.after(exampleRow);
+  exampleBtn.addEventListener("click", () => useExample());
+
   const setLoaded = (loaded: boolean) => {
     dropBlock.hidden = loaded;
+    exampleRow.hidden = loaded;
     for (const h of helps()) h.hidden = loaded;
     if (!loaded) {
       chip?.remove();
@@ -48,6 +80,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
 
   /** The top-bar button and its menu. */
   const showChip = async (name: string, savedAt: number) => {
+    const isExample = name === EXAMPLE_NAME;
     const canReread = Boolean(await getHandle());
     chip?.remove();
     const menu = el("div", { class: "save-menu", role: "menu", hidden: "" });
@@ -67,9 +100,11 @@ export function initSaveSource(o: SaveSourceOptions): void {
     };
     const extras = el("div", { class: "save-menu-extras", role: "group" });
     menu.append(
-      el("p", { class: "muted small" }, el("strong", {}, name), el("br"), `opened ${age(savedAt)} · kept in this browser only`),
-      item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload),
-      item("📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
+      el("p", { class: "muted small" }, el("strong", {}, name), el("br"),
+        isExample ? `an anonymised real save · opened ${age(savedAt)}` : `opened ${age(savedAt)} · kept in this browser only`),
+      ...(isExample ? [] : [item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload)]),
+      item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
+      ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
       item("🗑 Forget", "Remove the save from this browser", forget), extras);
     /** The page's own entries, rebuilt on every opening (they follow what the page shows). */
     const fillExtras = () => {
@@ -127,6 +162,20 @@ export function initSaveSource(o: SaveSourceOptions): void {
       showError(`Could not read ${file.name}: ${e instanceof Error ? e.message : e}`);
     }
   };
+
+  /** Fetch the example save and load it as if the visitor had picked a file named "Example save". */
+  async function useExample(): Promise<void> {
+    o.status.replaceChildren(el("p", { class: "muted" }, "Downloading the example save…"));
+    exampleBtn.disabled = true;
+    try {
+      const text = await fetchExample();
+      await accept(new File([text], EXAMPLE_NAME, { type: "text/plain" }));
+    } catch (e) {
+      showError(`Could not load the example save: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      exampleBtn.disabled = false;
+    }
+  }
 
   const reload = async () => {
     const f = await rereadHandle();

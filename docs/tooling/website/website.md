@@ -332,17 +332,36 @@ link ("Balance", U18) and a home card; not part of the wiki (it depends on hero 
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Balance, Wiki (short labels so it stays on one
   line at 1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
   coin on the site gradient, no game art), linked from every page.
+- Phone navs (U20, 600 px and less; block "phone navs + example save" at the end of `style.css`): the top bar and the
+  in-page navs (wiki section chips, the save viewer's and the profit page's tabs) are each ONE line. The top bar keeps
+  the coin (site name for screen readers only), the ☀ / ☾ switch, the save chip (📜 ▾, the file name in its tooltip
+  and menu) and the GitHub mark fixed; its page links scroll sideways. The in-page rows scroll sideways too. No
+  scrollbar: a 22 px fade marks the edge that has more (scroll-driven animation on `--fade-l` / `--fade-r`, so no fade
+  when the row fits; browsers without scroll timelines just show no fade). `theme.js` scrolls the current page,
+  section or tab into view on load and whenever it changes (only that row, never the page). Focus rings are drawn
+  inside the rows; links and tabs stay in the Tab order (the browser scrolls a focused one into view). Wider screens
+  are unchanged. The sweep fails when one of these rows wraps.
 - Keyboard: `tabKeys` in `dom.ts` gives a tab list the WAI-ARIA tabs pattern (Left / Right / Home / End, only the
   selected tab in the Tab order), for the save viewer's tabs (wired with U17); the save menu moves with Up / Down and closes with Escape;
   mode cards and switches are radio groups; sortable table headers are buttons; every focusable element (links
   included) gets the accent focus ring. Colours never carry a value alone: win rates and heat cells print the number.
-- Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`).
+- Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
+  less it also checks that the top bar, its links, the wiki chips and the tab rows are one line high (U20). Without
+  `saves/snapshot/` it uses the example save for its "with save" runs.
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
   menu: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser and brings
-  the drop zone back). Dropping a file anywhere on the page still loads it. A page can add its own menu entries
+  the drop zone back). Dropping a file anywhere on the page still loads it.
+- Example save (U20): "🧪 Try with an example save", a button under the drop zone (outside its `<label>`, so it doesn't
+  open the file dialog) on every page that uses `initSaveSource` (save viewer, battle, profit, farming, levelling), and
+  "🧪 Try the example save" in the save menu. It fetches `data/example-save.txt` (`site/data/example-save.txt`: a real
+  save anonymised by `web/scripts/make-example-save.ts`, userID "example", purchase flags false) and loads it exactly
+  like a picked file named "Example save": same parsing, kept in IndexedDB for the other pages; the chip reads
+  "📜 Example save ▾". Its menu has no Reload and says "Open your own save" instead of "Choose another file"; Forget
+  works as usual. A failed download (offline, HTTP error, empty file) shows "Could not load the example save: …" and
+  leaves the page as it was. A page can add its own menu entries
   (`menuExtras`, rebuilt at each opening): the save viewer's "Export (CSV)" group (U18), one download per table.
 - File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
   open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.

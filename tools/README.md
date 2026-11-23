@@ -35,8 +35,9 @@ doesn't use them.
 ## Site regression sweep
 
 `web/scripts/check-site.ts` opens every page (and the hero, enemy and class pages) at 1280 and 375 px, light and
-dark, with and without a save loaded, and fails on console errors, uncaught errors, failed requests (404s) or a page
-wider than the viewport. Not in CI: it needs a browser.
+dark, with and without a save loaded, and fails on console errors, uncaught errors, failed requests (404s), a page
+wider than the viewport, or (600 px and less) a nav row on more than one line: the top bar, its page links, the
+wiki's section chips and the tab rows. Not in CI: it needs a browser.
 
 ```bash
 cd web && npm run site && node scripts/check-site.ts
@@ -44,8 +45,8 @@ cd web && npm run site && node scripts/check-site.ts
 
 - Options: `--only battle,wiki` (keys: index, save, hero, battle, profit, farming, levelling, wiki, enemy,
   class-page, balance), `--jobs 3` (browsers at a time; from about 5, Windows Chrome launches start failing), `--settle 8000` (ms each page gets before the report),
-  `--save path/to/PlayerData.txt` (default `saves/snapshot/PlayerData.txt`; without a save the "with save" runs are
-  skipped).
+  `--save path/to/PlayerData.txt` (default `saves/snapshot/PlayerData.txt`, else the site's example save
+  `site/data/example-save.txt`), `--widths 1280,375` (default; e.g. `--widths 414` for a larger phone).
 - Browser: `$CHROME`, else Chrome or Chromium on `PATH`, else Windows Chrome from WSL (its leftover processes are
   stopped with PowerShell). The Playwright Chromium in `~/.cache/ms-playwright` needs system libraries (libgbm) that
   a bare WSL doesn't have.

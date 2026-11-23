@@ -1,10 +1,11 @@
 /**
  * Local regression sweep of the built site (not in CI: it needs a browser). Opens every page at 1280 and 375 px,
  * light and dark, with and without a save loaded, and fails on console errors, uncaught errors, failed requests
- * (404s, favicon included) or a page wider than the viewport.
+ * (404s, favicon included), a page wider than the viewport, or (600 px and less, U20) a nav row that wraps: the top
+ * bar, its page links, the wiki's section chips and the tab rows must each be ONE line.
  *
  *   cd web && npm run site && node scripts/check-site.ts            # all pages, all variants
- *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt
+ *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt --widths 414
  *
  * How: a small HTTP server serves _site/ and injects a probe script into every page (console.error / warn, error
  * and unhandledrejection events, horizontal overflow). Each run loads a wrapper page that first puts the save into
@@ -13,7 +14,7 @@
  * a POST to the server, in real time (the browser is then closed). Requests that 404 are recorded by the server, per run.
  *
  * Browser: $CHROME, else Chrome / Chromium on PATH, else Windows Chrome from WSL. Save: --save, else
- * ../saves/snapshot/PlayerData.txt when it exists (runs "with save" are skipped without one).
+ * ../saves/snapshot/PlayerData.txt when it exists, else the site's example save (site/data/example-save.txt).
  */
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
@@ -37,7 +38,7 @@ const PAGES: Record<string, string> = {
   "class-page": "wiki.html#/class/1",
   balance: "class-balance.html",
 };
-const WIDTHS = [1280, 375];
+const ONE_LINE_ROWS = ".topbar, .topnav, .wiki-nav, .tabs";
 const THEMES = ["light", "dark"] as const;
 
 // ---------------------------------------------------------------- arguments
@@ -47,10 +48,11 @@ const opt = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const only = opt("only")?.split(",");
+const WIDTHS = (opt("widths") ?? "1280,375").split(",").map(Number);
 // More than ~4 Windows Chromes at once start failing (exit 255) or time out.
 const jobs = Math.max(1, Number(opt("jobs") ?? 3));
 const settleMs = Number(opt("settle") ?? 8000);
-const savePath = opt("save") ?? join(ROOT, "saves/snapshot/PlayerData.txt");
+const savePath = opt("save") ?? [join(ROOT, "saves/snapshot/PlayerData.txt"), join(ROOT, "site/data/example-save.txt")].find(existsSync) ?? "";
 const saveText = existsSync(savePath) ? readFileSync(savePath, "utf8") : null;
 
 function findChrome(): string {
@@ -89,7 +91,13 @@ const PROBE = `(() => {
     const wide = d.scrollWidth > cw + 1 ? [...document.querySelectorAll("body *")]
       .filter((el) => el.getBoundingClientRect().right > cw + 1 && !scrolls(el))
       .slice(0, 5).map((el) => el.tagName.toLowerCase() + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\\s+/).join(".") : "") + " → " + Math.round(el.getBoundingClientRect().right) + "px") : [];
-    return { errors, warnings, width: cw, scrollWidth: d.scrollWidth, wide };
+    // Phone (U20): every nav row is one line: no visible child starts below another one's bottom.
+    const wrapped = cw > 600 ? [] : [...document.querySelectorAll(${JSON.stringify(ONE_LINE_ROWS)})].filter((row) => row.offsetParent).flatMap((row) => {
+      const boxes = [...row.children].filter((k) => k.offsetParent && getComputedStyle(k).position !== "absolute").map((k) => k.getBoundingClientRect());
+      const lines = boxes.some((a) => boxes.some((b) => b.top >= a.bottom - 1)) ? 2 : 1;
+      return lines > 1 ? [row.className.trim().split(/\\s+/).join(".") + " (" + Math.round(row.getBoundingClientRect().height) + "px high)"] : [];
+    });
+    return { errors, warnings, width: cw, scrollWidth: d.scrollWidth, wide, wrapped };
   };
 })();`;
 
@@ -167,7 +175,7 @@ const server = http.createServer((req, res) => {
 
 // ---------------------------------------------------------------- runs
 interface Run { page: string; width: number; theme: (typeof THEMES)[number]; save: boolean; id: string }
-interface Result extends Run { errors: string[]; warnings: string[]; wide: string[]; overflow: boolean; notFound: string[]; failed: boolean }
+interface Result extends Run { errors: string[]; warnings: string[]; wide: string[]; overflow: boolean; wrapped: string[]; notFound: string[]; failed: boolean }
 
 /** A fresh browser profile per run (a closing browser may still hold the previous one); all removed at the end. */
 const profiles: string[] = [];
@@ -218,7 +226,7 @@ async function runOne(base: string, r: Run): Promise<Result> {
     res = await runOnce(base, r);
   } catch (e) {
     // A run that can't even start (profile folder) fails alone instead of stopping the sweep.
-    return { ...r, errors: [`run not started: ${e instanceof Error ? e.message : e}`], warnings: [], wide: [], overflow: false, notFound: [], failed: true };
+    return { ...r, errors: [`run not started: ${e instanceof Error ? e.message : e}`], warnings: [], wide: [], overflow: false, wrapped: [], notFound: [], failed: true };
   }
   if (res.errors.some((e) => e.startsWith("no report (browser exited"))) {
     notFound.delete(r.id);
@@ -245,7 +253,7 @@ function runOnce(base: string, r: Run): Promise<Result> {
       reports.delete(r.id);
       chrome.kill();
       stopBrowsers(`mrs-check-${process.pid}-${r.id}`);
-      let rep: { errors?: string[]; warnings?: string[]; wide?: string[]; width?: number; scrollWidth?: number };
+      let rep: { errors?: string[]; warnings?: string[]; wide?: string[]; wrapped?: string[]; width?: number; scrollWidth?: number };
       try {
         rep = body ? JSON.parse(body) : { errors: [`no report (${why})`] };
       } catch {
@@ -254,8 +262,9 @@ function runOnce(base: string, r: Run): Promise<Result> {
       const nf = notFound.get(r.id) ?? [];
       const overflow = (rep.scrollWidth ?? 0) > (rep.width ?? 0) + 1;
       const errors = rep.errors ?? [];
-      done({ ...r, errors, warnings: rep.warnings ?? [], wide: rep.wide ?? [], overflow, notFound: nf,
-        failed: errors.length > 0 || overflow || nf.length > 0 });
+      const wrapped = rep.wrapped ?? [];
+      done({ ...r, errors, warnings: rep.warnings ?? [], wide: rep.wide ?? [], overflow, wrapped, notFound: nf,
+        failed: errors.length > 0 || overflow || wrapped.length > 0 || nf.length > 0 });
     };
     reports.set(r.id, (body) => finish(body));
     const timer = setTimeout(() => finish(null, "timed out"), settleMs + 60000);
@@ -295,6 +304,7 @@ async function main(): Promise<void> {
       for (const e of res.errors) console.log(`       error: ${e.split("\n")[0].slice(0, 220)}`);
       for (const p of res.notFound) console.log(`       404: ${p}`);
       if (res.overflow) console.log(`       page wider than ${res.width}px: ${res.wide.join(", ") || "(no single element found)"}`);
+      for (const w of res.wrapped) console.log(`       more than one line: ${w}`);
     }
   }));
   server.close();
