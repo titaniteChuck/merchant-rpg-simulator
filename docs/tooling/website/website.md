@@ -263,7 +263,13 @@ the wiki section nav ("Class balance", after Classes) and the home page, not the
 ## Shared page parts
 
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Wiki (short labels so it stays on one line at
-  1280px), and the GitHub link (right). Home page: one card per page (class balance included).
+  1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
+  coin on the site gradient, no game art), linked from every page.
+- Keyboard: `tabKeys` in `dom.ts` gives a tab list the WAI-ARIA tabs pattern (Left / Right / Home / End, only the
+  selected tab in the Tab order), for the save viewer's tabs (wired with U17); the save menu moves with Up / Down and closes with Escape;
+  mode cards and switches are radio groups; sortable table headers are buttons; every focusable element (links
+  included) gets the accent focus ring. Colours never carry a value alone: win rates and heat cells print the number.
+- Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`).
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the

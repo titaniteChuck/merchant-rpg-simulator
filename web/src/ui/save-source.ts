@@ -81,6 +81,15 @@ export function initSaveSource(o: SaveSourceOptions): void {
       if (e.key === "Escape") {
         close();
         button.focus();
+        return;
+      }
+      // Up / Down move between the menu items (menu pattern), wrapping.
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu.hidden) {
+        const items = [...menu.querySelectorAll<HTMLButtonElement>("button")];
+        const i = items.indexOf(document.activeElement as HTMLButtonElement);
+        const j = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+        e.preventDefault();
+        items[j]?.focus();
       }
     });
     const bar = document.querySelector(".topbar");

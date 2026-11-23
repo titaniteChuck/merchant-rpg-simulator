@@ -149,6 +149,28 @@ export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string
   return el("div", { class: "table-wrap" }, el("table", {}, el("thead", {}, head), tbody));
 }
 
+/**
+ * Keyboard for a tablist (WAI-ARIA tabs pattern): Left / Right (wrapping), Home and End move to a tab and select it;
+ * only the selected tab is in the Tab order. Call once the tab buttons are in the list.
+ */
+export function tabKeys(list: HTMLElement): void {
+  const tabs = () => [...list.querySelectorAll<HTMLElement>('[role="tab"]')];
+  const sync = () => tabs().forEach((t) => (t.tabIndex = t.getAttribute("aria-selected") === "true" ? 0 : -1));
+  new MutationObserver(sync).observe(list, { subtree: true, attributes: true, attributeFilter: ["aria-selected"] });
+  list.addEventListener("keydown", (e) => {
+    const ts = tabs();
+    const i = ts.indexOf(document.activeElement as HTMLElement);
+    if (i < 0) return;
+    const j = e.key === "ArrowRight" ? (i + 1) % ts.length : e.key === "ArrowLeft" ? (i - 1 + ts.length) % ts.length
+      : e.key === "Home" ? 0 : e.key === "End" ? ts.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    ts[j].focus();
+    ts[j].click();
+  });
+  queueMicrotask(sync);
+}
+
 /** <select> from [value, label] pairs, optionally grouped. */
 export function select(attrs: Record<string, string>, options: ([string, string] | [string, [string, string][]])[]): HTMLSelectElement {
   const s = el("select", attrs);

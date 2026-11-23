@@ -205,7 +205,7 @@ function recipeList(type: string, id: number): HTMLElement {
   if (!rec.length) return none("Not craftable.");
   return el("div", {},
     el("ul", { class: "plain-list" }, ...rec.map(([t, mid, amt]) => el("li", {}, `${amt} × `, itemLink(t, mid)))),
-    el("p", { class: "muted small" }, [crafterName(it.crafterID) ? `${crafterName(it.crafterID)}` : "", it.cost ? `${fmt.format(it.cost)} gold` : "",
+    el("p", { class: "muted small" }, [crafterName(it.crafterID) ? `${crafterName(it.crafterID)}` : "", it.cost ? `${fmt.format(it.cost)} g` : "",
       it.runTime ? `${fmt.format(it.runTime / 60)} min` : "", it.experience ? `${fmt.format(it.experience)} XP` : ""].filter(Boolean).join(" · ")));
 }
 
