@@ -303,6 +303,27 @@ flowchart LR
   rows ended in ", Basic". Now the cell counts the rotation: real skills linked with ×N, then "Basic ×N" muted, or
   "Basic attack only"; the tooltip gives the turn order; it sorts by the skill names (`rotationSummary`,
   `skillSummaryText`).
+- Reference pages (U25): **Stats** (`#/stats`, `web/src/ui/wiki-stats.ts`) says how every number is calculated, and
+  **Battle** (`#/battle`, `web/src/ui/wiki-battle.ts`) how a fight runs. Both are in the wiki nav (static in
+  `wiki.html`) and on the wiki home (`CATEGORIES`).
+  - One section per topic with a stable anchor, `#/stats/<topic>` and `#/battle/<topic>`; the page scrolls to it. The
+    anchors are the keys of `STAT_TOPICS` and `BATTLE_TOPICS` in `web/src/ui/wiki-ref.ts`: hero-stats, max-hp, damage,
+    defence, hit-chance, crit, ap, luck, grade, time, quest-size, xp, item-stats, sell, craft, essence, enchant,
+    map-essence; setup, turn-order, rotation, targeting, attack, effects, buffs-debuffs, heals, revives, death,
+    battle-end, map-runs, quest-size.
+  - Each section: formulas in readable math (HTML, `<sub>`/`<sup>`, fractions as `.frac`, no library), the variables,
+    a worked example, notes ("Unconfirmed" where the code doesn't settle it), and a discreet source line with the
+    `file:line` of the decompiled game.
+  - Linking from other pages: `statLink(topic, label?)` and `battleLink(topic, label?)` in `wiki-ref.ts` (an `a.wl`
+    with the topic's one-line formula as its tooltip); `sl()` / `bl()` give the same link as an HTML string.
+  - `test/wiki-ref.test.ts`: one section per topic, every cross-link resolves, the worked-example formulas match the
+    port (reduction, AP, grade, essence, item stat ranges), and every source line contains the expected code (when
+    `decompiled/` is there; skipped in CI).
+  - Findings written up there: skill-parameter penetration (Pulverize "defPen 45"…) never applies (the attack keeps
+    the lower of the skill's and the attacker's own, which is 0); a potion charge is used per map room, not per map;
+    map grade 1 adds 0 to the enemy modifier (not −0.2); heroes have 0 evasion, so enemy hits always land; luck also
+    raises map essence (× (1 + luck / 100)).
+  - CSS: the `wiki reference pages` block at the end of `site/style.css`.
 
 ## Profit page
 

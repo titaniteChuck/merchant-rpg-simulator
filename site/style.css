@@ -1075,3 +1075,65 @@ table.slot-rows td.eff { min-width: 0; font-size: 0.78rem; }
 .gear-item .meta .pill.t-green { background: #2f6b34; color: #fff; border-color: #2f6b34; }
 .gear-from { margin: 0 0 10px; padding-left: 18px; }
 /* end battle v3 */
+
+/* wiki reference pages */
+/* U25: Stats (#/stats) and Battle (#/battle), wiki-ref.ts. One <section class="ref-section"> per topic; formulas in
+   .formula (fractions as .frac), variables in .ref-vars, worked examples in .ref-example, the source note .ref-src. */
+.ref-page .lead { max-width: 75ch; }
+.ref-toc { margin: 18px 0 8px; }
+.ref-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px 14px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); counter-reset: ref; }
+.ref-toc li { counter-increment: ref; min-width: 0; }
+.ref-toc li::before { content: counter(ref) "."; color: var(--muted); font-variant-numeric: tabular-nums; display: inline-block; min-width: 1.8em; font-size: 0.85rem; }
+.ref-toc a { font-weight: 600; }
+.ref-section { scroll-margin-top: 12px; }
+.ref-section h2.wiki-banner { justify-content: space-between; flex-wrap: nowrap; }
+.ref-anchor { color: rgba(255, 255, 255, 0.7); text-decoration: none; font-weight: 700; padding: 0 4px; border-radius: 6px; flex: none; }
+.ref-anchor:hover, .ref-anchor:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.14); }
+.ref-body { max-width: 860px; line-height: 1.55; }
+.ref-body > p, .ref-body > ul, .ref-body > ol { margin: 10px 0; }
+.ref-body ul, .ref-body ol { padding-left: 22px; }
+.ref-body li + li { margin-top: 4px; }
+.ref-body h3 { margin: 22px 0 6px; font-size: 1rem; }
+.ref-body var, .formula var { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-size: 1.05em; }
+.formula {
+  margin: 12px 0; padding: 12px 16px; border-radius: 10px; overflow-x: auto;
+  background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--trim);
+  font-size: 1.02rem; line-height: 1.9; font-variant-numeric: tabular-nums;
+}
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; line-height: 1.25; font-size: 0.92em; }
+.frac-n { padding: 0 4px 1px; border-bottom: 1.5px solid currentColor; }
+.frac-d { padding: 1px 4px 0; }
+.ref-vars { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 12px; font-size: 0.93rem; }
+.ref-vars > div { display: contents; }
+.ref-vars dt { font-weight: 650; white-space: nowrap; }
+.ref-vars dd { margin: 0; color: var(--muted); min-width: 0; }
+.ref-tag { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; vertical-align: 1px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--fg); }
+.ref-example { margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--good) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--good) 35%, var(--border)); }
+.ref-note { padding: 8px 12px; border-radius: 10px; background: var(--card-2); border: 1px dashed var(--border); }
+.ref-note.unsure .ref-tag { background: color-mix(in srgb, var(--bad) 28%, transparent); }
+.ref-table { font-size: 0.9rem; }
+.ref-table th[scope="row"] { text-align: left; font-weight: 650; white-space: nowrap; }
+.ref-table td { font-variant-numeric: tabular-nums; }
+.ref-src { margin: 8px 0 0; opacity: 0.85; }
+.ref-src code { font-size: 0.78rem; padding: 0 4px; }
+a.ref-link { color: color-mix(in srgb, var(--accent) var(--ink), var(--fg)); }
+/* Battle: the party places and the turn order */
+.ref-places { margin: 12px 0; }
+.ref-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 150px)); gap: 6px; }
+.ref-colhead { font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ref-place { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); font-weight: 700; }
+.ref-place small { display: block; font-weight: 500; color: var(--muted); }
+.ref-place.ref-front { border-left: 4px solid var(--trim); }
+.ref-place.ref-foe { grid-column: 3; grid-row: 2 / span 3; display: grid; place-items: center; text-align: center; background: color-mix(in srgb, var(--bad) 12%, var(--card)); }
+.ref-body .ref-order { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; margin: 8px 0; counter-reset: ord; }
+.ref-body .ref-order li { margin: 0; counter-increment: ord; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); font-weight: 650; font-size: 0.9rem; }
+.ref-order li::before { content: counter(ord) " "; color: var(--muted); font-weight: 500; }
+.ref-order li.ref-foe { background: color-mix(in srgb, var(--bad) 14%, var(--card)); }
+@media (max-width: 600px) {
+  .formula { font-size: 0.95rem; padding: 10px 12px; }
+  .ref-vars { grid-template-columns: 1fr; gap: 0; }
+  .ref-vars dd { margin-bottom: 6px; }
+  .ref-vars dt { white-space: normal; }
+}
+/* end wiki reference pages */

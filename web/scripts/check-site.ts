@@ -36,6 +36,8 @@ const PAGES: Record<string, string> = {
   wiki: "wiki.html",
   enemy: "wiki.html#/enemy/97",
   "class-page": "wiki.html#/class/1",
+  "wiki-stats": "wiki.html#/stats/hit-chance",
+  "wiki-battle": "wiki.html#/battle",
   balance: "class-balance.html",
 };
 const ONE_LINE_ROWS = ".topbar, .topnav, .wiki-nav, .tabs";

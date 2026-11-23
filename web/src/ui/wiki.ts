@@ -5,6 +5,7 @@
  *   #/items/TYPE  #/item/TYPE/ID   (equipment, consumable, material)
  *   #/maps    #/map/ID          #/classes   #/class/ID[/LEVEL/ASC]
  *   #/enemies #/enemy/ID        (ID = quest id; the rare variant shares the page)
+ *   #/stats[/TOPIC]  #/battle[/TOPIC]   reference pages (wiki-ref.ts)
  */
 import { loadTimelineData } from "./timeline.ts";
 import * as api from "../sim/api.ts";
@@ -18,6 +19,8 @@ import { classStats } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
 import { goodAgainst, turnMarks } from "./wiki-skills.ts";
 import { enemyBody, enemyListColumns, enemyListRows, enemyTable } from "./wiki-enemies.ts";
+import { battlePage, BATTLE_SECTIONS } from "./wiki-battle.ts"; // U25 reference pages
+import { statsPage, STATS_SECTIONS } from "./wiki-stats.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
@@ -55,6 +58,8 @@ const CATEGORIES: [string, string, string, () => number, string][] = [
   ["#/enemies", "👹", "Enemies", () => enemyIds().length,
     "Every quest and map enemy with its base stats (before a map's multiplier). Gathering and placeholder quests are left out."],
   ["#/classes", "🛡️", "Classes", () => classes().length, "The hero classes, their base stats, growth, skills and passives."],
+  ["#/stats", "🧮", "Stats", () => STATS_SECTIONS.length, "How every number is calculated: hero stats, damage, hit and crit, luck, grade, XP, item stats, selling, crafting, essence."],
+  ["#/battle", "🗡️", "Battle", () => BATTLE_SECTIONS.length, "How a fight runs: turn order, the 5-slot rotation, targeting, effects and their durations, heals, revives, map runs."],
 ];
 
 // ---------------------------------------------------------------- building blocks
@@ -484,6 +489,8 @@ function route(): HTMLElement {
     case "enemy": return enemyPage(Number(b));
     case "classes": return classesPage();
     case "class": return classPage(Number(b), c, parts[3]);
+    case "stats": return statsPage(b);
+    case "battle": return battlePage(b);
     default: return notFound(`page “${parts.join("/")}”`);
   }
 }
