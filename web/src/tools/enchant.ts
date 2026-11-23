@@ -106,6 +106,50 @@ export function addSuffix(g: Game, unitCost: UnitCost, itype: string, iid: numbe
   return { cost, attempts, seconds: attempts * level * 5, "chance%": pyRound(100 * p(0), 1), rune: g.name("material", rune) };
 }
 
+// ---------------------------------------------------------------- reset
+/** Reset runes by item-level band (default.resetEnchantCost). */
+export const RESET_RUNE: [number, number][] = [[10, 31], [20, 65], [30, 97], [40, 129], [50, 160], [60, 254]];
+
+/**
+ * default.resetEnchant: the item's grade after one more Reset, when it was reset `resets` times before. Reset keeps
+ * the prefix and suffix and re-rolls the base stats; the grade can drop by one at most.
+ * startingGrade = itemStartGrade(enchanter level + 5, itemLevel) (Utilities.round: floor(x * 100 + 0.5) / 100).
+ */
+export function resetGrade(enchanterLevel: number, itemLevel: number, grade: number, resets: number): number {
+  const start = clamp(Math.floor((1 + (enchanterLevel + 5 - itemLevel) / 4) * 100 + 0.5) / 100, 1, 4.5);
+  return clamp(luaRound(start + resets * 0.4), Math.max(grade - 1, 1), 5);
+}
+
+export interface ResetStep {
+  resets: number;
+  grade: number;
+  /** Cumulative cost and time of `resets` resets. */
+  cost: number;
+  seconds: number;
+}
+
+/**
+ * Grades reachable by resetting an item `0..maxResets` times, with the cumulative cost: per reset
+ * gold itemLevel * 20 + 20 * resets, (1 + fibo[min(resets, 5)]) reset runes, essence if ascended, itemLevel * 2.5 s.
+ */
+export function resetPath(g: Game, unitCost: UnitCost, itype: string, iid: number, prestige: number, grade: number,
+  enchanterLevel: number, mods: number, maxResets = 8): ResetStep[] {
+  const level = g.item(itype, iid).itemLevel ?? 1;
+  const rune = band(RESET_RUNE, level);
+  const out: ResetStep[] = [{ resets: 0, grade, cost: 0, seconds: 0 }];
+  if (rune === undefined) return out;
+  const [eid, eamt] = enchantEssence(g, itype, iid, prestige, mods);
+  const essence = eid ? eamt * unitCost("material", eid) : 0;
+  let cur = grade, cost = 0, secs = 0;
+  for (let i = 0; i < maxResets; i++) {
+    cost += level * 20 + 20 * i + unitCost("material", rune) * (1 + FIBO[Math.min(i, 5)]) + essence;
+    secs += level * 2.5;
+    cur = resetGrade(enchanterLevel, level, cur, i);
+    out.push({ resets: i + 1, grade: cur, cost, seconds: secs });
+  }
+  return out;
+}
+
 type Route = [number, number, string];
 
 /** Cheapest way to reach 1 and 2 modifiers from a plain item. */

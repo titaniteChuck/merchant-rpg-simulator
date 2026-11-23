@@ -51,8 +51,10 @@ A fresh craft can roll a prefix, then a suffix (`Item:determineStats`).
 
 - Equipment rolls only if craft grade > 2. Slot-6 items never get a suffix. Maps always roll. Consumables never.
 - `effLevel = round(crafterLevel + 2 × grade − 4)` (crafter prestige level for ascended crafts).
-- Prefix chance `min((effLevel − itemLevel) × 2, 25)%`, suffix `min(… × 2, 40)%` (+20 / +3 per boost
-  when ingredients carry modifiers).
+- Prefix chance `min((effLevel − itemLevel) × 2, 25)%`, suffix `min(… × 2, 40)%`.
+- Modded equipment ingredients (`Player:removeItemForCrafting`, `Craft:removeMaterials`): suffix boost = sum over
+  ingredient types of the highest suffix tier used, +3% to the suffix odds and cap per tier; prefix boost = any
+  ingredient with a prefix, a flat +20% to the prefix odds and cap (which prefix doesn't matter).
 - Pick: weighted (`weight`) among entries with `minLevel ≤ effLevel ≤ maxLevel`; suffixes also need `ascLevel`.
 - A prefix raises grade by `round(2 × sell)`, which improves the suffix odds.
 - Max-level crafter on a level-60 item: craft grade 2, so **no modifiers** (3% with grade-4 ingredients).
@@ -84,7 +86,9 @@ Modelled for equipment and maps in the [profit calculator](../../tooling/profit-
   Success steps the suffix +1. Chance `clamp((effLevel' − nextSuffix.minLevel) × 2, 10, 95)%`,
   with `effLevel' = crafterLevel + 10 + 2 × attempts + 4 × grade`. Break (`attempts × 4`%) drops one step.
 - Reset: re-rolls grade and base stats, keeps modifiers. New grade
-  `clamp(round(startGrade(enchanterLevel + 5, itemLevel) + 0.4 × attempts), grade − 1, 5)`.
+  `clamp(round(startGrade(enchanterLevel + 5, itemLevel) + 0.4 × attempts), grade − 1, 5)`: each reset adds 0.4,
+  and it never drops more than one grade (an S item reset once can fall to A). Grade doesn't change the sell price;
+  it raises the prefix odds (+2% per grade) and suffix odds (+8% per grade). Costs essence too on ascended items.
 - A roll succeeds when `odds > random(1, 100)`, so the real chance is `odds − 1`%.
 - Time: prefix `itemLevel × 10` s, suffix `itemLevel × 5` s, reset `itemLevel × 2.5` s.
 

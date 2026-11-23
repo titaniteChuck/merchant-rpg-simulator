@@ -23,6 +23,7 @@ timestamp: 2026-11-23
 - [Outputs](#outputs)
 - [Farming report](#farming-report)
 - [Implementation](#implementation)
+- [Enchant order, Reset, modded ingredients](#enchant-order-reset-modded-ingredients)
 - [Not modelled](#not-modelled)
 
 ## Sources of an item
@@ -168,14 +169,30 @@ flowchart LR
   - Tables iterate in ascending id order; suffix -1 (Worn) first.
 - Tests: `web/test/profit.test.ts`.
 
+## Enchant order, Reset, modded ingredients
+
+Off by default (the report doesn't change); each has its own table for pages.
+
+| Rule (game code) | Option / table | Result (grade 3, crafter and Enchanter 60) |
+|---|---|---|
+| Enchant before ascending: `AscendItem` keeps prefix, suffix and grade; ascending a modded item costs essence × (4 + mods) at its higher rarity | `enchantOrder`; `buildEnchantOrderRows` | Never cheaper (0 of 2,506 item × asc × mods). Ascension essence of a modded item outweighs the essence saved on enchant attempts |
+| Reset before a prefix/suffix: `default.resetEnchant` raises the grade 0.4 per earlier reset | `resetBeforeEnchant` (0-8 resets); `buildResetRows` | Prefix: worth it for 214 of 1,971 item-asc (low craft grade, high level), median 3% saved. Suffix: never |
+| Modded ingredients raise the craft's odds (`_prefixBoost` +20%, `_suffixBoost` +3% per tier) | `modifierOutcomes(…, boost)`; `buildIngredientBoostRows` | Enchanting the ingredient pays for 1 of 339 recipes (prefix) |
+
+- `enchantOrderStrategies` reaches asc p with k mods from the plain item at asc q < p: cost(q) + enchant at q +
+  ascension essence for each step with k mods; `best_strategy` lists it as "enchant to k mods at asc q, then ascend".
+- `resetPath` gives the grade after each reset and the cumulative cost (gold `itemLevel × 20 + 20 × resets`,
+  `1 + fibo` reset runes by level band, essence when ascended, `itemLevel × 2.5` s).
+- Not modelled: the Enchanter's separate ascension level (`getEffectiveLevelForItem` uses the prestige level for an
+  item at the Enchanter's ascension); resets between the two modifiers of a 2-mod plan; an ingredient that rolled a
+  modifier for free when it was crafted.
+
 ## Not modelled
 
-- Reset to raise grade before enchanting; equipment suffix tiers above +1 (no price effect anyway).
+- Equipment suffix tiers above +1 (no price effect anyway).
 - Stronger enemies from map suffixes (grade kept at `--grade`).
-- Modifier boost from modded ingredients (`_prefixBoost`, `_suffixBoost`).
 - Customer preference and haggle bonuses; buying from customers.
 - Events, weekly shop, purchases.
 - Crafter level, unlocks and crafter time as a bottleneck (only reported per craft-hour).
-- Multi-enemy quests (parcel odds scale non-linearly).
 - Battle time on quests; asc-1 map's stronger enemies lowering grade.
 - 136 ids have no source: placeholders, event/weekly items, random maps.

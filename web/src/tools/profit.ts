@@ -9,7 +9,7 @@
  *
  * Because maps need essences and give essences, costs are solved by repeated relaxation until they stop changing.
  */
-import { addPrefix, addSuffix, band, type Climb, enchantEssence, PREFIX_GEM, type StepResult, suffixClimb, maxSuffixFor }
+import { addPrefix, addSuffix, band, type Climb, enchantEssence, PREFIX_GEM, resetPath, type StepResult, suffixClimb, maxSuffixFor }
   from "./enchant.ts";
 import { clamp, Game, KeyError, luaRound, PRESTIGE_TYPES, pyRound } from "./gamedata.ts";
 
@@ -166,10 +166,10 @@ function eligible(table: Map<number, Any>, eff: number, prestige = 0, needWeight
 /**
  * Outcomes of Item:determinePrefix then determineSuffix on a fresh craft: [[prob, prefix, suffix]].
  * Equipment only rolls at craft grade > 2 and slot 6 never gets a suffix; maps always roll;
- * consumables never do. Ingredients are assumed plain.
+ * consumables never do. Ingredients are plain unless `boost` says otherwise.
  */
 export function modifierOutcomes(g: Game, itype: string, iid: number, crafterLevel: number, ingredientGrade: number,
-  prestige = 0): Outcome[] {
+  prestige = 0, boost: IngredientBoost = {}): Outcome[] {
   const it = g.item(itype, iid);
   if (itype !== "equipment" && itype !== "map") return [[1.0, 0, 0]];
   const level = it.itemLevel ?? 1;
@@ -179,14 +179,16 @@ export function modifierOutcomes(g: Game, itype: string, iid: number, crafterLev
   const suffixOutcomes = (gr: number): [number, number][] => {
     if (itype === "equipment" && it.itemSlot === 6) return [[1.0, 0]];
     const eff = effLevel(gr);
-    const odds = Math.min((eff - level) * 2, 40); // default.__craftSuffixOdds
+    const sb = itype === "equipment" ? boost.suffix ?? 0 : 0; // Item rolls only; Map has its own
+    const odds = Math.min((eff - level) * 2 + 3 * sb, 40 + 3 * sb); // default.__craftSuffixOdds
     const pool = eligible(g.suffixes, eff, prestige);
     const pHit = pool.length ? rollChance(odds) : 0;
     const totalW = sumOf(pool.map(([, d]) => d.weight)) || 1;
     return [[1 - pHit, 0], ...(pHit ? pool.map(([n, d]) => [pHit * d.weight / totalW, n] as [number, number]) : [])];
   };
   const eff = effLevel(grade);
-  const odds = Math.min((eff - level) * 2, 25); // default.__craftPrefixOdds
+  const pb = itype === "equipment" && boost.prefix ? 20 : 0;
+  const odds = Math.min((eff - level) * 2 + pb, 25 + pb); // default.__craftPrefixOdds
   const pool = eligible(g.prefixes, eff);
   const pHit = pool.length ? rollChance(odds) : 0;
   const totalW = sumOf(pool.map(([, d]) => d.weight)) || 1;
@@ -199,6 +201,16 @@ export function modifierOutcomes(g: Game, itype: string, iid: number, crafterLev
     for (const [ps, sx] of suffixOutcomes(newGrade)) out.push([pw * ps, n, sx]);
   }
   return out.filter((o) => o[0] > 0);
+}
+
+/**
+ * Modded equipment ingredients (Player:removeItemForCrafting, Craft:removeMaterials): `suffix` = the sum over
+ * ingredient types of the highest suffix tier used (+3 % suffix odds and cap per tier), `prefix` = any ingredient
+ * has a prefix (+20 % prefix odds and cap).
+ */
+export interface IngredientBoost {
+  prefix?: boolean;
+  suffix?: number;
 }
 
 /** Map:applyPrefix / applySuffix effect on essenceBase. */
@@ -229,6 +241,10 @@ export function mixByGrade(grades: [number, number][], fn: (grade: number) => Ma
 
 export interface SolverOptions {
   grade?: number;
+  /** Enchanter's Reset before enchanting (raises the item grade, so the odds): try 0..8 resets, keep the cheapest. */
+  resetBeforeEnchant?: boolean;
+  /** Also consider enchanting at a lower ascension, then ascending with the modifiers (buildRows best_strategy). */
+  enchantOrder?: boolean;
   /** Per-source overrides from simulation (see farming.ts): quests keyed "qid" or "qid|rare", maps keyed "mid|asc". */
   sourceStats?: { quest?: Map<string, SourceStat>; map?: Map<string, SourceStat> };
   luck?: number;
@@ -260,6 +276,8 @@ export class Solver {
   readonly heroHourCost: number;
   readonly essenceFrom: Map<number, [number, number]>;
   readonly sourceStats: { quest?: Map<string, SourceStat>; map?: Map<string, SourceStat> };
+  readonly resetBeforeEnchant: boolean;
+  readonly enchantOrder: boolean;
   essenceChoice = new Map<number, [number, number, string]>(); // essence id -> (map id, prestige, variant label)
   cost = new Map<string, number>(); // "type|id|p" -> best unit cost
   how = new Map<string, string>(); // "type|id|p" -> description of best method
@@ -282,6 +300,8 @@ export class Solver {
     this.heroHourCost = o.heroHourCost ?? 0;
     this.essenceFrom = o.essenceFrom ?? new Map();
     this.sourceStats = o.sourceStats ?? {};
+    this.resetBeforeEnchant = o.resetBeforeEnchant ?? false;
+    this.enchantOrder = o.enchantOrder ?? false;
     this.questSources = this.buildQuestSources();
   }
 
@@ -548,37 +568,93 @@ export function enchantStrategies(s: Solver, itype: string, iid: number, p: numb
   sellByMods: number[]): Map<number, [number, number]> {
   const out = new Map<number, [number, number]>();
   if (itype !== "equipment" || s.enchanterLevel <= 0) return out;
-  const grade = craftGrade(s.crafterLevel, s.g.item(itype, iid).itemLevel ?? 1, s.grade);
-  const step = (kind: "prefix" | "suffix", modsBefore: number) => s.enchantStep(kind, itype, iid, p, grade, modsBefore);
+  const grade0 = craftGrade(s.crafterLevel, s.g.item(itype, iid).itemLevel ?? 1, s.grade);
+  // With resetBeforeEnchant, the item may be reset r times first (same r for every crafted outcome).
+  const resets = s.resetBeforeEnchant
+    ? resetPath(s.g, (t, i) => s.get(t, i, 0), itype, iid, p, grade0, s.enchanterLevel, 0)
+    : [{ resets: 0, grade: grade0, cost: 0, seconds: 0 }];
   for (const k of [1, 2]) {
-    let totalValue = 0.0, totalTime = 0.0, feasible = true;
-    for (const [prob, pf, sf] of outcomes) {
-      let hasP = Boolean(pf), hasS = Boolean(sf);
-      let cost = 0.0, secs = 0.0;
-      let mods = Number(hasP) + Number(hasS);
-      // add the cheapest missing modifiers until k is reached
-      while (mods < k) {
-        const options: ["p" | "s", StepResult][] = [];
-        if (!hasP && step("prefix", mods)) options.push(["p", step("prefix", mods)!]);
-        if (!hasS && step("suffix", mods)) options.push(["s", step("suffix", mods)!]);
-        if (!options.length) {
-          feasible = false;
-          break;
+    let best: [number, number] | null = null;
+    for (const r of resets) {
+      const step = (kind: "prefix" | "suffix", modsBefore: number) => s.enchantStep(kind, itype, iid, p, r.grade, modsBefore);
+      let totalValue = 0.0, totalTime = 0.0, feasible = true;
+      for (const [prob, pf, sf] of outcomes) {
+        let hasP = Boolean(pf), hasS = Boolean(sf);
+        let cost = 0.0, secs = 0.0;
+        let mods = Number(hasP) + Number(hasS);
+        // add the cheapest missing modifiers until k is reached
+        while (mods < k) {
+          const options: ["p" | "s", StepResult][] = [];
+          if (!hasP && step("prefix", mods)) options.push(["p", step("prefix", mods)!]);
+          if (!hasS && step("suffix", mods)) options.push(["s", step("suffix", mods)!]);
+          if (!options.length) {
+            feasible = false;
+            break;
+          }
+          const [which, res] = options.reduce((a, b) => (b[1].cost < a[1].cost ? b : a));
+          cost += res.cost;
+          secs += res.seconds;
+          hasP ||= which === "p";
+          hasS ||= which === "s";
+          mods++;
         }
-        const [which, r] = options.reduce((a, b) => (b[1].cost < a[1].cost ? b : a));
-        cost += r.cost;
-        secs += r.seconds;
-        hasP ||= which === "p";
-        hasS ||= which === "s";
-        mods++;
+        if (!feasible) break;
+        // resets are only worth paying when the item still needs a modifier
+        const needs = Number(Boolean(pf)) + Number(Boolean(sf)) < k;
+        totalValue += prob * (sellByMods[mods] - cost - (needs ? r.cost : 0));
+        totalTime += prob * (secs + (needs ? r.seconds : 0));
       }
-      if (!feasible) break;
-      totalValue += prob * (sellByMods[mods] - cost);
-      totalTime += prob * secs;
+      if (feasible && (best === null || totalValue > best[0])) best = [totalValue, totalTime];
     }
-    if (feasible) out.set(k, [totalValue, totalTime]);
+    if (best) out.set(k, best);
   }
   return out;
+}
+
+/**
+ * Enchant before ascending: reach asc `p` with `k` modifiers by taking the plain item at asc q < p, enchanting it
+ * there (no or less essence per attempt, the Enchanter's level) and ascending it with its modifiers
+ * (essence x (4 + mods), AscendItem keeps prefix, suffix and grade). Value = sell - (this route - cost at p), the
+ * same convention as enchantStrategies, so buildRows can subtract the cost at p. Keys: "k|q".
+ */
+export function enchantOrderStrategies(s: Solver, itype: string, iid: number, p: number,
+  sellByMods: number[]): Map<string, [number, number, number]> {
+  const out = new Map<string, [number, number, number]>();
+  if (itype !== "equipment" || p === 0 || s.enchanterLevel <= 0) return out;
+  const it = s.g.item(itype, iid);
+  if (it.lockPrestige) return out;
+  const costP = s.get(itype, iid, p);
+  if (costP === INF) return out;
+  for (let q = 0; q < p; q++) {
+    const costQ = s.get(itype, iid, q);
+    if (costQ === INF) continue;
+    const plan = enchantRoute(s, itype, iid, q);
+    for (const k of [1, 2]) {
+      const route = plan[k];
+      if (!route) continue;
+      let ascend = 0;
+      for (let r = q + 1; r <= p; r++) {
+        const [eid, eamt] = s.g.essenceForAscension(itype, iid, r, true, k);
+        ascend += eamt * s.get("material", eid);
+      }
+      const total = costQ + route[0] + ascend;
+      if (!Number.isFinite(total)) continue;
+      out.set(`${k}|${q}`, [sellByMods[k] - (total - costP), route[1] + (p - q) * (it.itemLevel ?? 1) * 60, total]);
+    }
+  }
+  return out;
+}
+
+/** Cheapest way from a plain item at asc p to 1 and 2 modifiers: [cost, seconds] (with resets if enabled). */
+function enchantRoute(s: Solver, itype: string, iid: number, p: number): Record<number, [number, number] | null> {
+  const sell = [0, 0, 0];
+  const strat = enchantStrategies(s, itype, iid, p, [[1.0, 0, 0]], sell);
+  const res: Record<number, [number, number] | null> = { 1: null, 2: null };
+  for (const k of [1, 2]) {
+    const v = strat.get(k);
+    if (v) res[k] = [-v[0], v[1]]; // sell 0: value = -cost
+  }
+  return res;
 }
 
 // ------------------------------------------------------------------ report
@@ -644,6 +720,12 @@ export function buildRows(s: Solver, types: string[], owned?: Owned | null): Row
         const strategies = new Map<string, [number, number]>([["sell as crafted", [evProfit, 0.0]]]);
         for (const [k, [netSell, secs]] of enchantStrategies(s, itype, iid, p, outcomes, sellByMods)) {
           strategies.set(`enchant to ${k} mod` + (k > 1 ? "s" : ""), [netSell - cost, secs]);
+        }
+        if (s.enchantOrder) {
+          for (const [key, [netSell, secs]] of enchantOrderStrategies(s, itype, iid, p, sellByMods)) {
+            const [k, q] = key.split("|").map(Number);
+            strategies.set(`enchant to ${k} mod${k > 1 ? "s" : ""} at asc ${q}, then ascend`, [netSell - cost, secs]);
+          }
         }
         const [bestName, [bestProfit, bestSecs]] = [...strategies].reduce((a, b) => (b[1][0] > a[1][0] ? b : a));
         const ench1 = strategies.get("enchant to 1 mod");
@@ -728,6 +810,112 @@ export function buildEnchantRows(s: Solver): Row[] {
       }
       rows.push(row);
     }
+  }
+  return rows;
+}
+
+/** Enchant before or after ascending (needs a Solver; resets follow its resetBeforeEnchant). Per item, asc and mod count. */
+export function buildEnchantOrderRows(s: Solver): Row[] {
+  const g = s.g;
+  const rows: Row[] = [];
+  for (const [iid, it] of g.items.equipment) {
+    if (it.lockPrestige) continue;
+    for (let p = 1; p <= MAX_PRESTIGE; p++) {
+      const costP = s.get("equipment", iid, p);
+      if (costP === INF) continue;
+      const after = enchantRoute(s, "equipment", iid, p);
+      const before = enchantOrderStrategies(s, "equipment", iid, p, [0, 0, 0]);
+      for (const k of [1, 2]) {
+        const a = after[k];
+        let best: [number, number] | null = null; // [total, q]
+        for (const [key, [, , total]] of before) {
+          const [kk, q] = key.split("|").map(Number);
+          if (kk === k && (best === null || total < best[0])) best = [total, q];
+        }
+        if (!a && !best) continue;
+        const afterTotal = a ? costP + a[0] : INF;
+        rows.push({
+          type: "equipment", id: iid, name: it.name, level: it.itemLevel ?? "", asc: p, mods: k,
+          cost_enchant_after: rf(afterTotal, 1), best_before_at_asc: best ? best[1] : "",
+          cost_enchant_before: best ? rf(best[0], 1) : "",
+          saving: best && Number.isFinite(afterTotal) ? rf(afterTotal - best[0], 1) : "",
+          cheaper: !best ? "after" : best[0] < afterTotal - 1e-9 ? `before (at asc ${best[1]})` : "after",
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+/** Reset before a first prefix / suffix: best number of resets, grade reached and saving, per item at asc 0..2. */
+export function buildResetRows(s: Solver, maxResets = 8): Row[] {
+  const g = s.g;
+  const rows: Row[] = [];
+  const unit = (t: string, i: number) => s.get(t, i, 0);
+  for (const [iid, it] of g.items.equipment) {
+    for (const p of ascLevels("equipment")) {
+      if (p > 0 && it.lockPrestige) continue;
+      if (s.get("equipment", iid, p) === INF) continue;
+      const grade = craftGrade(s.crafterLevel, it.itemLevel ?? 1, s.grade);
+      const path = resetPath(g, unit, "equipment", iid, p, grade, s.enchanterLevel, 0, maxResets);
+      const row: Row = { type: "equipment", id: iid, name: it.name, level: it.itemLevel ?? "", asc: p, craft_grade: grade };
+      for (const kind of ["prefix", "suffix"] as const) {
+        const plain = s.enchantStep(kind, "equipment", iid, p, grade, 0);
+        if (!plain) continue;
+        let best = { resets: 0, grade, total: plain.cost };
+        for (const r of path.slice(1)) {
+          const st = s.enchantStep(kind, "equipment", iid, p, r.grade, 0);
+          if (st && r.cost + st.cost < best.total - 1e-9) best = { resets: r.resets, grade: r.grade, total: r.cost + st.cost };
+        }
+        row[`${kind}_cost`] = rf(plain.cost, 1);
+        row[`${kind}_resets`] = best.resets;
+        row[`${kind}_grade`] = best.grade;
+        row[`${kind}_cost_with_resets`] = rf(best.total, 1);
+        row[`${kind}_saving`] = rf(plain.cost - best.total, 1);
+      }
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
+/**
+ * Crafting with modded equipment ingredients: expected sell value of the result with plain ingredients, with one
+ * prefixed ingredient, and with one +1-suffix ingredient, against the cost of enchanting that ingredient first.
+ * Asc 0, grade from the Solver; only recipes that use equipment.
+ */
+export function buildIngredientBoostRows(s: Solver): Row[] {
+  const g = s.g;
+  const rows: Row[] = [];
+  for (const [iid, it] of g.items.equipment) {
+    const rec = g.recipe("equipment", iid);
+    if (!rec || s.get("equipment", iid, 0) === INF) continue;
+    const equipIngredients = rec.filter(([t]) => t === "equipment");
+    if (!equipIngredients.length) continue;
+    const sellByMods = [0, 1, 2].map((m) => g.sellValue("equipment", iid, 0, m));
+    const ev = (boost: IngredientBoost) => sumOf(modifierOutcomes(g, "equipment", iid, s.crafterLevel, s.grade, 0, boost)
+      .map(([pr, pf, sf]) => pr * sellByMods[Number(Boolean(pf)) + Number(Boolean(sf))]));
+    const plain = ev({});
+    // cheapest ingredient to enchant (one modded unit is enough: the boost takes the best ingredient)
+    let pre: [number, string] | null = null, suf: [number, string] | null = null;
+    for (const [, mid] of equipIngredients) {
+      const ing = g.item("equipment", mid);
+      const grade = craftGrade(s.crafterLevel, ing.itemLevel ?? 1, s.grade);
+      const a = s.enchantStep("prefix", "equipment", mid, 0, grade, 0);
+      const b = s.enchantStep("suffix", "equipment", mid, 0, grade, 0);
+      if (a && (!pre || a.cost < pre[0])) pre = [a.cost, ing.name];
+      if (b && (!suf || b.cost < suf[0])) suf = [b.cost, ing.name];
+    }
+    const withPrefix = ev({ prefix: true }), withSuffix = ev({ suffix: 1 });
+    rows.push({
+      type: "equipment", id: iid, name: it.name, level: it.itemLevel ?? "",
+      ingredients: equipIngredients.map(([, mid]) => g.name("equipment", mid)).join(", "),
+      ev_sell_plain: rf(plain, 1),
+      ev_sell_prefixed_ingredient: rf(withPrefix, 1), prefix_ingredient_cost: pre ? rf(pre[0], 1) : "",
+      prefix_gain: pre ? rf(withPrefix - plain - pre[0], 1) : "",
+      ev_sell_suffixed_ingredient: rf(withSuffix, 1), suffix_ingredient_cost: suf ? rf(suf[0], 1) : "",
+      suffix_gain: suf ? rf(withSuffix - plain - suf[0], 1) : "",
+    });
   }
   return rows;
 }
