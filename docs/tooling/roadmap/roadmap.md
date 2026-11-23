@@ -24,9 +24,12 @@ The site is the only product ([website](../website/website.md)). Three Claude se
 
 | Session | Lane | Owns |
 |---|---|---|
-| "Merchant RPG simulator GitHub Pages setup" | Engine | `web/src/sim/`, `web/src/tools/`, `web/test/`, `docs/tooling/{combat-simulator,profit-calculator,website}/` |
-| "Python simulator to TypeScript" | UI | `site/`, `web/src/ui/`, `web/scripts/` |
-| "Lua game balancing tools" | Roadmap operator | this page, `docs/findings/`, `docs/game-economy/`; dispatches tasks |
+| Engine session [09e5f4] | Engine | `web/src/sim/`, `web/src/tools/`, `web/test/`, `docs/tooling/{combat-simulator,profit-calculator,website}/` |
+| UI session [dae1e8] | UI | `site/`, `web/src/ui/`, `web/scripts/` |
+| Roadmap session [515001] | Roadmap operator | this page, `docs/findings/`, `docs/game-economy/`; dispatches tasks, merges agent branches |
+| Background agents (spawned by Roadmap) | One task each | a new file set per task, on a branch in their own worktree |
+
+Session titles may change; the ref in brackets and the lane column are what count.
 
 Rules:
 - Each session commits only the files it owns. A file outside the lane needs a hand-off message first.
@@ -40,19 +43,20 @@ Rules:
 
 | Id | Task | Status |
 |---|---|---|
-| E1 | **Structured search API.** `cmdSkills`, `cmdGear`, `cmdParty`, `cmdSolo`, `cmdMaps`, `cmdScrolls` (`web/src/tools/combat.ts`) print text through `IO`. Split each into a pure function that returns typed results (ranked candidates with their `FightEval`/`MapEval`), with `onProgress(done, total)` and `shouldStop()`. Text formatters become optional wrappers or go. | Dispatched |
-| E2 | **Combat → economy link.** `farmingReport(sim, party, sources, n)`: for each quest / map × asc (with scrolls), win rate, grade, run time, essence and loot per run at the *simulated* grade, scroll cost per run (priced by `Solver`), essence/h and gold/h. `Solver` option to take a per-source grade and time instead of the global `grade` (won map runs end at grade 5, not 3). | Queued |
-| E3 | **Equal-gear class balance.** `standardHero(classId, level, prestige, gearPolicy)` (best catalog gear with itemLevel ≤ level, default rotation) and `classMatrix(quests, n)`, to separate class power from the player's gear. | Queued |
-| E4 | **CI-safe regression tests.** Fixed-seed snapshot tests using catalog/standard heroes only (no save data), for fights, map runs and `profitReport`, so CI catches drift without the local fixtures. | Queued |
-| E5 | **Engine anomalies.** Archon takes 0% damage (unexplained); Goblin Warlord "Feast" not covered by any reference fight. | Queued |
+| E1 | **Structured search API.** `cmdSkills`, `cmdGear`, `cmdParty`, `cmdSolo`, `cmdMaps`, `cmdScrolls` (`web/src/tools/combat.ts`) print text through `IO`. Split each into a pure function that returns typed results (ranked candidates with their `FightEval`/`MapEval`), with `onProgress(done, total)` and `shouldStop()`. Text formatters become optional wrappers or go. | Done (fbe6c34; API in docs/tooling/combat-simulator "Search API") |
+| E2 | **Combat → economy link.** `farmingReport(sim, party, sources, n)`: for each quest / map × asc (with scrolls), win rate, grade, run time, essence and loot per run at the *simulated* grade, scroll cost per run (priced by `Solver`), essence/h and gold/h. `Solver` option to take a per-source grade and time instead of the global `grade` (won map runs end at grade 5, not 3). | In progress (engine session) |
+| E3 | **Equal-gear class balance.** `standardHero(classId, level, prestige, gearPolicy)` (best catalog gear with itemLevel ≤ level, default rotation) and `classMatrix(quests, n)`, to separate class power from the player's gear. | Agent, branch `e3-class-balance` |
+| E4 | **CI-safe regression tests.** Fixed-seed snapshot tests using catalog/standard heroes only (no save data), for fights, map runs and `profitReport`, so CI catches drift without the local fixtures. | Agent, branch `e4-regression-snapshots` |
+| E5 | **Engine anomalies.** Archon "0%": not a bug (self-heal + reflect, scored on end-of-fight HP). Feast: ported correctly; TS regression case added to E4. | Done |
+| E6 | **Healing enemies read 0%.** `evaluate` scores the enemy by end-of-fight HP (`combat.ts`); also report the lowest enemy HP reached and total damage dealt. Small, after E1. | Queued |
 
 ## UI lane
 
 | Id | Task | Needs | Status |
 |---|---|---|---|
 | U0 | Wiki, tooltips, save kept across pages (IndexedDB), top bar, radar chart, rotation rows, grade stacks | - | In progress |
-| U1 | **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Queued |
-| U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. | E1 | Queued |
+| U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Queued |
+| U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. | E1 ✓ | Next for UI session after U0 |
 | U3 | **Farming planner page**: where the player's party should spend hero time (essence/h, gold/h per quest and map). | E2 | Queued |
 | U4 | **Class balance page**: class × quest win matrix on equal gear. | E3 | Queued |
 

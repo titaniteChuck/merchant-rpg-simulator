@@ -10,3 +10,4 @@
 - **Enchanter**: Added enchanting results and best-strategy counts; top earners updated.
 - **Modifiers**: Added modifier findings; essence and margin tables recomputed with map modifiers and expected values.
 - **Creation**: First results: essence sources by map tier, ascension margins, money-losing items.
+- **Update**: Archon "0% damage" explained (self-heal + reflect, end-of-fight HP); open question closed. Goblin Warlord Feast checked: ported correctly.

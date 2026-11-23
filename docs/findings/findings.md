@@ -153,8 +153,11 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
   instead of 3.2 with the saved rotation (77% vs 67% HP left).
 - Gear: Berserker solo vs Nightmare Bison: best owned gear only removes 26% → 32% of its HP; a grade-S asc-2
   catalog set wins 100% in 3 turns.
-- Endgame: best 6-hero party from the roster removes only ~7% of Odin's HP; Archon takes 0% (check for a special
-  mechanic such as immunity).
+- Endgame: best 6-hero party from the roster removes only ~7% of Odin's HP; Archon (quest 97) *shows* 0% but is not
+  immune: 200k HP, def 1200 / mdef 1500 / eva 500 let ~1.8k damage through per fight, and Aeon Lash (attack all +
+  self-heal 1× matk, twice per rotation, growing with the stacking Unleashed Power) heals it back to full; Soul Barrier
+  reflects hits for 2 turns. The 0% is the end-of-fight HP. Game design, not a bug; the port matches the Lua
+  (32 reference Archon fights).
 
 ## Map runs
 
@@ -192,5 +195,4 @@ Former `tools/combat.py maps` (now `cmdMaps` in `web/src/tools/combat.ts`) with 
   after pays essence per enchant attempt. Not optimised yet.
 - Next: Reset-to-raise-grade before a prefix; enchant-before-or-after-ascending order.
 - Class balance on equal gear (standard heroes per class) to separate class power from gear.
-- Why does Archon take no damage? Verify in game, then check the simulator handles it.
 - Remove or fix the level-70 maps (ids 27–32)? They're dormant but their generation crashes at grade ≥ 3.
