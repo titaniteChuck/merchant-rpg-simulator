@@ -118,11 +118,38 @@ export function gearRows(views: HeroView[]): Row[] {
   return views.flatMap((v) => v.gear.map((g) => ({ hero_n: v.row.n, hero: v.row.name, class: v.row.class, ...g })));
 }
 
+/** Grades from the best down (S, A, B, C, D): the inventory's per-grade columns. */
+export const GRADES_BEST_FIRST = [...GRADES].reverse();
+
+/**
+ * How many items of a stack have each grade ({S, A, B, C, D}, 0 when none): a stack split by grade
+ * ({C: 14, B: 21}) keeps its split, a single grade counts the whole stack, an item without a grade counts nowhere.
+ */
+export function gradeCounts(it: Any): Record<string, number> {
+  const out: Record<string, number> = Object.fromEntries(GRADES_BEST_FIRST.map((g) => [g, 0]));
+  const gr = it.grade;
+  if (gr !== null && typeof gr === "object") {
+    for (const [g, n] of Object.entries(gr)) if (g in out) out[g] += Number(n) || 0;
+  } else if (typeof gr === "number" && gr >= 1 && gr <= 5) {
+    out[GRADES[Math.trunc(gr) - 1]] += stackAmount(it);
+  }
+  return out;
+}
+
+/**
+ * One inventory line: one count column per grade (S … D) and `total` (the stack size) in place of the single
+ * grade and amount, in the order the table and its CSV show them.
+ */
+function inventoryRow(where: string, slot: number, it: Any): Row {
+  const { grade: _grade, amount, prefix, suffix, mods, rarity, unit_sell, total_sell, ...head } = itemRow(it);
+  return { where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity };
+}
+
 /** Inventory stacks in save order, then items on the sale counter (inventory_rows). */
 export function inventoryRows(sv: Save): Row[] {
-  const rows: Row[] = sv.inventory.map((it: Any, i: number) => ({ where: "inventory", slot: i + 1, ...itemRow(it) }));
+  const rows: Row[] = sv.inventory.map((it: Any, i: number) => inventoryRow("inventory", i + 1, it));
   sv.sales.forEach((it: Any, i: number) => {
-    if (it) rows.push({ where: "counter", slot: i + 1, ...itemRow(it), sale_price: it.sellPrice ?? null });
+    if (it) rows.push({ ...inventoryRow("counter", i + 1, it), sale_price: it.sellPrice ?? null });
   });
   return rows;
 }

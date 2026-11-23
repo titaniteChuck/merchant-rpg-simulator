@@ -55,19 +55,29 @@ flowchart LR
 `site/save.html` + `web/src/ui/save-viewer.ts`. The save is read in the browser, never uploaded.
 
 - Decoding: `web/src/tools/save.ts`.
-- Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export`; checked equal to its CSVs on a real
-  save (inventory 167, maps 5, heroes 17, gear 102 rows).
+- Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export` (checked equal to its CSVs on a real
+  save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Tabs: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters; CSV download per table.
   Each tab has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`); a click updates it with
   `history.replaceState` (no re-render, no history entry). No hash or an unknown one opens Overview.
-- Overview: a compact label / value / hint grid (gold, inventory value and stacks, gold earned, items crafted, sales,
-  heroes, maps owned / slots, mode and game version), not tiles. No ascension legend: outlines carry their own
-  tooltip and screen-reader label.
+- Overview: small cards (`.save-cards`, about 80px tall, several per row, two per row on a phone), each with a label,
+  a big number and an optional one-line hint: gold, inventory value and stacks, gold earned, items crafted, sales,
+  heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
+  outlines carry their own tooltip and screen-reader label.
+- Inventory: one count column per grade, best first (S, A, B, C, D: `GRADES_BEST_FIRST` / `gradeCounts` in
+  `save-tables.ts`), then Total (the stack size). A stack split by grade keeps its split; a single-grade item counts
+  in its grade. Cells hold numbers only ("–" for 0; rows keep 0 so the columns sort as numbers). The header shows the
+  grade badge (accessible name "Grade S count"); every column sorts. The CSV has the same `S,A,B,C,D,total` columns
+  in place of `grade` and `amount`.
+- Header icons: `iconHeaders` in `save-viewer.ts` swaps a sortable header's text for nodes (badge, bar) with an
+  `aria-label` and tooltip, since `table()` in `dom.ts` takes text labels.
 - Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
   name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): radar chart, rotation rows,
   passive, gear with outlines.
-- Crafters: Level, Ascension 1 level, Ascension 2 level (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
+- Crafters: Level (ascension 0), Level + a silver bar (ascension 1), Level + a gold bar (ascension 2), the bar being the
+  ascension outline's gradient (`.lvl-asc`), named "Level for ascension-1 items" / "…-2 items" for screen readers
+  (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
   `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each
   ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
   `prestigeLevel` and lower ascensions use `level`; an ascension not unlocked shows "—".

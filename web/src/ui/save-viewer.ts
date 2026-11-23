@@ -4,12 +4,12 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, withAsc } from "./dom.ts";
+import { $, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, tabKeys, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
+  crafterRows, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -44,7 +44,7 @@ const ascCol: Column = { key: "asc", label: "Asc", num: true, render: (r) => asc
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
 
 // ---------------------------------------------------------------- sections
-/** The save at a glance: a compact label / value / hint grid (the "Overview" tab). */
+/** The save at a glance: small cards (label, value, optional hint), several per row (the "Overview" tab). */
 function renderOverview(sv: Save): HTMLElement {
   const s = summary(sv);
   const rows: [string, string, string, string?][] = [
@@ -57,10 +57,29 @@ function renderOverview(sv: Save): HTMLElement {
     ["🗺️", "Maps", `${s.maps} / ${s.mapSlots}`, "owned / slots"],
     ["⚙️", "Mode", String(s.mode), `game v${s.version}`],
   ];
-  return el("dl", { class: "save-overview" }, ...rows.map(([icon, label, value, hint]) => el("div", {},
-    el("dt", {}, el("span", { "aria-hidden": "true" }, icon), label),
-    el("dd", {}, el("span", { class: "ov-value" }, value), ...(hint ? [el("span", { class: "ov-hint" }, hint)] : [])))));
+  return el("ul", { class: "save-cards", "aria-label": "Save overview" }, ...rows.map(([icon, label, value, hint]) => el("li", { class: "save-card" },
+    el("span", { class: "sc-label" }, el("span", { class: "sc-icon", "aria-hidden": "true" }, icon), label),
+    el("span", { class: "sc-value" }, value), ...(hint ? [el("span", { class: "sc-hint" }, hint)] : []))));
 }
+
+/**
+ * Headers drawn as nodes instead of text (table() takes text labels): for each column key, the header
+ * button's content and its accessible name (also its tooltip). The button keeps sorting.
+ */
+function iconHeaders(wrap: HTMLElement, cols: Column[], icons: Record<string, [(Node | string)[], string]>): HTMLElement {
+  const buttons = wrap.querySelectorAll<HTMLButtonElement>("thead th button");
+  cols.forEach((c, i) => {
+    const icon = icons[c.key];
+    if (!icon || !buttons[i]) return;
+    buttons[i].replaceChildren(...icon[0]);
+    buttons[i].setAttribute("aria-label", icon[1]);
+    buttons[i].title = icon[1];
+  });
+  return wrap;
+}
+
+/** A count cell: the number, or a muted "–" for 0 (the row keeps 0, so the column sorts as numbers). */
+const countCell = (key: string) => (r: Cells) => (Number(r[key]) ? fmt.format(Number(r[key])) : el("span", { class: "muted" }, "–"));
 
 const STAT_LABELS: Record<string, string> = {
   maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit ×", def: "Def", mdef: "Mdef",
@@ -164,11 +183,16 @@ function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
     ]));
 }
 
+/** Inventory columns: one count per grade, best first (S … D), then the stack's total. */
 const ITEM_COLS: Column[] = [
   { key: "name", label: "Item", render: itemCell }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
-  ascCol, { key: "grade", label: "Grade", render: gradeCell }, { key: "amount", label: "Qty", num: true },
+  ascCol, ...GRADES_BEST_FIRST.map((g): Column => ({ key: g, label: g, num: true, render: countCell(g) })),
+  { key: "total", label: "Total", num: true },
   { key: "unit_sell", label: "Unit value", num: true }, { key: "total_sell", label: "Total value", num: true },
 ];
+/** The inventory table; each grade column's header is the grade's badge ("Grade S count" for screen readers). */
+const inventoryTable = (rows: Row[]) => iconHeaders(table(rows, ITEM_COLS, (r) => (r.where === "counter" ? "counter" : "")), ITEM_COLS,
+  Object.fromEntries(GRADES_BEST_FIRST.map((g) => [g, [[gradeBadge(g)], `Grade ${g} count`]])));
 
 function renderInventory(sv: Save): HTMLElement {
   const all = inventoryRows(sv);
@@ -185,7 +209,7 @@ function renderInventory(sv: Save): HTMLElement {
   const update = () => {
     const rows = filtered();
     total.textContent = `${rows.length} stacks · ${fmt.format(rows.reduce((s, r) => s + (Number(r.total_sell) || 0), 0))} g base value`;
-    holder.replaceChildren(table(rows, ITEM_COLS, (r) => (r.where === "counter" ? "counter" : "")));
+    holder.replaceChildren(inventoryTable(rows));
   };
   search.addEventListener("input", update);
   kind.addEventListener("change", update);
@@ -223,18 +247,24 @@ function renderCrafters(sv: Save): HTMLElement {
     if (v === null || v === undefined || v === "") return el("span", { class: "muted", title: "Not reached yet: the crafter can't make items of this ascension." }, "—");
     return withAsc(el("span", { class: "nowrap" }, fmt.format(Number(v))), asc);
   };
-  return el("div", {}, toolbar(csvButton("crafters", () => rows)), table(rows, [
+  /** "Level" and a small silver (ascension 1) or gold (ascension 2) bar, like the outlines of those items. */
+  const levelHeader = (asc: number): [(Node | string)[], string] => [
+    ["Level", el("span", { class: `lvl-asc asc-${asc}`, "aria-hidden": "true" })], `Level for ascension-${asc} items`];
+  const cols: Column[] = [
     { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) },
     { key: "level", label: "Level", num: true },
-    { key: "asc1_level", label: "Ascension 1 level", num: true, render: levelCell("asc1_level", 1) },
-    { key: "asc2_level", label: "Ascension 2 level", num: true, render: levelCell("asc2_level", 2) },
+    { key: "asc1_level", label: "Level (ascension 1)", num: true, render: levelCell("asc1_level", 1) },
+    { key: "asc2_level", label: "Level (ascension 2)", num: true, render: levelCell("asc2_level", 2) },
     { key: "crafting", label: "Working on", render: (r) => {
       const job = jobOf.get(String(r.crafter));
       if (!job) return el("span", { class: "muted" }, "idle");
       return el("span", { class: "nowrap" }, `🔨 ${job.amount ?? 1} × `,
         itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel));
     } },
-  ]), el("p", { class: "muted small" }, "Each crafter has its own level per ascension: crafting items of its current ascension uses that level " +
+  ];
+  return el("div", {}, toolbar(csvButton("crafters", () => rows)),
+    iconHeaders(table(rows, cols), cols, { asc1_level: levelHeader(1), asc2_level: levelHeader(2) }),
+    el("p", { class: "muted small" }, "Each crafter has its own level per ascension: crafting items of its current ascension uses that level " +
     "(it restarts at 1 when the crafter ascends), items of ascension 0 use the normal level. Above that level, it can only craft them one ascension lower."));
 }
 
@@ -288,6 +318,7 @@ function route(): void {
     });
     tabList.append(b);
   }
+  tabKeys(tabList);
   $("#result").replaceChildren(tabList, panel);
   select(tabOf(location.hash));
 }
