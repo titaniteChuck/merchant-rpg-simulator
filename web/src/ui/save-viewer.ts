@@ -4,7 +4,7 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, ascLegend, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, tile, withAsc } from "./dom.ts";
+import { $, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
@@ -44,18 +44,22 @@ const ascCol: Column = { key: "asc", label: "Asc", num: true, render: (r) => asc
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
 
 // ---------------------------------------------------------------- sections
-function renderSummary(sv: Save): HTMLElement {
+/** The save at a glance: a compact label / value / hint grid (the "Overview" tab). */
+function renderOverview(sv: Save): HTMLElement {
   const s = summary(sv);
-  return el("div", { class: "tiles" },
-    tile("Gold", fmt.format(s.gold), undefined, { icon: "🪙", tone: "t-gold" }),
-    tile("Inventory value", `${fmt.format(s.inventoryValue)} g`, "base sell value", { icon: "💰", tone: "t-orange" }),
-    tile("Gold earned", fmt.format(s.totalGoldEarned), undefined, { icon: "📈", tone: "t-green" }),
-    tile("Items crafted", fmt.format(s.totalCrafted), undefined, { icon: "🔨", tone: "t-blue" }),
-    tile("Sales", fmt.format(s.totalSales), undefined, { icon: "🛒", tone: "t-teal" }),
-    tile("Heroes", String(s.heroes), undefined, { icon: "🛡️", tone: "t-violet" }),
-    tile("Maps", `${s.maps} / ${s.mapSlots}`, "owned / slots", { icon: "🗺️", tone: "t-pink" }),
-    tile("Mode", String(s.mode), `game v${s.version}`, { icon: "⚙️", tone: "t-slate" }),
-  );
+  const rows: [string, string, string, string?][] = [
+    ["🪙", "Gold", fmt.format(s.gold)],
+    ["💰", "Inventory value", `${fmt.format(s.inventoryValue)} g`, `base sell value · ${fmt.format(s.inventoryStacks)} stacks`],
+    ["📈", "Gold earned", fmt.format(s.totalGoldEarned), "all time"],
+    ["🔨", "Items crafted", fmt.format(s.totalCrafted)],
+    ["🛒", "Sales", fmt.format(s.totalSales)],
+    ["🛡️", "Heroes", String(s.heroes)],
+    ["🗺️", "Maps", `${s.maps} / ${s.mapSlots}`, "owned / slots"],
+    ["⚙️", "Mode", String(s.mode), `game v${s.version}`],
+  ];
+  return el("dl", { class: "save-overview" }, ...rows.map(([icon, label, value, hint]) => el("div", {},
+    el("dt", {}, el("span", { "aria-hidden": "true" }, icon), label),
+    el("dd", {}, el("span", { class: "ov-value" }, value), ...(hint ? [el("span", { class: "ov-hint" }, hint)] : [])))));
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -120,7 +124,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
   return el("div", { class: "hero-detail-page" },
-    el("nav", { class: "hero-nav", "aria-label": "Heroes" }, el("a", { href: "#", class: "secondary-link" }, "← All heroes"),
+    el("nav", { class: "hero-nav", "aria-label": "Heroes" }, el("a", { href: "#heroes", class: "secondary-link" }, "← All heroes"),
       el("span", { class: "hero-nav-step" }, nav(views[k - 1], `‹ ${views[k - 1]?.row.name ?? ""}`), nav(views[k + 1], `${views[k + 1]?.row.name ?? ""} ›`))),
     el("article", { class: `card hero hero-detail cls-${v.cls}` },
       el("header", { class: "hero-head" }, avatar(v, "big"),
@@ -235,7 +239,11 @@ function renderCrafters(sv: Save): HTMLElement {
 }
 
 // ---------------------------------------------------------------- page
-const TABS = ["Heroes", "Inventory", "Maps", "Crafters"] as const;
+/** Tabs in order; the first is the default. Each has a hash (save.html#inventory …). */
+const TABS = ["Overview", "Heroes", "Inventory", "Maps", "Crafters"] as const;
+type Tab = typeof TABS[number];
+const tabHash = (t: Tab) => `#${t.toLowerCase()}`;
+const tabOf = (hash: string): Tab => TABS.find((t) => tabHash(t) === hash.toLowerCase()) ?? TABS[0];
 
 let current: { sv: Save; views: HeroView[] } | null = null;
 
@@ -245,7 +253,10 @@ function render(sv: Save, fileName: string): void {
   route();
 }
 
-/** save.html#hero=<id> shows one hero; anything else the overview with its tabs. */
+/**
+ * save.html#hero=<id> shows one hero; #overview, #heroes, #inventory, #maps, #crafters a tab;
+ * anything else (no hash) the Overview tab.
+ */
 function route(): void {
   if (!current) return;
   const { sv, views } = current;
@@ -258,22 +269,27 @@ function route(): void {
     return;
   }
   document.title = "Save Viewer · Merchant RPG Simulator";
-  const panels: Record<string, () => HTMLElement> = {
-    Heroes: () => renderHeroes(views, sv), Inventory: () => renderInventory(sv), Maps: () => renderMaps(sv), Crafters: () => renderCrafters(sv),
+  const panels: Record<Tab, () => HTMLElement> = {
+    Overview: () => renderOverview(sv), Heroes: () => renderHeroes(views, sv), Inventory: () => renderInventory(sv),
+    Maps: () => renderMaps(sv), Crafters: () => renderCrafters(sv),
   };
   const tabList = el("div", { role: "tablist", class: "tabs", "aria-label": "Save sections" });
   const panel = el("div", { role: "tabpanel", class: "panel" });
-  const select = (name: string) => {
+  const select = (name: Tab) => {
     tabList.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.textContent === name)));
     panel.replaceChildren(panels[name]());
   };
   for (const name of TABS) {
     const b = el("button", { role: "tab", type: "button", "aria-selected": "false" }, name);
-    b.addEventListener("click", () => select(name));
+    b.addEventListener("click", () => {
+      // replaceState: keeps the tab in the URL without a hashchange (no re-render) or a history entry.
+      history.replaceState(null, "", name === TABS[0] ? location.pathname + location.search : tabHash(name));
+      select(name);
+    });
     tabList.append(b);
   }
-  $("#result").replaceChildren(renderSummary(sv), ascLegend(), tabList, panel);
-  select("Heroes");
+  $("#result").replaceChildren(tabList, panel);
+  select(tabOf(location.hash));
 }
 window.addEventListener("hashchange", route);
 

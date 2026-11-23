@@ -56,9 +56,14 @@ flowchart LR
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export`; checked equal to its CSVs on a real
   save (inventory 167, maps 5, heroes 17, gear 102 rows).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
-- Sections: summary tiles, heroes, inventory (filter, sort, base value), maps, crafters; CSV download per table.
+- Tabs: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters; CSV download per table.
+  Each tab has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`); a click updates it with
+  `history.replaceState` (no re-render, no history entry). No hash or an unknown one opens Overview.
+- Overview: a compact label / value / hint grid (gold, inventory value and stacks, gold earned, items crafted, sales,
+  heroes, maps owned / slots, mode and game version), not tiles. No ascension legend: outlines carry their own
+  tooltip and screen-reader label.
 - Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
-  name opens its page, `save.html#hero=<id>` (back with "All heroes", previous/next): radar chart, rotation rows,
+  name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): radar chart, rotation rows,
   passive, gear with outlines.
 - Crafters: Level, Ascension 1 level, Ascension 2 level (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
   `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each

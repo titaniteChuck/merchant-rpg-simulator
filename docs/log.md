@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-23
+- **Website**: Save viewer (U10): summary tiles replaced by a compact Overview tab (first, default); ascension legend removed; tabs deep-linkable by hash.
 - **Website**: Wiki review (U6a): enemy names on the Skills list; class page radar, growth curves, passives-then-skills table with AP badges and clickable rows.
 - **Website**: CI-safe regression snapshots for the engine and the profit model.
 - **Public repo**: Repo published without game files; website sub-concept under tooling.

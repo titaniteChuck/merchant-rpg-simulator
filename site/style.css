@@ -627,3 +627,14 @@ a.secondary-link:hover { text-decoration: underline; }
 .search-card.best { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
 h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 
+/* save overview */
+.save-overview { margin: 0; max-width: 760px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.save-overview > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 12px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border); }
+.save-overview dt { display: flex; align-items: baseline; gap: 8px; color: var(--muted); font-size: 0.85rem; font-weight: 600; min-width: 0; }
+.save-overview dd { margin: 0; text-align: right; min-width: 0; }
+.save-overview .ov-value { font-weight: 750; font-variant-numeric: tabular-nums; }
+.save-overview .ov-hint { display: block; color: var(--muted); font-size: 0.72rem; }
+#result > .tabs { margin-top: 14px; flex-wrap: wrap; }
+/* end save overview */
