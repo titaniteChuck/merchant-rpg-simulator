@@ -227,11 +227,20 @@ flowchart LR
   enemy multiplier and the ascension-1 one (×2, silver outline). Each variant card shows the 5-turn timeline strip (U11)
   (U24: it replaces the rotation list, see below). Nav link "Enemies" after Maps, static in `wiki.html`.
 - Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
-  "Where it drops" (now also for equipment), home search. Gathering quests and placeholders stay plain text.
-- Not enemies: `NON_ENEMY_QUEST_IDS` in `wiki-data.ts`, a static, commented list: gathering quests (questType 1: 1, 11,
-  21, 30, 42, 77; the game hides enemy stats for them) and "MissNo" placeholders (39–41, 58–60, 75, 76; the game skips
-  them too). Used by `enemyIds`, `enemiesWith`/`enemyNamesWith`, `enemyMapRoles`/`enemyMaps`. `test/wiki-data.test.ts`
-  checks it still equals "questType 1 or nickname MissNo" in the data.
+  "Where it drops" (now also for equipment), home search. Placeholders stay plain text.
+- Not enemies: `PLACEHOLDER_QUEST_IDS` in `wiki-data.ts` (was `NON_ENEMY_QUEST_IDS` until the U28 follow-up), a static,
+  commented list of the "MissNo" placeholders (39–41, 58–60, 75, 76; the game skips them too). Used by `enemyIds`,
+  `enemiesWith`/`enemyNamesWith`, `enemyMapRoles`/`enemyMaps`. `test/wiki-data.test.ts` checks it still equals
+  "nickname MissNo" in the data.
+- Quest bushes (U28 follow-up, user): the gathering quests (questType 1: 1 Forest, 11 Yarsol, 21 Aldur, 30 Vulkrum,
+  42 Grimhal, 77 Hoarfrost) are the first battle of each region's quest board, fought on their own like any quest (no
+  attack; they drop mosses and roots for potions). They were excluded with the placeholders; they are enemies again
+  (`isGathering`), kind "Quest bush". The Enemies list's Kind column now reads Quest bush · Quest · Boss · Party Boss ·
+  Event boss (questType 6, the game's "Epic Boss") · Map boss · Map treasure bush (`enemyKind`). Both bush kinds' pages
+  add "Fought" (quest board, first battle / random room of the maps of its band, Scribe) and "Mainly drops" (the
+  every-win materials and what they are for). Included in the skills' enemy lists (they use Basic) and the battle
+  picker; left out of "Good against" (nothing to answer: they never hit), the class balance and the levelling
+  reference quests (no threat).
 - Class page (U6a, reworked in U19, `web/src/ui/wiki-classes.ts`): stat cards at the top (HP, Atk, Matk, Acc, Crit, Def,
   Mdef) for the selected level and ascension; above the charts an ascension switch (0/1/2) and a level slider
   (1..the tier's max). Clicking a growth chart (or Enter on it) picks that level for every chart, the cards and the
@@ -355,6 +364,15 @@ flowchart LR
   time (`obj.Map:generateTreasure`), so no map page showed it (a level-1 map such as Tuvale Map gets bush 99). Now the
   list is in region order (the region-1 bush sits with Tuvale), and map pages have a "Treasure" section with the bush of
   their level band (none for the level-70 maps: `treasureId[7]` does not exist).
+- Treasure Bush levels (U28 follow-up): a bush's quest `levelReq` (10, 20 … 60) is the top of its band, so bush 99 read
+  as a level-10 enemy sorted after Tuvale's level-9 ones, and looked like Yarsol's. Now a bush shows the level range of
+  the maps it spawns in (`bushMaps`, `bushLevels`, `enemyLevelText` in `wiki-data.ts`: 99 = maps 1–10, 100 = 13–20 …
+  104 = 52–60), sorts by the lowest one, and its region is the lowest map's ("bush of maps level 1–10": 99 Tuvale …
+  104 Frentir). Same in enemy links, the skill pages and the battle picker ("Lv 1–10 · Treasure Bush"). The enemy page
+  keeps `levelReq` as a detail ("maps level 1–10 (quest level 10)", "Quest level" in its stats table) and lists the maps
+  in its Maps section (role "treasure"). The game inserts the bush at a random room position (`math.random(1,
+  #self.enemies)`, `obj.Map.lua:186-203`), not as the first room; its stats take the map's multiplier like any room
+  (the campaign uses `map.finalMapStats` for every combat).
 - Regions (U24, `regionOf(kind, id)` in `wiki-data.ts` → { id, name, full, order, group: "region" | "event" | "map",
   why }; tested in `test/wiki-v5.test.ts`). Names from `TEXT.regionText` (Tuvale Forest, Yarsol Cove, Aldur Highlands,
   Vulkrum Badlands, Grimhal Volcano, Frentir Chasm). The rule, from the game data, level bands only as the last resort:

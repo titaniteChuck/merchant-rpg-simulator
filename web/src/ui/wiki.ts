@@ -34,7 +34,7 @@ import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
   recipe, regionChip, regionOf, regionSortKey, regionText, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText,
-  treasureBushOf, usedInRecipes,
+  treasureBushOf, usedInRecipes, enemyKind, enemyLevelText, isGathering, isTreasureBush,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -185,7 +185,8 @@ const GOOD_HELP = "From each enemy's 5-turn timeline and this skill's effects (r
 
 /** Hero skills: every enemy whose timeline makes this skill worth taking (wiki-skills.ts), best first (U24: no limit). */
 function goodAgainstSection(name: string): HTMLElement | null {
-  const list = goodAgainst(name).filter((m) => isVisible("enemy", m.quest));
+  // Quest bushes never hit back (no attack): nothing for a skill to answer, so they are left out.
+  const list = goodAgainst(name).filter((m) => isVisible("enemy", m.quest) && !isGathering(m.quest));
   if (!list.length) return sectionHelp(section("Good against", none(G.abilityData?.[name] && classesWith("skill", name).length
     ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill.")), GOOD_HELP);
   // U21: a table, one row per enemy (ranked), a ✓ on the enemy turns the skill answers; the reasons are the cell's
@@ -219,7 +220,7 @@ function skillPage(name: string): HTMLElement {
     ...(good ? [good] : []),
     section(`Enemies with this skill (${enemies.length})`, enemies.length
       ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, enemyLink(e), e.rare ? pill("rare", "t-pink") : "",
-        el("span", { class: "muted small" }, ` level ${quest(e.id)?.levelReq ?? "?"}`))))
+        el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)}`))))
       : none(hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."), ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null)));
 }
 
@@ -460,7 +461,7 @@ function enemyPage(id: number): HTMLElement {
   const needs = needsOf("enemy", id);
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], q.name, "👹", needs);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], q.name), el("h1", {}, "👹 ", q.name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
-    el("p", { class: "lead" }, [q.title || "Quest enemy", `level ${q.levelReq}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ")),
+    el("p", { class: "lead" }, [enemyKind(id), isTreasureBush(id) ? `in maps of level ${enemyLevelText(id)}` : `level ${q.levelReq}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ")),
     ...enemyBody(id, facts, section));
 }
 

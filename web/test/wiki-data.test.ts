@@ -5,28 +5,35 @@ import { readFileSync } from "node:fs";
 import { loadGameData } from "../src/sim/api.ts";
 import { G } from "../src/sim/data.ts";
 import {
-  dropSources, enemiesWith, enemyDrops, enemyIds, enemyMapRoles, enemyNamesWith, hasRare, isEnemy, NON_ENEMY_QUEST_IDS, parcelRoll,
+  dropSources, enemiesWith, enemyDrops, enemyIds, enemyMapRoles, enemyNamesWith, hasRare, isEnemy, isGathering, PLACEHOLDER_QUEST_IDS, parcelRoll,
+  enemyKind,
 } from "../src/ui/wiki-data.ts";
 
 loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 
-test("NON_ENEMY_QUEST_IDS: gathering quests and placeholders out, real fights in", () => {
-  for (const id of [1, 11, 21, 30, 42, 77]) assert.ok(NON_ENEMY_QUEST_IDS.has(id), `gathering quest ${id}`);
-  for (const id of [39, 58, 75, 76]) assert.ok(NON_ENEMY_QUEST_IDS.has(id), `placeholder ${id}`);
+test("PLACEHOLDER_QUEST_IDS: placeholders out; quest bushes (gathering) and real fights in", () => {
+  for (const id of [39, 58, 75, 76]) assert.ok(PLACEHOLDER_QUEST_IDS.has(id) && !isEnemy(id), `placeholder ${id}`);
+  // the quest bushes: the first battle of each region's board
+  for (const id of [1, 11, 21, 30, 42, 77]) {
+    assert.ok(isEnemy(id) && isGathering(id), `quest bush ${id}`);
+    assert.equal(enemyKind(id), "Quest bush");
+  }
   // Moss Golem, Grass Spider (has a rare), Maexna, Leviathan (epic boss), Goblin Warlord (map boss), Treasure Bush
-  for (const id of [2, 4, 10, 61, 91, 99]) assert.ok(!NON_ENEMY_QUEST_IDS.has(id) && isEnemy(id), `enemy ${id}`);
+  for (const id of [2, 4, 10, 61, 91, 99]) assert.ok(!PLACEHOLDER_QUEST_IDS.has(id) && isEnemy(id), `enemy ${id}`);
+  assert.deepEqual([2, 61, 91, 99].map(enemyKind), ["Quest", "Event boss", "Map boss", "Map treasure bush"]);
   assert.equal(G.questData[1].name, "Forest Gathering");
 });
 
-test("NON_ENEMY_QUEST_IDS matches the data: every questType 1 and every 'MissNo' quest, nothing else", () => {
-  const derived = Object.entries<any>(G.questData).filter(([, q]) => q.questType === 1 || q.nickname === "MissNo").map(([id]) => Number(id));
-  assert.deepEqual([...NON_ENEMY_QUEST_IDS].sort((a, b) => a - b), derived.sort((a, b) => a - b));
-  assert.equal(enemyIds().length, Object.keys(G.questData).length - NON_ENEMY_QUEST_IDS.size);
+test("PLACEHOLDER_QUEST_IDS matches the data: every 'MissNo' quest, nothing else", () => {
+  const derived = Object.entries<any>(G.questData).filter(([, q]) => q.nickname === "MissNo").map(([id]) => Number(id));
+  assert.deepEqual([...PLACEHOLDER_QUEST_IDS].sort((a, b) => a - b), derived.sort((a, b) => a - b));
+  assert.equal(enemyIds().length, Object.keys(G.questData).length - PLACEHOLDER_QUEST_IDS.size);
 });
 
 test("skill users and maps leave quests out", () => {
   const basic = enemyNamesWith("Basic").map((e) => e.name);
-  assert.ok(!basic.includes("Forest Gathering") && !basic.includes("Region 5") && basic.includes("Moss Golem"));
+  // quest bushes are battles (they attack with Basic, for 0); placeholders are not
+  assert.ok(basic.includes("Forest Gathering") && !basic.includes("Region 5") && basic.includes("Moss Golem"));
   assert.ok(enemiesWith("Basic").every((e) => isEnemy(e.id)));
   assert.deepEqual(enemyMapRoles(1), []);
   for (const id of Object.keys(G.questData).map(Number)) {

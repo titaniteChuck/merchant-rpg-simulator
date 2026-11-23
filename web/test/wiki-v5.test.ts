@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { loadGameData } from "../src/sim/api.ts";
 import { G } from "../src/sim/data.ts";
-import { enemyIds, items, mapRegionId, quest, regionOf, regionOfLevel, regionSortKey, treasureBushOf } from "../src/ui/wiki-data.ts";
+import {
+  bushLevels, bushMaps, enemyIds, enemyLevelSort, enemyLevelText, items, mapRegionId, quest, regionOf, regionOfLevel, regionSortKey, treasureBushOf,
+} from "../src/ui/wiki-data.ts";
 import { lootTable } from "../src/ui/wiki-loot.ts";
 
 loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -41,6 +43,24 @@ test("Treasure Bushes are enemies, one per region, in the region of the maps the
     const b = treasureBushOf(m.itemLevel ?? 0);
     if (b) assert.equal(Math.ceil((m.itemLevel || 1) / 10), b - 98, m.name);
   }
+});
+
+test("a Treasure Bush shows the level range of the maps it spawns in (not its quest levelReq)", () => {
+  // Bush 99 (levelReq 10) is the Tuvale bush: maps of level 1-10, Tuvale Map (1) … Yarsol Map (10).
+  assert.equal(quest(99).levelReq, 10);
+  assert.deepEqual(bushLevels(99), { lo: 1, hi: 10 });
+  assert.equal(enemyLevelText(99), "1–10");
+  assert.ok(bushMaps(99).includes(1), "Tuvale Map");
+  assert.deepEqual(bushMaps(99).map((id) => G.itemData.map[id].name), ["Tuvale Map", "Hard Tuvale Map", "Goblin's Feast Map", "Yarsol Map"]);
+  const r = regionOf("enemy", 99)!;
+  assert.equal(r.name, "Tuvale");
+  assert.match(r.why, /bush of maps level 1–10/);
+  // sorted by the lowest map level: the first Tuvale enemy, not after the level-9 ones
+  assert.equal(enemyLevelSort(99), 1);
+  assert.deepEqual([100, 101, 102, 103, 104].map(enemyLevelText), ["13–20", "23–30", "35–40", "45–50", "52–60"]);
+  assert.deepEqual([100, 101, 102, 103, 104].map((id) => regionOf("enemy", id)!.name), ["Yarsol", "Aldur", "Vulkrum", "Grimhal", "Frentir"]);
+  assert.deepEqual(bushMaps(2), [], "not a bush");
+  assert.equal(enemyLevelText(2), String(quest(2).levelReq));
 });
 
 test("map and item regions", () => {

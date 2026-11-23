@@ -81,32 +81,43 @@ export function classesWith(kind: "skill" | "passive", name: string): [number, A
 }
 
 /**
- * Quest ids that are not fighters, so the wiki never lists them as enemies (Enemies list, "enemies with this skill",
- * enemy links, map roles). Static on purpose: the data has no single "is an enemy" flag. Built once by reading every
- * entry of questData (inventory/gamedata.json, 104 quests) next to decompiled/data.QuestData.lua:
- * - Gathering quests = questType 1 (nickname "Gathering", enemyAtk/Matk 0, rewards are herbs). The game treats them as
- *   non-fights too: scene.maps.MapEnemyDescriptionOverlay draws the enemy stats only when `questType ~= 1`.
- *   1 Forest, 11 Yarsol, 21 Aldur, 30 Vulkrum, 42 Grimhal, 77 Hoarfrost Gathering.
- * - Placeholders: nickname "MissNo", title "Placeholder", dummy stats (9999 HP, 999 Atk, level 99 or 50). Unused slots the
- *   game skips itself (data.OrderData: `nickname ~= "MissNo"`). 39–41 "Region 4 Other", 58–60 "Region 5",
- *   75 "Weekly 15", 76 "Region 6".
- * No map's room list or boss list holds any of them. Every other quest (questType 2–8: quests, bosses, Epic Bosses 61–74,
- * Map Bosses 91–98, Treasure Bushes 99–104) is a real fight and stays an enemy. Recheck when the game data changes
- * (test/wiki-data.test.ts fails if a new questType-1 or "MissNo" quest appears).
+ * Quest ids that are not enemies at all, so the wiki never lists them (Enemies list, "enemies with this skill", enemy
+ * links, map roles): the placeholders, nickname "MissNo", title "Placeholder", dummy stats (9999 HP, 999 Atk, level 99
+ * or 50). Unused slots the game skips itself (data.OrderData: `nickname ~= "MissNo"`). 39–41 "Region 4 Other",
+ * 58–60 "Region 5", 75 "Weekly 15", 76 "Region 6". Static on purpose (the data has no "is an enemy" flag); no map's
+ * room or boss list holds any of them. test/wiki-data.test.ts fails if a new "MissNo" quest appears.
  */
-export const NON_ENEMY_QUEST_IDS = new Set<number>([
-  1, 11, 21, 30, 42, 77, // gathering quests (questType 1)
-  39, 40, 41, 58, 59, 60, 75, 76, // "MissNo" placeholders
-]);
+export const PLACEHOLDER_QUEST_IDS = new Set<number>([39, 40, 41, 58, 59, 60, 75, 76]);
 
-/** A quest that is a real fight: named, not gathering, not a placeholder. */
-export const isEnemy = (id: number): boolean => !NON_ENEMY_QUEST_IDS.has(id) && !!quest(id)?.name;
+/**
+ * The quest bushes (gathering quests, questType 1, nickname "Gathering"): the first battle of each region's quest
+ * board, fought on their own like any quest; no attack (enemyAtk / Matk 0), they drop mosses and roots for potions.
+ * 1 Forest (Tuvale, level 1), 11 Yarsol (10), 21 Aldur (20), 30 Vulkrum (30), 42 Grimhal (40), 77 Hoarfrost (Frentir,
+ * 51). Until U28 they were left out of the wiki with the placeholders; they are enemies again, labelled "Quest bush".
+ * Not to be mixed with the map Treasure Bushes 99–104 (isTreasureBush), which hide in map rooms.
+ */
+export const isGathering = (id: number): boolean => quest(id)?.questType === 1;
+
+/** A quest that is a battle: named and not a placeholder (quest bushes included). */
+export const isEnemy = (id: number): boolean => !PLACEHOLDER_QUEST_IDS.has(id) && !!quest(id)?.name;
 /** Quest ids of every enemy, in id order. */
 export const enemyIds = (): number[] => Object.keys(G.questData ?? {}).map(Number).filter(isEnemy).sort((a, b) => a - b);
 /** The quest has a rare variant with its own stats (nameB, enemyHpB…). */
 export const hasRare = (id: number): boolean => !!quest(id)?.nameB && quest(id)?.enemyHpB !== undefined;
-/** "Party Boss", "Map Boss", "Epic Boss"…, or "Quest" when the game gives no title. */
-export const enemyKind = (id: number): string => quest(id)?.title || "Quest";
+/**
+ * The kind of battle (the Enemies list's Kind column): "Quest bush" (gathering quests), "Map treasure bush" (99–104),
+ * "Event boss" (questType 6, the game's "Epic Boss"), "Map boss" (questType 8), else the game's title ("Boss",
+ * "Party Boss") or "Quest".
+ */
+export const enemyKind = (id: number): string => {
+  const q = quest(id);
+  if (!q) return "Quest";
+  if (q.questType === 1) return "Quest bush";
+  if (TREASURE_IDS.includes(id)) return "Map treasure bush";
+  if (q.questType === 6) return "Event boss";
+  if (q.questType === 8) return "Map boss";
+  return q.title || "Quest";
+};
 
 /** Enemies (and their rare variant) that use a skill; gathering quests and placeholders left out. */
 export function enemiesWith(skill: string): { id: number; name: string; rare: boolean }[] {
@@ -136,6 +147,33 @@ export function enemyNamesWith(skill: string): { id: number; name: string; rare:
  */
 const TREASURE_IDS = [99, 100, 101, 102, 103, 104];
 export const treasureBushOf = (mapLevel: number): number | undefined => TREASURE_IDS[Math.ceil(mapLevel / 10) - 1];
+export const isTreasureBush = (questId: number): boolean => TREASURE_IDS.includes(questId);
+
+/**
+ * The maps a Treasure Bush spawns in, lowest level first: every map whose level band picks it (obj.Map:generateTreasure,
+ * treasureId[ceil(levelReq / 10)], inserted at a random room position). Bush 99 = maps of level 1–10 (Tuvale Map …
+ * Yarsol Map), 100 = 11–20 … 104 = 51–60; level-70 maps have none. [] for any other quest.
+ */
+export function bushMaps(questId: number): number[] {
+  if (!isTreasureBush(questId)) return [];
+  return items("map").filter(([, m]) => treasureBushOf(m.itemLevel ?? 0) === questId)
+    .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0]).map(([id]) => id);
+}
+/** Level range of the maps a Treasure Bush spawns in ({ lo: 1, hi: 10 } for bush 99), or null. */
+export function bushLevels(questId: number): { lo: number; hi: number } | null {
+  const lv = bushMaps(questId).map((id) => item("map", id)?.itemLevel ?? 0);
+  return lv.length ? { lo: Math.min(...lv), hi: Math.max(...lv) } : null;
+}
+/**
+ * The level an enemy is shown with: a Treasure Bush's map level range ("1–10"; its quest levelReq, 10 … 60, is the top
+ * of the band and read the bush of maps 1–10 as a level-10 Yarsol enemy), else the quest's levelReq.
+ */
+export function enemyLevelText(questId: number): string {
+  const b = bushLevels(questId);
+  return b ? (b.lo === b.hi ? String(b.lo) : `${b.lo}–${b.hi}`) : String(quest(questId)?.levelReq ?? "?");
+}
+/** Sort level of an enemy: a bush's lowest map level, else its quest level. */
+export const enemyLevelSort = (questId: number): number => bushLevels(questId)?.lo ?? quest(questId)?.levelReq ?? 0;
 
 export interface MapRole { map: number; room: boolean; boss: boolean; treasure: boolean }
 let rolesOf: Map<number, MapRole[]> | null = null;
@@ -206,8 +244,8 @@ let regionCache: Map<string, Region> | null = null;
  *   questType 8, so they are met only as a map's boss. Group "map", region = the region of the lowest-level map whose
  *   boss list holds them (see maps). Their own field is not used: Protector of the Forest and King of the Mountain say 1
  *   (Tuvale) but are level 60 and only met in the level-58 Revenge maps (Frentir).
- * - Treasure Bushes (99–104, also questType 8): group "region", the field, which matches the maps they hide in
- *   (obj.Map: treasureId[ceil(mapLevel / 10)]).
+ * - Treasure Bushes (99–104, also questType 8): group "region", the region of the lowest-level map they spawn in
+ *   (bushMaps: obj.Map treasureId[ceil(mapLevel / 10)]), which is also their region field: 99 Tuvale … 104 Frentir.
  * - Map: mapRegionId (the game's map screen).
  * - Item (no region field in the item tables): the lowest region where it drops as an every-win reward or a map's essence
  *   (by the regions above), else the lowest region of an enemy whose loot roll holds it, else the region most of its
@@ -234,6 +272,8 @@ function enemyRegion(id: number): Region | null {
   }
   const name = REGIONS[clampRegion(q.region) - 1].name;
   if (q.questType === 6) return mkRegion(q.region, "event", `event boss: the event sends you to ${name}`);
+  const bush = bushLevels(id);
+  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", `bush of maps level ${bush.lo}–${bush.hi}`);
   if (q.title === "Treasure Bush") return mkRegion(q.region, "region", `hides in ${name}'s maps`);
   if (q.region !== undefined) return mkRegion(q.region, "region", `on ${name}'s quest board`);
   return mkRegion(regionOfLevel(q.levelReq), "region", `level ${q.levelReq}`);
@@ -515,7 +555,7 @@ export function classLink(id: number, opts: LinkOpts = {}): HTMLElement {
 
 /**
  * A link to an enemy's wiki page (normal and rare variant share the quest's page); the tooltip gives its kind, level
- * and the maps it appears in. Gathering quests and placeholders (NON_ENEMY_QUEST_IDS) stay plain text.
+ * and the maps it appears in. Placeholders (PLACEHOLDER_QUEST_IDS) stay plain text.
  */
 export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts: LinkOpts = {}): HTMLElement {
   const q = quest(e.id);
@@ -524,7 +564,7 @@ export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts
   if (needs.length && !opts.always && !isVisible("enemy", e.id)) return placeholderFor("enemy", e.id);
   if (!isEnemy(e.id)) return withBadge(el("span", { class: "wl" }, name), needs);
   const maps = enemyMaps(e.id);
-  const kind = `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
+  const kind = `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps level ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
   const where = maps.length ? `Appears in ${maps.map((m) => item("map", m)?.name).join(", ")}.` : "Quest only, in no map.";
   const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
   tip(a, () => tipBox(name, kind, where, "", needs));

@@ -216,7 +216,7 @@ function renderRefQuests(): void {
     return;
   }
   const max = maxLevel(tier);
-  const ids = availableQuests(max, tier).filter((id) => isEnemy(id) && isVisible("enemy", id))
+  const ids = availableQuests(max, tier).filter((id) => isEnemy(id) && !isGathering(id) && isVisible("enemy", id))
     .sort((a, b) => (G.questData[b].levelReq ?? 0) - (G.questData[a].levelReq ?? 0));
   const ref = select({ id: "ref-quest", "aria-label": "Quest to compare on" },
     ids.map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${G.questData[id].name}`]));

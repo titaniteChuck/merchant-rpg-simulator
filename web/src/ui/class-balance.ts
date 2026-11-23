@@ -17,7 +17,7 @@ import { maxLevel } from "../tools/levelling.ts";
 import { $, bar, el, fmt, fmt1, pct, select, table } from "./dom.ts";
 import type { ClassesRequest, ClassesResponse } from "./class-balance-worker.ts";
 import { tip } from "./tooltip.ts";
-import { classLink, enemyLink, isEnemy, loadWikiText, passiveLink, skillLink } from "./wiki-data.ts";
+import { classLink, enemyLink, isEnemy, isGathering, loadWikiText, passiveLink, skillLink } from "./wiki-data.ts";
 
 let worker: Worker | null = null;
 
@@ -36,7 +36,8 @@ const withParty = () => document.querySelector<HTMLInputElement>("#party")?.chec
 /** Level bands of quests: 1-10, 11-20, ... (enemies only, normal variants; party bosses only when asked). */
 function questsIn(lo: number, hi: number): number[] {
   return Object.keys(G.questData).map(Number)
-    .filter((id) => isEnemy(id) && G.questData[id].enemyHp && G.questData[id].attackList && (withParty() || !G.questData[id].party) && isVisible("enemy", id))
+    // Quest bushes (gathering quests) are left out: they never attack, every class wins them.
+    .filter((id) => isEnemy(id) && !isGathering(id) && G.questData[id].enemyHp && G.questData[id].attackList && (withParty() || !G.questData[id].party) && isVisible("enemy", id))
     .filter((id) => (G.questData[id].levelReq ?? 0) >= lo && (G.questData[id].levelReq ?? 0) <= hi)
     .sort((a, b) => (G.questData[a].levelReq ?? 0) - (G.questData[b].levelReq ?? 0) || a - b);
 }

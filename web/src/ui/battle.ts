@@ -23,7 +23,7 @@ import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
 import { initSaveSource } from "./save-source.ts";
-import { enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
+import { enemyLevelSort, enemyLevelText, enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -104,14 +104,14 @@ const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"
 function questOptions(): [string, [string, string][]][] {
   const byTier = new Map<string, [number, string, string][]>();
   for (const [id, q] of Object.entries<Any>(G.questData)) {
-    // Gathering quests and placeholders are not fights (wiki-data NON_ENEMY_QUEST_IDS).
+    // Placeholders are not fights (wiki-data PLACEHOLDER_QUEST_IDS); the quest bushes (gathering quests) are.
     if (!q.enemyHp || !q.attackList || !q.name || !isEnemy(Number(id))) continue;
     if (!isVisible("enemy", Number(id))) continue; // an expansion the visitor hides (Frentir, map bosses)
-    const lvl = q.levelReq ?? 0;
+    const lvl = enemyLevelSort(Number(id)); // a Treasure Bush: the lowest level of the maps it spawns in
     const tier = `Level ${Math.floor(lvl / 10) * 10}–${Math.floor(lvl / 10) * 10 + 9}`;
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${q.nameB}` : "";
     const list = byTier.get(tier) ?? [];
-    list.push([lvl, id, `Lv ${lvl} · ${q.name}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
+    list.push([lvl, id, `Lv ${enemyLevelText(Number(id))} · ${q.name}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
     byTier.set(tier, list);
   }
   return [...byTier.entries()].sort((a, b) => a[1][0][0] - b[1][0][0])
@@ -346,7 +346,7 @@ function renderTarget(): void {
       card.replaceChildren(
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
           el("div", {}, el("h3", {}, enemyLink({ id: Number(q.value), rare: r })),
-            el("div", { class: "pills" }, pill(`level ${d.levelReq ?? "?"}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
+            el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
               ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
         radar(axes, { title: `${r ? d.nameB : d.name}'s stats`, size: 240 }),
         el("p", { class: "muted small" }, `Rims: the strongest ${(d.title || "quest").toLowerCase()} enemy of level ${Math.floor((d.levelReq ?? 0) / 10) * 10}–${Math.floor((d.levelReq ?? 0) / 10) * 10 + 9}.`),

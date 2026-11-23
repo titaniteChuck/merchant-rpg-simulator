@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Fix**: Bushes (user): the quest bushes (gathering quests 1, 11, 21, 30, 42, 77, each region's first battle) are enemies again, kind "Quest bush" (`PLACEHOLDER_QUEST_IDS` replaces `NON_ENEMY_QUEST_IDS`); map Treasure Bushes show the level range of the maps they spawn in (99 = 1–10, Tuvale), sort by it and take the lowest map's region; Kind column Quest bush · Quest · Boss · Event boss · Map boss · Map treasure bush; bush pages say where they are fought and what they mainly drop.
 - **Update**: Expansion-aware site (U28): `expansion-state.ts` (owned = the save's guess + manual toggles, "Show expansion content", `isVisible`), toggles in the save menu or a top-bar expansions button (`expansion-menu.ts`), expansion badges on every name (`expansionBadge` in `dom.ts`), hidden content left out of lists and pickers with "N hidden" notes and greyed placeholders, wiki page `#/expansions` (`wiki-expansions.ts`); see [Expansions](./website.md#expansions).
 - **Update**: Wiki v5 (U24): timeline cards with effects and whole-card links, "?" help tooltips (`wiki-help.ts`), drop table columns, regions (`regionOf`), Treasure sections on map pages.
 - **Update**: Wiki reference pages (U25): "Stats" (how every number is calculated) and "Battle" (how a fight runs), one anchored section per topic (`#/stats/<topic>`, `#/battle/<topic>`) with formulas, variables, worked examples and the game source line; `statLink` / `battleLink` in `wiki-ref.ts` for other pages.
