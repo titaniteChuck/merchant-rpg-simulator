@@ -54,7 +54,7 @@ Rules:
 | E6 | **Healing enemies read 0%.** `evaluate` scores the enemy by end-of-fight HP (`combat.ts`); also report the lowest enemy HP reached and total damage dealt. Small, after E1. | Done (ebb995d: `enemy_dmg_peak`, `enemy_dmg_total`; also fixed `searchGear` restore of empty slots) |
 | E7 | **Economy model gaps** (confirm each in `decompiled/` first): enchant before vs after ascending; Enchanter Reset to raise grade before a prefix; bonus modifier odds from modded ingredients. | Done (54b2646) |
 | E8 | **Class matrix on the E1 search**: `classMatrix` uses `searchSkills` from `combat.ts`, cheaper default (one search per class on a reference quest). | Done (527fc30) |
-| E9 | **Joint fight optimiser** (user's original ask): `optimiseFight` alternates party + rows, rotations/passives, owned gear (no item used twice) and scrolls until no gain; per-round trace; worker-safe. | Done, committing (release agent) |
+| E9 | **Joint fight optimiser** (user's original ask): `optimiseFight` alternates party + rows, rotations/passives, owned gear (no item used twice) and scrolls until no gain; per-round trace; worker-safe. | Done (436dc34) |
 | E10 | **Potions and permanent hero enchants in combat**: which help most per class / fight (rules from `decompiled/` first). | Queued |
 | E11 | **Profit-model fixes from U1**: a forced essence source whose map needs that essence leaves it unpriced (cycle, solve as a fixed point or error); essence cost floored at 0 g at grade 5 (flag "free by-product" or allow negative). | In progress (engine session) |
 
@@ -67,7 +67,8 @@ Rules:
 | U6a | **Wiki review** (user): enemy names in the skills list; class page with the radar + growth curves side by side, compact white bold AP badge, passives before skills in the same table, whole row clickable with hover. | - | Done (38b841e) |
 | U6b | **Save viewer review** (user): hero overview as a sortable table + per-hero details page; no "×" in inventory grades; crafters: no name outline / Asc column, instead Level / Asc 1 level / Asc 2 level (`Crafter:getEffectiveLevelForItem`). After a save is imported, the drop zone and file status collapse into one discreet "change save" button at the top (once, in `save-source.ts`, on every page). | U3 | In progress (UI session) |
 | U6c | **Enemy wiki pages** (user): Enemies list + enemy page (stats normal/rare, skills, drops, maps); enemy names link there; quests such as "Forest Gathering" excluded by a static, commented enum `NON_ENEMY_QUEST_IDS`. | U6a | Agent, branch `u6c-enemy-pages` |
-| U7 | **"Optimise this fight" on the battle page** on `optimiseFight` (E9): time budget 2 / 5 / 10 min, per-step trace (round, step, before → after, change), "Use this setup", comparison with the best party alone. | E9 | Queued (UI session, after U6b) |
+| U7 | **"Optimise this fight" on the battle page** on `optimiseFight` (E9): time budget 2 / 5 / 10 min, per-step trace (round, step, before → after, change), "Use this setup", comparison with the best party alone. | E9 | Folded into U8 (optimiser = one of the modes) |
+| U8 | **Battle page rework** (user): mode first (Simulate / Best rotation / Best gear / Best party / Best scrolls / Optimise everything) decides which inputs show (best party asks for the opponent only); party in two columns (Back n, Front n); opponent card on the right like the heroes, dedicated map card; quest size ×1…×5 = one enemy with HP ×N (cap prestige×2−1), not "N enemies". | U6b, E9 | Queued (UI session, after U6b) |
 | U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Done (1bf8501); nav links, save-viewer essence column and asc pills follow with U3 |
 | U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. Show the "lowest" enemy HP (`enemy_dmg_peak`, E6) next to HP removed. | E1 ✓ | Done (6dfca22) |
 | U3 | **Farming planner page**: where the player's party should spend hero time (essence/h, gold/h per quest and map). | E2 | Done (17fe2c2) |
@@ -88,7 +89,7 @@ E2 reuses the map-run evaluation and scroll search from E1. U1 waits only for U0
 
 ## Later
 
-- Economy model gaps: map suffix lowering the grade, quests against several enemies, Reset before a prefix,
+- Economy model gaps: map suffix lowering the grade (E2 now simulates it), quest size ×N (E2 scales loot and time), Reset before a prefix (E7),
   enchant before or after ascending, bonus modifier odds from modded ingredients, customer preferences and haggling,
   events and the weekly shop (most of the 136 items without a known source).
 - Potions and permanent hero enchants in combat ("which help most").
