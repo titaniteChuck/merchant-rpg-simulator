@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Profit Calculator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Essence pricing (E11)**: forced sources that need their own essence solved as a fixed point (no more dropped rows; explicit error when impossible); free by-product essences kept at 0 and flagged (`free_byproduct`).
 - **Enchant rules (E7)**: enchant order (before/after ascending), Reset before enchanting and modded-ingredient boosts modelled as opt-in options and tables; findings: enchanting after ascending always cheaper, Reset helps some prefixes (~3%), modded ingredients almost never pay.
 - **Farming report**: `farming.ts` simulates quests and map runs for a party (grade, time, loot, essence, costs per run and per hour); Solver `sourceStats` takes simulated grades/time per source; quest loot scales with the enemy count.
 - **Python removed**: `profit.py`, `enchant.py`, `gamedata.py` deleted; the model lives on in `profit.ts` (library, no command line).

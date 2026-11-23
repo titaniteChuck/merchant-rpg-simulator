@@ -83,7 +83,13 @@ built on them, kept from the former command line.
 | `map … --scrolls 61,63,69@1` | Map runs with up to 3 scrolls (`ID@ASC` for ascended); charges used and escapes reported |
 | `scrolls --map ID --front --back` | Best loadout of up to 3 scrolls (all 286 combinations), with each scroll's crafted cost |
 
-Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per evaluation).
+Options: `--rare` (rare variant), `--amount` (quest amount), `-n` (fights per evaluation).
+
+- **Quest amount**: one enemy with its max HP × amount (`obj.Enemy`), loot and quest time scaled with it; not several
+  enemies. The game offers 1 to `prestigeLevel × 2 − 1` (1, 3 or 5) for the hero the quest is opened with
+  (`default.enemyAmount`; Quick mode `× 3 + 1`, Legendary `× 2 + 1`), less if gold is short; a rare quest is 1.
+  `maxQuestAmount(heroes, rare, mode)` takes the party's highest prestige; `evaluate` and the farming report refuse
+  an amount outside it.
 
 ## Search API
 

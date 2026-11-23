@@ -34,7 +34,7 @@ Each (item, asc) gets the cheapest of:
 |---|---|
 | Quest | Share of `gold` (+ hero time) over expected drops |
 | Rare quest | Same with `goldB` and `rewardB*` |
-| Map run | Map cost − loot credit, divided by essence amount |
+| Map run | Map cost − loot credit, divided by essence amount; floored at 0 (see below) |
 | Map-only loot | Its sell value (the gold given up by not selling it) |
 | Craft | Craft gold + ingredients at same asc + 1× essence if asc > 0 |
 | Ascend | Item at asc − 1 + 4× essence |
@@ -89,6 +89,20 @@ A run drops several things. `--alloc` decides who pays:
 
 - Maps cost essence, and essence costs maps.
 - Repeated relaxation until no cost drops. Converges in a few passes (checked at 50 and 500).
+- **Forced source that needs its own essence** (`essenceFrom`, e.g. Forest Essence from Hard Tuvale Map: 50 Forest
+  Essence in the recipe, ~250 per run): the essence is seeded with a huge upper bound and the relaxation converges
+  down to the fixed point `x = (map cost without the essence + run cost − loot credit) / (yield − essence used)`
+  (Forest Essence 5.65 g from Hard Tuvale, 5.64 g from Tuvale-Yarsol; 4.04 g from the cheapest source). Before
+  this, both stayed unpriced and 196 of 2,203 rows dropped out.
+  When no positive solution exists (the map uses at least as much of the essence as a run yields: Treant Revenge,
+  Golem Revenge, Archon's Reality with Glacial Essence; Vanquishers with Necro Essence), the essence stays unpriced
+  and the Solver says so in `errors` (and `profitReport` prints a warning) instead of silently dropping rows.
+- **Free by-products**: a map run whose other loot is worth more than the map makes its essence free. The cost
+  is floored at 0, not negative: a negative essence price would pay you for using essence in every recipe, which
+  overstates what that loot is worth once you stop selling it. Those sources say "free by-product" in `how` and
+  `free_byproduct` = yes in the essence-sources table. Grade B: none. Grade A: Forest and Nature (Tuvale Map,
+  +32 g per run on top of ~78 essence). Grade S: Forest, Water, Nature and Tidal (Tuvale / Yarsol Map, +148 to +198 g
+  per run on top of ~95 essence).
 - Full run takes about 5 s.
 - `--essence-from "Forest Essence=Hard Tuvale Map"` or `"273=1@1"` forces one source, to compare map tiers.
 
@@ -144,9 +158,10 @@ flowchart LR
 | `essence`, `essence_total`, `essence_value` | Essence per run by name, total, and value at the Solver's unit cost |
 | `gold_per_hour`, `essence_per_hour`, `value_per_hour` | (loot - cost) / h, essence / h, (loot + essence value - cost) / h |
 
-- Quests (`Quest:endQuesting`, `Quest:createRewards`): time = battle time + quest time × enemies × `gradeTime[grade]`
+- Quests (`Quest:endQuesting`, `Quest:createRewards`): time = battle time + quest time × amount × `gradeTime[grade]`
   (lost = grade 0, factor 2), speed bonus; loot only when won, at that fight's grade and the party's luck.
-  The enemy count scales fixed drops and parcel odds/amounts (`lootService`); `questLoot(…, enemyAmount)`.
+  The quest amount (one enemy with its HP × amount, 1 to `maxQuestAmount`) scales fixed drops and parcel
+  odds/amounts (`lootService`), and the quest time; `questLoot(…, enemyAmount)`.
 - Map runs use the engine's `Campaign` as is: rewards as dropped, essence at the run's grade (average of the rooms),
   time = battles + walking. Checked equal to `evaluateMap` on win, grade, time and essence.
 - Map essence in the game is paid at the run's performance grade (`Campaign:getGrade`), not the map's crafted grade:

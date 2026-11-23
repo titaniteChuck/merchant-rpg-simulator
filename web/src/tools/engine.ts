@@ -34,7 +34,7 @@ export interface FightResult {
   enemyMinHP: number;
   /** All damage the enemy took during the fight. */
   enemyDmgTaken: number;
-  /** Seconds the fight takes as a quest (battle time + quest time x enemies x grade factor, speed bonus). */
+  /** Seconds the fight takes as a quest (battle time + quest time x amount x grade factor, speed bonus). */
   questTime: number;
   /** Sum of the party's luck (lckMod), used by the quest's loot rolls. */
   partyLuck: number;
@@ -78,9 +78,13 @@ export interface SkillInfo {
 const A = api as Any;
 
 export class Sim {
+  /** The save's game mode ("Standard", "Quick", "Legendary", ...). */
+  readonly mode: string;
+
   constructor(gameMode = "Standard") {
     if (!G.heroList) throw new Error("game data not loaded: call loadGameData(inventory/gamedata.json) first");
     api.setMode(gameMode);
+    this.mode = gameMode;
   }
 
   // ---------------------------------------------------------------- heroes

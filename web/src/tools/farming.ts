@@ -9,7 +9,7 @@
  * Pure: no output, no Node APIs; progress and cancel through SearchControl (as the searches in combat.ts).
  */
 import { G } from "../sim/data.ts";
-import { SearchCancelled, type SearchControl } from "./combat.ts";
+import { checkAmount, SearchCancelled, type SearchControl } from "./combat.ts";
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 import { type Game, gameFromData } from "./gamedata.ts";
 import { questLoot, Solver, type SourceStat } from "./profit.ts";
@@ -19,7 +19,7 @@ type Any = any;
 
 /** A quest fight, or a map run (catalog spec or a compact save string) with up to 3 scrolls. */
 export type FarmSource =
-  | { kind: "quest"; quest: number; rare?: boolean; amount?: number }
+  | { kind: "quest"; quest: number; rare?: boolean; /** enemy HP x amount, 1..maxQuestAmount */ amount?: number }
   | { kind: "map"; map: MapSpec; scrolls?: Scroll[] | null };
 
 export interface FarmRow {
@@ -96,6 +96,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
       const q = G.questData[src.quest];
       if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${src.quest} has no enemy to fight`);
       if (src.rare && (q.enemyHpB === undefined || q.attackListB === undefined)) throw new Error(`quest ${src.quest} has no rare variant`);
+      checkAmount(sim, party.front, party.back, src.rare ?? false, amount);
       const gold = (src.rare ? (q.goldB ?? q.gold) : q.gold) ?? 0;
       let wins = 0;
       const times: number[] = [], grades: number[] = [], deaths: number[] = [];

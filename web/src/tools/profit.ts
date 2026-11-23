@@ -54,7 +54,8 @@ export function expectedFixedDrop(reward: number[], gradeBonus: number, luck: nu
   return total / (hi - lo + 1);
 }
 
-/** {"type|id": expected amount} of lootService.generateParcelItem (`enemyAmount` scales item odds and material amounts). */
+/** {"type|id": expected amount} of lootService.generateParcelItem (the quest amount, `enemyAmount` in the game, scales
+ * item odds and material amounts). */
 export function expectedParcel(g: Game, pname: string | undefined, grade: number, luck: number, enemyAmount = 1): Map<string, number> {
   const out = new Map<string, number>();
   const p = pname ? g.parcels[pname] : undefined;
@@ -73,7 +74,7 @@ export function expectedParcel(g: Game, pname: string | undefined, grade: number
         for (let i = 0; i + 1 < a.length; i += 2) (num += a[i] * a[i + 1], den += a[i + 1]);
         amount = num / den;
       } else amount = a[0];
-      amount *= enemyAmount; // summed per enemy (weighted amounts) or multiplied (fixed)
+      amount *= enemyAmount; // rolled once per amount (weighted amounts) or multiplied (fixed)
     }
     out.set(key, (out.get(key) ?? 0) + prob * amount);
   }
@@ -284,6 +285,8 @@ export class Solver {
   /** Whether Python holds the cost as a float (ints come only from integer sell values and gold costs). */
   costFloat = new Map<string, boolean>();
   essenceSources = new Map<number, EssenceSource[]>();
+  /** Forced essence sources (essenceFrom) that can't price their essence, with the reason (the essence stays unpriced). */
+  errors: string[] = [];
   private enchantCache = new Map<string, StepResult | null>();
   private questSources: Map<string, [number, string][]>;
 
@@ -438,6 +441,18 @@ export class Solver {
 
   solve(maxIter = 500): this {
     const g = this.g;
+    // A forced source can need its own essence (Hard Tuvale Map: 50 Forest Essence in, ~200 out). Start each forced
+    // essence at a huge upper bound: the loop only lowers costs, so the cycle converges down to its fixed point
+    // x = (map cost without the essence + run cost - loot credit) / (yield - essence in the recipe), when one exists.
+    const SEED = 1e12;
+    for (const eid of this.essenceFrom.keys()) {
+      const key = k3("material", eid, 0);
+      if (!this.cost.has(key)) {
+        this.cost.set(key, SEED);
+        this.how.set(key, "unpriced");
+        this.costFloat.set(key, true);
+      }
+    }
     for (const [key, sources] of this.questSources) {
       const [t, i] = un2(key);
       for (const [unit, how] of sources) this.try(k3(t, i, 0), unit, how);
@@ -542,7 +557,8 @@ export class Solver {
             const forced = this.essenceFrom.get(eid);
             if (forced && (forced[0] !== mid || forced[1] !== p)) continue;
             if (this.try(k3(kt, eid, 0), unit, `map ${m.name}` + (p ? ` asc${p}` : "") +
-              (label === "as crafted" ? "" : ` enchanted ${label}`) + ` (${f(amt, 0)} essence/run)`)) {
+              (label === "as crafted" ? "" : ` enchanted ${label}`) + ` (${f(amt, 0)} essence/run)` +
+              (unit === 0 ? ", free by-product: the run's other loot pays for the map" : ""))) {
               changed = true;
               this.essenceChoice.set(eid, [mid, p, label]);
             }
@@ -550,6 +566,14 @@ export class Solver {
         }
       }
       if (!changed) break;
+    }
+    for (const [eid, [mid, p]] of this.essenceFrom) {
+      const key = k3("material", eid, 0);
+      if ((this.cost.get(key) ?? INF) < SEED / 2) continue;
+      // no positive fixed point: the forced map uses at least as much of the essence as it yields, or can't be made
+      for (const [k, v] of this.cost) if (v >= SEED / 2) (this.cost.delete(k), this.how.delete(k), this.costFloat.delete(k));
+      this.errors.push(`${g.name("material", eid)} from ${g.items.map.get(mid)?.name ?? `map ${mid}`}${p ? ` asc${p}` : ""}: ` +
+        "no positive cost (the map consumes at least as much of this essence as a run yields, or can't be crafted)");
     }
     return this;
   }
@@ -930,7 +954,9 @@ export function buildEssenceRows(s: Solver): Row[] {
       rows.push({ essence: g.name("material", eid), essence_id: eid, map: g.items.map.get(mid).name, map_id: mid, map_asc: p,
         // credit is the int 0 with --alloc full
         enchant: label, essence_per_run: rf(amt, 1), map_cost: rf(runCost, 1), loot_credit: rf(credit, 1, s.alloc !== "full"),
-        cost_per_essence: rf(unit, 2), chosen: ch && ch[0] === mid && ch[1] === p && ch[2] === label ? "yes" : "" });
+        cost_per_essence: rf(unit, 2), chosen: ch && ch[0] === mid && ch[1] === p && ch[2] === label ? "yes" : "",
+        // the run's other loot pays for the map: the essence costs nothing (floored at 0, never negative)
+        free_byproduct: unit === 0 && amt > 0 ? "yes" : "" });
     }
   }
   return rows;
@@ -1010,6 +1036,7 @@ export function profitReport(g: Game, o: ProfitOptions = {}): ProfitReport {
     `map modifiers ${s.mapMods ? "on" : "off"}, map enchanting ${s.mapEnchant ? "on" : "off"}` +
     (s.mapSuffixMax !== null ? ` (max suffix +${s.mapSuffixMax})` : ""));
   lines.push(`${rows.length} priced (item, ascension) rows; ${unpriced.length} items without a known source at asc 0\n`);
+  for (const e of s.errors) lines.push(`warning: forced essence source ${e}\n`);
   lines.push("Essence: cheapest source");
   for (const eid of [...s.essenceSources.keys()].sort((a, b) => a - b)) {
     lines.push(`  ${g.name("material", eid).padEnd(22)} ${f(s.cost.get(k3("material", eid, 0)) ?? INF, 2).padStart(8)} g  via ` +

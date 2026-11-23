@@ -16,12 +16,13 @@ api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json"
 const sim = new Sim("Standard");
 const g = gameFromData();
 const solver = new Solver(g).solve();
+// prestige 2: quest amounts up to 3 (prestige x 2 - 1)
 const hero = sim.hero({
-  id: 1, heroID: 1, name: "Test", class: 1, level: 20, exp: 0, prestigeLevel: 1, hp: 300, questHP: 300,
+  id: 1, heroID: 1, name: "Test", class: 1, level: 20, exp: 0, prestigeLevel: 2, hp: 300, questHP: 300,
   attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: ["3|3|3|1|0|0|A10B2C5D1|0|A0B0C0|0"],
 });
 
-test("quest loot scales with the number of enemies", () => {
+test("quest loot scales with the quest amount", () => {
   const one = questLoot(g, 2, 3, 0), three = questLoot(g, 2, 3, 0, false, 3);
   const q = G.questData[2];
   const fixed = k2("material", q.rewardA1[1]);
@@ -67,4 +68,21 @@ test("Solver takes simulated grades and time per source", () => {
   const st = sourceStatsFrom(rows, [{ kind: "quest", quest: 2 }, { kind: "map", map: { id: 1, prestigeLevel: 0, grade: 3 } }]);
   assert.deepEqual([...st.quest.keys()], ["2"]);
   assert.deepEqual([...st.map.keys()], ["1|0"]);
+});
+
+test("quest amount: enemy HP x amount, capped by the party's highest prestige", async () => {
+  const { maxQuestAmount } = await import("../src/tools/combat.ts");
+  const p1 = sim.hero({
+    id: 2, heroID: 2, name: "P1", class: 1, level: 20, exp: 0, prestigeLevel: 1, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: ["3|3|3|1|0|0|A10B2C5D1|0|A0B0C0|0"],
+  });
+  const p3 = { prestigeLevel: 3 };
+  assert.equal(maxQuestAmount([p1]), 1);
+  assert.equal(maxQuestAmount([p1, hero]), 3);
+  assert.equal(maxQuestAmount([p3 as never]), 5);
+  assert.equal(maxQuestAmount([p3 as never], true), 1, "rare quests are always 1");
+  assert.equal(maxQuestAmount([p3 as never], false, "Quick"), 10);
+  assert.throws(() => farmingReport(sim, { front: [p1], back: [] }, [{ kind: "quest", quest: 2, amount: 2 }], { n: 1, solver }), /1 to 1/);
+  const one = sim.fight(2, [hero], [], { seed: 1 }), three = sim.fight(2, [hero], [], { seed: 1, amount: 3 });
+  assert.equal(three.enemyMaxHP, 3 * one.enemyMaxHP, "one enemy with 3x its HP");
 });

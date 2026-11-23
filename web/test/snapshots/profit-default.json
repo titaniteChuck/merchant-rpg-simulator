@@ -3,7 +3,7 @@
  "summary": "grade 3, luck 0, alloc value, hero hour cost 0, crafter level 60, enchanter level 60, map modifiers on, map enchanting on",
  "rowCount": 2203,
  "rowsSha256": "4d8ea37ffd8de1089d5c2f260c73cb337a26515b9b048ab5843db2cc3cd691d1",
- "essenceSha256": "4f95063e767cc6edc95ba38a2fa57ab701b33951fc3c07b05e7d36cafb7cf4b2",
+ "essenceSha256": "b8911395042b164a157e9b1974ad55133eb68aba9c616d9a39014a13ec2a0084",
  "ascendModdedSha256": "ed0cc081f892c560ad2c4e1eda91935edf27a4865983f6859dd66f9aeb4dbe01",
  "enchantSha256": "58983f69c230eb46f5dc20131d4c4f23d098c8630c45e1c7a4ed901c9ce36167",
  "essence": [
@@ -18,7 +18,8 @@
    "map_cost": 555.4,
    "loot_credit": 302.3,
    "cost_per_essence": 4.04,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Forest Essence",
@@ -31,7 +32,8 @@
    "map_cost": 1757.4,
    "loot_credit": 423.8,
    "cost_per_essence": 5.33,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Forest Essence",
@@ -44,7 +46,8 @@
    "map_cost": 1804.3,
    "loot_credit": 651.6,
    "cost_per_essence": 5.42,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Forest Essence",
@@ -57,7 +60,8 @@
    "map_cost": 6728.9,
    "loot_credit": 598.3,
    "cost_per_essence": 8.58,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Forest Essence",
@@ -70,7 +74,8 @@
    "map_cost": 6002,
    "loot_credit": 598.3,
    "cost_per_essence": 8.64,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Water Essence",
@@ -83,7 +88,8 @@
    "map_cost": 1804.3,
    "loot_credit": 651.6,
    "cost_per_essence": 7.58,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Water Essence",
@@ -96,7 +102,8 @@
    "map_cost": 1087.4,
    "loot_credit": 588.6,
    "cost_per_essence": 7.96,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Water Essence",
@@ -109,7 +116,8 @@
    "map_cost": 3498.4,
    "loot_credit": 982,
    "cost_per_essence": 10.06,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Water Essence",
@@ -122,7 +130,8 @@
    "map_cost": 4170,
    "loot_credit": 1050.1,
    "cost_per_essence": 15.86,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Water Essence",
@@ -135,7 +144,8 @@
    "map_cost": 9445,
    "loot_credit": 1020.7,
    "cost_per_essence": 26.93,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -148,7 +158,8 @@
    "map_cost": 4170,
    "loot_credit": 1050.1,
    "cost_per_essence": 18.13,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -161,7 +172,8 @@
    "map_cost": 2166.4,
    "loot_credit": 774.2,
    "cost_per_essence": 22.23,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -174,7 +186,8 @@
    "map_cost": 8136,
    "loot_credit": 1212.4,
    "cost_per_essence": 27.68,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -187,7 +200,8 @@
    "map_cost": 7533.5,
    "loot_credit": 1302.9,
    "cost_per_essence": 29.5,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -200,7 +214,8 @@
    "map_cost": 14217.1,
    "loot_credit": 1425.8,
    "cost_per_essence": 40.89,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -213,7 +228,8 @@
    "map_cost": 47292.6,
    "loot_credit": 1256.8,
    "cost_per_essence": 77.03,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Earth Essence",
@@ -226,7 +242,8 @@
    "map_cost": 41664.1,
    "loot_credit": 1256.8,
    "cost_per_essence": 80.77,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -239,7 +256,8 @@
    "map_cost": 7533.5,
    "loot_credit": 1302.9,
    "cost_per_essence": 40.56,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -252,7 +270,8 @@
    "map_cost": 14553,
    "loot_credit": 1441.5,
    "cost_per_essence": 52.41,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -265,7 +284,8 @@
    "map_cost": 4371.9,
    "loot_credit": 1029.3,
    "cost_per_essence": 53.37,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -278,7 +298,8 @@
    "map_cost": 12736.1,
    "loot_credit": 1981,
    "cost_per_essence": 55.89,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -291,7 +312,8 @@
    "map_cost": 70315.6,
    "loot_credit": 3994.1,
    "cost_per_essence": 88.84,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Necro Essence",
@@ -304,7 +326,8 @@
    "map_cost": 61467.7,
    "loot_credit": 3994.1,
    "cost_per_essence": 91.9,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Fire Essence",
@@ -317,7 +340,8 @@
    "map_cost": 12736.1,
    "loot_credit": 1981,
    "cost_per_essence": 60.97,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Fire Essence",
@@ -330,7 +354,8 @@
    "map_cost": 23880.7,
    "loot_credit": 3107.8,
    "cost_per_essence": 84.52,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Fire Essence",
@@ -343,7 +368,8 @@
    "map_cost": 19681.1,
    "loot_credit": 2869.9,
    "cost_per_essence": 90.46,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Fire Essence",
@@ -356,7 +382,8 @@
    "map_cost": 35346.7,
    "loot_credit": 3253.8,
    "cost_per_essence": 106.02,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Fire Essence",
@@ -369,7 +396,8 @@
    "map_cost": 8613.8,
    "loot_credit": 1738.8,
    "cost_per_essence": 109.76,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -382,7 +410,8 @@
    "map_cost": 19681.1,
    "loot_credit": 2869.9,
    "cost_per_essence": 113.07,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -395,7 +424,8 @@
    "map_cost": 38639.9,
    "loot_credit": 5094.3,
    "cost_per_essence": 152.91,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -408,7 +438,8 @@
    "map_cost": 12761.6,
    "loot_credit": 3063.2,
    "cost_per_essence": 164.97,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -421,7 +452,8 @@
    "map_cost": 112121.3,
    "loot_credit": 3610.6,
    "cost_per_essence": 271.28,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -434,7 +466,8 @@
    "map_cost": 202024.8,
    "loot_credit": 6606,
    "cost_per_essence": 445.44,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -447,7 +480,8 @@
    "map_cost": 144473.4,
    "loot_credit": 2861.7,
    "cost_per_essence": 472.04,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -460,7 +494,8 @@
    "map_cost": 137838,
    "loot_credit": 6606,
    "cost_per_essence": 524.93,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -473,7 +508,8 @@
    "map_cost": 161319.6,
    "loot_credit": 2377.6,
    "cost_per_essence": 903.73,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -486,7 +522,8 @@
    "map_cost": 161319.6,
    "loot_credit": 2308,
    "cost_per_essence": 904.13,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -499,7 +536,8 @@
    "map_cost": 98819.8,
    "loot_credit": 2377.6,
    "cost_per_essence": 945.03,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Glacial Essence",
@@ -512,7 +550,8 @@
    "map_cost": 98819.8,
    "loot_credit": 2308,
    "cost_per_essence": 945.72,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Nature Essence",
@@ -525,7 +564,8 @@
    "map_cost": 636.2,
    "loot_credit": 302.3,
    "cost_per_essence": 5.33,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Nature Essence",
@@ -538,7 +578,8 @@
    "map_cost": 1983.7,
    "loot_credit": 423.8,
    "cost_per_essence": 6.24,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Nature Essence",
@@ -551,7 +592,8 @@
    "map_cost": 2031.8,
    "loot_credit": 651.6,
    "cost_per_essence": 6.49,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Nature Essence",
@@ -564,7 +606,8 @@
    "map_cost": 6357.6,
    "loot_credit": 598.3,
    "cost_per_essence": 9.21,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Tidal Essence",
@@ -577,7 +620,8 @@
    "map_cost": 2031.8,
    "loot_credit": 651.6,
    "cost_per_essence": 9.08,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Tidal Essence",
@@ -590,7 +634,8 @@
    "map_cost": 1350,
    "loot_credit": 588.6,
    "cost_per_essence": 12.16,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Tidal Essence",
@@ -603,7 +648,8 @@
    "map_cost": 4170.6,
    "loot_credit": 982,
    "cost_per_essence": 12.75,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Tidal Essence",
@@ -616,7 +662,8 @@
    "map_cost": 4713.9,
    "loot_credit": 1050.1,
    "cost_per_essence": 17.82,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Tidal Essence",
@@ -629,7 +676,8 @@
    "map_cost": 10337.1,
    "loot_credit": 1020.7,
    "cost_per_essence": 29.79,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -642,7 +690,8 @@
    "map_cost": 4713.9,
    "loot_credit": 1050.1,
    "cost_per_essence": 22.91,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -655,7 +704,8 @@
    "map_cost": 2659.3,
    "loot_credit": 774.2,
    "cost_per_essence": 30.1,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -668,7 +718,8 @@
    "map_cost": 9608,
    "loot_credit": 1212.4,
    "cost_per_essence": 33.56,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -681,7 +732,8 @@
    "map_cost": 9155.9,
    "loot_credit": 1302.9,
    "cost_per_essence": 38.94,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -694,7 +746,8 @@
    "map_cost": 16214.8,
    "loot_credit": 1425.8,
    "cost_per_essence": 47.28,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -707,7 +760,8 @@
    "map_cost": 51331.8,
    "loot_credit": 1256.8,
    "cost_per_essence": 87.6,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Mountain Essence",
@@ -720,7 +774,8 @@
    "map_cost": 46813.1,
    "loot_credit": 1256.8,
    "cost_per_essence": 91.06,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -733,7 +788,8 @@
    "map_cost": 9155.9,
    "loot_credit": 1302.9,
    "cost_per_essence": 47.6,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -746,7 +802,8 @@
    "map_cost": 15174.9,
    "loot_credit": 1981,
    "cost_per_essence": 66.6,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -759,7 +816,8 @@
    "map_cost": 18165,
    "loot_credit": 1441.5,
    "cost_per_essence": 66.85,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -772,7 +830,8 @@
    "map_cost": 5550.3,
    "loot_credit": 1029.3,
    "cost_per_essence": 72.18,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -785,7 +844,8 @@
    "map_cost": 79972.7,
    "loot_credit": 3994.1,
    "cost_per_essence": 106.33,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Death Essence",
@@ -798,7 +858,8 @@
    "map_cost": 71482.7,
    "loot_credit": 3994.1,
    "cost_per_essence": 107.91,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Inferno Essence",
@@ -811,7 +872,8 @@
    "map_cost": 15174.9,
    "loot_credit": 1981,
    "cost_per_essence": 78.71,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Inferno Essence",
@@ -824,7 +886,8 @@
    "map_cost": 22507.9,
    "loot_credit": 2869.9,
    "cost_per_essence": 108.89,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Inferno Essence",
@@ -837,7 +900,8 @@
    "map_cost": 30175.3,
    "loot_credit": 3107.8,
    "cost_per_essence": 110.13,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Inferno Essence",
@@ -850,7 +914,8 @@
    "map_cost": 43470.4,
    "loot_credit": 3253.8,
    "cost_per_essence": 132.85,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Inferno Essence",
@@ -863,7 +928,8 @@
    "map_cost": 11250.3,
    "loot_credit": 1738.8,
    "cost_per_essence": 151.85,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -876,7 +942,8 @@
    "map_cost": 22507.9,
    "loot_credit": 2869.9,
    "cost_per_essence": 125.64,
-   "chosen": "yes"
+   "chosen": "yes",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -889,7 +956,8 @@
    "map_cost": 48030.4,
    "loot_credit": 5094.3,
    "cost_per_essence": 195.71,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -902,7 +970,8 @@
    "map_cost": 16724.7,
    "loot_credit": 3063.2,
    "cost_per_essence": 232.38,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -915,7 +984,8 @@
    "map_cost": 136835.8,
    "loot_credit": 3610.6,
    "cost_per_essence": 333.06,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -928,7 +998,8 @@
    "map_cost": 168558.9,
    "loot_credit": 6606,
    "cost_per_essence": 588.92,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -941,7 +1012,8 @@
    "map_cost": 181001.4,
    "loot_credit": 2861.7,
    "cost_per_essence": 593.8,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -954,7 +1026,8 @@
    "map_cost": 161927.9,
    "loot_credit": 6606,
    "cost_per_essence": 621.29,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -967,7 +1040,8 @@
    "map_cost": 126670.4,
    "loot_credit": 2377.6,
    "cost_per_essence": 1129.93,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -980,7 +1054,8 @@
    "map_cost": 126670.4,
    "loot_credit": 2308,
    "cost_per_essence": 1130.57,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -993,7 +1068,8 @@
    "map_cost": 120648.3,
    "loot_credit": 2377.6,
    "cost_per_essence": 1158.93,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   },
   {
    "essence": "Arctic Essence",
@@ -1006,7 +1082,8 @@
    "map_cost": 120648.3,
    "loot_credit": 2308,
    "cost_per_essence": 1159.61,
-   "chosen": ""
+   "chosen": "",
+   "free_byproduct": ""
   }
  ],
  "top30": [

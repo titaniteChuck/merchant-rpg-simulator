@@ -1,5 +1,5 @@
 /**
- * Merchant combat simulator: parties, skills and gear against quest enemies.
+ * Merchant combat simulator: parties, skills and gear against quest enemies and map runs.
  * TypeScript port of the former tools/combat.py (removed 2026-11-23), running on the TypeScript engine (web/src/sim).
  *
  * Every command takes the Sim, a Roster (heroes from the save) and its options,
@@ -120,6 +120,7 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${quest} has no enemy to fight`);
   // The game code fails on a rare fight without rare stats (obj.Enemy); the port would fight a NaN enemy.
   if (rare && (q.enemyHpB === undefined || q.attackListB === undefined)) throw new Error(`quest ${quest} has no rare variant`);
+  checkAmount(sim, front, back, rare, amount);
   let wins = 0;
   const turns: number[] = [], turnsWin: number[] = [], grades: number[] = [], enemyFrac: number[] = [], hpFrac: number[] = [];
   const peakFrac: number[] = [], dmgTotal: number[] = [], dmgFrac: number[] = [];
@@ -154,6 +155,15 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
 /** Win rate first; among equal win rates, faster fights, then more HP left; for lost fights, how far the
  * enemy's HP was brought down at its lowest (end HP hides it when the enemy heals back), then, as a last
  * tiebreak, the damage it took. */
+/** Throws when `amount` is not one the game offers to this party (see maxQuestAmount). */
+export function checkAmount(sim: Sim, front: Row, back: Row, rare: boolean, amount: number): void {
+  const max = maxQuestAmount([...front, ...back], rare, sim.mode);
+  if (!Number.isInteger(amount) || amount < 1 || amount > max) {
+    throw new Error(`quest amount ${amount} is not available to this party: 1 to ${max}` +
+      (rare ? " (a rare quest is always 1)" : " (enemy HP x amount; the max comes from the highest hero prestige)"));
+  }
+}
+
 export function score(ev: Pick<FightEval, "win" | "enemy_dmg" | "turns" | "hp_left"> &
   Partial<Pick<FightEval, "enemy_dmg_peak" | "enemy_dmg_total_frac">>): number {
   return ev.win * 1e6 + (ev.enemy_dmg_peak ?? ev.enemy_dmg) * 1e4 - ev.turns * 10 + ev.hp_left * 5 +
@@ -401,7 +411,22 @@ function stepper(ctl: SearchControl = {}) {
 export interface QuestTarget {
   quest: number;
   rare?: boolean;
+  /** Quest amount: one enemy with its max HP x amount (obj.Enemy), loot and quest time scaled too. 1 to
+   * maxQuestAmount (prestige x 2 - 1 in the standard mode: 1, 3 or 5); a rare quest is always 1. */
   amount?: number;
+}
+
+/**
+ * Highest quest amount the game offers (questService.getCurrentAndMaxAmount, default.enemyAmount): from the prestige
+ * of the hero the quest is opened with, here the party's highest; 1 for a rare quest. Your gold can lower it further
+ * (changeMaxAccordingToGold), which a save-free tool can't know.
+ */
+export function maxQuestAmount(heroes: (Hero | null | undefined)[], rare = false, mode = "Standard"): number {
+  if (rare) return 1;
+  const p = Math.max(1, ...heroes.filter((h): h is Hero => Boolean(h)).map((h) => h.prestigeLevel ?? 1));
+  if (mode === "Quick") return p * 3 + 1; // data.GameModsData: mods.Quick
+  if (mode === "Legendary") return p * 2 + 1; // mods.Legendary
+  return p * 2 - 1; // default.__enemyAmount
 }
 
 /** A map run to optimise for. */
