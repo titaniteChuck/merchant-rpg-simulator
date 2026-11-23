@@ -58,7 +58,7 @@ const facts = (pairs: [string, Node | string | number | undefined | null][]) =>
   el("dl", { class: "facts" }, ...pairs.filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
 
-const section = (title: string, ...kids: (Node | string)[]) => el("section", { class: "wiki-section" }, el("h2", {}, title), ...kids);
+const section = (title: string, ...kids: (Node | string)[]) => el("section", { class: "wiki-section" }, el("h2", { class: "wiki-banner" }, title), ...kids);
 const none = (t: string) => el("p", { class: "muted" }, t);
 const joinNodes = (nodes: Node[], sep = ", "): (Node | string)[] => nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
 

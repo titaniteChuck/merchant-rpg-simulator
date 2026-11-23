@@ -957,3 +957,50 @@ h2, h3 { color: var(--fg); }
   .ap-budget { min-width: 0; width: 100%; }
 }
 /* end hero page v2 */
+
+/* wiki v4 */
+/* Section banners (U21, .wiki-banner): wiki detail-page titles (enemy, item, map, class, skill) as a full-width bar,
+   dark brown with a gold bottom border and white text, like the game's title bars. The same in both themes.
+   .sub: the smaller in-card titles (Timeline, Rotation, Drops; Growth per level), bleeding to the card's edges. */
+:root, :root[data-theme="dark"] { --wiki-banner-bg: linear-gradient(180deg, #5e4330 0%, #46311f 100%); --wiki-banner-fg: #ffffff; }
+:root[data-theme="light"] { --wiki-banner-bg: linear-gradient(180deg, #5a3e2a 0%, #3e2a1c 100%); --wiki-banner-fg: #ffffff; }
+.wiki-banner {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 32px 0 14px; padding: 9px 16px; border-radius: 10px 10px 4px 4px;
+  background: var(--wiki-banner-bg); color: var(--wiki-banner-fg);
+  border-bottom: 3px solid var(--trim); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  font-size: 1.15rem; letter-spacing: 0.01em; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+.wiki-section h2.wiki-banner { margin-top: 32px; }
+.wiki-banner.sub {
+  margin: 16px -16px 10px; padding: 5px 16px; border-radius: 0; border-bottom-width: 2px; box-shadow: none;
+  font-size: 0.78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--wiki-banner-fg);
+}
+.wiki-banner .muted { color: rgba(255, 255, 255, 0.82); }
+.enemy-variant h4.wiki-banner { color: var(--wiki-banner-fg); }
+.cls-growth .wiki-banner.sub { margin-left: 0; margin-right: 0; border-radius: 6px 6px 2px 2px; }
+
+/* Drop tables (U21, wiki-enemies.ts): every-win rewards and each loot roll, "Nothing" as a row, one column per grade. */
+.drops { display: flex; flex-direction: column; gap: 6px; }
+.loot-title { margin: 8px 0 0; font-weight: 700; font-size: 0.9rem; }
+.loot-wrap { box-shadow: none; border-radius: 10px; }
+.loot-table { font-size: 0.84rem; }
+.loot-table th, .loot-table td { padding: 6px 8px; }
+.loot-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); position: static; }
+.loot-table th.grp { text-align: center; border-bottom: 1px solid var(--border); }
+.loot-table th .grade { vertical-align: middle; }
+.loot-table td.num, .loot-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.loot-table .base { background: color-mix(in srgb, var(--trim) 14%, transparent); font-weight: 700; }
+.loot-table tbody tr:last-child td { border-bottom: 0; }
+.loot-item { display: inline-flex; align-items: center; gap: 6px; }
+.loot-item .rar-chip { font-size: 0.68rem; padding: 0 6px; }
+.loot-nothing td { color: var(--muted); font-style: italic; background: color-mix(in srgb, var(--card-2) 60%, transparent); }
+.loot-nothing td.base { background: color-mix(in srgb, var(--trim) 14%, var(--card-2)); }
+/* Phones: the item cell wraps (chip under the name) and cells tighten; the frame still scrolls sideways if needed. */
+@media (max-width: 520px) {
+  .loot-table th, .loot-table td { padding: 5px 5px; }
+  .loot-table td:first-child { white-space: normal; min-width: 96px; }
+  .loot-item { flex-wrap: wrap; gap: 2px 6px; }
+  .loot-table th.grp { white-space: normal; }
+}
+/* end wiki v4 */

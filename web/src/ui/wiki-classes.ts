@@ -154,7 +154,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
   const block = el("div", { class: "cls-v3" }, picker,
     el("div", { class: "cls-stats" },
       el("div", { class: "cls-radar" }, radarHolder),
-      el("div", { class: "cls-growth" }, el("h3", {}, "Growth per level"), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
+      el("div", { class: "cls-growth" }, el("h3", { class: "wiki-banner sub" }, "Growth per level"), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
   cards.classList.add("cls-v3");
 
   function set(s: Selection, quiet = false): void {

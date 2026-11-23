@@ -198,7 +198,7 @@ flowchart LR
   and rare variant together. Facts (kind = quest `title` or "Quest", level, region, party size, rare variant and its
   `abRand` % chance per map room), stats table (base quest stats, XP, gold), one card per variant with the 5-turn
   rotation (`attackList[(turn-1) % 5 + 1]`, skill links and effects) and drops (`rewardX1/2` fixed per win, `rewardX3/4`
-  loot tables via `parcelRoll`: share of one roll at base odds, "nothing" share, items incl. equipment), and the maps
+  loot tables, items incl. equipment; shown as tables since U21, see below), and the maps
   (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
   enemy multiplier and the ascension-1 one (×2, silver outline). Each variant card shows the 5-turn timeline strip (U11)
   above the rotation. Nav link "Enemies" after Maps, static in `wiki.html`.
@@ -252,6 +252,30 @@ flowchart LR
   hitters; Def / Mdef / Eva cuts and Acc buffs vs the matching enemy buffs; true, magic or physical damage where the
   enemy's filters let that kind through; no direct damage as a safe action during reflect windows. Ranked by score,
   top 10 then "Show all", each enemy linked with a one-line reason.
+- Section banners (U21, `.wiki-banner` in the `wiki v4` block of `site/style.css`): every detail-page section title
+  (enemy, item, map, class, skill; the `section()` helper of `wiki.ts`) is a full-width dark-brown bar with a gold bottom
+  border and white text, the same in both themes (`--wiki-banner-bg`). `.wiki-banner.sub` is the smaller in-card
+  version (enemy cards' Timeline / Rotation / Drops, bleeding to the card edges; the class page's "Growth per level").
+- Enemy drops as tables (U21, `web/src/ui/wiki-loot.ts`, rules of `obj.combat.lootService`), per win against one
+  enemy (a map room), party luck 0, one column per battle grade D..S (B = base, shaded):
+  - Every win (`rewardX1/2` = { material, min, max }): amount = clamp(round(math.random(min × gb × 10, max × gb × 10) / 10),
+    0, 5) with gb = `gradeBonus` (0.6, 0.75, 1, 1.25, 1.5); cells give the amount range per grade (hover: the odds),
+    "Chance" = chance of at least one at grade B (below 100 % only for the 0–1 rewards, which show "none N %").
+  - Each loot roll (`rewardX3/4` = a parcel), one table per roll: item (link + rarity chip), amount (hover: the
+    weighted amount odds), chance per grade, and "Nothing" as the last row; each grade column adds up to 100 %.
+    odds[0] = max(nilOdds × `gradeParcelBonus` (1.25, 1.1, 1, 0.9, 0.75) − luck, 1), items = odds × enemyAmount.
+  - Exact for `Utilities.weightedRandom`: threshold = math.random(0, total) (total + 1 integers), first choice in
+    `pairs()` order whose running sum reaches it, so the first choice (item 1; key 0 "nothing" sits in the hash part
+    and comes last) also wins threshold 0. The order comes from the engine's Lua table emulation (`sim/lua-table.ts`).
+    `parcelRoll` (item "Where it drops") uses the same numbers at grade B. `test/wiki-v4.test.ts` checks it against the
+    engine's `weightedRandom`.
+- Map pages, Skills column (U21): it was not reading a wrong field. It shows each variant's own rotation (`attackList`,
+  rare `attackListB`, as `default.enemyAttackList`), and many room enemies really have "Basic" on all 5 turns in
+  `data.QuestData` (all region 1 enemies incl. Grass Spider and the goblins, Coral Giant, Water Willow, Yarsol Snapper,
+  Sand Lizard, the titans, treants and golems…), so the Tuvale maps and the Revenge maps listed only "Basic", and other
+  rows ended in ", Basic". Now the cell counts the rotation: real skills linked with ×N, then "Basic ×N" muted, or
+  "Basic attack only"; the tooltip gives the turn order; it sorts by the skill names (`rotationSummary`,
+  `skillSummaryText`).
 
 ## Profit page
 

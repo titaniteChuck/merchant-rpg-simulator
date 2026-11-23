@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-23
+- **Website**: Wiki v4 (U21): full-width section banners on wiki detail pages; enemy drops as tables (every win and each loot roll, "Nothing" row, exact chances per battle grade from lootService); map Skills column counts the real rotation ("Basic attack only" where the game data has no skill).
 - **Website**: Save viewer hero page (U22): passive before rotation, both as the wiki's clickable ability rows with AP badges; rotation AP budget ("18 / 20 AP used", remaining, over-budget warning) from the engine rule; gear in two columns via the reusable `gearGrid` helper.
 - **Website**: Wiki crafting chains (U19 follow-up): equipment boxes only; crafted materials (ingots…) hidden but counted in the totals.
 - **Website**: Wiki v3 (U19): crafting-chain diagrams, "+NaN" bonus stats fixed (ranges), placeholder items removed, rarity chips in the game colours, class page level/ascension picker with tier caps and unlock marks, "Good against" enemies on hero skill pages.

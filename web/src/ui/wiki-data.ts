@@ -8,6 +8,7 @@ import { seq } from "../sim/lua.ts";
 import { ascLevel, ascText, el, fmt, withAsc } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
+import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -159,24 +160,17 @@ export const enemyMaps = (questId: number): number[] => enemyMapRoles(questId).m
 /** One entry of a loot table: an item, its share of the roll (percent) and the amounts it can come in. */
 export interface LootEntry { type: string; id: number; pct: number; amounts: number[] }
 /**
- * A parcel (loot table) at base odds: the "nothing" share and each item's share of one roll. Grade and party luck
- * shrink the "nothing" share in game (campaign.generateParcelItem); amounts are the possible stack sizes.
+ * A parcel (loot table) at base odds (grade B, party luck 0): the "nothing" share and each item's share of one roll,
+ * exact for the game's weightedRandom (wiki-loot.ts, which also gives the other grades). Amounts are the possible
+ * stack sizes.
  */
 export function parcelRoll(name: string): { nilPct: number; entries: LootEntry[] } | null {
-  const p = name ? G.parcelData?.[name] : null;
-  if (!p) return null;
-  const list = seq<Any>(p.itemList ?? {});
-  const total = (p.nilOdds ?? 0) + list.reduce((s, e) => s + (e.odds ?? 0), 0);
-  if (!total) return null;
+  const t = lootTable(name);
+  if (!t) return null;
+  const g = BASE_GRADE - 1;
   return {
-    nilPct: (100 * (p.nilOdds ?? 0)) / total,
-    entries: list.map((e) => {
-      const ids = seq<Any>(e.id ?? {});
-      const amt = seq<number>(e.amount ?? {});
-      // [id] = a material; [type, id] = another item type, always 1. Amounts with several entries are (amount, weight) pairs.
-      const amounts = ids.length > 1 ? [1] : amt.length > 1 ? amt.filter((_, i) => i % 2 === 0) : [amt[0] ?? 1];
-      return { type: ids.length > 1 ? String(ids[0]) : "material", id: Number(ids.length > 1 ? ids[1] : ids[0]), pct: (100 * (e.odds ?? 0)) / total, amounts };
-    }),
+    nilPct: t.nothing[g],
+    entries: t.rows.map((r) => ({ type: r.type, id: r.id, pct: r.chance[g], amounts: [...r.amounts.keys()] })),
   };
 }
 
