@@ -10,7 +10,7 @@
  */
 import { G } from "../sim/data.ts";
 import { D } from "../sim/defaults.ts";
-import { checkAmount, SearchCancelled, type SearchControl } from "./combat.ts";
+import { checkAmount, fightSeed, SearchCancelled, type SearchControl } from "./combat.ts";
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 import { type Game, gameFromData } from "./gamedata.ts";
 import { questLoot, Solver, type SourceStat } from "./profit.ts";
@@ -122,7 +122,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
       let xp = 0, revive = 0;
       for (let k = 0; k < n; k++) {
         step();
-        const res = sim.fight(src.quest, party.front, party.back, { seed: seed0 + k, isRare: src.rare ?? false, amount });
+        const res = sim.fight(src.quest, party.front, party.back, { seed: fightSeed(seed0, k), isRare: src.rare ?? false, amount });
         times.push(res.questTime / 3600);
         deaths.push(mean(res.heroes.map((h) => (h.dead ? 1 : 0))));
         if (res.won) {
@@ -169,7 +169,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         step();
         let res;
         try {
-          res = sim.mapRun(src.map, party.front, party.back, seed0 + k, scrolls ? scrolls.map((x) => ({ ...x })) : null);
+          res = sim.mapRun(src.map, party.front, party.back, fightSeed(seed0, k), scrolls ? scrolls.map((x) => ({ ...x })) : null);
         } catch {
           errors++; // the game's own code fails on this layout (e.g. level-70 treasure rooms)
           tick();

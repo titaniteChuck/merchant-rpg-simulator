@@ -18,6 +18,7 @@ without simulating, to pick the rotations worth simulating.
 - [Skill probe and timelines](#skill-probe-and-timelines)
 - [Counter-schedule score](#counter-schedule-score)
 - [Validation](#validation)
+- [Pre-filter](#pre-filter)
 - [Code](#code)
 
 ## Skill probe and timelines
@@ -64,7 +65,7 @@ scheduleContext(quest, front, back, { rare, amount }): ScheduleContext   // unit
 The score covers one steady-state 5-turn cycle, after a warm-up cycle. It follows the real action order and the
 probe's windows. For each hero action it counts:
 
-- **Damage:** the skill's power on the hero's own stats, × the active buffs and enemy debuffs. Minus what the enemy's
+- **Damage:** the skill's power on the hero's own stats, × the expected crit multiplier (hero crit and critMod plus crit buffs), × the active buffs and enemy debuffs. Berserk Smash's 3 % of enemy HP on a crit is counted too (`critHpPct`). Minus what the enemy's
   reflect, counter and shield windows on that turn take back. Odin's Grand Duel only takes physical damage.
 - **Cleanse:** it removes the party's debuffs, or its own for `cleanse-self`. Later actions stop paying for them: a
   stun no longer costs the action, and an atk / matk cut no longer reduces damage. DoT, stat swaps and def cuts are
@@ -95,22 +96,63 @@ Real save, one hero's rotation varied at a time:
 
 | Fight | Party | Hero varied | Schedule | Damage only |
 |---|---|---|---|---|
-| Archon | full (lost) | Mage | −0.18 | 0.54 |
-| Archon | full (lost) | Paladin | 0.09 | 0.20 |
-| Odin | full (lost) | Warrior | 0.37 | 0.53 |
-| Odin | full (lost) | Paladin | 0.56 | 0.52 |
-| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.71 | 0.71 |
-| Gnoll Khan ×5 | Warrior + Cleric | Warrior | 0.95 | 0.97 |
-| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.40 | −0.35 |
-| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.74 | 0.82 |
+| Archon | full (lost) | Mage | 0.21 | 0.12 |
+| Archon | full (lost) | Paladin | 0.22 | 0.30 |
+| Odin | full (lost) | Warrior | 0.57 | 0.60 |
+| Odin | full (lost) | Paladin | 0.16 | 0.32 |
+| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.71 | 0.70 |
+| Gnoll Khan ×5 | Warrior + Cleric | Warrior | 0.96 | 0.98 |
+| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.46 | −0.45 |
+| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.81 | 0.86 |
 
-- **Fights the party wins:** the score ranks rotations well (0.40–0.95). It is the only one of the two that gets the
-  healer right on Demon Mage.
-- **Fights the party loses:** it is weak, and so is any score there. On Archon (≤ 0.6 % of its HP removed) and Odin
-  (≈ 6 %), the simulated score mostly rewards dying sooner, through its −10-per-turn term. The real signal (lowest
-  enemy HP) is within noise.
-- **Use:** rank the candidates, then simulate the top ones (E14b's pre-filter). Don't use it as a verdict.
+Measured with E14b's simulated score (lost fights ranked by lowest enemy HP, total damage and survival; mixed fight
+seeds) and the crit-aware schedule score:
+
+- **Fights the party wins:** the score ranks rotations well (0.46–0.96). It is the only one of the two that gets
+  the healer right on Demon Mage.
+- **Fights the party loses (Archon, Odin):** it is weaker (0.16–0.57). The differences there are small (tenths of a
+  percent of enemy HP), so noise dominates.
+- **Use:** rank the candidates, then simulate the top ones (pre-filter below). Don't use it as a verdict.
 - The 1-turn fights (Gnoll Khan and Demon Mage ×1 with the full party) were dropped: every rotation scores the same.
+
+## Pre-filter
+
+`searchSkills` (and the skill and phase steps of `optimiseFight`) use the score as a pre-filter, through the
+`prefilter` option: default 15, `false` = off. Every ordering of every AP-legal skill multiset is ranked by the
+schedule score and by damage only. The union of both top-15 lists plus the current rotation is simulated at
+`nQuick`, then the usual finalists × passives at `nFinal`.
+
+Real save, `searchSkills` with nQuick 30, nFinal 150, top 8. The best rotation of each search is re-scored on 300
+other fights, so luck in the search's own fights doesn't count. On fights the current rotation wins under 50 %,
+k is ×4 (60 + 60), because the score ranks lost fights least well:
+
+| Fight | Hero | Full: simulated | Pre-filter: simulated (ranked) | Re-scored, full vs pre-filter |
+|---|---|---|---|---|
+| Odin (lost) | Paladin | 286 | 116 (4,308) | 688 vs 685 (peak 6.2 vs 6.2 %) |
+| Odin (lost) | Warrior | 290 | 97 (4,513) | 782 vs 782 (same rotation) |
+| Archon (lost) | Mage | 350 | 121 (4,607) | 81 vs 74 (peak 0.6 vs 0.5 %) |
+| Archon (lost) | Paladin | 285 | 120 (4,308) | 60 vs 60 (same rotation) |
+| Gnoll Khan ×5 | Cleric | 205 | 16 (2,667) | 13.5 vs 13.8 turns |
+| Gnoll Khan ×5 | Warrior | 310 | 16 (4,513) | 10.3 vs 10.6 turns |
+| Demon Mage ×5 | Cleric | 300 | 31 (2,667) | 40.6 vs 43.5 turns |
+| Demon Mage ×5 | Warrior | 310 | 21 (4,513) | 16.3 vs 16.5 turns |
+
+- **Cost:** 10–19× fewer rotations simulated on won fights, about 2.5× fewer on lost ones. Wall-clock: 5–8 s vs 24–84 s on won fights, on a shared machine.
+- **Quality:** same win rates. Within 0.3 turns or 0.1 % of enemy HP, except Demon Mage's Cleric, which is 2.9 turns slower: the score underrates healer timing.
+
+`optimiseFight` (party fixed, steps order / swap / phase / skills, nQuick 10, nFinal 200; final evaluation):
+
+| Fight | Full | Pre-filter |
+|---|---|---|
+| Odin (lost) | 13.0 % lowest enemy HP (score 1439) | 14.1 % (1563) |
+| Archon (lost) | 4.0 % (477) | 4.4 % (524) |
+| Gnoll Khan ×5 | 7.2 turns, 70 % HP left | 6.5 turns, 75 % HP left |
+| Demon Mage ×5 | 16.3 turns, 33 % HP left | 16.8 turns, 31 % HP left |
+
+- The coordinate descent takes a different path with the pre-filter, so results can be better or worse. Both found the Berserker's crit rotation: Blind Fury + Berserk Smash (3 % of enemy HP per crit), the biggest single step on Odin and Archon.
+- A first version of the score ignored crits and filtered that rotation out (Odin 9.6 %, Archon 1.9 %). The score now counts expected crit damage, and `critHpPct` from the probe.
+- Wall-clock on Gnoll Khan and Demon Mage: 2.5–3× faster. On Odin and Archon the time was dominated by machine load from other sessions, so it isn't comparable.
+- When the best result matters more than the time, use a larger `prefilter` or `false`.
 
 ## Code
 

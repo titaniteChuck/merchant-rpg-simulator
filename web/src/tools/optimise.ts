@@ -10,11 +10,12 @@
  * configuration on the same rolls. Pure: no output, no Node APIs; progress and cancel through SearchControl.
  */
 import {
-  checkAmount, evaluateTarget, type FightEval, type GearCandidate, type MapEval, type MapTarget, type PartyLayout, type QuestTarget,
+  checkAmount, evaluateTarget, type FightEval, scheduleParty, type GearCandidate, type MapEval, type MapTarget, type PartyLayout, type QuestTarget,
   SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls, searchSkills,
 } from "./combat.ts";
 import type { Hero, Row, Scroll, Sim } from "./engine.ts";
 import type { Save } from "./save.ts";
+import { enemyTimeline, hasTimelines, scheduleContext, scoreSchedule } from "./schedule.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -50,6 +51,11 @@ export interface OptimiseOptions {
   /** Rotation search breadth (skill sets / orderings kept, default 2) and gear passes (default 1). */
   skillsTop?: number;
   gearPasses?: number;
+  /** Schedule pre-filter (quests, timelines loaded; see searchSkills): rotations simulated per hero in the skill
+   * step = its top `prefilter` + the damage-only top (x4 on fights won under 50 %); phase step: only the 2 best
+   * shifts by schedule score and the best by damage are simulated, on fights won at least half the time. Default 15;
+   * 0 or false = off. */
+  prefilter?: number | false;
 }
 
 export interface FightConfig {
@@ -210,7 +216,7 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
           const h = pool.get(id)!;
           const before = score();
           const [front, back] = rows();
-          const res = searchSkills(sim, h, front, back, t, { nQuick, nFinal: nQuick, top: o.skillsTop ?? 2 }, inner);
+          const res = searchSkills(sim, h, front, back, t, { nQuick, nFinal: nQuick, top: o.skillsTop ?? 2, prefilter: o.prefilter }, inner);
           const best = res.ranked[0];
           if (best && gains(before, best.ev.score)) {
             sim.setSkills(h, best.rotation, best.passive);
@@ -231,15 +237,10 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
           const before = score();
           const cands = freeCandidates(o.save, party, id, usedItems);
           const [front, back] = rows();
-          // A candidate that lowers the hero's AP makes the game swap in the default rotation and passive
-          // (Hero:calculateAPRemainder); searchGear puts the gear back but not the skills, so restore them here.
+          // searchGear scores every candidate with the hero's rotation and passive and puts them back (an item that
+          // lowers AP makes the game reset them: Hero:calculateAPRemainder)
           const rot0 = sim.rotation(h), passive0 = h.passiveSelect, inv0 = h.heroInventory.slice();
-          let res;
-          try {
-            res = searchGear(sim, h, front, back, t, cands.byslot, { n: nQuick, passes: o.gearPasses ?? 1 }, inner);
-          } finally {
-            sim.setSkills(h, rot0, passive0);
-          }
+          const res = searchGear(sim, h, front, back, t, cands.byslot, { n: nQuick, passes: o.gearPasses ?? 1 }, inner);
           const changes = res.gear.filter((g) => g.from !== null);
           let after = -Infinity;
           if (changes.length && gains(before, res.final.score)) {
@@ -455,8 +456,26 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
         if (outOfTime()) throw new SearchCancelled();
         const before = score();
         const seen = new Set([rot.join()]);
-        const shifts = [1, 2, 3, 4].map((s) => ({ s, r: shiftRotation(rot, s) }))
+        let shifts = [1, 2, 3, 4].map((s) => ({ s, r: shiftRotation(rot, s) }))
           .filter(({ r }) => !seen.has(r.join()) && (seen.add(r.join()), true));
+        // schedule pre-filter: simulate the 2 best shifts by counter-schedule score and the best by damage only
+        const kPre = o.prefilter === false ? 0 : o.prefilter ?? 15;
+        // not on fights the party doesn't win reliably (score < 0.5 x 1e6): the schedule score ranks those poorly
+        if (kPre > 0 && !map && hasTimelines() && shifts.length > 2 && before >= 5e5) {
+          try {
+            const q = t as QuestTarget, tl = enemyTimeline(q.quest, q.rare ?? false);
+            const [front, back] = rows();
+            const ctx = scheduleContext(q.quest, front, back, { rare: q.rare, amount: q.amount });
+            const by = (w: Record<string, number>) => [...shifts].sort((a, b) =>
+              scoreSchedule(scheduleParty(sim, front, back, h, b.r), tl, w, ctx).total -
+              scoreSchedule(scheduleParty(sim, front, back, h, a.r), tl, w, ctx).total);
+            const dmgOnly = { reflect: 0, counter: 0, cleanse: 0, wastedCleanse: 0, defence: 0, heal: 0, idleHeal: 0, dispel: 0 };
+            const keep = new Set([...by({}).slice(0, 2), by(dmgOnly)[0]]);
+            shifts = shifts.filter((x) => keep.has(x));
+          } catch {
+            // no timeline for this quest: every shift
+          }
+        }
         let best: { s: number; r: string[]; sc: number } | null = null;
         ctl.onProgress?.(0, shifts.length, name);
         try {

@@ -64,6 +64,8 @@ export interface SkillProfile {
   power: number;
   /** Hero skills: raw damage (all hits) per point of each caster stat; Basic is { atk: 1, matk: 1 }. */
   scaling?: Partial<Record<(typeof SCALE_STATS)[number], number>>;
+  /** Hero skills: extra damage on a crit, as a share of the enemy's current HP (Berserk Smash: 0.03). */
+  critHpPct?: number;
   /** Share of the raw damage that is physical (atk), magical (matk) and true (dmg). */
   mix?: { physical: number; magical: number; true: number };
   /** Party locations an enemy skill hit (1-6). */
@@ -448,6 +450,13 @@ export function probeHeroSkill(sim: Sim, name: string): SkillProfile {
     return c.rec.events.filter((e) => e.kind === "attack" && e.actor === c.caster && e.target === c.battle.enemy && !e.data.isDot)
       .reduce((a, e) => a + e.data.raw * e.data.mod, 0);
   };
+  // extra damage on a crit that scales with the enemy's HP (Berserk Smash: 3 % of its current HP); the probe enemy
+  // has 1e9 HP, so stat-scaled damage is negligible next to it
+  {
+    const base = Object.fromEntries(SCALE_STATS.map((k) => [k, 1000]));
+    const extra = raw({ ...base, crit: 100, critMod: 1 }) - raw({ ...base, crit: 0 });
+    if (extra > 1e5) p.critHpPct = Math.round((extra / 1e9) * 1e4) / 1e4;
+  }
   const base = Object.fromEntries(SCALE_STATS.map((k) => [k, 1000]));
   const r0 = raw(base);
   if (r0 > 0) {
@@ -511,7 +520,7 @@ export interface TimelinesData {
   timelines: Record<string, EnemyTimeline>;
 }
 
-export const TIMELINES_VERSION = 2;
+export const TIMELINES_VERSION = 3;
 
 export const timelineKey = (quest: number, rare = false) => `${quest}${rare ? "B" : ""}`;
 

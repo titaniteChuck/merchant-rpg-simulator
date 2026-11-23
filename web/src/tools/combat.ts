@@ -15,6 +15,7 @@ import { gameFromData, pyRound } from "./gamedata.ts";
 import { Solver } from "./profit.ts";
 import { itemName, type Hero, type MapSpec, type Row, type Scroll, sellValue, Sim } from "./engine.ts";
 import type { Save } from "./save.ts";
+import { enemyTimeline, hasTimelines, type PartyMember, scheduleContext, scoreSchedule, type ScoreWeights } from "./schedule.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -114,7 +115,22 @@ export interface FightEval {
   score: number;
 }
 
-/** Monte-Carlo summary of n fights with seeds seed0..seed0+n-1. */
+/**
+ * Seed of fight k of an evaluation starting at seed0: a 32-bit hash (murmur3 finaliser) of (seed0, k), in
+ * 1..2^31-2. Plain small seeds (1, 2, 3...) make Park-Miller's first roll tiny (s x 16807 / (2^31 - 1)): random(1, 100)
+ * is 1 for every seed up to ~1,270, so the first hit check of every fight always landed.
+ */
+export function fightSeed(seed0: number, k: number): number {
+  let h = (Math.imul(seed0 | 0, 0x9e3779b1) + (k | 0)) | 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return ((h >>> 0) % 2147483646) + 1;
+}
+
+/** Monte-Carlo summary of n fights with seeds fightSeed(seed0, 0..n-1). */
 export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200, rare = false, amount = 1, seed0 = 1): FightEval {
   const q = G.questData[quest];
   if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${quest} has no enemy to fight`);
@@ -126,7 +142,7 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   const peakFrac: number[] = [], dmgTotal: number[] = [], dmgFrac: number[] = [];
   const acc = heroAccumulator();
   for (let k = 0; k < n; k++) {
-    const res = sim.fight(quest, front, back, { seed: seed0 + k, isRare: rare, amount });
+    const res = sim.fight(quest, front, back, { seed: fightSeed(seed0, k), isRare: rare, amount });
     turns.push(res.turns);
     if (res.won) {
       wins++;
@@ -150,11 +166,6 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   return out;
 }
 
-/** Win rate first; among equal win rates, faster fights, then more HP left;
- * for lost fights, how much of the enemy's HP was removed. */
-/** Win rate first; among equal win rates, faster fights, then more HP left; for lost fights, how far the
- * enemy's HP was brought down at its lowest (end HP hides it when the enemy heals back), then, as a last
- * tiebreak, the damage it took. */
 /** Throws when `amount` is not one the game offers to this party (see maxQuestAmount). */
 export function checkAmount(sim: Sim, front: Row, back: Row, rare: boolean, amount: number): void {
   const max = maxQuestAmount([...front, ...back], rare, sim.mode);
@@ -164,10 +175,17 @@ export function checkAmount(sim: Sim, front: Row, back: Row, rare: boolean, amou
   }
 }
 
+/**
+ * Win rate first. Won fights: faster is better (-10 per turn), then HP left. Lost fights: how far the enemy's HP was
+ * brought down at its lowest (1 % = 100), then the total damage it took (1 % = 10, counts when it heals back), and
+ * surviving longer is a small bonus (+0.5 per turn) — not a penalty, which rewarded dying sooner.
+ */
 export function score(ev: Pick<FightEval, "win" | "enemy_dmg" | "turns" | "hp_left"> &
-  Partial<Pick<FightEval, "enemy_dmg_peak" | "enemy_dmg_total_frac">>): number {
-  return ev.win * 1e6 + (ev.enemy_dmg_peak ?? ev.enemy_dmg) * 1e4 - ev.turns * 10 + ev.hp_left * 5 +
-    Math.min(ev.enemy_dmg_total_frac ?? 0, 100) * 1e-3;
+  Partial<Pick<FightEval, "enemy_dmg_peak" | "enemy_dmg_total_frac" | "turns_win">>): number {
+  const tw = ev.turns_win ?? ev.turns;
+  const lostTurns = ev.win < 1 ? Math.max(0, (ev.turns - ev.win * tw) / (1 - ev.win)) : 0;
+  return ev.win * 1e6 + (ev.enemy_dmg_peak ?? ev.enemy_dmg) * 1e4 - ev.win * tw * 10 + ev.hp_left * 5 +
+    (1 - ev.win) * (Math.min(ev.enemy_dmg_total_frac ?? 0, 100) * 1e3 + Math.min(lostTurns, 200) * 0.5);
 }
 
 export function fmtEval(ev: FightEval): string {
@@ -228,7 +246,7 @@ export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 
   for (let k = 0; k < n; k++) {
     let res;
     try {
-      res = sim.mapRun(spec, front, back, seed0 + k, scrolls);
+      res = sim.mapRun(spec, front, back, fightSeed(seed0, k), scrolls);
     } catch (e) { // the game code itself failed (e.g. a map that can't be generated)
       if (String(e).includes("not ported")) throw e;
       errors.push(String((e as Error)?.message ?? e).split("\n")[0]);
@@ -435,7 +453,7 @@ export interface MapTarget {
   scrolls?: Scroll[] | null;
 }
 
-/** evaluate (quest) or evaluateMap (map run) with seeds seed0..seed0+n-1; both carry a comparable `score`. */
+/** evaluate (quest) or evaluateMap (map run) with seeds fightSeed(seed0, 0..n-1); both carry a comparable `score`. */
 export function evaluateTarget(sim: Sim, t: QuestTarget, front: Row, back: Row, n: number, seed0?: number): FightEval;
 export function evaluateTarget(sim: Sim, t: MapTarget, front: Row, back: Row, n: number, seed0?: number): MapEval;
 export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0?: number): FightEval | MapEval;
@@ -662,8 +680,67 @@ export interface SkillSearch<E extends FightEval | MapEval = FightEval> {
   ranked: RotationResult<E>[];
   maxAP: number;
   unlocked: { name: string; ap: number }[];
-  /** Candidates per stage: skill multisets, their orderings, final evaluations. */
-  counts: { combos: number; orderings: number; final: number };
+  /**
+   * Candidates per stage: skill multisets, their orderings, final evaluations. With the schedule pre-filter,
+   * `orderings` is the number simulated and `prefiltered` the number of AP-legal orderings it ranked.
+   */
+  counts: { combos: number; orderings: number; final: number; prefiltered?: number };
+}
+
+/** Options of searchSkills (and optimiseFight's skill steps). */
+export interface SkillSearchOptions {
+  nQuick?: number;
+  nFinal?: number;
+  top?: number;
+  /**
+   * Schedule pre-filter (quests, timelines loaded): rank every ordering of every AP-legal skill multiset with the
+   * counter-schedule score (schedule.ts) and simulate only its top `prefilter` plus the damage-only top `prefilter`
+   * (and the current rotation), instead of simulating every multiset and the orderings of the best ones.
+   * Default 15 (x4 when the current rotation wins under 50 %: the score ranks lost fights poorly); 0 or false = off.
+   */
+  prefilter?: number | false;
+}
+
+const DAMAGE_ONLY: Partial<ScoreWeights> = {
+  reflect: 0, counter: 0, cleanse: 0, wastedCleanse: 0, defence: 0, heal: 0, idleHeal: 0, dispel: 0,
+};
+
+/**
+ * The schedule pre-filter: every ordering of every multiset in `combos`, ranked by the counter-schedule score and by
+ * damage only (same code, utility weights 0); returns the union of both top-k lists plus `keep` (when legal).
+ * Null when the quest has no timeline.
+ */
+export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: QuestTarget, combos: string[][], k: number,
+  keep?: string[]): { picked: string[][]; total: number } | null {
+  let tl;
+  try {
+    tl = enemyTimeline(t.quest, t.rare ?? false);
+  } catch {
+    return null;
+  }
+  const ctx = scheduleContext(t.quest, front, back, { rare: t.rare, amount: t.amount });
+  const seen = new Set<string>();
+  const all: string[][] = [];
+  for (const combo of combos) {
+    for (const p of uniquePermutations(combo)) {
+      const key = p.join("|");
+      if (!seen.has(key)) (seen.add(key), all.push(p));
+    }
+  }
+  const rank = (w: Partial<ScoreWeights>) => all.map((p) => [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const)
+    .sort((a, b) => b[0] - a[0]).slice(0, k).map(([, p]) => p);
+  const picked = new Map<string, string[]>();
+  for (const p of [...rank({}), ...rank(DAMAGE_ONLY)]) picked.set(p.join("|"), p);
+  if (keep && seen.has(keep.join("|"))) picked.set(keep.join("|"), keep);
+  return { picked: [...picked.values()], total: all.length };
+}
+
+/** The party as schedule.ts sees it (locations: back 1, 3, 5; front 2, 4, 6), with `h` playing `rotation`. */
+export function scheduleParty(sim: Sim, front: Row, back: Row, h: Hero, rotation: string[]): PartyMember[] {
+  const out: PartyMember[] = [];
+  front.forEach((x, i) => x && out.push({ location: 2 * i + 2, rotation: x === h ? rotation : sim.rotation(x) }));
+  back.forEach((x, i) => x && out.push({ location: 2 * i + 1, rotation: x === h ? rotation : sim.rotation(x) }));
+  return out;
 }
 
 /**
@@ -673,14 +750,15 @@ export interface SkillSearch<E extends FightEval | MapEval = FightEval> {
  * If the hero is in neither row, it is added at the front of the front row.
  */
 export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget,
-  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch;
+  o?: SkillSearchOptions, ctl?: SearchControl): SkillSearch;
 export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: MapTarget,
-  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch<MapEval>;
+  o?: SkillSearchOptions, ctl?: SearchControl): SkillSearch<MapEval>;
 export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
-  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch<FightEval | MapEval>;
+  o?: SkillSearchOptions, ctl?: SearchControl): SkillSearch<FightEval | MapEval>;
 export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
-  o: { nQuick?: number; nFinal?: number; top?: number } = {}, ctl: SearchControl = {}): SkillSearch<FightEval | MapEval> {
+  o: SkillSearchOptions = {}, ctl: SearchControl = {}): SkillSearch<FightEval | MapEval> {
   const nQuick = o.nQuick ?? 30, nFinal = o.nFinal ?? 300, top = o.top ?? 8;
+  const kPre = o.prefilter === false ? 0 : o.prefilter ?? 15;
   const h = hero;
   if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
   const st = stepper(ctl);
@@ -714,22 +792,33 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
   try {
     st.stage("current", 1);
     const base = ev(nFinal);
-    // Stage 1: every multiset of skills within the largest budget, in one canonical order, scored with the
-    // current passive (or the widest-budget one when the current can't afford it).
+    // Stage 1: every multiset of skills within the largest budget, in one canonical order (scored with the
+    // current passive, or the widest-budget one when the current can't afford it, unless pre-filtered).
     const combos = [...rotations(names, costs, Math.max(...budget.values()))].filter((c) => apply(c, passiveFor(c)));
-    st.stage("skill sets", combos.length);
-    const scored: [number, string[]][] = combos.map((combo) => {
-      apply(combo, passiveFor(combo));
-      return [ev(nQuick).score, combo];
-    });
-    scored.sort(byScoreDesc);
-    // Stage 2: orderings of the best combos (rotation order matters: buffs before hits...).
-    const seen = new Set<string>();
-    const cands: string[][] = [];
-    for (const [, combo] of scored.slice(0, top)) {
-      for (const p of uniquePermutations(combo)) {
-        const key = JSON.stringify(p);
-        if (!seen.has(key)) (seen.add(key), cands.push(p));
+    // lost fights (win < 50 %) are where the score is least reliable: keep 4x more candidates there
+    const kEff = base.win < 0.5 ? kPre * 4 : kPre;
+    const pre = kPre > 0 && !("map" in t) && hasTimelines() ? prefilterRotations(sim, h, front, back, t, combos, kEff, current[0]) : null;
+    let cands: string[][];
+    if (pre) {
+      // Pre-filter: every ordering ranked by the counter-schedule score (and damage only); simulate the top ones.
+      st.stage("pre-filter", 1);
+      st.tick();
+      cands = pre.picked;
+    } else {
+      st.stage("skill sets", combos.length);
+      const scored: [number, string[]][] = combos.map((combo) => {
+        apply(combo, passiveFor(combo));
+        return [ev(nQuick).score, combo];
+      });
+      scored.sort(byScoreDesc);
+      // Stage 2: orderings of the best combos (rotation order matters: buffs before hits...).
+      const seen = new Set<string>();
+      cands = [];
+      for (const [, combo] of scored.slice(0, top)) {
+        for (const p of uniquePermutations(combo)) {
+          const key = JSON.stringify(p);
+          if (!seen.has(key)) (seen.add(key), cands.push(p));
+        }
       }
     }
     st.stage("orderings", cands.length);
@@ -738,8 +827,10 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
       return [ev(nQuick).score, perm];
     });
     scored2.sort(byScoreDesc);
-    // Stage 3: best orderings x every passive, with more fights.
+    // Stage 3: best orderings x every passive, with more fights. The current rotation is always a finalist, so the
+    // result is never worse than what the hero plays (quick scores are noisy when fights differ by little).
     const finalists = scored2.slice(0, top);
+    if (!finalists.some(([, r]) => r.join() === current[0].join()) && apply(current[0], current[1])) finalists.push([base.score, current[0]]);
     const pairs = finalists.flatMap(([, perm]) => passives.filter((p) => apOf(perm) <= (budget.get(p) ?? 0)).map((p) => [perm, p] as const));
     st.stage("final", pairs.length);
     const ranked: RotationResult<FightEval | MapEval>[] = [];
@@ -751,7 +842,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     return {
       current: { rotation: current[0], passive: current[1], ev: base }, ranked, maxAP: info.maxAP,
       unlocked: skills.map((x) => ({ name: x.name, ap: x.ap })),
-      counts: { combos: combos.length, orderings: cands.length, final: ranked.length },
+      counts: { combos: combos.length, orderings: cands.length, final: ranked.length, ...(pre ? { prefiltered: pre.total } : {}) },
     };
   } finally {
     sim.setSkills(h, current[0], current[1]); // leave the hero as in the save

@@ -84,3 +84,19 @@ test("spearman", () => {
   assert.equal(spearman([1, 2, 3], [3, 2, 1]), -1);
   assert.equal(spearman([1, 1, 2], [5, 5, 9]), 1);
 });
+
+test("searchSkills with the schedule pre-filter: ranks every ordering, simulates the top ones and the current rotation", async () => {
+  const { searchSkills } = await import("../src/tools/combat.ts");
+  const h = sim.hero({
+    id: 1, heroID: 1, name: "T", class: 1, level: 30, exp: 0, prestigeLevel: 1, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  });
+  const rot = sim.rotation(h);
+  const pre = searchSkills(sim, h, [h], [], { quest: 3 }, { nQuick: 2, nFinal: 3, top: 2, prefilter: 3 });
+  assert.ok(pre.counts.prefiltered! > pre.counts.orderings, `${pre.counts.prefiltered} ranked, ${pre.counts.orderings} simulated`);
+  assert.ok(pre.counts.orderings <= 7, "top 3 + damage-only top 3 + current");
+  assert.ok(pre.ranked.some((r) => r.rotation.join() === rot.join()), "the current rotation is always a finalist");
+  assert.deepEqual(sim.rotation(h), rot);
+  const full = searchSkills(sim, h, [h], [], { quest: 3 }, { nQuick: 2, nFinal: 3, top: 2, prefilter: false });
+  assert.equal(full.counts.prefiltered, undefined);
+});

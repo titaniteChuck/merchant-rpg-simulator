@@ -1,5 +1,5 @@
 {
- "version": 2,
+ "version": 3,
  "heroSkills": {
   "Ambush": {
    "name": "Ambush",
@@ -126,6 +126,7 @@
     "true": 1
    },
    "effects": [],
+   "critHpPct": 0.03,
    "scaling": {
     "atk": 2
    }

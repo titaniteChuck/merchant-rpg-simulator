@@ -15,7 +15,7 @@
  */
 import { G } from "../sim/data.ts";
 import { D } from "../sim/defaults.ts";
-import { maxQuestAmount, SearchCancelled, type SearchControl } from "./combat.ts";
+import { fightSeed, maxQuestAmount, SearchCancelled, type SearchControl } from "./combat.ts";
 import type { FightResult, Hero, Row, Sim } from "./engine.ts";
 import { reviveGold } from "./farming.ts";
 
@@ -67,7 +67,7 @@ export function questXpRate(sim: Sim, hero: Hero, front: Row, back: Row, quest: 
   const mult = (1 + (hero.expMod ?? 0) / 100) * D.questXpMod;
   let xp = 0, secs = 0, wins = 0, revive = 0;
   for (let k = 0; k < n; k++) {
-    const res: FightResult = sim.fight(quest, front, back, { seed: 1 + k, amount });
+    const res: FightResult = sim.fight(quest, front, back, { seed: fightSeed(1, k), amount });
     secs += res.questTime;
     const me = res.heroes.find((h) => h.name === hero.name && h.class === hero.class)!;
     if (res.won) {
@@ -203,7 +203,7 @@ export function prestigePayoff(sim: Sim, raw: Any, ref: { quest: number; n?: num
     let wins = 0, peak = 0, score = 0;
     const n = ref.n ?? 50;
     for (let k = 0; k < n; k++) {
-      const res = sim.fight(ref.quest, [h], [], { seed: 1 + k });
+      const res = sim.fight(ref.quest, [h], [], { seed: fightSeed(1, k) });
       if (res.won) wins++;
       peak += 1 - Math.max(res.enemyMinHP ?? res.enemyHP, 0) / res.enemyMaxHP;
     }

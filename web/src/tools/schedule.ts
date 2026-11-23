@@ -26,6 +26,9 @@ export function loadTimelines(json: TimelinesData): void {
   data = json;
 }
 
+/** True once loadTimelines ran (searches use the schedule pre-filter only then). */
+export const hasTimelines = (): boolean => data !== undefined;
+
 function need(): TimelinesData {
   if (!data) throw new Error("timelines not loaded (loadTimelines)");
   return data;
@@ -93,7 +96,7 @@ export function scheduleContext(quest: number, front: Row, back: Row, o: { rare?
       hit: h.atk * calculateReduction(e.def, h.defPen) + h.matk * calculateReduction(e.mdef, h.mdefPen),
       taken: e.atk * calculateReduction(h.def) + e.matk * calculateReduction(h.mdef),
       maxHP: h.maxHP,
-      stats: { atk: h.atk, matk: h.matk, acc: h.acc, def: h.def, mdef: h.mdef },
+      stats: { atk: h.atk, matk: h.matk, acc: h.acc, def: h.def, mdef: h.mdef, crit: h.crit ?? 0, critMod: h.critMod ?? 2 },
     };
   };
   front.forEach((h, i) => add(h, 2 * i + 2));
@@ -125,7 +128,8 @@ const ORDER = [1, 2, 3, 4, 5, 6];
 /** Offensive weight of an effect's stats (atk / matk %, accuracy, crit). */
 function offence(e: EffectInfo): number {
   const s = e.stats ?? {};
-  return Math.max(0, (s.atk ?? 0) + (s.matk ?? 0) + 0.5 * (s.acc ?? 0) + (s.crit ?? 0) / 100 + 0.3 * (s.critMod ?? 0) +
+  // crit and critMod are counted through the expected crit multiplier (scoreSchedule)
+  return Math.max(0, (s.atk ?? 0) + (s.matk ?? 0) + 0.5 * (s.acc ?? 0) +
     (s.atkBns ? 0.3 : 0) + (s.matkBns ? 0.3 : 0) + (s.lckMod ? 0.05 : 0));
 }
 
@@ -283,7 +287,17 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
             ? Math.max(0, ((x.e.stats?.physicalDamage ?? 1) - 1))
             : Math.max(0, -(x.e.stats?.def ?? 0) * (p.mix?.physical ?? 1) - (x.e.stats?.mdef ?? 0) * (p.mix?.magical ?? 0))), 0);
           const mine2 = onMe.reduce((a, x) => a + Math.max(0, -((x.e.stats?.atk ?? 0) * (p.mix?.physical ?? 1) + (x.e.stats?.matk ?? 0) * (p.mix?.magical ?? 0))), 0);
-          let dmg = W.damage * pw * dU(loc) * Math.max(0, 1 + buffs + debuffs - mine2);
+          // expected crit: chance (hero crit + crit buffs, %) x (critMod - 1); plus %-of-enemy-HP damage on a crit
+          // (Berserk Smash: 3 % of its current HP, taken as 80 % of its max on average)
+          const st = ctx?.heroes[loc]?.stats;
+          const pc = Math.min(1, Math.max(0, ((st?.crit ?? 0) + mine.reduce((a, x) => a + (x.e.stats?.crit ?? 0), 0)) / 100));
+          const cm = Math.max(1, (st?.critMod ?? 2) + mine.reduce((a, x) => a + (x.e.stats?.critMod ?? 0), 0));
+          const critF = 1 + pc * (cm - 1);
+          let dmg = W.damage * pw * dU(loc) * critF * Math.max(0, 1 + buffs + debuffs - mine2);
+          if (p.critHpPct && pc > 0) {
+            dmg += W.damage * p.critHpPct * pc * 100 * 0.8 * (ctx ? 1 : 1 / Math.max(dU(loc), 1e-9));
+            why.push(`crit ${Math.round(100 * pc)} %: +${(100 * p.critHpPct).toFixed(0)} % enemy HP`);
+          }
           if (buffs + debuffs > 0) why.push(`damage x${(1 + buffs + debuffs).toFixed(2)}`);
           // enemy windows facing this hero action
           for (const x of enemyWindow(t, (e) => e.facingTurns, (e) => e.on === "self" || e.on === "party")) {

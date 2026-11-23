@@ -117,8 +117,15 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 ## Search methods
 
 - Every candidate is evaluated on the same seeds (common random numbers), so differences aren't noise.
-- Score: win rate first, then fewer turns, then party HP left; for losses, how far the enemy's HP was brought down
-  at its lowest point (`enemy_dmg_peak`), then, as a tiebreak only, the damage it took (`enemy_dmg_total_frac`).
+- Seeds: fight k of an evaluation uses `fightSeed(seed0, k)`, a 32-bit hash of (seed0, k), in `evaluate`,
+  `evaluateMap` (so every search), the farming report and levelling. Plain seeds 1, 2, 3... gave a first Park-Miller
+  roll of 1 for every seed up to ~1,270, so the first hit check of every fight always landed. The Lua difftests and
+  engine snapshots call the engine with their own seeds and are unchanged.
+- Score (`score`):
+  - Win rate first.
+  - Won fights: fewer turns (−10 per turn), then party HP left.
+  - Lost fights: how far the enemy's HP was brought down at its lowest point (`enemy_dmg_peak`, 1 % = 100). Then the damage it took (`enemy_dmg_total_frac`, 1 % = 10; it counts when the enemy heals back). Then surviving longer, a small bonus (+0.5 per turn).
+  - Before, every turn cost 10 points, won or lost, which rewarded a lost fight that ended sooner.
 - Healing enemies: `enemy_dmg` is the share of HP removed at the end of the fight. An enemy that heals (Archon's
   Aeon Lash, Goblin Warlord's Feast) can end a lost fight near full HP, so each fight also records the lowest enemy
   HP after any action (`enemyMinHP`) and all damage it took (`enemyDmgTaken`, overkill on the killing blow included).
@@ -127,7 +134,12 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 - `skills`: every skill multiset within AP (one order, quick), then all orderings of the best ones,
   then each passive with more fights. AP budgets are per passive (Wisdom: +2 AP): multisets go up to the largest
   budget and are scored with a passive that affords them; a rotation the game would replace with its default
-  (`Hero:calculateAPRemainder`) is never scored.
+  (`Hero:calculateAPRemainder`) is never scored. The current rotation is always a finalist, so the result is never
+  worse than what the hero plays.
+  - Schedule pre-filter (default for quests once `loadTimelines` ran; `prefilter: k`, default 15, `false` = off).
+    Every ordering of every AP-legal multiset is ranked twice, by the counter-schedule score and by damage only
+    ([schedule](./schedule.md)). Only the union of both top-k lists plus the current rotation is simulated, then
+    the usual finalists × passives. Map runs and quests without a timeline use the full search.
 - `gear`: coordinate descent, slot by slot, repeated `--passes` times.
   - `owned`: inventory, sale slots and gear worn by other heroes.
   - `catalog`: every equipment item within `--level-window` levels, built by the game at `--item-grade`,
@@ -164,9 +176,12 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   candidate party that doesn't scores −∞ (skipped) instead of throwing, and the party step uses the constrained search
   (as with locks). If no party of the pool is valid, `optimiseFight` throws "no party could be formed".
 - **Gear and AP**: a gear candidate that lowers the hero's AP below its rotation's cost makes the game swap in the
-  default rotation and passive. `searchGear` restores the gear but not the skills, so the gear step puts them back
-  and re-scores the kept gear with the rotation the game would really play. Before this fix, one hero's gear search
-  could silently reset that hero's rotation (Archon: score 801 → 423 between two gear steps).
+  default rotation and passive. `searchGear` now scores every candidate with the hero's rotation put back and
+  restores it at the end. The gear step still re-applies the rotation after equipping, and re-scores the kept gear
+  with the rotation the game would really play. Before this fix, one hero's gear search could silently reset that
+  hero's rotation (Archon: score 801 → 423 between two gear steps).
+- **Schedule pre-filter** (`prefilter`, default 15): the skill step's `searchSkills` uses it. The phase step
+  simulates only the 2 best shifts by schedule score and the best by damage only, instead of all 4.
 
 | Target (save's 17 heroes) | `searchParty` alone | `optimiseFight` (2 min) | Unbounded |
 |---|---|---|---|
@@ -190,8 +205,8 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   - The gains come from timing more than from rows: a phase shift is a 0.1-0.5 s step that can be worth more than a
     20 s rotation search (Odin's Mage: Silence one turn earlier). Rotations found by the skill search are already
     best among their own orderings, so the phase step gains mostly before it, or after the order changes.
-  - Losing fights score fewer turns as better (`score`), so Odin's 15 vs 19 turns is not a gain in itself; the higher
-    lowest-HP point is.
+  - These figures used the former `score`, where losing fights scored fewer turns as better, so Odin's 15 vs 19
+    turns was not a gain in itself; the higher lowest-HP point is. Lost fights now count survival as a small bonus.
 
 ## Potions and enchants in combat
 

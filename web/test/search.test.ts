@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
 import {
-  catalogGearCandidates, evaluate, score, ownedGearCandidates, SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls,
+  catalogGearCandidates, evaluate, fightSeed, score, ownedGearCandidates, SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls,
   searchSkills, soloMatrix, soloQuests, soloSummary, surveyMapIds, surveyMaps,
 } from "../src/tools/combat.ts";
 import { Sim } from "../src/tools/engine.ts";
@@ -127,9 +127,16 @@ test("healing enemies: lowest HP reached and total damage are reported and score
   assert.ok(ev.enemy_dmg_peak > ev.enemy_dmg, `peak ${ev.enemy_dmg_peak} vs end ${ev.enemy_dmg}`);
   assert.ok(ev.enemy_dmg_total > 0 && ev.enemy_dmg_total_frac > 0);
   assert.equal(ev.score, score(ev));
-  // The score counts the peak, not the end HP; total damage only breaks ties.
+  // The score counts the peak, not the end HP; in lost fights the total damage counts too (1 % = 10 vs 100 for the peak).
   assert.ok(score({ ...ev, enemy_dmg_peak: ev.enemy_dmg }) < ev.score);
-  assert.ok(score({ ...ev, enemy_dmg_total_frac: 0 }) < ev.score && ev.score - score({ ...ev, enemy_dmg_total_frac: 0 }) <= 0.1);
+  const totalPart = ev.score - score({ ...ev, enemy_dmg_total_frac: 0 });
+  assert.ok(Math.abs(totalPart - (1 - ev.win) * ev.enemy_dmg_total_frac * 1e3) < 1e-6);
+  // lost fights: surviving longer is a small bonus, not a penalty; won fights: faster is better
+  const lost = { win: 0, enemy_dmg: 0.1, enemy_dmg_peak: 0.1, hp_left: 0, enemy_dmg_total_frac: 0.1 };
+  assert.ok(score({ ...lost, turns: 20 }) > score({ ...lost, turns: 10 }));
+  assert.ok(score({ ...lost, turns: 200, enemy_dmg_peak: 0.1 }) < score({ ...lost, turns: 10, enemy_dmg_peak: 0.12 }), "peak first");
+  const won = { win: 1, enemy_dmg: 1, hp_left: 0.5 };
+  assert.ok(score({ ...won, turns: 5, turns_win: 5 }) > score({ ...won, turns: 9, turns_win: 9 }));
   // An enemy that does not heal: peak = end.
   const plain = evaluate(sim, 1, [warrior()], [], 10);
   assert.equal(plain.enemy_dmg_peak, plain.enemy_dmg);
@@ -153,4 +160,15 @@ test("class matrix: enemy HP removed at its lowest point is reported next to the
   const rows = classMatrix(sim, { classes: [3], quests: [95], n: 5 });
   assert.ok(rows[0].enemyHpRemovedPeak >= rows[0].enemyHpRemoved);
   assert.ok(rows[0].enemyHpRemovedPeak >= 0);
+});
+
+test("fight seeds are mixed: distinct, in range, and the first roll is no longer always 1", async () => {
+  const { Rng } = await import("../src/sim/lua.ts");
+  const seeds = Array.from({ length: 500 }, (_, k) => fightSeed(1, k));
+  assert.equal(new Set(seeds).size, 500);
+  assert.ok(seeds.every((x) => Number.isInteger(x) && x >= 1 && x <= 2147483646));
+  assert.notEqual(fightSeed(1, 0), fightSeed(2, 0));
+  const first = seeds.map((x) => new Rng(x).random(1, 100));
+  assert.ok(first.filter((r) => r === 1).length < 20, "plain seeds 1..500 all gave 1");
+  assert.ok(Math.abs(first.reduce((a, b) => a + b, 0) / 500 - 50.5) < 6);
 });
