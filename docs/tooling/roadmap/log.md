@@ -10,3 +10,4 @@
 - **Update**: E6 done (ebb995d); U0 acceptance list (user's 8-point site review) recorded.
 - **Update**: Only the Roadmap session commits and pushes; U5 (ascension outlines, silver/gold) added.
 - **Update**: E2, U0 done; E3 merging; U1 agent; E7, E8 added; release agent does verify/commit/push/CI.
+- **Update**: E3 merged; E7, U5 to release; E8, U2 in progress.

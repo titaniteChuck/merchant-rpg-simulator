@@ -18,6 +18,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
 
 - [Modifiers](#modifiers)
 - [Enchanting](#enchanting)
+  - [Order, Reset and modded ingredients](#order-reset-and-modded-ingredients)
 - [Map enchanting](#map-enchanting)
 - [Essence sources](#essence-sources)
 - [Ascension margins](#ascension-margins)
@@ -64,6 +65,22 @@ Rules: [crafting](../game-economy/crafting/crafting.md#enchanter). Model: [profi
 - Level 56–60: a +1 suffix pays for 53 of 61 items. Below level 50 it rarely pays: the flat gold + rune
   cost exceeds the rarity step on cheap items.
 - **Biggest single lever in the game**: Archanos asc 2 sells 673,760 plain, 842,200 after a ~9,900 g suffix (+168k).
+
+### Order, Reset and modded ingredients
+
+Rules confirmed in the game code, modelled as opt-in Solver options (E7, 2026-11-23; default report unchanged).
+
+- **Enchant after ascending, never before.** 0 of 2,506 item × asc × modifier cases favour enchanting first: a modded
+  item's ascension costs essence × (4 + mods) at its higher rarity. Iron Longsword asc 1 + prefix: 443 g after vs
+  1,125 g before (210 vs 140 Forest Essence). The "before" route typically costs ~2×.
+- **Reset before a prefix** pays for 214 of 1,971 item-asc combinations (high-level items crafted at grade C),
+  1–5 resets, median ~3% / ~313 g saved. Fenrir's Shiv lv 58 grade C: 3 resets to A, prefix 34,063 → 31,591 g.
+  Reset before a suffix never pays.
+- **Modded ingredients** (prefix: +20% prefix odds and cap; suffix: +3% odds and cap per tier) almost never pay:
+  1 of 339 equipment recipes (Neptune's Trident: +1,605 g EV for 1,051 g of enchanting); median +181 g EV against
+  ~4.7k g to enchant the ingredient.
+- All options on: best_profit improves for only 3 of 1,971 equipment rows (+595 g average). The base model was
+  already near-optimal.
 
 ## Map enchanting
 
