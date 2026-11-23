@@ -224,7 +224,7 @@ flowchart LR
   loot tables, items incl. equipment; shown as tables since U21, see below), and the maps
   (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
   enemy multiplier and the ascension-1 one (×2, silver outline). Each variant card shows the 5-turn timeline strip (U11)
-  above the rotation. Nav link "Enemies" after Maps, static in `wiki.html`.
+  (U24: it replaces the rotation list, see below). Nav link "Enemies" after Maps, static in `wiki.html`.
 - Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
   "Where it drops" (now also for equipment), home search. Gathering quests and placeholders stay plain text.
 - Not enemies: `NON_ENEMY_QUEST_IDS` in `wiki-data.ts`, a static, commented list: gathering quests (questType 1: 1, 11,
@@ -274,7 +274,7 @@ flowchart LR
   Def / Mdef buffs vs heavy hits of their kind; party heals vs hits on everyone and damage over time; Atk cuts vs heavy
   hitters; Def / Mdef / Eva cuts and Acc buffs vs the matching enemy buffs; true, magic or physical damage where the
   enemy's filters let that kind through; no direct damage as a safe action during reflect windows. Ranked by score,
-  top 10 then "Show all", each enemy linked with a one-line reason. U21: shown as a table (rank, enemy, T1–T5 for
+  every enemy shown at once since U24 (was top 10 then "Show all"), each enemy linked with a one-line reason. U21: shown as a table (rank, enemy, T1–T5 for
   the enemy's 5 turns): each reason of `reasons()` carries the enemy turns it is about (cleanse / dispel: the windows
   of the main effect it names; taunt, shields, single heals, Atk cuts: the heavy hit's turn; party heals: the
   party-wide hits, else the damage over time; Def / Mdef / Eva cuts and damage through filters: the buff's window),
@@ -288,14 +288,14 @@ flowchart LR
 - Section banners (U21, `.wiki-banner` in the `wiki v4` block of `site/style.css`): every detail-page section title
   (enemy, item, map, class, skill; the `section()` helper of `wiki.ts`) is a full-width dark-brown bar with a gold bottom
   border and white text, the same in both themes (`--wiki-banner-bg`). `.wiki-banner.sub` is the smaller in-card
-  version (enemy cards' Timeline / Rotation / Drops, bleeding to the card edges; the class page's "Growth per level").
+  version (enemy cards' Timeline / Drops, bleeding to the card edges; the class page's "Growth per level").
 - Enemy drops as tables (U21, `web/src/ui/wiki-loot.ts`, rules of `obj.combat.lootService`), per win against one
-  enemy (a map room), party luck 0, one column per battle grade D..S (B = base, shaded):
+  enemy (a map room), party luck 0, one column per battle grade D..S (B = base; shaded until U24):
   - Every win (`rewardX1/2` = { material, min, max }): amount = clamp(round(math.random(min × gb × 10, max × gb × 10) / 10),
     0, 5) with gb = `gradeBonus` (0.6, 0.75, 1, 1.25, 1.5); cells give the amount range per grade (hover: the odds),
     "Chance" = chance of at least one at grade B (below 100 % only for the 0–1 rewards, which show "none N %").
   - Each loot roll (`rewardX3/4` = a parcel), one table per roll: item (link + rarity chip), amount (hover: the
-    weighted amount odds), chance per grade, and "Nothing" as the last row; each grade column adds up to 100 %.
+    weighted amount odds), chance per grade, and "Nothing" (first row since U24, in the same columns); each grade column adds up to 100 %.
     odds[0] = max(nilOdds × `gradeParcelBonus` (1.25, 1.1, 1, 0.9, 0.75) − luck, 1), items = odds × enemyAmount.
   - Exact for `Utilities.weightedRandom`: threshold = math.random(0, total) (total + 1 integers), first choice in
     `pairs()` order whose running sum reaches it, so the first choice (item 1; key 0 "nothing" sits in the hash part
@@ -330,6 +330,56 @@ flowchart LR
     map grade 1 adds 0 to the enemy modifier (not −0.2); heroes have 0 evasion, so enemy hits always land; luck also
     raises map essence (× (1 + luck / 100)).
   - CSS: the `wiki reference pages` block at the end of `site/style.css`.
+- Timeline cards (U24, `timeline.ts`): enemy pages have no Rotation section any more; each turn card of the timeline
+  strip holds the skill's effect (`skillDesc`) under its name, and the whole card opens the skill page (the skill name
+  stays the one real link; CSS stretches its click area over the card, `.tl-cell.tl-link`, with a hover and a focus
+  ring; "Basic" has no page). Same cards on the battle page's opponent card (and, without the effect, the enemy row of
+  the 5-turn plan; hero cells there are whole-card links too). In a narrow box (container query, 520 px and less: a
+  phone, the opponent card) the strip stacks one turn per line and the effect bars become chips with their turns
+  ("Soul Barrier · T4–T5"). `enemyStrip(tl, { note: false })` leaves out the line under it (`stripNote`), which the
+  wiki moves into the Timeline "?". Without timeline data the plain rotation list stays as the fallback.
+- Drop tables (U24): rarity in its own column; "Nothing" is the first row of each loot roll, with the same columns
+  (rarity and amount "–") and a chance per grade; no shaded B column.
+- "?" help (U24, `wiki-help.ts`: `helpTip`, `withHelp`, `sectionHelp`): the explanations that sat under section titles
+  ("Quest stats, before any map multiplier…", the drop rules, the maps' multiplier note, "Good against"'s intro, the
+  item "Stats by grade" note, the crafting-chain note, the map pages' modifier note) are now a small round "?" after the
+  title: its text shows in a popover on hover, keyboard focus or tap (Escape closes), and is the button's
+  `aria-describedby` (a hidden element), so screen readers read it on focus. Data-source notes are gone from the pages
+  (the loot roll's "table “Region1Adv”", "(obj.combat.lootService)"). "Acts before the heroes every turn" became an
+  "Acts" fact on the enemy page.
+- Good against (U24): every enemy at once, no top 10 / "Show all".
+- Treasure Bushes (U24): quests 99–104 were never in `NON_ENEMY_QUEST_IDS` and the Enemies list did hold all six
+  (levels 10–60). What hid them: the list sorted by quest id put them at the very end, all named "Treasure Bush", and
+  map pages build their tables from the map's `enemyList` and `bossList` only, while the bush is added to a room at run
+  time (`obj.Map:generateTreasure`), so no map page showed it (a level-1 map such as Tuvale Map gets bush 99). Now the
+  list is in region order (the region-1 bush sits with Tuvale), and map pages have a "Treasure" section with the bush of
+  their level band (none for the level-70 maps: `treasureId[7]` does not exist).
+- Regions (U24, `regionOf(kind, id)` in `wiki-data.ts` → { id, name, full, order, group: "region" | "event" | "map",
+  why }; tested in `test/wiki-v5.test.ts`). Names from `TEXT.regionText` (Tuvale Forest, Yarsol Cove, Aldur Highlands,
+  Vulkrum Badlands, Grimhal Volcano, Frentir Chasm). The rule, from the game data, level bands only as the last resort:
+  - Enemy: `questData[id].region`, the field the game groups quests by: the quest board (`scene.QuestMenu`
+    `drawEnemyLocations`) lists a quest on region R's board when `quest.region == R` and `questType ~= 8`; the quest
+    screens draw the region's background from it. Fatalis (57) is region 5: Grimhal.
+  - Event bosses (questType 6 = the quests `data.EventData` opens with `unlockQuest`, 61–74): group "event", same field,
+    which is where the event news sends you ("Find X in" `TEXT.regionText[questData[i].region]`).
+  - Map bosses (questType 8 "Map Boss", 91–98): never on a quest board; group "map", region of the lowest-level map
+    whose `bossList` holds them. Their own field is not used: Protector of the Forest (95) and King of the Mountain (96)
+    say region 1 but are level 60, bosses of the level-58 Revenge maps → Frentir.
+  - Treasure Bushes (99–104, also questType 8): group "region", the field (= the band of maps they hide in).
+  - Map: `min(floor(itemLevel / 10) + 1, 6)`, the region the game's map screen draws (`scene.maps.MapViewMenu`):
+    Yarsol Map (10) is Yarsol, Frentir Map (50) and the level-70 maps Frentir.
+  - Item (no region field): the lowest region where it drops every win (quest `rewardX1/2`, gathering quests included)
+    or as map essence; else the lowest region of an enemy whose loot roll holds it; else the region most of its recipe's
+    ingredients come from (ties: nearest the level band); else the level band (1–10 Tuvale … 51–60 Frentir). So the
+    tier materials at level 10, 20 … 50 (Mithril, Adaman, Darksteel, Magma, Glacial; essences at 10–40 belong to the
+    region below) follow where they drop, not their level.
+  - Bosses whose region differs from their level band: none once map bosses use their map (Protector of the Forest and
+    King of the Mountain differ from their own region field, see above). Fatalis is level 50, inside Grimhal's band;
+    by level alone it ties with Frentir Map (level 50), which is how it looked "Frentir".
+  - Use: a Region column (chip in the region's colour, "event" / "map boss" tag, tooltip = how it was decided) in the
+    Enemies, Maps, Equipment, Consumables and Materials lists, which open sorted by region, group (region, event, map
+    boss), then level; the Region column sorts the same way and a gold rule marks where the region changes
+    (`tr.reg-N`, any sort). Region fact (with the reason) on enemy, map and item pages; the enemy lead line names it.
 
 ## Profit page
 

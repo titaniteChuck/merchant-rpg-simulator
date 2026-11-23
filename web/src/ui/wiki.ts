@@ -18,13 +18,15 @@ import { tip } from "./tooltip.ts";
 import { classStats } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
 import { goodAgainst, turnMarks } from "./wiki-skills.ts";
-import { enemyBody, enemyListColumns, enemyListRows, enemyTable } from "./wiki-enemies.ts";
+import { enemyBody, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
+import { sectionHelp } from "./wiki-help.ts";
 import { battlePage, BATTLE_SECTIONS } from "./wiki-battle.ts"; // U25 reference pages
 import { statsPage, STATS_SECTIONS } from "./wiki-stats.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
-  recipe, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText, usedInRecipes,
+  recipe, regionChip, regionOf, regionSortKey, regionText, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText,
+  treasureBushOf, usedInRecipes,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -82,14 +84,17 @@ function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInput
   return s;
 }
 
-/** A filterable table page: crumbs, filter, table. The title is for screen readers only; the description is on the home. */
-function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name)): HTMLElement {
+/**
+ * A filterable table page: crumbs, filter, table. The title is for screen readers only; the description is on the home.
+ * `rowClass`: a class per row (U24: `reg-N`, so region-sorted lists rule a line where the region changes).
+ */
+function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name), rowClass?: (r: Row) => string): HTMLElement {
   const holder = el("div");
   const count = el("span", { class: "muted small" });
   const show = (q: string) => {
     const shown = q ? rows.filter((r) => search(r).toLowerCase().includes(q)) : rows;
     count.textContent = `${shown.length} of ${rows.length}`;
-    holder.replaceChildren(table(shown, cols));
+    holder.replaceChildren(table(shown, cols, rowClass));
   };
   show("");
   return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
@@ -152,16 +157,15 @@ function skillsPage(): HTMLElement {
   ], (r) => `${r.name} ${r.effect} ${r.classes} ${r.enemyNames}`);
 }
 
-const GOOD_SHOWN = 10;
+const GOOD_HELP = "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): debuffs it can "
+  + "cleanse, buffs it can dispel, heavy hits it can block or draw, hits on everyone it can heal, filters its damage gets through. "
+  + "✓ marks the enemy turns where it helps; hover or focus a ✓ for why. Best match first.";
 
-/** Hero skills: the enemies whose timeline makes this skill worth taking (wiki-skills.ts), top 10 then "Show all". */
+/** Hero skills: every enemy whose timeline makes this skill worth taking (wiki-skills.ts), best first (U24: no limit). */
 function goodAgainstSection(name: string): HTMLElement | null {
   const list = goodAgainst(name);
-  const intro = el("p", { class: "muted small" }, "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): "
-    + "debuffs it can cleanse, buffs it can dispel, heavy hits it can block or draw, hits on everyone it can heal, filters its damage gets through. "
-    + "✓ marks the enemy turns where it helps; hover or focus a ✓ for why.");
-  if (!list.length) return section("Good against", intro, none(G.abilityData?.[name] && classesWith("skill", name).length
-    ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill."));
+  if (!list.length) return sectionHelp(section("Good against", none(G.abilityData?.[name] && classesWith("skill", name).length
+    ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill.")), GOOD_HELP);
   // U21: a table, one row per enemy (ranked), a ✓ on the enemy turns the skill answers; the reasons are the cell's
   // tooltip. "All" holds the reasons tied to no single turn (only when some enemy has one).
   const marks = list.map(turnMarks);
@@ -169,28 +173,17 @@ function goodAgainstSection(name: string): HTMLElement | null {
   const mark = (why: string[], turn: string) => why.length
     ? el("td", { class: "good-mark", title: why.join("\n"), "aria-label": `${turn}: ${why.join("; ")}`, tabindex: "0" }, "✓")
     : el("td", { class: "good-mark empty" });
-  const tbody = el("tbody");
-  const fill = (n: number) => tbody.replaceChildren(...list.slice(0, n).map((m, i) => el("tr", {},
+  const tbody = el("tbody", {}, ...list.map((m, i) => el("tr", {},
     el("td", { class: "num muted" }, String(i + 1)),
     el("td", {}, el("span", { class: "good-name" }, enemyLink({ id: m.quest, name: m.name, rare: m.rare }), m.rare ? pill("rare", "t-pink") : "")),
     ...marks[i].turns.map((why, t) => mark(why, `Turn ${t + 1}`)),
     ...(withAll ? [mark(marks[i].all, "Whole fight")] : []))));
-  fill(GOOD_SHOWN);
   const th = (t: string, title = "") => el("th", { scope: "col", class: "good-mark", ...(title ? { title } : {}) }, t);
   const grid = el("div", { class: "table-wrap good-wrap" }, el("table", { class: "good-table" },
     el("thead", {}, el("tr", {}, el("th", { scope: "col", class: "num" }, "#"), el("th", { scope: "col" }, "Enemy"),
       ...[1, 2, 3, 4, 5].map((t) => th(`T${t}`, `Enemy turn ${t} (turn 6 is turn 1 again)`)),
       ...(withAll ? [th("All", "Not tied to one turn: the whole fight")] : []))), tbody));
-  const kids: (Node | string)[] = [intro, grid];
-  if (list.length > GOOD_SHOWN) {
-    const more = el("button", { type: "button", class: "show-all" }, `Show all ${list.length}`);
-    more.addEventListener("click", () => {
-      fill(list.length);
-      more.remove();
-    });
-    kids.push(more);
-  }
-  return section(`Good against (${list.length})`, ...kids);
+  return sectionHelp(section(`Good against (${list.length})`, grid), GOOD_HELP);
 }
 
 function skillPage(name: string): HTMLElement {
@@ -231,14 +224,19 @@ const crafterName = (id: number) => (G as Any).crafterData?.[id]?.name ?? (id ? 
 function itemsPage(type: string): HTMLElement {
   if (!["equipment", "consumable", "material"].includes(type)) return notFound(`item type “${type}”`);
   const eq = type === "equipment";
-  const rows: Row[] = items(type).map(([id, it]) => ({
-    id, name: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
-    level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
-    made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
-    summary: eq ? it.subType ?? "" : itemText(type, id),
-  }));
+  const rows: Row[] = items(type).map(([id, it]): Row => {
+    const reg = regionOf(type as "equipment", id);
+    return {
+      id, name: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
+      level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
+      made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
+      summary: eq ? it.subType ?? "" : itemText(type, id),
+      region: regionSortKey(reg, it.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg),
+    };
+  }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id)); // region, then level
   const cols: Column[] = [
     { key: "name", label: "Item", render: (r) => itemLink(type, Number(r.id)) },
+    { key: "region", label: "Region", render: (r) => regionChip(regionOf(type as "equipment", Number(r.id))) },
     { key: "kind", label: eq ? "Slot" : "Type" },
     ...(eq ? [{ key: "sub", label: "Kind" }] : []),
     { key: "level", label: "Level", num: true },
@@ -248,7 +246,8 @@ function itemsPage(type: string): HTMLElement {
     { key: "value", label: "Sell value", num: true },
     ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
-  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols, (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made}`);
+  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols,
+    (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass);
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -316,10 +315,18 @@ function gradeTable(id: number): HTMLElement {
   holder.replaceChildren(gradeRows(id, 0));
   return el("div", { class: "cls-v3" },
     el("fieldset", { class: "cls-asc item-asc" }, el("legend", { class: "muted small" }, "Ascension"), el("div", { class: "mode-switch" }, ...radios)),
-    holder,
-    el("p", { class: "muted small" }, "Freshly crafted by a level-60 crafter, no prefix or suffix. Bonus stats roll in the range shown "
-      + "(the item's range × the grade's spread, × the ascension multiplier; a crafter above the item's level raises the minimum). "
-      + "Trinkets carry bonus stats only."));
+    holder);
+}
+const GRADE_HELP = "Freshly crafted by a level-60 crafter, no prefix or suffix. Bonus stats roll in the range shown (the item's range × "
+  + "the grade's spread, × the ascension multiplier; a crafter above the item's level raises the minimum). Trinkets carry bonus stats only.";
+
+/** The crafting chain with its explanation moved from under the diagram into the section's "?". */
+function chainSection(chain: HTMLElement): HTMLElement {
+  const note = chain.querySelector(":scope > p.muted");
+  const text = note?.textContent ?? "";
+  note?.remove();
+  const s = section("Crafting chain", chain);
+  return text ? sectionHelp(s, text) : s;
 }
 
 function itemPage(type: string, id: number): HTMLElement {
@@ -333,7 +340,7 @@ function itemPage(type: string, id: number): HTMLElement {
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
     facts([
       ["Type", type === "equipment" ? `${SLOT_NAMES[it.itemSlot] ?? ""} · ${it.subType ?? ""}` : it.subType ?? itemTypeLabel[type]],
-      ["Level", it.itemLevel], ["Rarity", rarityChip(it.rarity)], ["Made by", it.crafterID ? `${crafterName(it.crafterID)} (level ${it.itemLevel ?? 0})` : undefined],
+      ["Level", it.itemLevel], ["Region", regionChip(regionOf(type as "equipment", id), true)], ["Rarity", rarityChip(it.rarity)], ["Made by", it.crafterID ? `${crafterName(it.crafterID)} (level ${it.itemLevel ?? 0})` : undefined],
       ["Sell value", [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
         : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => type !== "material" || a === 0).map((a) => {
           const v = safeSell(type, id, a);
@@ -344,7 +351,7 @@ function itemPage(type: string, id: number): HTMLElement {
       ["Effect", type === "consumable" && Object.keys(it.stat ?? {}).length ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
     ]),
   ];
-  if (type === "equipment") kids.push(section("Stats by grade", gradeTable(id)));
+  if (type === "equipment") kids.push(sectionHelp(section("Stats by grade", gradeTable(id)), GRADE_HELP));
   const src = type === "material" || type === "equipment" ? dropSources(id, type) : [];
   if (type === "material" || src.length) {
     kids.push(section(`Where it drops (${src.length})`, src.length
@@ -353,7 +360,7 @@ function itemPage(type: string, id: number): HTMLElement {
       : none("Not dropped by quests or maps (crafted, bought or event only).")));
   }
   const chain = recipeChain(type, id);
-  if (chain) kids.push(section("Crafting chain", chain));
+  if (chain) kids.push(chainSection(chain));
   kids.push(section("Recipe", recipeList(type, id)), section("Used in", usedInList(type, id)));
   return el("div", {}, ...kids);
 }
@@ -366,16 +373,21 @@ function essenceOf(m: Any): (Node | string)[] {
 }
 
 function mapsPage(): HTMLElement {
-  const rows: Row[] = items("map").map(([id, m]) => ({
-    id, name: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
-    mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => quest(b)?.name).filter(Boolean).join(", "),
-  }));
+  const rows: Row[] = items("map").map(([id, m]): Row => {
+    const reg = regionOf("map", id);
+    return {
+      id, name: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
+      mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => quest(b)?.name).filter(Boolean).join(", "),
+      region: regionSortKey(reg, m.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg),
+    };
+  }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id));
   return listPage("Maps", rows, [
-    { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) }, { key: "level", label: "Level", num: true },
+    { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) },
+    { key: "region", label: "Region", render: (r) => regionChip(regionOf("map", Number(r.id))) }, { key: "level", label: "Level", num: true },
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Minutes", num: true }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
     { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
-  ], (r) => `${r.name} ${r.boss}`);
+  ], (r) => `${r.name} ${r.boss} ${r.regionName}`, regionRowClass);
 }
 
 function mapPage(id: number): HTMLElement {
@@ -383,28 +395,32 @@ function mapPage(id: number): HTMLElement {
   if (!m) return notFound(`map #${id}`);
   const mod = m.enemyMod ?? 1;
   const bosses = seq<number>(m.bossList ?? {});
+  const bush = treasureBushOf(m.itemLevel ?? 0);
+  const modHelp = `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`;
   return el("div", {}, crumbs(["Maps", "#/maps"], m.name), el("h1", {}, itemLink("map", id)),
     ...(itemText("map", id) ? [el("p", { class: "lead" }, itemText("map", id))] : []),
-    facts([["Level", m.itemLevel], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount], ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
+    facts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
+      ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
       ["Enemy modifier", `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined], ["Essence per run", el("span", {}, ...essenceOf(m))],
       ["Sell value", safeSell("map", id, 0) !== null ? `${fmt.format(safeSell("map", id, 0)!)} g` : undefined]]),
-    section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")),
-    section("Room enemies", enemyTable(mapEnemies(m), mod)),
-    el("p", { class: "muted small" }, `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`),
+    sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")), modHelp),
+    sectionHelp(section("Room enemies", enemyTable(mapEnemies(m), mod)), modHelp),
+    // U24: the Treasure Bush of the map's level band (added to a room at run time, so not in the map's own lists)
+    ...(bush && isEnemy(bush) ? [sectionHelp(section("Treasure", enemyTable([bush], mod)), [TREASURE_HELP, modHelp])] : []),
     section("Recipe", recipeList("map", id)));
 }
 
 // ---------------------------------------------------------------- enemies
 function enemiesPage(): HTMLElement {
   return listPage("Enemies", enemyListRows(), enemyListColumns,
-  (r) => `${r.name} ${r.rareName} ${r.kind} ${r.skills}`);
+    (r) => `${r.name} ${r.rareName} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass);
 }
 
 function enemyPage(id: number): HTMLElement {
   const q = quest(id);
   if (!isEnemy(id)) return notFound(`enemy #${id}`);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], q.name), el("h1", {}, "👹 ", q.name),
-    el("p", { class: "lead" }, [q.title || "Quest enemy", `level ${q.levelReq}`, `region ${q.region}`].join(" · ")),
+    el("p", { class: "lead" }, [q.title || "Quest enemy", `level ${q.levelReq}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ")),
     ...enemyBody(id, facts, section));
 }
 

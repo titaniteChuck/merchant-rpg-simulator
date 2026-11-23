@@ -157,6 +157,153 @@ export function enemyMapRoles(questId: number): MapRole[] {
 /** Map ids that hold this enemy (rooms or boss), lowest map level first. */
 export const enemyMaps = (questId: number): number[] => enemyMapRoles(questId).map((r) => r.map);
 
+// ---------------------------------------------------------------- regions
+/** The game's six regions (TEXT.regionText 1..6: "Tuvale Forest" … "Frentir Chasm"); `name` is the short form. */
+export const REGIONS: { id: number; name: string; full: string }[] = [
+  { id: 1, name: "Tuvale", full: "Tuvale Forest" }, { id: 2, name: "Yarsol", full: "Yarsol Cove" },
+  { id: 3, name: "Aldur", full: "Aldur Highlands" }, { id: 4, name: "Vulkrum", full: "Vulkrum Badlands" },
+  { id: 5, name: "Grimhal", full: "Grimhal Volcano" }, { id: 6, name: "Frentir", full: "Frentir Chasm" },
+];
+/** "region": met in the region itself; "event": an event boss; "map": a boss met only in maps. */
+export type RegionGroup = "region" | "event" | "map";
+export interface Region {
+  id: number;
+  name: string;
+  full: string;
+  /** Sort key: region first, then group (region, event, map). */
+  order: number;
+  group: RegionGroup;
+  /** How it was decided, in a few words for the reader ("on Grimhal's quest board", "boss of Treant Revenge Map"). */
+  why: string;
+}
+const GROUP_RANK: Record<RegionGroup, number> = { region: 0, event: 1, map: 2 };
+const clampRegion = (r: unknown): number => Math.max(1, Math.min(6, Math.trunc(Number(r)) || 1));
+function mkRegion(id: number, group: RegionGroup, why: string): Region {
+  const r = REGIONS[clampRegion(id) - 1];
+  return { ...r, order: (r.id - 1) * 3 + GROUP_RANK[group], group, why };
+}
+
+/** Fallback only: levels 1–10 Tuvale, 11–20 Yarsol, … 51–60 Frentir (level 0 is Tuvale, above 60 Frentir). */
+export const regionOfLevel = (level: number): number => clampRegion(Math.ceil((Number(level) || 0) / 10));
+/**
+ * A map's region, as the game draws its map screen (scene.maps.MapViewMenu: regionID = min(floor(itemLevel / 10) + 1, 6)):
+ * Yarsol Map (10) is Yarsol, Frentir Map (50) and the level-70 maps Frentir.
+ */
+export const mapRegionId = (m: Any): number => Math.min(Math.floor((m?.itemLevel ?? 0) / 10) + 1, 6);
+
+let regionCache: Map<string, Region> | null = null;
+/**
+ * The region of an enemy (quest id), a map, or an item (equipment, consumable, material), from the game data:
+ *
+ * - Enemy, the default: `questData[id].region`, the field the game itself groups quests by. The quest board
+ *   (scene.QuestMenu: drawEnemyLocations) shows a quest on region R's board when `quest.region == R`, and the quest
+ *   screens draw the region's background from it. Fatalis (57) is region 5, Grimhal, whatever its level.
+ * - Event bosses (questType 6: the quests that data.EventData's `unlockQuest` events open, 61–74): group "event",
+ *   region = the same field, which is where the event news sends you ("Find Leviathan in Yarsol Cove":
+ *   scene.ActiveEventsListOverlay reads `questData[i].region`).
+ * - Map bosses (questType 8, title "Map Boss": Warlords, Khans, the Revenge maps' bosses…, 91–98): the quest board skips
+ *   questType 8, so they are met only as a map's boss. Group "map", region = the region of the lowest-level map whose
+ *   boss list holds them (see maps). Their own field is not used: Protector of the Forest and King of the Mountain say 1
+ *   (Tuvale) but are level 60 and only met in the level-58 Revenge maps (Frentir).
+ * - Treasure Bushes (99–104, also questType 8): group "region", the field, which matches the maps they hide in
+ *   (obj.Map: treasureId[ceil(mapLevel / 10)]).
+ * - Map: mapRegionId (the game's map screen).
+ * - Item (no region field in the item tables): the lowest region where it drops as an every-win reward or a map's essence
+ *   (by the regions above), else the lowest region of an enemy whose loot roll holds it, else the region most of its
+ *   recipe's ingredients come from (ties: the one nearest the item's level band), else its level band (regionOfLevel).
+ * Cached; null for an unknown id.
+ */
+export function regionOf(kind: "enemy" | "map" | ItemType, id: number): Region | null {
+  regionCache ??= new Map();
+  const key = `${kind}:${id}`;
+  if (regionCache.has(key)) return regionCache.get(key)!;
+  regionCache.set(key, null as unknown as Region); // cycle guard for recipes
+  const r = kind === "enemy" ? enemyRegion(id) : kind === "map" ? mapRegion(id) : itemRegion(kind, id);
+  regionCache.set(key, r as Region);
+  return r;
+}
+
+function enemyRegion(id: number): Region | null {
+  const q = quest(id);
+  if (!q) return null;
+  if (q.questType === 8 && q.title !== "Treasure Bush") {
+    const boss = items("map").filter(([, m]) => seq<number>(m.bossList ?? {}).includes(id))
+      .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0])[0];
+    if (boss) return mkRegion(mapRegionId(boss[1]), "map", `map boss, met only in maps: first in ${boss[1].name}`);
+  }
+  const name = REGIONS[clampRegion(q.region) - 1].name;
+  if (q.questType === 6) return mkRegion(q.region, "event", `event boss: the event sends you to ${name}`);
+  if (q.title === "Treasure Bush") return mkRegion(q.region, "region", `hides in ${name}'s maps`);
+  if (q.region !== undefined) return mkRegion(q.region, "region", `on ${name}'s quest board`);
+  return mkRegion(regionOfLevel(q.levelReq), "region", `level ${q.levelReq}`);
+}
+
+function mapRegion(id: number): Region | null {
+  const m = item("map", id);
+  return m ? mkRegion(mapRegionId(m), "region", `map level ${m.itemLevel ?? 0}`) : null;
+}
+
+let sourcesOf: Map<string, { fixed: number[]; loot: number[] }> | null = null;
+/** Regions where each item drops: every-win rewards and map essence ("fixed"), loot rolls ("loot"). */
+function itemSources(): Map<string, { fixed: number[]; loot: number[] }> {
+  if (sourcesOf) return sourcesOf;
+  const out = new Map<string, { fixed: number[]; loot: number[] }>();
+  const add = (type: string, id: number, region: number, how: "fixed" | "loot") => {
+    const k = `${type}:${id}`;
+    if (!out.has(k)) out.set(k, { fixed: [], loot: [] });
+    out.get(k)![how].push(region);
+  };
+  for (const qid of Object.keys(G.questData ?? {}).map(Number)) {
+    const q = quest(qid);
+    if (!q?.name || q.nickname === "MissNo") continue; // gathering quests count (they give herbs), placeholders don't
+    const reg = enemyRegion(qid)!.id;
+    for (const rare of [false, ...(q.nameB ? [true] : [])]) {
+      const d = enemyDrops(qid, rare);
+      for (const [mid] of d.fixed) add("material", mid, reg, "fixed");
+      for (const p of d.rolls) for (const r of lootTable(p)?.rows ?? []) add(r.type, r.id, reg, "loot");
+    }
+  }
+  for (const [, m] of items("map")) {
+    const br = seq<number>(m.baseReward ?? {});
+    for (let i = 0; i < Math.floor(br.length / 2); i++) add("material", br[i], mapRegionId(m), "fixed");
+  }
+  sourcesOf = out;
+  return out;
+}
+
+function itemRegion(type: string, id: number): Region | null {
+  const it = item(type, id);
+  if (!it) return null;
+  const src = itemSources().get(`${type}:${id}`);
+  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", "where it drops every win");
+  if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", "where it drops");
+  const band = regionOfLevel(it.itemLevel ?? 0);
+  const counts = new Map<number, number>();
+  for (const [t, mid] of recipe(type, id)) {
+    const r = regionOf(t as ItemType, mid);
+    if (r) counts.set(r.id, (counts.get(r.id) ?? 0) + 1);
+  }
+  if (counts.size) {
+    const best = [...counts].sort((a, b) => b[1] - a[1] || Math.abs(a[0] - band) - Math.abs(b[0] - band) || a[0] - b[0])[0][0];
+    return mkRegion(best, "region", "where its recipe's materials come from");
+  }
+  return mkRegion(band, "region", `item level ${it.itemLevel ?? 0}`);
+}
+
+const GROUP_TAG: Record<RegionGroup, string> = { region: "", event: "event", map: "map boss" };
+/** Sortable number for a table cell: region and group first, then level. */
+export const regionSortKey = (r: Region | null, level: number | null | undefined): number => (r ? r.order : 99) * 1000 + (Number(level) || 0);
+/** "Grimhal", "Yarsol · event" (for search and plain text). */
+export const regionText = (r: Region | null): string => (r ? [r.name, GROUP_TAG[r.group]].filter(Boolean).join(" · ") : "");
+
+/** The region as a small chip in its colour (+ "event" / "map boss"); the tooltip says how it was decided. */
+export function regionChip(r: Region | null, withWhy = false): HTMLElement {
+  if (!r) return el("span", { class: "muted" }, "–");
+  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full}: ${r.why}` }, r.name);
+  const tag = GROUP_TAG[r.group] ? [el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : [];
+  return el("span", { class: "region-cell" }, chip, ...tag, ...(withWhy ? [el("span", { class: "muted small" }, ` ${r.why}`)] : []));
+}
+
 /** One entry of a loot table: an item, its share of the roll (percent) and the amounts it can come in. */
 export interface LootEntry { type: string; id: number; pct: number; amounts: number[] }
 /**

@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-23
+- **Website**: Wiki v5 (U24): enemy timeline cards carry the skill effect and open the skill page (Rotation section removed); drop tables with a rarity column and "Nothing" first; explanations moved into "?" tooltips, data-source notes removed; "Good against" unlimited; regions from the game data (quest board region, event and map bosses, map screen rule, item drops and recipes) as a column, sort and facts; Treasure Bushes shown on map pages.
 - **Tooling**: Game translations (E19): `inventory/i18n/<lc>.json` for EN FR DE ES BR RU IT PL (item, skill, enemy, class, prefix, crafter, region names and descriptions), `index.json` with coverage; `web/src/tools/i18n.ts` `tr()`.
 - **Website**: Battle page order (U26): Results (progress, then the outcome) moved to step 2, right under the Run button; party and opponent are step 3 with the 5-turn plan below; a run scrolls the Results into view once on phones. Numbers in tables centred site-wide (`num` columns of the table helper and `.num` cells).
 - **Website**: Wiki reference pages (U25): "Stats" and "Battle", one anchored section per topic (formulas, variables, worked examples, game source lines), checked against the decompiled game and the port; link helpers `statLink` / `battleLink`.

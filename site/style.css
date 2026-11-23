@@ -1150,3 +1150,73 @@ th.num button { text-align: center; }
 .ability-rows .n, table.slot-rows td.n { text-align: center; padding-left: 4px; padding-right: 4px; }
 .cb-matrix th.cb-q { text-align: center; }
 /* end battle v3.1 + numbers */
+
+/* wiki v5 */
+/* U24. "?" help next to a section title (wiki-help.ts): a small round button; its text in a fixed popover on hover,
+   focus or tap (a fixed box never widens the page). On the dark banners it takes the banner's white. */
+.help-tip { display: inline-flex; align-items: center; }
+.help-q {
+  display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; padding: 0; flex: none;
+  border-radius: 50%; border: 1.5px solid currentColor; background: transparent; color: inherit; opacity: 0.85;
+  font: 800 0.75rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; text-shadow: none; cursor: help;
+}
+.wiki-banner.sub .help-q { width: 1.1rem; height: 1.1rem; font-size: 0.68rem; }
+.help-q:hover, .help-q[aria-expanded="true"] { opacity: 1; background: rgba(255, 255, 255, 0.16); }
+.help-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1; }
+.help-pop {
+  position: fixed; z-index: 60; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box;
+  padding: 10px 12px; border-radius: 10px; background: var(--card); color: var(--fg); border: 1px solid var(--border);
+  box-shadow: var(--shadow-hover); font-size: 0.85rem; font-weight: 400; line-height: 1.4; text-align: left;
+  text-transform: none; letter-spacing: 0; text-shadow: none; white-space: normal;
+}
+.help-pop[hidden] { display: none; }
+.help-p { display: block; }
+
+/* Timeline turn cards (timeline.ts): the skill's effect inside the card, and the whole card opens the skill page
+   (the skill link's click area stretched over the card). Wiki enemy pages and the battle opponent card. */
+.tl-cell.tl-link { position: relative; cursor: pointer; transition: border-color .12s, background-color .12s, box-shadow .12s; }
+.tl-cell.tl-link a.wl.skill::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.tl-cell.tl-link:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.tl-cell.enemy.tl-link:hover { background: color-mix(in srgb, #ec4899 16%, var(--card-2)); }
+.tl-cell.tl-link:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tl-cell.tl-link a.wl.skill:focus-visible { outline: none; }
+.tl-desc { font-size: 0.74rem; line-height: 1.3; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
+.tl-turn, .tl-when { display: none; }
+.tl-turn { font-size: 0.72rem; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+/* A narrow box (a phone, the battle page's opponent card): one turn per line, the effect bars as chips with their turns. */
+.tl-strip { container-type: inline-size; }
+@container (max-width: 520px) {
+  .tl-strip .tl-grid { grid-template-columns: minmax(0, 1fr); }
+  .tl-strip .tl-head { display: none; }
+  .tl-strip .tl-cell { flex-flow: row wrap; align-items: center; column-gap: 8px; }
+  .tl-strip .tl-turn { display: inline; min-width: 1.6em; }
+  .tl-strip .tl-skill { flex: 1 1 auto; white-space: normal; }
+  .tl-strip .tl-desc { flex: 1 0 100%; padding-left: calc(1.6em + 8px); }
+  .tl-strip .tl-winrow { display: flex; flex-wrap: wrap; }
+  .tl-strip .tl-win { flex: 0 1 auto; max-width: 100%; }
+  .tl-strip .tl-when { display: inline; font-weight: 500; }
+}
+
+/* Drop tables: rarity in its own column, "Nothing" as the first row styled like the others, no shaded B column. */
+.loot-table td.loot-rar { white-space: nowrap; }
+.loot-table td.loot-rar .rar-chip { font-size: 0.68rem; padding: 0 6px; }
+
+/* Regions (wiki-data.ts regionOf): a chip in the region's colour, "event" / "map boss" beside it. */
+:root, :root[data-theme="dark"] {
+  --reg-1: #5fbf5f; --reg-2: #4fb3d9; --reg-3: #c9a46a; --reg-4: #a58bd9; --reg-5: #e8704a; --reg-6: #9fd8f0;
+}
+:root[data-theme="light"] {
+  --reg-1: #2f7d32; --reg-2: #1f6f99; --reg-3: #8a6326; --reg-4: #6a4fa8; --reg-5: #b3441f; --reg-6: #2a7f9e;
+}
+.region-cell { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.region-chip {
+  --rc: var(--muted); display: inline-block; padding: 1px 8px 1px 6px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+  line-height: 1.5; color: var(--fg); background: color-mix(in srgb, var(--rc) 20%, transparent); border-left: 4px solid var(--rc);
+}
+.region-chip.reg-1 { --rc: var(--reg-1); } .region-chip.reg-2 { --rc: var(--reg-2); } .region-chip.reg-3 { --rc: var(--reg-3); }
+.region-chip.reg-4 { --rc: var(--reg-4); } .region-chip.reg-5 { --rc: var(--reg-5); } .region-chip.reg-6 { --rc: var(--reg-6); }
+.region-tag { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* Region-sorted lists (Enemies, Maps, items): a rule where the region changes, whatever the sort column. */
+tr.reg-1 + tr:not(.reg-1) > td, tr.reg-2 + tr:not(.reg-2) > td, tr.reg-3 + tr:not(.reg-3) > td,
+tr.reg-4 + tr:not(.reg-4) > td, tr.reg-5 + tr:not(.reg-5) > td, tr.reg-6 + tr:not(.reg-6) > td { border-top: 2px solid var(--trim); }
+/* end wiki v5 */

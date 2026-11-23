@@ -18,7 +18,7 @@ import {
 } from "../tools/schedule.ts";
 import { el } from "./dom.ts";
 import { tip } from "./tooltip.ts";
-import { skillLink } from "./wiki-data.ts";
+import { skillDesc, skillLink } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -119,8 +119,10 @@ function windowRows(tl: EnemyTimeline, col0: number): HTMLElement[] {
       }
       const row = el("div", { class: "tl-winrow" });
       segs.forEach(([a, b], i) => {
+        // .tl-when (the turns, as text) shows only where the strip is stacked one turn per line (narrow box, CSS).
         const seg = el("span", { class: cls, style: `grid-column: ${col0 + a - 1} / ${col0 + b}`, tabindex: "0" },
-          `${i > 0 ? "↪ " : ""}${e.name}${permanent ? " (rest of fight)" : ""}${i < segs.length - 1 ? " ↩" : ""}`);
+          `${i > 0 ? "↪ " : ""}${e.name}${permanent ? " (rest of fight)" : ""}${i < segs.length - 1 ? " ↩" : ""}`,
+          el("span", { class: "tl-when" }, permanent ? " · T1–T5" : a === b ? ` · T${a}` : ` · T${a}–T${b}`));
         tip(seg, () => effectTip(e, cast, onEnemy, permanent ? [1, 2, 3, 4, 5] : turns));
         row.append(seg);
       });
@@ -130,21 +132,43 @@ function windowRows(tl: EnemyTimeline, col0: number): HTMLElement[] {
   return rows;
 }
 
-function enemyCell(s: Any, turn: number): HTMLElement {
-  const name = el("span", { class: "tl-skill" }, s.name === "Basic" ? "Basic" : skillLink(s.name));
-  const cell = el("div", { class: "tl-cell enemy" }, tagIcons(s.tags, "enemy"), name);
-  cell.title = `Turn ${turn}: ${s.name}${s.tags.length ? ` (${s.tags.map((t: SkillTag) => tagWords(t, "enemy")).join(", ")})` : ""}`;
+/**
+ * U24: the whole card opens the skill's page. The skill name stays the one real link (keyboard, middle-click, screen
+ * readers); CSS stretches its click area over the card (`.tl-cell.tl-link a.wl.skill::after`), so hovering anywhere on
+ * the card also shows the skill's tooltip. "Basic" has no page and stays a plain card.
+ */
+function linkCard(cell: HTMLElement, name: string): HTMLElement {
+  if (name !== "Basic") cell.classList.add("tl-link");
   return cell;
 }
 
-/** The enemy's 5 turns and its effect windows. */
-export function enemyStrip(tl: EnemyTimeline): HTMLElement {
-  return el("div", { class: "tl", role: "group", "aria-label": `${tl.name}: 5-turn timeline` },
+/** An enemy turn: tags, the skill (linked) and, with `desc`, what the skill does. */
+function enemyCell(s: Any, turn: number, desc = true): HTMLElement {
+  const name = el("span", { class: "tl-skill" }, s.name === "Basic" ? "Basic" : skillLink(s.name));
+  const text = desc && s.name !== "Basic" ? skillDesc(s.name) : "";
+  const cell = el("div", { class: "tl-cell enemy" }, el("span", { class: "tl-turn", "aria-hidden": "true" }, `T${turn}`),
+    tagIcons(s.tags, "enemy"), name, ...(text ? [el("span", { class: "tl-desc" }, text)] : []));
+  cell.title = `Turn ${turn}: ${s.name}${s.tags.length ? ` (${s.tags.map((t: SkillTag) => tagWords(t, "enemy")).join(", ")})` : ""}`;
+  return linkCard(cell, s.name);
+}
+
+/** What the strip's bars mean (the wiki puts it in a "?" next to the title; enemyStrip prints it under the strip). */
+export function stripNote(tl: EnemyTimeline): string {
+  return `${tl.enemyFirst ? "Acts before the heroes every turn. " : ""}Bars: how long each effect lasts, in the turns the heroes act. `
+    + "Turn 6 is turn 1 again.";
+}
+
+/**
+ * The enemy's 5 turns (each card: tags, skill, its effect; the whole card opens the skill page) and its effect windows.
+ * Five columns, or one turn per line in a narrow box (container query, `wiki v5` block of style.css).
+ * `note: false` leaves out the line under it (stripNote) for pages that explain it elsewhere.
+ */
+export function enemyStrip(tl: EnemyTimeline, opts: { note?: boolean } = {}): HTMLElement {
+  return el("div", { class: "tl tl-strip", role: "group", "aria-label": `${tl.name}: 5-turn timeline` },
     el("div", { class: "tl-grid" }, ...[1, 2, 3, 4, 5].map((t) => el("div", { class: "tl-head" }, `T${t}`)),
       ...tl.slots.map((s, k) => enemyCell(s, k + 1))),
     ...windowRows(tl, 1),
-    el("p", { class: "muted small tl-note" }, `${tl.enemyFirst ? "Acts before the heroes every turn. " : ""}Bars: how long each effect lasts, in the turns the heroes act. `
-      + "Turn 6 is turn 1 again."));
+    ...(opts.note === false ? [] : [el("p", { class: "muted small tl-note" }, stripNote(tl))]));
 }
 
 // ---------------------------------------------------------------- party plan
@@ -205,11 +229,11 @@ export function partyPlan(quest: { id: number; rare: boolean; amount: number }, 
         const cell = el("div", { class: `tl-cell hero${notes.some((n) => n.delta < 0) ? " warn" : notes.length ? " ok" : ""}` },
           tagIcons(skillTags(sk, "hero"), "hero"), el("span", { class: "tl-skill" }, sk === "Basic" ? "Basic" : skillLink(sk)),
           ...notes.map((n) => noteLine(n)));
-        return cell;
+        return linkCard(cell, sk);
       })];
   });
   const enemyRow = [el("div", { class: "tl-actor enemy" }, el("strong", {}, tl.name), el("span", { class: "muted small" }, "enemy")),
-    ...tl.slots.map((s, k) => enemyCell(s, k + 1))];
+    ...tl.slots.map((s, k) => enemyCell(s, k + 1, false))];
   const rows = tl.enemyFirst ? [enemyRow, ...heroRows] : [...heroRows, enemyRow];
   const fmtScore = (x: number) => x.toFixed(1);
   return el("div", { class: "tl tl-plan", role: "group", "aria-label": "The party's 5-turn plan against the enemy's" },
