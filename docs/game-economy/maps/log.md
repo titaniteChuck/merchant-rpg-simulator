@@ -8,3 +8,4 @@
 - **Enchanting**: Map suffix tiers, their essence multiplier and climb cost documented.
 - **Modifiers**: Documented the effect of map modifiers on essence yield.
 - **Creation**: Map crafting, run loot and essence rules documented from `Map` and `Campaign`.
+- **Update**: Map essence includes party luck (× (1 + luck/100)).

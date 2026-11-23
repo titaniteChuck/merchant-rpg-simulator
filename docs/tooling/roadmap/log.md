@@ -37,3 +37,6 @@
 - **Update**: E15, U21, U23 done; E16 in progress.
 - **Update**: User batch: U24 wiki fixes + regions, U25 Stats/Battle reference pages, U26 battle results order + centered numbers (three parallel agents).
 - **Update**: E17 top-K party search and U27 merged Best party mode queued (user).
+- **Update**: E18 expansions (investigation started) and U28 expansion-aware site queued (user).
+- **Update**: E18 investigation done (two expansions, Frozen and Scribe; ownership in UserInfo.usr); user chose inference + manual toggles, and hiding both expansions' content by default.
+- **Update**: E19 translation export (agent) and U29 language picker queued (user: translate game names, site UI stays English).

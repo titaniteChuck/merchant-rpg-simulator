@@ -46,7 +46,8 @@ timestamp: 2026-11-23
 ### Essence
 
 - `baseReward = {essenceIds…, amounts…}`.
-- Amount = `round(gradeBonus[grade] × amount × essenceBase)`. Campaign grade = average of fights.
+- Amount = `round(gradeBonus[grade] × amount × essenceBase × (1 + partyLuck / 100))` (`data.Default.lua:757`). Campaign grade = average of fights.
+  Party luck raises map essence; it does not change gold or XP.
 - Asc-1 map: each base essence becomes its asc-2 tier (see [ascension](../ascension/ascension.md)).
 
 ### Loot
