@@ -20,6 +20,7 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [Search methods](#search-methods)
 - [Validation](#validation)
 - [Limits](#limits)
+- [TypeScript port](#typescript-port)
 - [Code](#code)
 
 ## How it works
@@ -101,6 +102,41 @@ Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per eva
 - Hero campaign buffs are ignored (`campaignID` forced to -1); potion boosts removed before each fight.
 - Results depend on your heroes' gear: the class table compares your heroes, not classes on equal gear.
 
+## TypeScript port
+
+Runners and optimisers ported to `web/src/tools/` for the GitHub Pages site, on the TypeScript engine (`web/src/sim/`).
+
+```mermaid
+flowchart LR
+  save[PlayerData.txt text] --> s[save.ts] --> c[combat.ts]
+  gd[inventory/gamedata.json] --> e[engine.ts] --> api[sim/api.ts]
+  c --> e
+  c --> cli[cli.ts / page]
+```
+
+| Python | TypeScript |
+|---|---|
+| `tools/combat.py` (evaluate, optimisers, commands) | `web/src/tools/combat.ts` |
+| `tools/sim/engine.py` (`Sim`) | `web/src/tools/engine.ts` |
+| `tools/gamedata.py` `sell_value`, `rarity` | `web/src/tools/engine.ts` |
+| `tools/savegame.py` decoding, `parse_item`, `parse_save` | `web/src/tools/save.ts` |
+| `combat.py` argparse `main` | `web/src/tools/cli.ts` (`npm run combat -- fight --quest 80 ...`) |
+
+- Commands write lines through an `io` callback and return their data; CSV rows come back to the caller (CLI writes `reports/`).
+- Browser-safe: no `fs` outside `cli.ts`; the save is passed as text.
+- Not ported: locating/snapshotting the save folder (stays in `savegame.py`); `fixtures.py` (needs the Lua game code by design).
+  Scroll prices come from the ported profit solver (`profit.ts`).
+- Parity, both sides on the shared LCG (`Sim(use_lcg=True)`), same seeds: identical output (screen and CSV) for
+  `roster`, `fight`, `damage`, `solo`, `skills`, `gear` (owned and catalog), `party`, `map`, `maps`, `scrolls`, `party --map`.
+  - Only difference: skills that dealt 0 damage (buffs, heals) are listed in another order; Python follows Lua's table order.
+  - Python number formatting kept: ties to even (`{:.0f}` of 3066.5 is 3066), `100.0` for float CSV columns.
+- Fixed in the port, still present in `combat.py`:
+  - `solo --quests 1-60` filtered quest ranges by hero ids (empty matrix, crash).
+  - `party` options (`--heroes`, `--size`, `--n-quick`, `--n-final`) were registered on `maps`: `party` always crashed.
+  - `--rare` on a quest without a rare variant: refused up front (the game code crashes; the TS engine fights a NaN enemy).
+    `solo --rare` skips those quests.
+
 ## Code
 
 - `tools/combat.py`, `tools/sim/engine.py`, `tools/sim/harness.lua`, `tools/savegame.py` (parallel session).
+- `web/src/tools/` (TypeScript port), tests in `web/test/tools.test.ts`.

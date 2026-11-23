@@ -21,6 +21,7 @@ timestamp: 2026-11-23
 - [Solving the loop](#solving-the-loop)
 - [Options](#options)
 - [Outputs](#outputs)
+- [TypeScript port](#typescript-port)
 - [Not modelled](#not-modelled)
 
 ## Sources of an item
@@ -114,6 +115,28 @@ A run drops several things. `--alloc` decides who pays:
 - `reports/ascend_modded_g<grade>_<alloc>.csv`: upgrade gain per item and ascension step for 0/1/2 modifiers.
 - `reports/essence_sources_g<grade>_<alloc>.csv`: every map × essence with map cost, loot credit,
   cost per essence, and which one was chosen.
+
+## TypeScript port
+
+Same model in `web/src/tools/` for the website: runs in the browser (no `fs` outside `main`) and in Node.
+
+| Python | TypeScript |
+|---|---|
+| `tools/profit.py` (loot model, `Solver`, reports, CLI) | `web/src/tools/profit.ts` |
+| `tools/enchant.py` | `web/src/tools/enchant.ts` |
+| `tools/gamedata.py` (`Game`, `sell_value`, `essence_for_ascension`...) | `web/src/tools/gamedata.ts`, from `inventory/gamedata.json` |
+| `savegame.py` `owned()`, crafters | `web/src/tools/save.ts` |
+
+- `cd web && node src/tools/profit.ts [same options]`; `--save FILE` replaces `--from-save` / `--save-dir` (no folder detection).
+- In code: `profitReport(gameFromData(), {grade: 3, ...})` returns the four tables and the printed lines.
+- Parity: stdout and all four CSVs byte-identical to `python3 tools/profit.py` for 8 option sets
+  (default, `--alloc full`, grade 1/2/4/5, luck, hero hour cost, `--essence-from`, `--type`, `--no-map-mods`,
+  `--no-map-enchant`, `--map-suffix-max`, crafter/Enchanter levels, `--enchanter-level 0`, `--save`).
+- Exact output needs Python's number semantics, kept on purpose:
+  - `round()` ties to even on the exact binary value (`pyRound`), `-0.0` kept.
+  - int vs float cells (`35` vs `35.0`): costs are floats unless built only from integer sell values/gold (`Solver.costFloat`); `PyFloat` cells print like Python.
+  - Tables iterate in ascending id order (as the Python dicts); suffix -1 (Worn) first.
+- Tests: `web/test/profit.test.ts`.
 
 ## Not modelled
 

@@ -1,0 +1,858 @@
+/**
+ * Merchant combat simulator: parties, skills and gear against quest enemies.
+ * TypeScript port of tools/combat.py, running on the TypeScript engine (web/src/sim).
+ *
+ * Every command takes the Sim, a Roster (heroes from the save) and its options,
+ * writes its report through `io.out` (stdout in the CLI, the page in the browser),
+ * progress through `io.progress`, and returns the data it printed. Commands that
+ * write a CSV in Python return its rows in `csv`; the caller decides where they go.
+ *
+ * Every evaluation uses the same seeds for every candidate (common random numbers),
+ * so comparisons are fair even with few fights.
+ */
+import { G } from "../sim/data.ts";
+import { gameFromData, pyRound } from "./gamedata.ts";
+import { Solver } from "./profit.ts";
+import { itemName, type Hero, type MapSpec, type Row, type Scroll, sellValue, Sim } from "./engine.ts";
+import type { Save } from "./save.ts";
+
+// deno-lint-ignore no-explicit-any
+type Any = any;
+
+export interface IO {
+  out: (line: string) => void;
+  progress: (line: string) => void;
+}
+export const consoleIO: IO = { out: (s) => console.log(s), progress: (s) => console.error(s) };
+
+// ---------------------------------------------------------------- formatting (Python format specs)
+/** `{x:>w.df}`: Python rounds the exact value, ties to even (698.5 -> "698"), and prints -0 as "-0". */
+export function fx(x: number, w = 0, d = 0): string {
+  if (!Number.isFinite(x)) return (Number.isNaN(x) ? "nan" : x > 0 ? "inf" : "-inf").padStart(w);
+  const r = pyRound(x, d);
+  return ((Object.is(r, -0) ? "-" : "") + r.toFixed(d)).padStart(w);
+}
+/** `{s:w}` (left), `{s:>w}` with right = true */
+export const fs = (s: unknown, w = 0, right = false) => (right ? String(s).padStart(w) : String(s).padEnd(w));
+const pct = (x: number, w = 5, d = 1) => fx(100 * x, w, d);
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+/** Python round(x, d) for reports (half-even differences are below CSV precision). */
+const r = (x: number, d = 0) => Math.round(x * 10 ** d) / 10 ** d;
+/** str() of a Python float: 100 -> "100.0". */
+export const pf = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+/** Python tuple ordering, descending: by score, then by the candidate (as Python's sort(reverse=True)). */
+function byScoreDesc<T extends (string | number)[]>(a: [number, T], b: [number, T]): number {
+  if (a[0] !== b[0]) return b[0] - a[0];
+  return -cmpTuple(a[1], b[1]);
+}
+
+/** Python tuple comparison: element by element, a shorter prefix sorts first. */
+export function cmpTuple(a: (string | number)[], b: (string | number)[]): number {
+  for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return a.length - b.length;
+}
+
+// ---------------------------------------------------------------- evaluation
+interface HeroAcc {
+  name: string;
+  class?: number;
+  dmg: number;
+  taken: number;
+  heal: number;
+  deaths: number;
+  skillDmg: Record<string, number>;
+  skillUses: Record<string, number>;
+}
+export interface HeroEval extends HeroAcc {
+  death_rate: number;
+}
+
+function heroAccumulator() {
+  const perHero = new Map<string, HeroAcc>();
+  return {
+    add(h: Any, withClass: boolean) {
+      let ph = perHero.get(h.slot);
+      if (!ph) perHero.set(h.slot, ph = { name: h.name, dmg: 0, taken: 0, heal: 0, deaths: 0, skillDmg: {}, skillUses: {} });
+      ph.name = h.name;
+      if (withClass) ph.class = h.class;
+      ph.dmg += h.physicalDmgDealt + h.magicDmgDealt;
+      ph.taken += h.dmgTaken;
+      ph.heal += h.healingDone;
+      ph.deaths += h.dead ? 1 : 0;
+      for (const [sk, v] of Object.entries(h.skillDmg ?? {})) ph.skillDmg[sk] = (ph.skillDmg[sk] ?? 0) + (v as number);
+      for (const [sk, v] of Object.entries(h.skillUses ?? {})) ph.skillUses[sk] = (ph.skillUses[sk] ?? 0) + (v as number);
+    },
+    result(n: number): Record<string, HeroEval> {
+      const out: Record<string, HeroEval> = {};
+      const per = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, x / n]));
+      for (const [slot, v] of perHero) {
+        out[slot] = { ...v, dmg: v.dmg / n, taken: v.taken / n, heal: v.heal / n, death_rate: v.deaths / n,
+          skillDmg: per(v.skillDmg), skillUses: per(v.skillUses) };
+      }
+      return out;
+    },
+  };
+}
+
+export interface FightEval {
+  n: number;
+  win: number;
+  turns: number;
+  turns_win: number | null;
+  grade: number;
+  enemy_dmg: number;
+  hp_left: number;
+  heroes: Record<string, HeroEval>;
+  score: number;
+}
+
+/** Monte-Carlo summary of n fights with seeds seed0..seed0+n-1. */
+export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200, rare = false, amount = 1, seed0 = 1): FightEval {
+  const q = G.questData[quest];
+  if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${quest} has no enemy to fight`);
+  // The game code fails on a rare fight without rare stats (obj.Enemy); the port would fight a NaN enemy.
+  if (rare && (q.enemyHpB === undefined || q.attackListB === undefined)) throw new Error(`quest ${quest} has no rare variant`);
+  let wins = 0;
+  const turns: number[] = [], turnsWin: number[] = [], grades: number[] = [], enemyFrac: number[] = [], hpFrac: number[] = [];
+  const acc = heroAccumulator();
+  for (let k = 0; k < n; k++) {
+    const res = sim.fight(quest, front, back, { seed: seed0 + k, isRare: rare, amount });
+    turns.push(res.turns);
+    if (res.won) {
+      wins++;
+      turnsWin.push(res.turns);
+      grades.push(res.grade);
+    }
+    enemyFrac.push(1 - Math.max(res.enemyHP, 0) / res.enemyMaxHP);
+    hpFrac.push(sum(res.heroes.map((h) => Math.max(h.hp, 0))) / sum(res.heroes.map((h) => h.maxHP)));
+    for (const h of res.heroes) acc.add(h, true);
+  }
+  const out: FightEval = {
+    n, win: wins / n, turns: mean(turns), turns_win: turnsWin.length ? mean(turnsWin) : null,
+    grade: grades.length ? mean(grades) : 0, enemy_dmg: mean(enemyFrac), hp_left: mean(hpFrac),
+    heroes: acc.result(n), score: 0,
+  };
+  out.score = score(out);
+  return out;
+}
+
+/** Win rate first; among equal win rates, faster fights, then more HP left;
+ * for lost fights, how much of the enemy's HP was removed. */
+export function score(ev: Pick<FightEval, "win" | "enemy_dmg" | "turns" | "hp_left">): number {
+  return ev.win * 1e6 + ev.enemy_dmg * 1e4 - ev.turns * 10 + ev.hp_left * 5;
+}
+
+export function fmtEval(ev: FightEval): string {
+  const tw = ev.turns_win !== null ? fx(ev.turns_win, 0, 1) : "-";
+  return `win ${pct(ev.win)}%  turns ${fx(ev.turns, 5, 1)} (wins ${tw})  grade ${fx(ev.grade, 0, 2)}  ` +
+    `enemy HP removed ${pct(ev.enemy_dmg)}%  party HP left ${pct(ev.hp_left)}%`;
+}
+
+export const SCROLL_IDS = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69]; // consumables with scrollsData behaviour (70 has no item)
+
+/** '61,63,69@1' -> [{id: 61, prestigeLevel: 0}, ...] (max 3 slots, as in the game UI). */
+export function parseScrolls(spec?: string | null): Scroll[] | null {
+  if (!spec) return null;
+  const out: Scroll[] = [];
+  for (let part of String(spec).split(",")) {
+    part = part.trim();
+    if (!part) continue;
+    const [sid, asc] = part.split("@");
+    out.push({ id: toInt(sid), prestigeLevel: asc ? toInt(asc) : 0 });
+  }
+  if (out.length > 3) throw new Error("a map takes at most 3 scrolls");
+  return out;
+}
+
+export function scrollNames(scrolls?: Scroll[] | null): string {
+  if (!scrolls || !scrolls.length) return "none";
+  return scrolls.map((sc) => G.itemData.consumable[sc.id].name + (sc.prestigeLevel ? ` asc${sc.prestigeLevel}` : "")).join(", ");
+}
+
+export interface MapEval {
+  errors: number;
+  error: string;
+  escaped: number;
+  /** [scroll id, charges per run] in first-use order (a Python dict) */
+  charges_used: [number, number][];
+  n: number;
+  win: number;
+  cleared: number;
+  rooms: number;
+  grade: number;
+  time_h: number;
+  hp_left: number;
+  loot_value: number;
+  essence: Record<string, number>;
+  fail_room: Record<string, number>;
+  heroes: Record<string, HeroEval>;
+  score: number;
+}
+
+/** Monte-Carlo summary of n map runs (each seed = a new layout and new fights). */
+export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 100, seed0 = 1, scrolls?: Scroll[] | null): MapEval {
+  let wins = 0, escapes = 0;
+  const cleared: number[] = [], grades: number[] = [], times: number[] = [], hpLeft: number[] = [], rooms: number[] = [];
+  const lootValue: number[] = [], errors: string[] = [];
+  const failRoom: Record<string, number> = {}, charges = new Map<number, number>(), essence: Record<string, number> = {};
+  const acc = heroAccumulator();
+  for (let k = 0; k < n; k++) {
+    let res;
+    try {
+      res = sim.mapRun(spec, front, back, seed0 + k, scrolls);
+    } catch (e) { // the game code itself failed (e.g. a map that can't be generated)
+      if (String(e).includes("not ported")) throw e;
+      errors.push(String((e as Error)?.message ?? e).split("\n")[0]);
+      continue;
+    }
+    rooms.push(res.rooms);
+    escapes += res.escaped ? 1 : 0;
+    for (const sc of res.scrollsUsed ?? []) charges.set(sc.id, (charges.get(sc.id) ?? 0) + sc.chargesUsed);
+    cleared.push((res.cleared + (res.lastEnemyRemoved ?? 0)) / res.rooms);
+    times.push(res.time);
+    if (res.won) {
+      wins++;
+      grades.push(res.grade);
+    } else {
+      const lost = res.combats.find((c) => c.status === 2);
+      if (lost) {
+        const key = lost.name + (lost.isRare ? " (rare)" : "");
+        failRoom[key] = (failRoom[key] ?? 0) + 1;
+      }
+    }
+    let value = 0;
+    for (const it of res.rewards) {
+      const v = sellValue(it.itemType, it.itemID, it.prestigeLevel || 0);
+      if (v !== undefined) value += v * (it.itemType === "material" ? it.amount : 1);
+      if (it.itemType === "material" && G.itemData.material[it.itemID]?.subType === "essence") {
+        const name = itemName("material", it.itemID);
+        essence[name] = (essence[name] ?? 0) + it.amount;
+      }
+    }
+    lootValue.push(value);
+    hpLeft.push(sum(res.heroes.map((h) => Math.max(h.hp, 0))) / sum(res.heroes.map((h) => h.maxHP)));
+    for (const h of res.heroes) acc.add(h, false);
+  }
+  if (!rooms.length) throw new Error(`all ${n} runs failed in game code: ${errors[0]}`);
+  const nOk = rooms.length;
+  const per = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / nOk]));
+  const out: MapEval = {
+    errors: errors.length, error: errors[0] ?? "",
+    escaped: escapes / nOk, charges_used: [...charges].map(([id, v]) => [id, v / nOk]),
+    n: nOk, win: wins / nOk, cleared: mean(cleared), rooms: mean(rooms),
+    grade: grades.length ? mean(grades) : 0, time_h: mean(times) / 3600,
+    hp_left: mean(hpLeft), loot_value: mean(lootValue), essence: per(essence),
+    fail_room: Object.fromEntries(Object.entries(failRoom).sort((a, b) => b[1] - a[1])),
+    heroes: acc.result(nOk), score: 0,
+  };
+  // win first, then how far the party gets, then grade (more essence/loot), then HP left
+  out.score = out.win * 1e6 + out.cleared * 1e4 + out.grade * 100 + out.hp_left * 5;
+  return out;
+}
+
+export function fmtMap(ev: MapEval): string {
+  const ess = Object.entries(ev.essence).map(([k, v]) => `${fx(v, 0, 0)} ${k}`).join(", ") || "none";
+  return `win ${pct(ev.win)}%  progress ${pct(ev.cleared)}% of ${fx(ev.rooms, 0, 1)} rooms  ` +
+    `grade ${fx(ev.grade, 0, 2)}  time ${fx(ev.time_h, 0, 2)} h  party HP left ${pct(ev.hp_left)}%\n` +
+    `  per run: loot worth ${fx(ev.loot_value, 0, 0)} g (sell value), essence ${ess}`;
+}
+
+// ---------------------------------------------------------------- roster
+function toInt(s: string): number {
+  const t = s.trim();
+  if (!/^[-+]?\d+$/.test(t)) throw new Error(`not an integer: '${s}'`);
+  return Number.parseInt(t, 10);
+}
+
+/** '1-60,80' -> [1..60, 80]; `keep` filters the ids a range expands to. */
+export function parseIds(spec: string | number, keep?: (id: number) => boolean): number[] {
+  const out: number[] = [];
+  for (let part of String(spec).split(",")) {
+    part = part.trim();
+    if (part.includes("-")) {
+      const [a, b] = part.split("-").map(toInt);
+      for (let i = a; i <= b; i++) if (!keep || keep(i)) out.push(i);
+    } else if (part) out.push(toInt(part));
+  }
+  return out;
+}
+
+export class Roster {
+  readonly raw = new Map<number, Any>();
+  private objs = new Map<number, Hero>();
+
+  readonly sim: Sim;
+  readonly save: Save;
+
+  constructor(sim: Sim, save: Save) {
+    this.sim = sim;
+    this.save = save;
+    for (const h of save.raw.hero ?? []) this.raw.set(h.id, h);
+  }
+
+  /** A hero for save id `hid` (cached; reset to the save state with reload()). */
+  get(hid: number): Hero {
+    if (!this.raw.has(hid)) throw new Error(`no hero #${hid} in the save (see the roster command)`);
+    let h = this.objs.get(hid);
+    if (!h) this.objs.set(hid, h = this.sim.hero(this.raw.get(hid)));
+    return h;
+  }
+
+  reload(hid: number): Hero {
+    this.objs.delete(hid);
+    return this.get(hid);
+  }
+
+  ids(spec?: string | number | null): number[] {
+    if (spec === undefined || spec === null || spec === "" || spec === "all") return [...this.raw.keys()].sort((a, b) => a - b);
+    return parseIds(spec, (i) => this.raw.has(i));
+  }
+
+  label(hid: number): string {
+    const h = this.get(hid);
+    return `#${hid} ${h.name} (${G.heroList[h.class].name} L${h.level} P${h.prestigeLevel})`;
+  }
+}
+
+/** Hero ids for the slots of each row ('1,0,9': 0 = empty slot). */
+export function parseRows(roster: Roster, front?: string | null, back?: string | null): [Row, Row] {
+  const row = (spec?: string | null) => (spec ? roster.ids(spec).map((i) => (i ? roster.get(i) : null)) : []);
+  return [row(front), row(back)];
+}
+
+/** 'inv:N' = Nth map of your map inventory (1-based), else a map id. */
+export function parseMap(roster: Roster, spec: string | number, asc = 0, grade = 3, prefix = 0, suffix = 0): [MapSpec, string] {
+  const s = String(spec);
+  if (s.startsWith("inv:")) {
+    const m = roster.save.mapInventory[toInt(s.slice(4)) - 1];
+    if (!m) throw new Error(`no map #${s.slice(4)} in the map inventory`);
+    return [m.compact, `inventory map #${s.slice(4)}`];
+  }
+  return [{ id: toInt(s), prestigeLevel: asc, grade, prefix: prefix || null, suffix: suffix || null }, `map ${s}`];
+}
+
+/** Rough threat of a quest enemy: HP x (atk + matk), rare stats if asked. */
+export function enemyPower(q: number, rare = false): number {
+  const d = G.questData[q];
+  const sfx = rare && d.enemyHpB ? "B" : "";
+  return (d["enemyHp" + sfx] || 0) * ((d["enemyAtk" + sfx] || 0) + (d["enemyMatk" + sfx] || 0));
+}
+
+export const questName = (q: number): string => G.questData[q].name;
+
+// ---------------------------------------------------------------- commands
+export interface FightOpts {
+  quest: number;
+  rare?: boolean;
+  amount?: number;
+  n?: number;
+  front?: string | null;
+  back?: string | null;
+}
+
+export function cmdRoster(sim: Sim, roster: Roster, _opts: unknown = {}, io: IO = consoleIO) {
+  io.out(`${fs("id", 3, true)} ${fs("name", 14)} ${fs("class", 12)} ${fs("lvl", 3, true)} ${fs("P", 2, true)} ${fs("HP", 6, true)} ` +
+    `${fs("atk", 5, true)} ${fs("matk", 5, true)} ${fs("acc", 5, true)} ${fs("crit", 4, true)} ${fs("def", 5, true)} ` +
+    `${fs("mdef", 5, true)} ${fs("AP", 5, true)}  rotation / passive`);
+  const rows: Any[] = [];
+  for (const hid of roster.ids("all")) {
+    const h = roster.get(hid);
+    const s = sim.stats(h);
+    const rot = sim.rotation(h);
+    rows.push({ id: hid, name: h.name, class: G.heroList[h.class].name, level: h.level, prestige: h.prestigeLevel, stats: s,
+      rotation: rot, passive: h.passiveSelect });
+    io.out(`${fs(hid, 3, true)} ${fs(String(h.name).slice(0, 14), 14)} ${fs(String(G.heroList[h.class].name).slice(0, 12), 12)} ` +
+      `${fs(h.level, 3, true)} ${fs(h.prestigeLevel, 2, true)} ${fx(s.maxHP, 6)} ${fx(s.atk, 5)} ${fx(s.matk, 5)} ${fx(s.acc, 5)} ` +
+      `${fx(s.crit, 4)} ${fx(s.def, 5)} ${fx(s.mdef, 5)} ${fs(s.maxActionPoints - s.actionPoints, 2, true)}/${fs(s.maxActionPoints, 2)}  ` +
+      `${rot.join(", ")} / ${h.passiveSelect}`);
+  }
+  return rows;
+}
+
+export function printPartyDetail(ev: { heroes: Record<string, HeroEval> }, unit = "fight", io: IO = consoleIO): void {
+  io.out(`  ${fs("slot", 7)} ${fs("hero", 16)} ${fs("dmg/" + unit, 10, true)} ${fs("taken", 8, true)} ${fs("heal", 7, true)} ` +
+    `${fs("death%", 7, true)}  damage by skill (per ${unit})`);
+  for (const slot of Object.keys(ev.heroes).sort()) {
+    const v = ev.heroes[slot];
+    const skills = Object.entries(v.skillDmg).sort((a, b) => b[1] - a[1]);
+    const sk = skills.map(([k, x]) => `${k} ${fx(x, 0, 0)} (${fx((v.skillUses[k] ?? 0), 0, 1)}x)`).join(", ");
+    io.out(`  ${fs(slot, 7)} ${fs(String(v.name).slice(0, 16), 16)} ${fx(v.dmg, 10)} ${fx(v.taken, 8)} ${fx(v.heal, 7)} ` +
+      `${fx(100 * v.death_rate, 6, 1)}%  ${sk}`);
+  }
+}
+
+export function cmdFight(sim: Sim, roster: Roster, o: FightOpts, io: IO = consoleIO): FightEval {
+  const n = o.n ?? 500;
+  const [front, back] = parseRows(roster, o.front, o.back);
+  const ev = evaluate(sim, o.quest, front, back, n, o.rare, o.amount);
+  io.out(`Quest ${o.quest} ${questName(o.quest)}${o.rare ? " (rare)" : ""}, ${n} fights`);
+  io.out("  " + fmtEval(ev));
+  printPartyDetail(ev, "fight", io);
+  return ev;
+}
+
+export function cmdDamage(sim: Sim, roster: Roster, o: FightOpts & { hero: number }, io: IO = consoleIO): FightEval {
+  const n = o.n ?? 300;
+  const ev = evaluate(sim, o.quest, [roster.get(o.hero)], [], n, o.rare, o.amount);
+  const v = Object.values(ev.heroes)[0];
+  io.out(`${roster.label(o.hero)} vs ${questName(o.quest)}, ${n} fights: ${fmtEval(ev)}`);
+  io.out(`  damage per fight ${fx(v.dmg, 0, 0)}, per turn ${fx((v.dmg / ev.turns), 0, 0)}`);
+  io.out(`  ${fs("skill", 22)} ${fs("uses/fight", 10, true)} ${fs("dmg/fight", 10, true)} ${fs("dmg/use", 9, true)}`);
+  for (const [k, x] of Object.entries(v.skillDmg).sort((a, b) => b[1] - a[1])) {
+    const uses = v.skillUses[k] ?? 0;
+    io.out(`  ${fs(k, 22)} ${fx(uses, 10, 2)} ${fx(x, 10)} ${fx(uses ? x / uses : 0, 9)}`);
+  }
+  return ev;
+}
+
+export function cmdSolo(sim: Sim, roster: Roster,
+  o: { heroes?: string; quests?: string; n?: number; rare?: boolean; threshold?: number }, io: IO = consoleIO) {
+  const n = o.n ?? 100, threshold = o.threshold ?? 90;
+  const hids = roster.ids(o.heroes ?? "all");
+  // Quest ids are not filtered by hero ids (tools/combat.py did, through Roster.ids).
+  // With --rare, quests without a rare variant are skipped (the game code fails on them).
+  const quests = (o.quests ? parseIds(o.quests, (q) => q in G.questData)
+    : Object.keys(G.questData).map(Number).sort((a, b) => a - b))
+    .filter((q) => !o.rare || (G.questData[q].enemyHpB !== undefined && G.questData[q].attackListB !== undefined));
+  if (!quests.length) throw new Error(o.rare ? "no quest with a rare variant in the selection" : "no quest selected");
+  const rows: Any[] = [];
+  for (const hid of hids) {
+    const h = roster.get(hid);
+    for (const q of quests) {
+      const ev = evaluate(sim, q, [h], [], n, o.rare);
+      rows.push({ hero_id: hid, hero: h.name, class: G.heroList[h.class].name, level: h.level,
+        prestige: h.prestigeLevel, quest_id: q, quest: questName(q), quest_level: G.questData[q].levelReq,
+        enemy_power: enemyPower(q, o.rare), "win%": r(100 * ev.win, 1),
+        turns: r(ev.turns, 1), grade: r(ev.grade, 2),
+        "enemy_hp_removed%": r(100 * ev.enemy_dmg, 1), "hp_left%": r(100 * ev.hp_left, 1) });
+    }
+    io.progress(`  ${roster.label(hid)} done`);
+  }
+  const groupBy = (key: string) => {
+    const m = new Map<Any, Any[]>();
+    for (const row of rows) m.set(row[key], [...(m.get(row[key]) ?? []), row]);
+    return m;
+  };
+  io.out(`Solo viability (${n} fights each, win >= ${threshold}% counts as soloable; enemy power = HP x (atk + matk)):`);
+  for (const [hid, rs] of groupBy("hero_id")) {
+    const ok = rs.filter((x) => x["win%"] >= threshold);
+    const hardest = ok.length ? ok.reduce((a, b) => (b.enemy_power > a.enemy_power ? b : a)) : null;
+    const fails = rs.filter((x) => x["win%"] < threshold).sort((a, b) => a.enemy_power - b.enemy_power);
+    io.out(`  ${fs(roster.label(hid), 44)} soloes ${fs(ok.length, 3, true)}/${rs.length}` +
+      (hardest ? `; toughest beaten: ${hardest.quest} (${pf(hardest["win%"])}%)` : "") +
+      (fails.length ? `; weakest failed: ${fails.slice(0, 3).map((x) => `${x.quest} (${pf(x["win%"])}%)`).join(", ")}` : ""));
+  }
+  io.out("\nBy class (average over its heroes):");
+  io.out(`  ${fs("class", 12)} ${fs("heroes", 6, true)} ${fs("soloable", 9, true)} ${fs("avg win%", 9, true)} ${fs("avg turns (wins)", 17, true)}`);
+  const classes = [...groupBy("class")].sort((a, b) => mean(b[1].map((x) => x["win%"])) - mean(a[1].map((x) => x["win%"])));
+  for (const [cls, rs] of classes) {
+    const heroes = new Set(rs.map((x) => x.hero_id)).size;
+    const soloable = rs.filter((x) => x["win%"] >= threshold).length / heroes;
+    const wins = rs.filter((x) => x["win%"] >= threshold).map((x) => x.turns);
+    io.out(`  ${fs(cls, 12)} ${fs(heroes, 6, true)} ${fx(soloable, 9, 1)} ${fx(mean(rs.map((x) => x["win%"])), 9, 1)} ` +
+      `${fx(wins.length ? mean(wins) : 0, 17, 1)}`);
+  }
+  return { csv: rows, csvName: `solo${o.rare ? "_rare" : ""}.csv`, floats: ["win%", "enemy_hp_removed%", "hp_left%"] };
+}
+
+/** All 5-slot multisets of unlocked skills + Basic within the AP budget (Python combinations_with_replacement order). */
+export function* rotations(names: string[], costs: number[], maxAP: number): Generator<string[]> {
+  const options = ["Basic", ...names];
+  const cost: Record<string, number> = { Basic: 0 };
+  names.forEach((nm, i) => (cost[nm] = costs[i]));
+  const idx = [0, 0, 0, 0, 0];
+  const m = options.length;
+  while (true) {
+    const combo = idx.map((i) => options[i]);
+    if (sum(combo.map((c) => cost[c])) <= maxAP) yield combo;
+    let i = 4;
+    while (i >= 0 && idx[i] === m - 1) i--;
+    if (i < 0) return;
+    idx[i]++;
+    for (let j = i + 1; j < 5; j++) idx[j] = idx[i];
+  }
+}
+
+/** Distinct orderings of a list, in itertools.permutations order. */
+export function uniquePermutations<T>(xs: T[]): T[][] {
+  const out: T[][] = [];
+  const seen = new Set<string>();
+  const rec = (rest: T[], acc: T[]) => {
+    if (!rest.length) {
+      const key = JSON.stringify(acc);
+      if (!seen.has(key)) (seen.add(key), out.push(acc));
+      return;
+    }
+    rest.forEach((x, i) => rec([...rest.slice(0, i), ...rest.slice(i + 1)], [...acc, x]));
+  };
+  rec(xs, []);
+  return out;
+}
+
+export function cmdSkills(sim: Sim, roster: Roster,
+  o: FightOpts & { hero: number; nQuick?: number; nFinal?: number; top?: number }, io: IO = consoleIO) {
+  const nQuick = o.nQuick ?? 30, nFinal = o.nFinal ?? 300, top = o.top ?? 8;
+  const h = roster.get(o.hero);
+  let [front, back] = parseRows(roster, o.front, o.back);
+  if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
+  const info = sim.skillInfo(h);
+  const skills = info.skills.slice(0, info.unlocked);
+  const names = skills.map((s) => s.name), costs = skills.map((s) => s.ap);
+  const passives = h.level >= 10 ? info.passives : ["None"];
+  const current: [string[], string] = [sim.rotation(h), h.passiveSelect];
+  const ev = (n: number) => evaluate(sim, o.quest, front, back, n, o.rare, o.amount);
+  const base = ev(nFinal);
+  io.out(`${roster.label(o.hero)} vs ${questName(o.quest)}; AP budget ${info.maxAP}; ` +
+    `unlocked: ${names.map((nm, i) => `${nm} (${costs[i]})`).join(", ")}`);
+  io.out(`  current  ${current[0].join(", ")} / ${current[1]}: ${fmtEval(base)}`);
+
+  // Stage 1: every multiset of skills within budget, in one canonical order, current passive.
+  const combos = [...rotations(names, costs, info.maxAP)];
+  io.progress(`  stage 1: ${combos.length} skill combinations x ${nQuick} fights`);
+  const scored: [number, string[]][] = combos.map((combo) => {
+    sim.setSkills(h, combo, current[1]);
+    return [ev(nQuick).score, combo];
+  });
+  scored.sort(byScoreDesc);
+  // Stage 2: orderings of the best combos (rotation order matters: buffs before hits...).
+  const seen = new Set<string>();
+  const cands: string[][] = [];
+  for (const [, combo] of scored.slice(0, top)) {
+    for (const p of uniquePermutations(combo)) {
+      const key = JSON.stringify(p);
+      if (!seen.has(key)) (seen.add(key), cands.push(p));
+    }
+  }
+  io.progress(`  stage 2: ${cands.length} orderings x ${nQuick} fights`);
+  const scored2: [number, string[]][] = cands.map((perm) => {
+    sim.setSkills(h, perm, current[1]);
+    return [ev(nQuick).score, perm];
+  });
+  scored2.sort(byScoreDesc);
+  // Stage 3: best orderings x every passive, with more fights.
+  const final: { ev: FightEval; rotation: string[]; passive: string }[] = [];
+  for (const [, perm] of scored2.slice(0, top)) {
+    for (const p of passives) {
+      sim.setSkills(h, perm, p);
+      final.push({ ev: ev(nFinal), rotation: perm, passive: p });
+    }
+  }
+  final.sort((a, b) => b.ev.score - a.ev.score);
+  io.out(`  best rotations (${nFinal} fights each):`);
+  for (const f of final.slice(0, 5)) io.out(`    ${fs(f.rotation.join(", "), 60)} / ${fs(f.passive, 20)} ${fmtEval(f.ev)}`);
+  sim.setSkills(h, current[0], current[1]); // leave the hero as in the save
+  return { current: { rotation: current[0], passive: current[1], ev: base }, best: final.slice(0, 5) };
+}
+
+export interface GearOpts extends FightOpts {
+  hero: number;
+  pool?: "owned" | "catalog";
+  itemGrade?: number;
+  asc?: number;
+  crafterLevel?: number;
+  levelWindow?: number;
+  passes?: number;
+}
+
+/** {slot: [[label, item]]} from the chosen pool, usable at the hero's level. Items are compact strings or engine items. */
+export function gearCandidates(sim: Sim, roster: Roster, h: Hero, o: GearOpts): Map<number, [string, Any][]> {
+  const cands = new Map<number, [string, Any][]>();
+  const add = (slot: number, c: [string, Any]) => cands.set(slot, [...(cands.get(slot) ?? []), c]);
+  if ((o.pool ?? "owned") === "catalog") {
+    const grade = o.itemGrade ?? 5, asc = o.asc ?? 0;
+    for (const [iid, it] of Object.entries<Any>(G.itemData.equipment)) {
+      if (!it || typeof it !== "object" || !it.itemSlot || (it.itemLevel ?? 99) > h.level) continue;
+      if ((it.itemLevel ?? 0) < h.level - (o.levelWindow ?? 15)) continue;
+      const item = sim.makeItem(Number(iid), grade, asc, o.crafterLevel ?? 60, 1);
+      add(it.itemSlot, [`${it.name} (catalog, grade ${grade}, asc ${asc})`, item]);
+    }
+  } else {
+    for (const [where, items] of [["inventory", roster.save.inventory], ["sale slot", roster.save.sales.filter(Boolean)]] as const) {
+      for (const it of items) if (it.itemType === "equipment" && it.itemSlot) add(it.itemSlot, [where, it.compact]);
+    }
+    for (const [hid, raw] of roster.raw) {
+      if (hid === o.hero) continue;
+      for (const it of raw.heroInventory ?? []) {
+        if (typeof it === "string") add(Number.parseInt(it.split("|")[3], 10), [`worn by #${hid} ${raw.name ?? ""}`, it]);
+      }
+    }
+  }
+  return cands;
+}
+
+export const SLOT_NAMES: Record<number, string> = { 1: "weapon", 2: "head", 3: "body", 4: "hands", 5: "feet", 6: "trinket" };
+
+export function cmdGear(sim: Sim, roster: Roster, o: GearOpts, io: IO = consoleIO) {
+  const n = o.n ?? 60;
+  const h = roster.get(o.hero);
+  let [front, back] = parseRows(roster, o.front, o.back);
+  if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
+  const ev = () => evaluate(sim, o.quest, front, back, n, o.rare, o.amount);
+  const base = ev();
+  io.out(`${roster.label(o.hero)} vs ${questName(o.quest)}, pool ${o.pool ?? "owned"}`);
+  io.out(`  current gear: ${fmtEval(base)}`);
+  const cands = gearCandidates(sim, roster, h, o);
+  let bestScore = base.score;
+  const chosen = new Map<number, [string, string]>();
+  for (let pass = 0; pass < (o.passes ?? 2); pass++) {
+    let improved = false;
+    for (let slot = 1; slot <= 6; slot++) {
+      const current = h.heroInventory[slot];
+      let best: [number, string, Any] | null = null;
+      for (const [label, item] of cands.get(slot) ?? []) {
+        if (typeof item === "string") sim.equip(h, slot, item);
+        else sim.equipItem(h, slot, item);
+        if (h.heroInventory[slot].itemLevel > h.level) {
+          sim.equipItem(h, slot, current);
+          continue;
+        }
+        const sc = ev().score;
+        if (sc > bestScore + 1e-9 && (best === null || sc > best[0])) best = [sc, label, h.heroInventory[slot]];
+      }
+      if (best) {
+        bestScore = best[0];
+        sim.equipItem(h, slot, best[2]);
+        chosen.set(slot, [best[1], best[2].name]);
+        improved = true;
+      } else sim.equipItem(h, slot, current);
+    }
+    if (!improved) break;
+  }
+  const final = ev();
+  io.out(`  best gear:    ${fmtEval(final)}`);
+  const gear: Any[] = [];
+  for (let slot = 1; slot <= 6; slot++) {
+    const it = h.heroInventory[slot];
+    const c = chosen.get(slot);
+    gear.push({ slot: SLOT_NAMES[slot], item: it?.name, from: c?.[0] ?? null });
+    io.out(`    ${fs(SLOT_NAMES[slot], 8)} ${it?.name}${c ? `  <- ${c[0]}` : "  (keep)"}`);
+  }
+  roster.reload(o.hero);
+  return { base, final, gear };
+}
+
+export interface MapOpts {
+  map: string;
+  asc?: number;
+  mapGrade?: number;
+  prefix?: number;
+  suffix?: number;
+  scrolls?: string | null;
+  front?: string | null;
+  back?: string | null;
+  n?: number;
+}
+
+const mapSpecOf = (roster: Roster, o: MapOpts) => parseMap(roster, o.map, o.asc ?? 0, o.mapGrade ?? 3, o.prefix ?? 0, o.suffix ?? 0);
+
+export function cmdMap(sim: Sim, roster: Roster, o: MapOpts, io: IO = consoleIO): MapEval {
+  const n = o.n ?? 100;
+  const [front, back] = parseRows(roster, o.front, o.back);
+  const [spec, label] = mapSpecOf(roster, o);
+  const scrolls = parseScrolls(o.scrolls);
+  const m = sim.makeMap(spec, 1);
+  io.out(`${m.name} (asc ${m.prestigeLevel}, enemy mod ${m.enemyMod}), ${label}, ${n} runs, scrolls: ${scrollNames(scrolls)}`);
+  const ev = evaluateMap(sim, spec, front, back, n, 1, scrolls);
+  io.out("  " + fmtMap(ev));
+  if (scrolls) {
+    const used = ev.charges_used.map(([k, v]) => `${G.itemData.consumable[k].name} ${fx(v, 0, 2)}`).join(", ");
+    io.out(`  scroll charges used per run: ${used || "none"}; escaped ${fx((100 * ev.escaped), 0, 0)}% of runs`);
+  }
+  if (ev.errors) io.out(`  ${ev.errors} runs crashed in the game code: ${ev.error}`);
+  const fails = Object.entries(ev.fail_room);
+  if (fails.length) io.out("  lost at: " + fails.slice(0, 6).map(([k, v]) => `${k} ${fx((100 * v / n), 0, 0)}%`).join(", "));
+  printPartyDetail(ev, "run", io);
+  return ev;
+}
+
+/** Survey every map (asc 0 and 1) with one party (Python wrote reports/maps_survey.csv). */
+export function cmdMaps(sim: Sim, roster: Roster,
+  o: { front?: string | null; back?: string | null; n?: number; mapGrade?: number; scrolls?: string | null; include70?: boolean },
+  io: IO = consoleIO) {
+  const n = o.n ?? 20;
+  const [front, back] = parseRows(roster, o.front, o.back);
+  const rows: Any[] = [];
+  const maps = Object.entries<Any>(G.itemData.map).map(([k, m]) => [Number(k), m] as const).sort((a, b) => a[0] - b[0]);
+  for (const [mid, m] of maps) {
+    if (!m.bossList || !Object.keys(m.bossList).length) continue;
+    if ((m.itemLevel ?? 0) > 60 && !o.include70) continue; // level-70 maps (ids 27-32) can't be crafted: crafters cap at level 60
+    for (const asc of [0, 1]) {
+      const spec = { id: mid, prestigeLevel: asc, grade: o.mapGrade ?? 3 };
+      let ev: MapEval;
+      try {
+        ev = evaluateMap(sim, spec, front, back, n, 1, parseScrolls(o.scrolls));
+      } catch (e) {
+        if (String(e).includes("not ported")) throw e;
+        io.out(`  ${fs(m.name, 26)} asc ${asc}: game error - ${(e as Error).message}`);
+        continue;
+      }
+      const essTotal = sum(Object.values(ev.essence));
+      const row = { map_id: mid, map: m.name, asc, level: m.itemLevel,
+        "win%": r(100 * ev.win, 1), "progress%": r(100 * ev.cleared, 1),
+        grade: r(ev.grade, 2), time_h: r(ev.time_h, 2),
+        // sum() of no essence is the int 0 in Python, a float otherwise
+        essence_per_run: Object.keys(ev.essence).length ? r(essTotal, 1) : "0", essence: Object.keys(ev.essence).join(", "),
+        essence_per_hour: ev.time_h ? r(essTotal / ev.time_h, 1) : 0,
+        loot_value_per_run: r(ev.loot_value),
+        loot_value_per_hour: ev.time_h ? r(ev.loot_value / ev.time_h) : 0,
+        lost_at: Object.keys(ev.fail_room).slice(0, 2).join(", "),
+        game_errors: ev.errors, game_error: ev.error };
+      rows.push(row);
+      io.out(`  ${fs(m.name, 26)} asc ${asc}: win ${fx(row["win%"], 5, 1)}%  progress ${fx(row["progress%"], 5, 1)}%  ` +
+        `grade ${fx(row.grade, 0, 2)}  ${fx(row.essence_per_hour, 7, 1)} essence/h  ` +
+        `${fs(row.loot_value_per_hour, 6, true)} g loot/h` + (row.lost_at ? `  lost at ${row.lost_at}` : "") +
+        (ev.errors ? `  [${ev.errors}/${n} runs crashed in game code]` : ""));
+    }
+  }
+  return { csv: rows, csvName: "maps_survey.csv", floats: ["win%", "progress%", "time_h", "essence_per_run", "essence_per_hour"] };
+}
+
+/** Best loadout of up to 3 scrolls for one map and party. `prices`: crafted cost per scroll id (optional). */
+export function cmdScrolls(sim: Sim, roster: Roster,
+  o: MapOpts & { pool?: string; scrollAsc?: number; nQuick?: number; nFinal?: number; top?: number; prices?: Record<number, number> },
+  io: IO = consoleIO) {
+  const nQuick = o.nQuick ?? 10, nFinal = o.nFinal ?? 100, top = o.top ?? 8, scrollAsc = o.scrollAsc ?? 0;
+  const [front, back] = parseRows(roster, o.front, o.back);
+  const [spec, label] = mapSpecOf(roster, o);
+  const pool = o.pool ? o.pool.split(",").map(toInt) : SCROLL_IDS;
+  const loadouts: number[][] = [[]];
+  for (const k of [1, 2, 3]) {
+    const rec = (start: number, acc: number[]) => {
+      if (acc.length === k) return void loadouts.push(acc);
+      for (let i = start; i < pool.length; i++) rec(i, [...acc, pool[i]]);
+    };
+    rec(0, []);
+  }
+  // Python priced scrolls with the profit solver (tools/profit.py), not ported: pass `prices` to show costs.
+  // crafted cost of each scroll (profit solver at grade 3), as tools/combat.py; pricing is a convenience
+  let price: Record<number, number> = o.prices ?? {};
+  if (!o.prices) {
+    try {
+      const solver = new Solver(gameFromData()).solve();
+      price = Object.fromEntries(pool.map((sid) => [sid, solver.get("consumable", sid, scrollAsc)]));
+    } catch (e) {
+      io.progress(`  (no scroll prices: ${(e as Error).message})`);
+      price = Object.fromEntries(pool.map((sid) => [sid, 0]));
+    }
+  }
+  const asScrolls = (lo: number[]) => (lo.length ? lo.map((id) => ({ id, prestigeLevel: scrollAsc })) : null);
+  io.progress(`  stage 1: ${loadouts.length} loadouts x ${nQuick} runs`);
+  const scored: [number, number[]][] = loadouts.map((lo) => [evaluateMap(sim, spec, front, back, nQuick, 1, asScrolls(lo)).score, lo]);
+  scored.sort(byScoreDesc);
+  const final: { ev: MapEval; loadout: number[] }[] = scored.slice(0, top)
+    .map(([, lo]) => ({ ev: evaluateMap(sim, spec, front, back, nFinal, 1, asScrolls(lo)), loadout: lo }));
+  if (!final.some((f) => f.loadout.length === 0)) final.push({ ev: evaluateMap(sim, spec, front, back, nFinal), loadout: [] });
+  final.sort((a, b) => b.ev.score - a.ev.score);
+  io.out(`Best scroll loadouts for ${label} (${nFinal} runs each):`);
+  for (const { ev, loadout } of final) {
+    const cost = sum(loadout.map((sid) => price[sid] ?? 0));
+    const name = loadout.length ? scrollNames(asScrolls(loadout)) : "no scrolls";
+    const ess = sum(Object.values(ev.essence));
+    io.out(`  ${fs(name, 55)} cost ${fx(cost, 6)} g  win ${pct(ev.win)}%  progress ${pct(ev.cleared)}%  ` +
+      `grade ${fx(ev.grade, 0, 2)}  essence/run ${fx(ess, 6, 1)}  loot ${fx(ev.loot_value, 6)} g  ` +
+      `time ${fx(ev.time_h, 0, 2)} h  escaped ${fx((100 * ev.escaped), 0, 0)}%`);
+  }
+  return final;
+}
+
+export function cmdParty(sim: Sim, roster: Roster,
+  o: Partial<MapOpts> & { quest?: number; rare?: boolean; amount?: number; heroes?: string; size?: number; nQuick?: number; nFinal?: number },
+  io: IO = consoleIO) {
+  const nQuick = o.nQuick ?? 40, nFinal = o.nFinal ?? 500, size = o.size ?? 6;
+  if (!o.map && o.quest === undefined) throw new Error("party needs a quest or a map");
+  const pool = roster.ids(o.heroes ?? "all");
+  const slots = ["front:0", "front:1", "front:2", "back:0", "back:1", "back:2"];
+  const placed = new Map<string, number>(); // "row:i" -> hero id
+  const used = () => new Set(placed.values());
+  const rows = (): [Row, Row] => {
+    const row = (name: string) => [0, 1, 2].map((i) => (placed.has(`${name}:${i}`) ? roster.get(placed.get(`${name}:${i}`)!) : null));
+    return [row("front"), row("back")];
+  };
+  const spec = o.map ? mapSpecOf(roster, o as MapOpts)[0] : undefined;
+  const evOf = (n: number): FightEval | MapEval => {
+    const [front, back] = rows();
+    if (spec !== undefined) return evaluateMap(sim, spec, front, back, n, 1, parseScrolls(o.scrolls));
+    return evaluate(sim, o.quest!, front, back, n, o.rare, o.amount);
+  };
+  const slotLabel = (s: string) => `${s.split(":")[0]} ${Number(s.split(":")[1]) + 1}`;
+
+  // Greedy: add the hero + slot that improves the score most, until the party
+  // is full or another hero stops helping.
+  let best: number | null = null;
+  for (let step = 0; step < size; step++) {
+    let candBest: [number, number, string] | null = null;
+    for (const hid of pool) {
+      if (used().has(hid)) continue;
+      for (const slot of slots) {
+        if (placed.has(slot)) continue;
+        placed.set(slot, hid);
+        const sc = evOf(nQuick).score;
+        placed.delete(slot);
+        if (candBest === null || sc > candBest[0]) candBest = [sc, hid, slot];
+      }
+    }
+    if (candBest === null || (best !== null && candBest[0] <= best + 1e-9)) break;
+    best = candBest[0];
+    placed.set(candBest[2], candBest[1]);
+    io.progress(`  + ${roster.label(candBest[1])} in ${slotLabel(candBest[2])}`);
+  }
+
+  // Local search: replace a placed hero by an unused one, or move a hero to an empty slot.
+  let improved = true;
+  while (improved) {
+    improved = false;
+    let base = evOf(nQuick).score;
+    for (const slot of [...placed.keys()]) {
+      const cur = placed.get(slot)!;
+      const options: ["swap" | "move", Any][] = [
+        ...pool.filter((hid) => !used().has(hid)).map((hid) => ["swap", hid] as ["swap", number]),
+        ...slots.filter((s2) => !placed.has(s2)).map((s2) => ["move", s2] as ["move", string]),
+      ];
+      for (const [kind, x] of options) {
+        if (kind === "swap") placed.set(slot, x);
+        else (placed.delete(slot), placed.set(x, cur));
+        const sc = evOf(nQuick).score;
+        if (sc > base + 1e-9) {
+          base = sc;
+          improved = true;
+          break;
+        }
+        if (kind === "swap") placed.set(slot, cur);
+        else (placed.delete(x), placed.set(slot, cur));
+      }
+      if (improved) break;
+    }
+  }
+
+  const final = evOf(nFinal);
+  const target = o.map ? `map ${o.map}` : questName(o.quest!);
+  io.out(`Best party found for ${target} (${nFinal} ${o.map ? "runs" : "fights"}):`);
+  const party: Record<string, (number | null)[]> = {};
+  for (const row of ["front", "back"]) {
+    party[row] = [0, 1, 2].map((i) => placed.get(`${row}:${i}`) ?? null);
+    io.out(`  ${fs(row, 5)}: ` + party[row].map((hid) => (hid !== null ? roster.label(hid) : "-")).join(" | "));
+  }
+  if (o.map) {
+    io.out("  " + fmtMap(final as MapEval));
+    printPartyDetail(final, "run", io);
+  } else {
+    io.out("  " + fmtEval(final as FightEval));
+    printPartyDetail(final, "fight", io);
+  }
+  return { party, ev: final };
+}
+
+// ---------------------------------------------------------------- CSV
+/** CSV as Python's csv.DictWriter writes it; `floats`: columns that were Python floats (100 -> "100.0"). */
+export function toCsv(rows: Record<string, unknown>[], floats: string[] = []): string {
+  if (!rows.length) return "";
+  const keys = Object.keys(rows[0]);
+  const fl = new Set(floats);
+  const cell = (v: unknown, k: string) => {
+    const s = v === null || v === undefined ? "" : typeof v === "number" && fl.has(k) ? pf(v) : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [keys.join(","), ...rows.map((row) => keys.map((k) => cell(row[k], k)).join(","))].join("\r\n") + "\r\n";
+}

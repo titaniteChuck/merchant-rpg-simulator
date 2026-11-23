@@ -112,4 +112,17 @@ python3 tools/combat.py --save saves/snapshot/PlayerData.txt maps   --front 1,9,
 ```
 
 Fights use the game's own combat code, so stats, skills, passives, effects and turn order are exact.
+
+A TypeScript port of `combat.py` (same commands and options, on the TypeScript engine) lives in
+`web/src/tools/`, for the website:
+
+```bash
+cd web && npm run combat -- fight --quest 80 --front 1,9 --back 6,2 --save ../saves/snapshot/PlayerData.txt
+```
+
+`profit.py` and `enchant.py` are ported too (same options, `--save FILE` instead of save-folder detection):
+
+```bash
+cd web && node src/tools/profit.ts --grade 3 --alloc value
+```
 Details and limits: `docs/tooling/combat-simulator/combat-simulator.md`.
