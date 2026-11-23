@@ -26,3 +26,6 @@ Thumbs.db
 /_site/
 /web/test/fixtures/
 node_modules/
+
+# Claude Code local state and agent worktrees
+.claude/

@@ -6,3 +6,4 @@
 - **Creation**: Roadmap with the engine and UI lanes, file ownership and the first dispatched tasks (E1, U0).
 - **Update**: Session renames recorded; E3, E4, E5 handed to parallel background agents.
 - **Update**: E1 done (fbe6c34); E5 done (no bug); E6 added; E2 started; U2 unblocked.
+- **Update**: E4 merged (0ae0fe8): CI-safe regression snapshots incl. Feast.
