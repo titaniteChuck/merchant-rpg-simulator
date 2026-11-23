@@ -280,6 +280,16 @@ link ("Balance", U18) and a home card; not part of the wiki (it depends on hero 
 
 ## Shared page parts
 
+- Colours (U16): the game's palette, as tokens at the top of `site/style.css`, no game images or fonts. Dark (the
+  default): dark-brown page `#2b231d`, taupe-brown panels `#4a4038` / `#5a5048` with gold-ochre frames (`#c8961e`
+  mixed into the panel colour), warm-white titles and text, gold links and focus `#f0c24a`; the top bar is a red banner
+  `#b8322a` with a gold trim and white text; primary buttons, selected tabs and step badges use the red; skill chips and
+  hero gear rows are sand insets `#c8b898` with dark text, gear framed in its rarity colour; AP numbers white with a
+  dark outline. Light ("parchment"): page `#e8dcc2`, panels `#f7f0de` / `#efe4c9`, dark-brown text, the same banner.
+  Every text token meets WCAG AA (4.5:1) on page and both panel colours (lowest: 4.55, dark skill links).
+- Theme switch: `site/theme.js` (plain script in every page's head, before the stylesheet paints) sets
+  `data-theme` on `<html>` from localStorage `theme` (dark unless "light") and adds a ☀ / ☾ button to the top bar.
+  The OS setting is not used; the sweep (`check-site.ts`) sets the stored theme for its light and dark runs.
 - Page width: content up to 1280 px (was 1040), 16 px side padding; phones unchanged. Page titles (h1) are solid
   text: the former gradient text (background-clip: text) vanished on repaint in desktop Chrome / Edge.
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Balance, Wiki (short labels so it stays on one

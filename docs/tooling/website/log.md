@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: The game's colour palette (U16): dark brown and ochre by default with a red banner top bar and sand item cells, a parchment light theme behind a ☀/☾ switch (`site/theme.js`), WCAG AA on every text colour.
 - **Update**: Battle page layout (U15): opponent on the left and the six hero slots on the right in every mode; compact hero cards (stat strip, rotation chips with AP, passive chip, editor fold-out); Best party and Optimise fill the slots, with locks per slot and an undo; the worker loads the timelines for the E14b pre-filter.
 - **Update**: Class balance moves to the top bar ("Balance"), out of the wiki nav; save viewer CSV exports move into the top-bar save menu, and the heroes instruction line is gone (U18).
 - **Fix**: Page titles visible again in desktop Chrome / Edge (solid text instead of gradient text); pages about 23% wider (1280 px).

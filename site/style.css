@@ -4,63 +4,78 @@
 [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------------ tokens */
-:root {
-  color-scheme: light dark;
-  --bg: #f4f5fb;
-  --bg-glow-1: rgba(124, 92, 255, 0.14);
-  --bg-glow-2: rgba(245, 165, 36, 0.12);
-  --fg: #171a2b;
-  --muted: #5d6279;
-  --card: #ffffff;
-  --card-2: #f7f8fd;
-  --border: #e2e4f0;
-  --shadow: 0 1px 2px rgba(23, 26, 43, 0.06), 0 8px 24px rgba(23, 26, 43, 0.06);
-  --shadow-hover: 0 2px 4px rgba(23, 26, 43, 0.08), 0 16px 40px rgba(23, 26, 43, 0.12);
-  --accent: #6d4dff;
-  --accent-2: #e8458b;
-  --gold: #c27c0e;
-  --good: #16a34a;
-  --mid: #c27c0e;
-  --bad: #dc2626;
-  --gradient: linear-gradient(120deg, #6d4dff 0%, #e8458b 55%, #f59e0b 100%);
+/*
+ * U16: the game's colours (Merchant's UI), as tokens. Dark is the default (data-theme="dark", set by theme.js; also
+ * without JS); parchment light with data-theme="light". Body text and numbers meet WCAG AA on every surface.
+ */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #2b231d;            /* page: dark brown */
+  --bg-glow-1: rgba(200, 150, 30, 0.10);
+  --bg-glow-2: rgba(184, 50, 42, 0.10);
+  --fg: #f5efe3;            /* titles and text: warm white */
+  --muted: #d6cab8;
+  --card: #4a4038;          /* panels: dark taupe-brown */
+  --card-2: #5a5048;
+  --border: color-mix(in srgb, #c8961e 62%, #4a4038);   /* gold / ochre frames */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 22px rgba(0, 0, 0, 0.30);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 36px rgba(0, 0, 0, 0.45);
+  --accent: #f0c24a;        /* gold: links, focus, selection */
+  --accent-2: #e0603f;
+  --gold: #f0c24a;
+  --good: #8be07a;
+  --mid: #f0c24a;
+  --bad: #ffb3a6;
+  --gradient: linear-gradient(120deg, #c23a2e 0%, #9e2b22 100%);   /* the red banner, for primary buttons and tabs */
+  --banner: #b8322a;        /* top bar */
+  --banner-fg: #ffffff;
+  --trim: #c8961e;          /* gold trim */
+  --inset: #c8b898;         /* sand / parchment cells */
+  --inset-fg: #2a2018;
+  --skill: #9fc8ff;         /* skill links */
   --radius: 14px;
-  --tint: 14%;      /* strength of colour backgrounds */
-  --ink: 62%;       /* how much of a hue text keeps (rest is --fg) */
+  --tint: 20%;
+  --ink: 80%;
 
-  /* rarity: the game's colours (UI.rarityColor), tuned for contrast */
-  --rar-0: #8a8fa3; --rar-1: #6b7085; --rar-2: #15994a; --rar-3: #2f6fe0;
-  --rar-4: #b62fcf; --rar-5: #c98a00; --rar-6: #c98a00; --rar-7: #dc2626; --rar-8: #dc2626;
+  /* rarity frames: the game's colours (UI.rarityColor) */
+  --rar-0: #9a9a9a; --rar-1: #e8e2d6; --rar-2: #6fd36f; --rar-3: #6aa8ff;
+  --rar-4: #e07cff; --rar-5: #ffc93c; --rar-6: #ffc93c; --rar-7: #ff6b5b; --rar-8: #ff6b5b;
 
-  /* ascension outlines: metallic silver (1) and gold (2), as light / mid / highlight / shadow stops */
+  /* ascension outlines: metallic silver (1) and gold (2) */
+  --silver-hi: #ffffff; --silver-mid: #b8c0cb; --silver-sheen: #f2f4f7; --silver-lo: #8a94a3;
+  --gold-hi: #fff4c2; --gold-mid: #f0b429; --gold-sheen: #ffe594; --gold-lo: #c08a12;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e8dcc2;            /* parchment */
+  --bg-glow-1: rgba(200, 150, 30, 0.16);
+  --bg-glow-2: rgba(184, 50, 42, 0.08);
+  --fg: #2a2018;
+  --muted: #5a4a36;
+  --card: #f7f0de;
+  --card-2: #efe4c9;
+  --border: color-mix(in srgb, #c8961e 70%, #f7f0de);
+  --shadow: 0 1px 2px rgba(60, 40, 10, 0.10), 0 8px 22px rgba(60, 40, 10, 0.10);
+  --shadow-hover: 0 2px 4px rgba(60, 40, 10, 0.12), 0 16px 36px rgba(60, 40, 10, 0.16);
+  --accent: #744a00;
+  --accent-2: #b8322a;
+  --gold: #8a5a00;
+  --good: #1f6324;
+  --mid: #8a5a00;
+  --bad: #a3221a;
+  --gradient: linear-gradient(120deg, #c23a2e 0%, #9e2b22 100%);
+  --banner: #b8322a;
+  --banner-fg: #ffffff;
+  --trim: #c8961e;
+  --inset: #e2d2ae;
+  --inset-fg: #2a2018;
+  --skill: #2350a8;
+  --tint: 16%;
+  --ink: 70%;
+  --rar-0: #6f6f6f; --rar-1: #5b5246; --rar-2: #1f7a2a; --rar-3: #2457b8;
+  --rar-4: #8e2fb0; --rar-5: #a86b00; --rar-6: #a86b00; --rar-7: #b3261e; --rar-8: #b3261e;
   --silver-hi: #ffffff; --silver-mid: #a3acb9; --silver-sheen: #e6eaef; --silver-lo: #7b8594;
   --gold-hi: #fff2bd; --gold-mid: #d39b12; --gold-sheen: #ffe08a; --gold-lo: #a06f05;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0d16;
-    --bg-glow-1: rgba(124, 92, 255, 0.20);
-    --bg-glow-2: rgba(232, 69, 139, 0.10);
-    --fg: #eceef8;
-    --muted: #9aa0ba;
-    --card: #141726;
-    --card-2: #1a1e30;
-    --border: #262b42;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
-    --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.45);
-    --accent: #9b85ff;
-    --accent-2: #ff6fa8;
-    --gold: #f5b83d;
-    --good: #3ddc84;
-    --mid: #f5b83d;
-    --bad: #ff6b6b;
-    --gradient: linear-gradient(120deg, #8b72ff 0%, #ff6fa8 55%, #ffb84d 100%);
-    --tint: 18%;
-    --ink: 78%;
-    --rar-0: #7d8299; --rar-1: #d9dceb; --rar-2: #5fe08a; --rar-3: #6ea8ff;
-    --rar-4: #f07cff; --rar-5: #ffd84a; --rar-6: #ffd84a; --rar-7: #ff6b6b; --rar-8: #ff6b6b;
-    --silver-hi: #ffffff; --silver-mid: #b8c0cb; --silver-sheen: #f2f4f7; --silver-lo: #8a94a3;
-    --gold-hi: #fff4c2; --gold-mid: #f0b429; --gold-sheen: #ffe594; --gold-lo: #c08a12;
-  }
 }
 
 /* hero classes (heroList ids) */
@@ -313,17 +328,27 @@ section > h2:first-child { margin-top: 36px; }
 
 /* ------------------------------------------------------------------ top bar (every page) */
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 28px; padding: 10px 14px;
-  background: color-mix(in srgb, var(--card) 80%, transparent); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: var(--shadow); backdrop-filter: blur(6px); }
-.topbar .brand { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 750; color: var(--fg); }
-.topbar .brand::before { content: ""; width: 22px; height: 22px; border-radius: 7px; background: var(--gradient); box-shadow: 0 2px 8px var(--bg-glow-1); }
+  background: var(--banner); color: var(--banner-fg); border: 2px solid var(--trim); border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), var(--shadow); }
+.topbar .brand { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 750; color: var(--banner-fg);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45); }
+.topbar .brand::before { content: ""; width: 22px; height: 22px; border-radius: 7px; background: radial-gradient(circle at 50% 45%, #ffe08a 0 30%, var(--trim) 32% 62%, #8a6410 64%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
 .topnav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
-.topnav a { text-decoration: none; color: var(--muted); font-weight: 600; font-size: 0.92rem; padding: 5px 10px; border-radius: 9px; }
-.topnav a:hover { color: var(--fg); background: var(--card-2); }
-.topnav a[aria-current="page"] { color: var(--fg); background: color-mix(in srgb, var(--accent) var(--tint), transparent); }
-.gh { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--fg); font-weight: 650; font-size: 0.9rem;
-  padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
-.gh:hover { border-color: var(--accent); color: var(--accent); }
+.topnav a { text-decoration: none; color: color-mix(in srgb, var(--banner-fg) 88%, var(--banner)); font-weight: 600; font-size: 0.92rem; padding: 5px 10px; border-radius: 9px; }
+.topnav a:hover { color: var(--banner-fg); background: rgba(0, 0, 0, 0.18); }
+.topnav a[aria-current="page"] { color: var(--banner-fg); background: rgba(0, 0, 0, 0.30); box-shadow: inset 0 -2px 0 var(--trim); }
+.gh { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--banner-fg); font-weight: 650; font-size: 0.9rem;
+  padding: 5px 12px; border: 1px solid var(--trim); border-radius: 999px; background: rgba(0, 0, 0, 0.22); }
+.gh:hover { background: rgba(0, 0, 0, 0.35); }
+/* Buttons on the banner (save chip, theme switch): dark translucent, gold edge, white text. */
+.topbar .save-chip-btn, .topbar .theme-btn { color: var(--banner-fg); background: rgba(0, 0, 0, 0.22); border: 1px solid var(--trim); }
+.topbar .save-chip-btn:hover, .topbar .theme-btn:hover { background: rgba(0, 0, 0, 0.35); }
+.theme-btn { padding: 4px 10px; border-radius: 999px; font-size: 0.95rem; line-height: 1.2; cursor: pointer; }
+.topbar .save-chip { margin-left: auto; }
+.topbar .theme-btn { margin-left: auto; }
+.topbar .theme-btn + .save-chip { margin-left: 0; }
+.topbar :focus-visible { outline-color: #ffe08a; }
 .card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; } .card-levelling { --c: #0ea5e9; } .card-balance { --c: #a855f7; }
 
 /* ------------------------------------------------------------------ saved save */
@@ -360,7 +385,7 @@ ol.rotation.compact > li { grid-template-areas: "n s"; grid-template-columns: 22
 /* ------------------------------------------------------------------ wiki links + tooltip */
 a.wl { text-decoration: none; color: inherit; border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent); }
 a.wl:hover, a.wl:focus-visible { border-bottom-style: solid; }
-a.wl.skill { color: color-mix(in srgb, #8b5cf6 var(--ink), var(--fg)); font-weight: 600; }
+a.wl.skill { color: color-mix(in srgb, var(--skill) var(--ink), var(--fg)); font-weight: 600; }
 a.wl.passive { color: color-mix(in srgb, var(--gold) var(--ink), var(--fg)); font-weight: 600; }
 a.wl.pill { border-bottom: 0; }
 .wl.basic { color: var(--muted); }
@@ -469,9 +494,7 @@ a.wl.asc { border-bottom: 0; }
 .pf-owned { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
   color: color-mix(in srgb, var(--good) var(--ink), var(--fg)); background: color-mix(in srgb, var(--good) var(--tint), transparent); }
 th button[data-tip] { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
-@media (prefers-color-scheme: dark) {
-  #result.pf-busy { opacity: .45; }
-}
+:root[data-theme="dark"] #result.pf-busy { opacity: .45; }
 /* end profit page */
 
 /* wiki review */
@@ -697,8 +720,8 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .search-card .tl-why { border-top: 1px dashed var(--border); padding-top: 6px; }
 
 /* ------------------------------------------------------------------ class balance page (U4) */
-:root { --heat: #14b8a6; }
-@media (prefers-color-scheme: dark) { :root { --heat: #0f766e; } }
+:root, :root[data-theme="dark"] { --heat: #0f766e; }
+:root[data-theme="light"] { --heat: #14b8a6; }
 .cb-ref { grid-column: span 2; }
 @media (max-width: 560px) { .cb-ref { grid-column: auto; } }
 .cb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -748,12 +771,22 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 .stat-strip td { text-align: center; padding: 1px 2px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; }
 .chips { display: flex; flex-direction: column; gap: 5px; }
 .skill-chips { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
-.skill-chip { position: relative; min-width: 0; padding: 3px 13px 3px 5px; border-radius: 6px; border: 1px solid var(--border); background: var(--card-2);
+.skill-chip { position: relative; min-width: 0; padding: 3px 13px 3px 5px; border-radius: 6px; border: 1px solid var(--trim); background: var(--inset); color: var(--inset-fg);
   font-size: 0.72rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.skill-chip.basic { color: var(--muted); }
-.skill-chip .ap { position: absolute; right: 2px; bottom: 1px; font-size: 0.6rem; font-weight: 800; color: var(--muted); }
+.skill-chip.basic { color: color-mix(in srgb, var(--inset-fg) 70%, var(--inset)); }
+.skill-chip a.wl.skill { color: var(--inset-fg); }
+/* The AP number: white, outlined, bottom-right, as on the game's slots. */
+.skill-chip .ap { position: absolute; right: 2px; bottom: 0; font-size: 0.62rem; font-weight: 800; color: #fff;
+  text-shadow: -1px -1px 0 #2a2018, 1px -1px 0 #2a2018, -1px 1px 0 #2a2018, 1px 1px 0 #2a2018; }
 .skill-chip a { text-decoration: none; }
 .passive-chip { align-self: flex-start; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--gold-2, #f59e0b) 45%, var(--border));
   background: color-mix(in srgb, #f59e0b 10%, var(--card-2)); }
 .slot-edit summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+
+/* ------------------------------------------------------------------ game palette components (U16) */
+/* Item cells (hero gear): sand inset framed in the item's rarity colour, dark text. */
+.gear li { background: var(--inset); color: var(--inset-fg); border: 2px solid var(--r, var(--trim)); border-left-width: 4px; }
+.gear li .item, .gear li a.wl { color: var(--inset-fg); }
+/* Panel headings: white (dark theme) on the brown panels, like the game's title bars. */
+h2, h3 { color: var(--fg); }
 

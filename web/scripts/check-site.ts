@@ -98,6 +98,8 @@ const FRAME = `<!doctype html><html><head><meta charset="utf-8"><link rel="icon"
 <script>
 const P = new URLSearchParams(location.search);
 const width = Number(P.get("w")), withSave = P.get("save") === "1", settle = Number(P.get("settle"));
+// The site's theme is a stored choice (site/theme.js: dark unless "light"), not the OS setting.
+localStorage.setItem("theme", P.get("theme") === "light" ? "light" : "dark");
 function idb() {
   return new Promise((ok, ko) => {
     const r = indexedDB.open("merchant-rpg-simulator", 1);
@@ -172,7 +174,17 @@ const profiles: string[] = [];
 function profileDir(id: string): string {
   const name = `mrs-check-${process.pid}-${id}`;
   const local = WINDOWS ? `/mnt/c/Temp/${name}` : join(tmpdir(), name);
-  mkdirSync(local, { recursive: true });
+  // /mnt/c (WSL) now and then fails with EIO: retry a few times.
+  for (let k = 0; ; k++) {
+    try {
+      mkdirSync(local, { recursive: true });
+      break;
+    } catch (e) {
+      if (k >= 4) throw e;
+      const until = Date.now() + 500;
+      while (Date.now() < until) { /* short wait */ }
+    }
+  }
   profiles.push(local);
   return WINDOWS ? `C:\\Temp\\${name}` : local;
 }
@@ -201,7 +213,13 @@ function removeProfiles(): void {
 
 /** One run, retried once when the browser fails to start (exit before any report). */
 async function runOne(base: string, r: Run): Promise<Result> {
-  const res = await runOnce(base, r);
+  let res: Result;
+  try {
+    res = await runOnce(base, r);
+  } catch (e) {
+    // A run that can't even start (profile folder) fails alone instead of stopping the sweep.
+    return { ...r, errors: [`run not started: ${e instanceof Error ? e.message : e}`], warnings: [], wide: [], overflow: false, notFound: [], failed: true };
+  }
   if (res.errors.some((e) => e.startsWith("no report (browser exited"))) {
     notFound.delete(r.id);
     return runOnce(base, { ...r, id: `${r.id}b` });
@@ -213,7 +231,7 @@ function runOnce(base: string, r: Run): Promise<Result> {
   const page = PAGES[r.page];
   const [path, hash = ""] = page.split("#");
   const src = `/${path}?__run=${r.id}${hash ? `#${hash}` : ""}`;
-  const url = `${base}/__frame.html?__run=${r.id}&w=${r.width}&save=${r.save ? 1 : 0}&settle=${settleMs}&src=${encodeURIComponent(src)}`;
+  const url = `${base}/__frame.html?__run=${r.id}&w=${r.width}&save=${r.save ? 1 : 0}&theme=${r.theme}&settle=${settleMs}&src=${encodeURIComponent(src)}`;
   const argv = [`--headless=new`, `--user-data-dir=${profileDir(r.id)}`, "--no-first-run", "--no-default-browser-check",
     `--window-size=${Math.max(r.width, 600) + 40},1000`, `--blink-settings=preferredColorScheme=${r.theme === "dark" ? 0 : 1}`, url];
   return new Promise((done) => {
