@@ -6,7 +6,7 @@ import * as api from "../src/sim/api.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { buildTimelines, probeHeroSkill } from "../src/tools/skill-probe.ts";
 import {
-  enemyTimeline, loadTimelines, scheduleContext, scoreSchedule, skillProfile, skillTags, spearman,
+  enemyTimeline, loadTimelines, raceOutcome, scheduleContext, scoreSchedule, skillProfile, skillTags, spearman,
 } from "../src/tools/schedule.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -94,7 +94,7 @@ test("searchSkills with the schedule pre-filter: ranks every ordering, simulates
   const rot = sim.rotation(h);
   const pre = searchSkills(sim, h, [h], [], { quest: 3 }, { nQuick: 2, nFinal: 3, top: 2, prefilter: 3 });
   assert.ok(pre.counts.prefiltered! > pre.counts.orderings, `${pre.counts.prefiltered} ranked, ${pre.counts.orderings} simulated`);
-  assert.ok(pre.counts.orderings <= 7, "top 3 + damage-only top 3 + current");
+  assert.ok(pre.counts.orderings <= 13, "per ranking (schedule, damage only): top 3 orderings + best of the top 3 sets; + current");
   assert.ok(pre.ranked.some((r) => r.rotation.join() === rot.join()), "the current rotation is always a finalist");
   assert.deepEqual(sim.rotation(h), rot);
   const full = searchSkills(sim, h, [h], [], { quest: 3 }, { nQuick: 2, nFinal: 3, top: 2, prefilter: false });
@@ -122,4 +122,38 @@ test("schedule score with stats: HP race, real heal sizes, split damage shared b
   assert.ok(got > 0 && got <= (100 * amount) / ctx.heroes[2].maxHP + 1e-9, "a heal gives back at most its real size");
   // the healed front hero dies later (the kill may get slower: the heal costs a damage action)
   assert.ok(healed.race!.heroes.find((x) => x.location === 2)!.deathCycles > front.deathCycles);
+});
+
+test("death and revive race: a hero falls, a revive brings it back, area damage is not redistributed", () => {
+  const m = (o: Record<number, number>) => new Map(Object.entries(o).map(([k, v]) => [Number(k), v]));
+  // front hero 2 takes 40 % HP per cycle (all targeted), back hero 1 takes 10 % (area); both deal 10 % of the enemy
+  const inc = m({ 1: 10, 2: 40 }), tgt = m({ 2: 40 }), dealt = m({ 1: 10, 2: 10 });
+  const none = raceOutcome([1, 2], inc, tgt, dealt, new Map(), new Map());
+  assert.ok(none.deaths >= 1 && !none.won, "the front hero falls; its targeted damage then hits the back hero");
+  const rev = raceOutcome([1, 2], inc, tgt, dealt, new Map(), m({ 1: 1 }));
+  assert.ok(rev.revives >= 1, "the back hero's Revive brings the front hero back");
+  assert.ok(rev.won || rev.enemyLeft < none.enemyLeft);
+  // area damage of a dead hero vanishes instead of moving: with no targeted damage, the back hero's HP drops slower
+  const area = raceOutcome([1, 2], inc, new Map(), dealt, new Map(), new Map());
+  assert.ok(area.cycles >= none.cycles);
+  // a revive with nobody dead is wasted
+  assert.equal(raceOutcome([1, 2], m({ 1: 1, 2: 1 }), new Map(), dealt, new Map(), m({ 1: 2 })).revives, 0);
+  // heals keep a hero up: 40 % taken, 40 % healed by hero 1
+  const healed = raceOutcome([1, 2], inc, tgt, dealt, new Map([["1>2", 40]]), new Map());
+  assert.equal(healed.deaths, 0);
+  assert.ok(healed.won);
+});
+
+test("taunt: the next enemy attack hits the taunter alone", () => {
+  const mk = (cls: number, id: number) => sim.hero({
+    id, heroID: id, name: `T${id}`, class: cls, level: 60, exp: 0, prestigeLevel: 3, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  });
+  const a = mk(1, 1), b = mk(1, 2);
+  const ctx = scheduleContext(50, [a, b], []);
+  const tl = enemyTimeline(50);
+  const s = scoreSchedule([{ location: 2, rotation: ["Taunt", "Basic", "Basic", "Basic", "Basic"] }, { location: 4, rotation: ["Basic", "Basic", "Basic", "Basic", "Basic"] }], tl, {}, ctx);
+  assert.ok(s.notes.some((n) => n.why.startsWith("taunted") && n.location === 2));
+  const inc = (l: number) => s.race!.heroes.find((x) => x.location === l)!.incoming;
+  assert.ok(inc(2) > inc(4), "the taunter takes more");
 });

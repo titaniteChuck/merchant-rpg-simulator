@@ -77,7 +77,9 @@ export interface ScheduleScore {
    * healed (%) and cycles until it dies (Infinity when healing keeps up); ratio = first death / kill (>= 1: in time).
    */
   race?: { dealt: number; killCycles: number; ratio: number;
-    heroes: { location: number; incoming: number; healed: number; deathCycles: number }[] };
+    heroes: { location: number; incoming: number; healed: number; deathCycles: number }[];
+    /** The multi-cycle race (deaths, revives): won or not, after how many cycles, deaths and revives on the way. */
+    outcome: { won: boolean; cycles: number; enemyLeft: number; deaths: number; revives: number } };
 }
 
 /**
@@ -123,13 +125,13 @@ export interface ScoreWeights {
   idleHeal: number;
   dispel: number;
   stunLoss: number;
-  /** HP race (with ctx): W x min(first death / kill, 2). */
+  /** HP race (with ctx): its result, scored like evaluate's score / 100, times W; the per-cycle terms then weigh 0.1. 0 = off. */
   race: number;
 }
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
   damage: 1, reflect: 2, counter: 0.5, cleanse: 0.5, wastedCleanse: 0.5, defence: 0.6, heal: 0.6, idleHeal: 0.1,
-  dispel: 0.4, stunLoss: 1, race: 20,
+  dispel: 0.4, stunLoss: 1, race: 1,
 };
 
 /** Damage only: every utility and survival term off (the pre-filter's second list, and the baseline). */
@@ -214,16 +216,22 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
   const hurt = new Map<number, number>(); // damage taken since the hero was last healed
   const incoming = new Map<number, number>(), healed = new Map<number, number>(); // scored cycle, % HP
   let dealt = 0; // scored cycle, % of the enemy's HP (with ctx)
+  const dealtBy = new Map<number, number>(); // per hero, scored cycle
+  const healCap = new Map<string, number>(); // "from>to": HP % a hero's heals can give a target per cycle
+  const revivesBy = new Map<number, number>(); // Revive casts per cycle
+  const targeted = new Map<number, number>(); // the part of `incoming` from attacks that pick targets (not area)
   // utility (cleanse, dispel) in the same units: the party's mean of both
   /**
    * Damage (% of the hero's max HP per point of enemy power) of the enemy's skill `s` on hero `loc` at turn t: its
    * physical / magical / true mix against the hero's def / mdef, with the enemy's def / mdef cuts on that hero active
    * then (Terrify II: mdef -50 %). Without stats: 1.
    */
-  const hUAt = (loc: number, t: number, s: SkillProfile) => {
+  const hUAt = (loc: number, t: number, s: SkillProfile, own: { def: number; mdef: number; phys: number; mag: number } =
+    { def: 0, mdef: 0, phys: 1, mag: 1 }) => {
     const c = ctx?.heroes[loc];
     if (!c || !ctx?.enemy) return hU(loc);
-    let defPct = 0, mdefPct = 0;
+    // own: the hero's def / mdef % buffs and shield multipliers (physical / magical damage kept) at that moment
+    let defPct = own.def, mdefPct = own.mdef;
     for (const x of enemyWindow(t, (e) => e.facingTurns, (e) => e.on === "heroes")) {
       if (!(x.e.locations ?? ORDER).includes(loc) || isRemoved(`${x.k}:${loc}`, t, cleansed)) continue;
       defPct += x.e.stats?.def ?? 0;
@@ -231,8 +239,8 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
     }
     const mix = s.mix ?? { physical: 0.5, magical: 0.5, true: 0 };
     const raw = ctx.enemy.atk + ctx.enemy.matk;
-    const taken = raw * (mix.physical * calculateReduction(c.stats.def * Math.max(0, 1 + defPct)) +
-      mix.magical * calculateReduction(c.stats.mdef * Math.max(0, 1 + mdefPct)) + mix.true);
+    const taken = raw * (mix.physical * own.phys * calculateReduction(c.stats.def * Math.max(0, 1 + defPct)) +
+      mix.magical * own.mag * calculateReduction(c.stats.mdef * Math.max(0, 1 + mdefPct)) + mix.true);
     return (100 * taken) / c.maxHP;
   };
   const U = ctx ? order.reduce((a, l) => a + (dU(l) + hU(l)) / 2, 0) / Math.max(order.length, 1) : 1;
@@ -282,15 +290,42 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
         targets = hits.every((l) => l % 2 === 0) ? order.filter((l) => l % 2 === 1)
           : hits.every((l) => l % 2 === 1) ? order.filter((l) => l % 2 === 0) : [];
       }
-      const per = s.tags.includes("damage-split") ? (s.power * hits.length) / Math.max(targets.length, 1) : s.power;
+      let per = s.tags.includes("damage-split") ? (s.power * hits.length) / Math.max(targets.length, 1) : s.power;
+      // a taunt sends this whole attack to the taunter alone (its damage ratio becomes the taunter's location)
+      const taunt = enemyOwn(t).find((x) => x.e.kind === "taunt");
+      if (taunt) {
+        taunt.used = true;
+        targets = [taunt.caster];
+        per = s.tags.includes("damage-split") ? s.power * hits.length : s.power;
+        if (t > 5) notes.push({ turn: slotOf(t), location: taunt.caster, skill: s.name, delta: 0, why: `taunted: ${s.name} hits only location ${taunt.caster}` });
+      }
       let saved = 0;
       for (const l of targets) {
-        const hUt = hUAt(l, t, s);
         const fx = heroFacing(l, t);
-        const def = Math.min(1, fx.reduce((a, x) => a + defence(x.e), 0));
+        let hUt: number, def: number;
+        if (ctx?.heroes[l] && ctx.enemy) {
+          // with stats: def / mdef buffs go into the damage formula, shields cut their damage type (probe test hit)
+          const own = { def: 0, mdef: 0, phys: 1, mag: 1 };
+          for (const x of fx) {
+            if ((x.e.kind === "shield" || x.e.kind === "reflect") && x.e.test) {
+              own.phys *= x.e.test.physical;
+              own.mag *= x.e.test.magical;
+            } else {
+              own.def += x.e.stats?.def ?? 0;
+              own.mdef += x.e.stats?.mdef ?? 0;
+            }
+          }
+          const bare = hUAt(l, t, s);
+          hUt = bare;
+          def = bare > 0 ? 1 - hUAt(l, t, s, own) / bare : 0;
+        } else {
+          hUt = hUAt(l, t, s);
+          def = Math.min(1, fx.reduce((a, x) => a + defence(x.e), 0));
+        }
         saved += def * per * hUt;
         hurt.set(l, (hurt.get(l) ?? 0) + per * hUt * (1 - def));
         if (t > 5) incoming.set(l, (incoming.get(l) ?? 0) + per * hUt * (1 - def));
+        if (t > 5 && !s.tags.includes("damage-aoe")) targeted.set(l, (targeted.get(l) ?? 0) + per * hUt * (1 - def));
         for (const x of fx) if (x.e.until === "next-hit") x.used = true;
       }
       // hero debuffs on the enemy that weaken its attack (Ambush: atk -35 %); a taunt counts as cover
@@ -367,7 +402,10 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
             }
           }
           v += dmg;
-          if (score && dmg > 0) dealt += dmg / W.damage;
+          if (score && dmg > 0) {
+            dealt += dmg / W.damage;
+            dealtBy.set(loc, (dealtBy.get(loc) ?? 0) + dmg / W.damage);
+          }
         }
         // cleanse: removes the removable debuffs on the party (or itself) now. Their effect on later actions (lost
         // damage, stuns) then simply stops counting; harm the score doesn't model (damage over time, stat swaps,
@@ -406,7 +444,8 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
           if (on.length) why.push(`dispels ${on.map((x) => x.e.name).join(", ")}`);
         }
         // heals: worth more right after enemy damage
-        if (p.tags.some((g) => g.startsWith("heal") || g === "revive")) {
+        if (p.tags.includes("revive") && score) revivesBy.set(loc, (revivesBy.get(loc) ?? 0) + 1);
+        if (p.tags.some((g) => g.startsWith("heal"))) {
           const who = p.tags.includes("heal-party") || p.tags.includes("heal-over-time") ? order
             : p.tags.includes("heal-ally") ? [order.find((l) => l === loc + 1) ?? loc] : [loc];
           // with stats: the heal's real size (probe's healScaling on the caster), in % of each target's max HP
@@ -416,6 +455,7 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
           for (const l of who) {
             const cap = amount !== undefined && ctx?.heroes[l] ? (100 * amount) / ctx.heroes[l].maxHP : HEAL_CAP;
             const got = Math.min(cap, hurt.get(l) ?? 0);
+            if (score) healCap.set(`${loc}>${l}`, (healCap.get(`${loc}>${l}`) ?? 0) + cap);
             back += got;
             hurt.set(l, (hurt.get(l) ?? 0) - got);
             if (score) healed.set(l, (healed.get(l) ?? 0) + got);
@@ -423,7 +463,8 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
           v += back > 0 ? W.heal * back : W.idleHeal;
           why.push(back > 0 ? "heals after enemy damage" : "heals with no damage taken");
         }
-        if (p.tags.includes("taunt")) v += 0.3 * (tl.slots[slotOf(tl.enemyFirst ? t + 1 : t) - 1].power) * hU(loc);
+        // a taunt's worth comes through the race (it moves the next attack onto the taunter); without stats, a flat bit
+        if (p.tags.includes("taunt") && !ctx) v += 0.3 * (tl.slots[slotOf(tl.enemyFirst ? t + 1 : t) - 1].power);
         if (p.tags.includes("amplify")) v += 0.3 * enemyFacing(loc, t).length;
         // new effects from this skill (same name: replaced; permanent stacking ones keep their first window here)
         for (const e of p.effects) {
@@ -441,8 +482,11 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
     if (!tl.enemyFirst) enemyAct(t);
   }
   let total = perTurn.reduce((a, b) => a + b, 0);
-  // HP race: does the party kill the enemy before its first hero falls? Heals that can't keep up, or no damage at
-  // all, lose it however well timed they are.
+  // HP race over the cycles, from this cycle's per-hero rates: damage dealt, damage taken, heal capacity, revives.
+  // A hero falls when its HP runs out: it stops dealing damage, and its share of the targeted attacks goes to the heroes
+  // left (area attacks just hit one fewer). A
+  // living reviver brings a dead hero back at 50 % HP (Revive: 50 % of max). Lost at 40 cycles (the 200-turn limit).
+  // Heals that can't keep up, or too little damage, lose it however well they are timed.
   let race: ScheduleScore["race"];
   if (ctx) {
     const killCycles = dealt > 0 ? 100 / dealt : Infinity;
@@ -450,12 +494,58 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
       const inc = incoming.get(l) ?? 0, hl = healed.get(l) ?? 0, net = inc - hl;
       return { location: l, incoming: inc, healed: hl, deathCycles: net > 1e-9 ? 100 / net : Infinity };
     });
-    const first = Math.min(...heroes.map((x) => x.deathCycles));
-    const ratio = killCycles === Infinity ? 0 : first === Infinity ? Infinity : first / killCycles;
-    race = { dealt, killCycles, ratio, heroes };
-    total += W.race * Math.min(ratio, 2);
+    const outcome = raceOutcome(order, incoming, targeted, dealtBy, healCap, revivesBy);
+    // the race's result scored like evaluate's `score` (combat.ts), / 100: a win first, then fewer turns and HP left;
+    // a loss by the enemy HP removed, then surviving longer. The per-cycle terms (damage, cleanse, buff timing...)
+    // already shaped its rates, so they only break ties (x 0.1); their heal and defence credits would count twice.
+    const turns = outcome.cycles * 5, removed = 1 - outcome.enemyLeft / 100;
+    const simLike = outcome.won ? 1e6 + 1e4 - turns * 10 + outcome.hpLeft * 5 : removed * 1e4 + removed * 1e3 + Math.min(turns, 200) * 0.5;
+    const ratio = outcome.won ? 1.5 + outcome.hpLeft / 2 : removed;
+    race = { dealt, killCycles, ratio, heroes,
+      outcome: { won: outcome.won, cycles: outcome.cycles, enemyLeft: outcome.enemyLeft, deaths: outcome.deaths, revives: outcome.revives } };
+    if (W.race > 0) total = W.race * (simLike / 100) + 0.1 * total;
   }
   return { total, perTurn, notes, ...(race ? { race } : {}) };
+}
+
+/** The race simulated in steps of 1/20 cycle (see scoreSchedule). Rates are per 5-turn cycle, in % HP. */
+export function raceOutcome(order: number[], incoming: Map<number, number>, targeted: Map<number, number>, dealtBy: Map<number, number>,
+  healCap: Map<string, number>, revivesBy: Map<number, number>) {
+  const hp = new Map(order.map((l) => [l, 100]));
+  const alive = new Set(order);
+  const credit = new Map<number, number>();
+  let enemy = 100, deaths = 0, revives = 0, c = 0;
+  const dt = 0.05;
+  for (; c < 40; c += dt) {
+    const living = order.filter((l) => alive.has(l));
+    if (!living.length) break;
+    // a dead hero's share of targeted attacks goes to the others (area attacks just hit one hero fewer)
+    const extra = order.filter((l) => !alive.has(l)).reduce((a, l) => a + (targeted.get(l) ?? 0), 0) / living.length;
+    for (const l of living) {
+      const heal = living.reduce((a, h) => a + (healCap.get(`${h}>${l}`) ?? 0), 0);
+      hp.set(l, Math.min(100, hp.get(l)! - ((incoming.get(l) ?? 0) + extra - heal) * dt));
+    }
+    enemy -= living.reduce((a, l) => a + (dealtBy.get(l) ?? 0), 0) * dt;
+    if (enemy <= 0) break;
+    for (const l of living) if (hp.get(l)! <= 0) (alive.delete(l), hp.set(l, 0), deaths++);
+    for (const h of order.filter((l) => alive.has(l) && (revivesBy.get(l) ?? 0) > 0)) {
+      credit.set(h, (credit.get(h) ?? 0) + revivesBy.get(h)! * dt);
+      while (credit.get(h)! >= 1) {
+        const dead = order.find((l) => !alive.has(l));
+        if (dead === undefined) {
+          credit.set(h, 0); // a revive with nobody dead is a wasted action
+          break;
+        }
+        alive.add(dead);
+        hp.set(dead, 50);
+        revives++;
+        credit.set(h, credit.get(h)! - 1);
+      }
+    }
+  }
+  const won = enemy <= 0;
+  const hpLeft = won ? order.reduce((a, l) => a + (alive.has(l) ? hp.get(l)! : 0), 0) / (100 * order.length) : 0;
+  return { won, cycles: Math.round(c * 100) / 100, enemyLeft: Math.max(0, Math.round(enemy * 10) / 10), hpLeft, deaths, revives };
 }
 
 /** Spearman rank correlation (average ranks for ties). */

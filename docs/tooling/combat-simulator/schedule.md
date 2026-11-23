@@ -86,18 +86,41 @@ With `ctx`, enemy hits are priced for each hero:
 - split attacks (Basic) shared by the heroes actually in the row. The probe's full party took a third each; a lone front hero takes it all;
 - a row attack on an empty row falls on the other row.
 
-**HP race** (`race`, with `ctx`): over the scored cycle, the enemy HP dealt (cycles to kill it) and, per hero, the HP
-taken and healed (cycles until it falls). The score adds 20 × min(first death / kill, 2). Healing that can't keep
-up, or too little damage, loses the race however well it is timed.
+**HP race with deaths and revives** (`race`, with `ctx`; `raceOutcome`): the scored cycle gives per-hero rates:
 
-On Demon Mage ×5 (Warrior + Cleric), the estimate is 47 % of the Warrior's HP per cycle, against 50 % measured.
+- enemy HP dealt;
+- HP taken, split into area and targeted damage;
+- heal capacity (each heal's real size, from caster to target);
+- Revive casts.
+
+The race then runs cycle by cycle, in steps of 1/20:
+
+- **Death:** a hero falls when its HP runs out. It stops dealing damage, and its share of the *targeted* attacks goes to the heroes left. Area attacks just hit one hero fewer.
+- **Revive:** a living reviver brings a fallen hero back at 50 % HP, once per Revive in its rotation per cycle. A Revive with nobody dead is wasted.
+- **End:** the party wins when the enemy's HP runs out, and loses when all its heroes are down or at 40 cycles (the 200-turn limit).
+- **Taunt:** it sends the enemy's next attack, whole, to the taunter alone (its damage ratio becomes the taunter's location).
+- **Defence:** with stats, def / mdef buffs enter the damage formula and shields cut their damage type. Before, they were a flat cut: the Warrior's Shield Slam II (+60 % def) halved Demon Mage's mostly magical hits on paper.
+
+**Scoring:**
+
+- With `ctx`, the race's result is scored like `evaluate`'s score, divided by 100:
+  - a win: 1e4 − 0.1 × turns + 0.05 × HP left;
+  - a loss: by enemy HP removed (1 % = 1.1), then +0.005 per turn survived.
+- The per-cycle terms (damage, cleanse, reflect, buff timing) already shaped the race's rates, so they only break ties (× 0.1). Their heal and defence credits would count twice. They would also reward taking damage: a Taunt that keeps hits off the healers lowered their heal credit.
+
+**Demon Mage ×5 (Warrior + Cleric)** against the simulator (40 fights):
+
+- **Warrior's damage taken:** 42.8 % of its HP per cycle, against 43 % from the real hits (Terrify II 158, Shadow Flame 190 × 2, Basic 244 and 167 HP).
+- **Basic, Revive, Basic, Greater Heal, Basic:** the race predicts a win in 8.1 cycles with 3 deaths and 3 revives. The simulator gives 41 turns (8.2 cycles) and 3.02 deaths and 3.02 revives per fight.
+- **Mind Blast, Basic, Lesser Heal, Basic, Greater Heal:** the race predicts the Warrior falls and isn't revived, and the Cleric just misses the kill. In the simulator the Warrior dies in every fight and the Cleric finishes alone, in 44 turns.
 
 Limits:
 
-- No randomness and no deaths: a revive is only valued as a heal. That is why the full search's Demon Mage ×5 Cleric (Basic, Revive, Basic, Greater Heal, Basic) ranks 403rd of 2,667.
+- No randomness: rates are averages. A Revive lands once per cycle, at worst a cycle after the death.
+- The race uses the rates of one steady cycle. Effects that build up over a fight (stacking buffs) count at their steady level.
 - Party buffs use the probe's caster windows (back 1).
 - Effects that end at first use are consumed at the first matching action.
-- Taunt and amplify are rough.
+- Amplify is rough.
 
 ## Validation
 
@@ -109,23 +132,22 @@ Real save, one hero's rotation varied at a time:
 
 | Fight | Party | Hero varied | Schedule | Damage only |
 |---|---|---|---|---|
-| Archon | full (lost) | Mage | 0.21 | 0.12 |
-| Archon | full (lost) | Paladin | 0.23 | 0.35 |
-| Odin | full (lost) | Warrior | 0.58 | 0.60 |
-| Odin | full (lost) | Paladin | 0.14 | 0.32 |
-| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.67 | 0.70 |
-| Gnoll Khan ×5 | Warrior + Cleric | Warrior | 0.96 | 0.98 |
-| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.79 | −0.45 |
-| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.77 | 0.86 |
+| Archon | full (lost) | Mage | 0.28 | 0.38 |
+| Archon | full (lost) | Paladin | 0.00 | 0.23 |
+| Odin | full (lost) | Warrior | 0.40 | −0.10 |
+| Odin | full (lost) | Paladin | 0.19 | 0.40 |
+| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.69 | 0.67 |
+| Gnoll Khan ×5 | Warrior + Cleric | Warrior | 0.98 | 0.98 |
+| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.88 | −0.45 |
+| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.95 | 0.76 |
 
 Measured with E14b's simulated score (lost fights ranked by lowest enemy HP, total damage and survival; mixed fight
-seeds) and E15's schedule score (crits, real heal sizes, enemy hits priced per hero, HP race). The healer on Demon
-Mage went from 0.46 to 0.79 with the HP race:
+seeds) and E16's schedule score (with deaths and revives).
 
-- **Fights the party wins:** the score ranks rotations well (0.67–0.96). It is the only one of the two that gets
-  the healer right on Demon Mage.
-- **Fights the party loses (Archon, Odin):** it is weaker (0.16–0.57). The differences there are small (tenths of a
-  percent of enemy HP), so noise dominates.
+- **History of the healer on Demon Mage:** 0.46 (E14b) → 0.79 (E15, HP race) → 0.88 (E16, deaths and revives).
+- **Damage only** is the per-cycle damage terms with every utility and race term off.
+- **Fights the party wins:** the score ranks rotations well (0.69–0.98). It gets the healer right on Demon Mage, which damage only gets backwards (−0.45).
+- **Fights the party loses (Archon, Odin):** it is weaker (0.00–0.40). The differences there are tenths of a percent of enemy HP, so noise dominates. On Odin it now ranks the Warrior's double Taunt first (0.40, vs −0.10 for damage only).
 - **Use:** rank the candidates, then simulate the top ones (pre-filter below). Don't use it as a verdict.
 - The 1-turn fights (Gnoll Khan and Demon Mage ×1 with the full party) were dropped: every rotation scores the same.
 
@@ -145,17 +167,21 @@ k is ×4 (60 + 60), because the score ranks lost fights least well:
 
 | Fight | Hero | Full: simulated | Pre-filter: simulated (ranked) | Re-scored, full vs pre-filter |
 |---|---|---|---|---|
-| Odin (lost) | Paladin | 286 | 116 (4,308) | 688 vs 685 (peak 6.2 vs 6.2 %) |
-| Odin (lost) | Warrior | 290 | 97 (4,513) | 782 vs 782 (same rotation) |
-| Archon (lost) | Mage | 350 | 121 (4,607) | 81 vs 74 (peak 0.6 vs 0.5 %) |
-| Archon (lost) | Paladin | 285 | 120 (4,308) | 60 vs 60 (same rotation) |
-| Gnoll Khan ×5 | Cleric | 205 | 16 (2,667) | 13.5 vs 13.8 turns |
-| Gnoll Khan ×5 | Warrior | 310 | 16 (4,513) | 10.3 vs 10.6 turns |
-| Demon Mage ×5 | Cleric | 300 | 31 (2,667) | 40.6 vs 43.5 turns |
-| Demon Mage ×5 | Warrior | 310 | 21 (4,513) | 16.3 vs 16.5 turns |
+| Odin (lost) | Paladin | 286 | 224 (4,308) | 688 vs 686 (peak 6.2 vs 6.2 %) |
+| Odin (lost) | Warrior | 290 | 223 (4,513) | 782 vs 782 (same rotation) |
+| Archon (lost) | Mage | 350 | 213 (4,607) | 81 vs 79 (peak 0.6 vs 0.6 %) |
+| Archon (lost) | Paladin | 285 | 223 (4,308) | 60 vs 60 (same rotation) |
+| Gnoll Khan ×5 | Cleric | 205 | 36 (2,667) | 13.5 vs 13.8 turns |
+| Gnoll Khan ×5 | Warrior | 310 | 34 (4,513) | 10.3 vs 10.6 turns |
+| Demon Mage ×5 | Cleric | 300 | 58 (2,667) | 40.6 vs 41.1 turns |
+| Demon Mage ×5 | Warrior | 310 | 46 (4,513) | 16.3 vs 16.5 turns |
 
-- **Cost:** 10–19× fewer rotations simulated on won fights, about 2.5× fewer on lost ones. Wall-clock: 5–8 s vs 24–84 s on won fights, on a shared machine.
-- **Quality:** same win rates. Within 0.3 turns or 0.1 % of enemy HP, except Demon Mage's Cleric, which is 2.9 turns slower: the score underrates healer timing.
+E16 score; the pre-filter also adds the best ordering of the top skill sets (E15). On lost fights it simulates about
+220 of ~290: the ×4 widening plus the skill-set lists.
+
+- **Cost:** 5–9× fewer rotations simulated on won fights, about 1.3× fewer on lost ones.
+- **Quality:** same win rates. Within 0.5 turns or 0.1 % of enemy HP everywhere.
+- **Demon Mage's Cleric:** it was 2.9 turns slower with E14b's score, and is 0.5 turns slower now, with deaths and revives modelled.
 
 `optimiseFight` (party fixed, steps order / swap / phase / skills, nQuick 10, nFinal 200; final evaluation):
 
