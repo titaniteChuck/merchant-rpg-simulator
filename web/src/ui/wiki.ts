@@ -9,10 +9,13 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, ascLegend, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row, table, withAsc } from "./dom.ts";
+import { $, ascLegend, ascText, type Column, el, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { group, lineChart } from "./line-chart.ts";
+import { radar, type RadarAxis } from "./radar.ts";
+import { tip } from "./tooltip.ts";
 import {
-  classesWith, classes, classLink, classText, dropSources, enemiesWith, GRADES, href, item, itemLink, items, itemSummary,
-  itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest, recipe, SLOT_NAMES,
+  classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyLink, enemyNamesWith, GRADES, href, item, itemLink,
+  items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest, recipe, SLOT_NAMES,
   skillAp, skillDesc, skillLink, skillNames, statText, usedInRecipes,
 } from "./wiki-data.ts";
 
@@ -99,16 +102,30 @@ function home(): HTMLElement {
 }
 
 // ---------------------------------------------------------------- skills & passives
+const ENEMIES_SHOWN = 3;
+
+/** The first few enemy names, then "+N more" with every name in its tooltip (a skill like Basic has 80+ users). */
+function enemyCell(skill: string): HTMLElement {
+  const list = enemyNamesWith(skill);
+  if (!list.length) return el("span", { class: "muted" }, "–");
+  const shown = list.slice(0, ENEMIES_SHOWN);
+  const rest = list.length - shown.length;
+  const more = rest > 0 ? el("span", { class: "more-names", tabindex: "0", "aria-label": `${rest} more: ${list.slice(ENEMIES_SHOWN).map((e) => e.name).join(", ")}` }, `+${rest} more`) : null;
+  if (more) tip(more, () => el("span", { class: "tip-body" }, el("strong", {}, `${list.length} enemies use ${skill}`), el("span", {}, list.map((e) => e.name).join(", "))));
+  return el("span", { class: "enemy-line" }, ...joinNodes(shown.map(enemyLink)), ...(more ? [" ", more] : []));
+}
+
 function skillsPage(): HTMLElement {
   const rows: Row[] = skillNames().map((n) => ({
     name: n, ap: skillAp(n) ?? null, classes: classesWith("skill", n).map(([, c]) => c.name).join(", "),
-    enemies: enemiesWith(n).length, effect: skillDesc(n),
+    // sorts by count; the cell shows the names
+    enemies: enemyNamesWith(n).length, enemyNames: enemyNamesWith(n).map((e) => e.name).join(" "), effect: skillDesc(n),
   }));
   return listPage("Skills", "Every skill with its action-point cost and effect. Hero skills are learnt by class; the rest are enemy skills.", rows, [
     { key: "name", label: "Skill", render: (r) => skillLink(String(r.name)) }, { key: "ap", label: "AP", num: true },
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(classesWith("skill", String(r.name)).map(([id]) => classLink(id)))) },
-    { key: "enemies", label: "Enemies", num: true }, { key: "effect", label: "Effect" },
-  ], (r) => `${r.name} ${r.effect} ${r.classes}`);
+    { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.name)) }, { key: "effect", label: "Effect" },
+  ], (r) => `${r.name} ${r.effect} ${r.classes} ${r.enemyNames}`);
 }
 
 function skillPage(name: string): HTMLElement {
@@ -119,7 +136,7 @@ function skillPage(name: string): HTMLElement {
     el("p", { class: "lead" }, skillDesc(name) || "No description in the game data."),
     facts([["AP cost", skillAp(name)], ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     section(`Enemies with this skill (${enemies.length})`, enemies.length
-      ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, e.name, e.rare ? pill("rare", "t-pink") : "",
+      ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, enemyLink(e), e.rare ? pill("rare", "t-pink") : "",
         el("span", { class: "muted small" }, ` level ${quest(e.id)?.levelReq ?? "?"}`))))
       : none("No quest enemy uses it.")));
 }
@@ -308,7 +325,99 @@ function mapPage(id: number): HTMLElement {
 }
 
 // ---------------------------------------------------------------- classes
-const GROWTH: [string, string][] = [["hpPlv", "HP"], ["atkPlv", "Atk"], ["matkPlv", "Matk"], ["accPlv", "Acc"], ["defPlv", "Def"], ["mdefPlv", "Mdef"], ["critPlv", "Crit"]];
+/** [growth key, base key, label]: a class's stat at a level is base + growth[prestigeLevel] × level. */
+const GROWTH: [string, string, string][] = [["hpPlv", "hp", "HP"], ["atkPlv", "atk", "Atk"], ["matkPlv", "matk", "Matk"], ["accPlv", "acc", "Acc"],
+  ["defPlv", "def", "Def"], ["mdefPlv", "mdef", "Mdef"], ["critPlv", "crit", "Crit"]];
+const MAX_LEVEL = 60;
+const LEVELS = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1);
+
+/** The class's own stat (no gear, passive or attribute points), as Hero.determineStats adds it. */
+const statAt = (c: Any, [plv, base]: [string, string, string], prestige: number, level: number): number =>
+  (c[base] ?? 0) + (c[plv]?.[prestige] ?? 0) * level;
+/** Prestige levels (1 = ascension 0) the class's growth table has. */
+const tiersOf = (c: Any): number[] => [1, 2, 3].filter((p) => GROWTH.some(([k]) => typeof c[k]?.[p] === "number"));
+
+/** Radar of the class at level 60 for one ascension; each rim is the best class at the same level and ascension. */
+function classRadar(id: number, prestige: number): HTMLElement {
+  const c = G.heroList[id];
+  const axes: RadarAxis[] = GROWTH.map((g) => {
+    let max = 0, best = "";
+    for (const [, o] of classes()) {
+      const v = statAt(o, g, prestige, MAX_LEVEL);
+      if (v > max) [max, best] = [v, o.name];
+    }
+    const value = statAt(c, g, prestige, MAX_LEVEL);
+    return { label: g[2], value, max, best, display: dec.format(value) };
+  });
+  const fig = radar(axes, { title: `${c.name} at level ${MAX_LEVEL}, ${ascText(prestige - 1)}` });
+  fig.append(el("figcaption", { class: "muted small" }, `Level ${MAX_LEVEL}, ${ascText(prestige - 1)}, no gear or passive. Rim = best class.`));
+  return fig;
+}
+
+function statsBlock(id: number): HTMLElement {
+  const c = G.heroList[id];
+  const tiers = tiersOf(c);
+  // Radar with an ascension switch.
+  const holder = el("div", { class: "cls-radar-fig" });
+  const radios = tiers.map((p) => {
+    const input = el("input", { type: "radio", name: "cls-asc", value: String(p) }) as HTMLInputElement;
+    input.checked = p === tiers[0];
+    input.addEventListener("change", () => holder.replaceChildren(classRadar(id, p)));
+    return el("label", { title: ascText(p - 1)[0].toUpperCase() + ascText(p - 1).slice(1) }, input, String(p - 1));
+  });
+  holder.replaceChildren(classRadar(id, tiers[0] ?? 1));
+  const radarCol = el("div", { class: "cls-radar" },
+    ...(tiers.length > 1 ? [el("fieldset", { class: "cls-asc" }, el("legend", { class: "muted small" }, "Ascension"), el("div", { class: "mode-switch" }, ...radios))] : []),
+    holder);
+  // One small chart per stat, one line per ascension, crosshairs in step.
+  const charts = GROWTH.map((g) => lineChart(tiers.map((p) => ({
+    label: tiers.length > 1 ? `asc ${p - 1}` : "", values: LEVELS.map((lv) => statAt(c, g, p, lv)), cls: `tier-${p - 1}`,
+  })), {
+    title: g[2], x: LEVELS, xName: "Level", xTicks: [1, 20, 40, MAX_LEVEL],
+    note: `${dec.format(c[g[1]] ?? 0)} + ${tiers.map((p) => dec.format(c[g[0]]?.[p] ?? 0)).join(" / ")} per level`,
+  }));
+  group(charts);
+  const legend = tiers.length > 1
+    ? el("p", { class: "lc-legend muted small" }, "Ascension: ", ...tiers.flatMap((p) => [el("span", { class: "lc-key" },
+      el("i", { class: `lc-swatch tier-${p - 1}`, "aria-hidden": "true" }), ` ${p - 1}`)]), el("span", {}, " · hover or use the arrow keys to read a level"))
+    : el("p", { class: "lc-legend muted small" }, "Hover or use the arrow keys to read a level.");
+  return el("div", { class: "cls-stats" }, radarCol,
+    el("div", { class: "cls-growth" }, el("h3", {}, "Growth per level"), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el))));
+}
+
+/** Whole row opens the row's link; the name stays a real link (keyboard, middle-click, screen readers). */
+function clickableRow(tr: HTMLTableRowElement, link: HTMLElement): void {
+  if (!(link instanceof HTMLAnchorElement)) return; // "Basic" and unknown passives have no page
+  tr.classList.add("row-link");
+  tr.addEventListener("click", (e) => {
+    if ((e.target as Element).closest("a, button, input, select, summary")) return;
+    if (window.getSelection()?.toString()) return; // the reader was selecting text
+    if (e.ctrlKey || e.metaKey) window.open(link.href, "_blank");
+    else link.click();
+  });
+}
+
+const apBadge = (ap: number | undefined) => {
+  const t = `${ap ?? "?"} action points`;
+  return el("span", { class: "ap-badge", role: "img", title: t, "aria-label": t }, String(ap ?? "?"));
+};
+
+/** Skills and passives of a class in the same table: #, name, (AP), effect. */
+function abilityTable(kind: "skill" | "passive", names: string[]): HTMLElement {
+  const skill = kind === "skill";
+  const head = el("tr", {}, el("th", { scope: "col", class: "n" }, "#"), el("th", { scope: "col" }, skill ? "Skill" : "Passive"),
+    ...(skill ? [el("th", { scope: "col", class: "ap-col" }, el("abbr", { title: "Action points" }, "AP"))] : []),
+    el("th", { scope: "col" }, skill ? "Effect" : "Bonus"));
+  const rows = names.map((n, i) => {
+    const link = skill ? skillLink(n) : passiveLink(n);
+    const tr = el("tr", {}, el("td", { class: "n" }, String(i + 1)), el("td", { class: "name" }, link),
+      ...(skill ? [el("td", { class: "ap-col" }, apBadge(skillAp(n)))] : []),
+      el("td", { class: "eff" }, (skill ? skillDesc(n) : passiveText(n)) || "–"));
+    clickableRow(tr, link);
+    return tr;
+  });
+  return el("div", { class: "table-wrap" }, el("table", { class: `ability-rows ${kind}-rows` }, el("thead", {}, head), el("tbody", {}, ...rows)));
+}
 
 function classesPage(): HTMLElement {
   const rows: Row[] = classes().map(([id, c]) => ({ id, name: c.name, hp: c.hp, atk: c.atk, matk: c.matk, def: c.def, mdef: c.mdef, about: classText(id) }));
@@ -321,20 +430,14 @@ function classesPage(): HTMLElement {
 function classPage(id: number): HTMLElement {
   const c = G.heroList?.[id];
   if (!c) return notFound(`class #${id}`);
-  const growth: Row[] = [1, 2, 3].map((p) => {
-    const r: Row = { asc: p };
-    for (const [k, l] of GROWTH) r[l] = c[k]?.[p] ?? null;
-    return r;
-  });
   const skills = seq<string>(c.skillList ?? {});
+  const passives = seq<string>(c.passiveList ?? {});
   return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], c.name), el("h1", {}, classLink(id)),
     ...(classText(id) ? [el("p", { class: "lead" }, classText(id))] : []),
     facts([["Base HP", c.hp], ["Atk", c.atk], ["Matk", c.matk], ["Acc", c.acc], ["Crit", c.crit], ["Def", c.def], ["Mdef", c.mdef]]),
-    section("Growth per level", table(growth, [{ key: "asc", label: "Ascension", num: true, render: (r) => ascSwatch(heroAsc(r.asc)) },
-      ...GROWTH.map(([, l]) => ({ key: l, label: l, num: true, show: (v: unknown) => (typeof v === "number" ? dec.format(v) : "") }))])),
-    section(`Skills (${skills.length}, in unlock order)`, el("ol", { class: "rotation" }, ...skills.map((s) =>
-      el("li", {}, skillLink(s), el("span", { class: "ap" }, `${skillAp(s) ?? "?"} AP`), el("span", { class: "muted small eff" }, skillDesc(s)))))),
-    section("Passives", el("ul", { class: "plain-list" }, ...seq<string>(c.passiveList ?? {}).map((p) => el("li", {}, passiveLink(p), el("span", { class: "muted small" }, ` · ${passiveText(p)}`))))));
+    section("Stats", statsBlock(id)),
+    section(`Passives (${passives.length}, pick one from level 10)`, passives.length ? abilityTable("passive", passives) : none("No passive.")),
+    section(`Skills (${skills.length}, in unlock order)`, abilityTable("skill", skills)));
 }
 
 // ---------------------------------------------------------------- router

@@ -94,13 +94,23 @@ flowchart LR
 
 - Lists (filter, sort) and detail pages: skills (AP, effect, classes, enemies using it), passives (bonuses), equipment
   (stats by grade from `api.makeItem`, crafter level 60, asc 0), consumables, materials (where they drop), maps (bosses
-  and room enemies with the map modifier, essence), classes (base stats, growth per level, skills, passives).
+  and room enemies with the map modifier, essence), classes (base stats, radar and growth curves, passives, skills).
   Recipes and "used in" link items both ways.
 - Text: `inventory/wikidata.json`, written by `npm run export:gamedata` next to `gamedata.json` (skill effects, item,
   map and class descriptions; the game's byte escapes decoded as UTF-8). `gamedata.json` itself is unchanged, so the
   engine's parity is untouched.
 - Links everywhere: skills, passives, items and maps on the save viewer and battle pages link to the wiki and show a
   summary in a tooltip on hover or keyboard focus (`web/src/ui/tooltip.ts`).
+- Skills list (U6a): the Enemies column shows the first 3 enemy names, then "+N more" with every name in a tooltip;
+  it still sorts by count. Enemies have no page, so a name links to the lowest-level map it appears in
+  (`enemyLink`, `enemyMaps` in `wiki-data.ts`); quest-only enemies stay plain text.
+- Class page (U6a): a "Stats" row with the radar (`radar.ts`, level 60, ascension 0/1/2 switch, rim = best class at
+  the same level and ascension) beside the growth curves (`web/src/ui/line-chart.ts`, inline SVG, no library): one
+  small chart per stat, stat = base + growth[prestige] × level for levels 1-60, one line per ascension (dotted 0,
+  dashed 1, solid 2, in the class colour), a readout of the values at the crosshair, hover or arrow keys move all
+  crosshairs together. Stacked under 760px. Passives come before skills, both in the same table (#, name, AP badge
+  for skills, effect); the AP badge shows only the number ("N action points" in its title and label); the whole row
+  opens the page (click handler + hover style; the name stays the real link for keyboard and middle-click).
 
 ## Profit page
 

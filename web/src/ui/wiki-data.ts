@@ -83,6 +83,30 @@ export function enemiesWith(skill: string): { id: number; name: string; rare: bo
   return out;
 }
 
+/** One entry per distinct enemy name (a quest reused under the same name counts once), in quest order. */
+export function enemyNamesWith(skill: string): { id: number; name: string; rare: boolean }[] {
+  const seen = new Set<string>();
+  return enemiesWith(skill).filter((e) => {
+    const k = `${e.name}|${e.rare}`;
+    if (!e.name || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+let mapsOf: Map<number, number[]> | null = null;
+/** Maps whose rooms or boss slot hold this quest enemy, lowest map level first. */
+export function enemyMaps(questId: number): number[] {
+  if (!mapsOf) {
+    mapsOf = new Map();
+    const sorted = items("map").sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0]);
+    for (const [mid, m] of sorted) {
+      for (const q of new Set([...mapEnemies(m), ...seq<number>(m.bossList ?? {})])) mapsOf.set(q, [...(mapsOf.get(q) ?? []), mid]);
+    }
+  }
+  return mapsOf.get(questId) ?? [];
+}
+
 /** [type, id, amount] ingredients of a craftable item. */
 export function recipe(type: string, id: number): [string, number, number][] {
   const it = item(type, id);
@@ -233,4 +257,20 @@ export function classLink(id: number): HTMLElement {
   const a = el("a", { class: `wl cls-${id}`, href: href.cls(id) }, c?.name ?? `class ${id}`);
   tip(a, () => tipBox(c?.name ?? "", "Hero class", classText(id)));
   return a;
+}
+
+/**
+ * An enemy's name. Enemies have no wiki page of their own, so the name links to the lowest-level map it appears in
+ * (rooms or boss); the tooltip gives its level and every such map. Plain text when no map holds it (quest only).
+ */
+export function enemyLink(e: { id: number; name: string; rare: boolean }): HTMLElement {
+  const maps = enemyMaps(e.id);
+  const level = quest(e.id)?.levelReq;
+  const kind = `Enemy${e.rare ? " · rare" : ""}${level !== undefined ? ` · level ${level}` : ""}`;
+  const where = maps.length ? `Appears in ${maps.map((m) => item("map", m)?.name).join(", ")}.` : "Quest only, in no map.";
+  const node = maps.length
+    ? el("a", { class: "wl enemy-link", href: href.item("map", maps[0]) }, e.name)
+    : el("span", { class: "wl enemy-link", tabindex: "0" }, e.name);
+  tip(node, () => tipBox(e.name, kind, where));
+  return node;
 }
