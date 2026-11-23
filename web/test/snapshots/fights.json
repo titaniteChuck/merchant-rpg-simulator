@@ -10,6 +10,8 @@
   "actions": 1,
   "enemyHP": -38,
   "enemyMaxHP": 100,
+  "enemyMinHP": -38,
+  "enemyDmgTaken": 138,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -48,6 +50,8 @@
   "actions": 1,
   "enemyHP": -38,
   "enemyMaxHP": 100,
+  "enemyMinHP": -38,
+  "enemyDmgTaken": 138,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -86,6 +90,8 @@
   "actions": 1,
   "enemyHP": -38,
   "enemyMaxHP": 100,
+  "enemyMinHP": -38,
+  "enemyDmgTaken": 138,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -124,6 +130,8 @@
   "actions": 7,
   "enemyHP": -42,
   "enemyMaxHP": 300,
+  "enemyMinHP": -42,
+  "enemyDmgTaken": 342,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -162,6 +170,8 @@
   "actions": 7,
   "enemyHP": -42,
   "enemyMaxHP": 300,
+  "enemyMinHP": -42,
+  "enemyDmgTaken": 342,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -200,6 +210,8 @@
   "actions": 7,
   "enemyHP": -42,
   "enemyMaxHP": 300,
+  "enemyMinHP": -42,
+  "enemyDmgTaken": 342,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -238,6 +250,8 @@
   "actions": 1,
   "enemyHP": -8,
   "enemyMaxHP": 120,
+  "enemyMinHP": -8,
+  "enemyDmgTaken": 128,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -276,6 +290,8 @@
   "actions": 1,
   "enemyHP": -8,
   "enemyMaxHP": 120,
+  "enemyMinHP": -8,
+  "enemyDmgTaken": 128,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -314,6 +330,8 @@
   "actions": 1,
   "enemyHP": -8,
   "enemyMaxHP": 120,
+  "enemyMinHP": -8,
+  "enemyDmgTaken": 128,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -352,6 +370,8 @@
   "actions": 5,
   "enemyHP": -4,
   "enemyMaxHP": 260,
+  "enemyMinHP": -4,
+  "enemyDmgTaken": 264,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -390,6 +410,8 @@
   "actions": 5,
   "enemyHP": -4,
   "enemyMaxHP": 260,
+  "enemyMinHP": -4,
+  "enemyDmgTaken": 264,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -428,6 +450,8 @@
   "actions": 5,
   "enemyHP": -4,
   "enemyMaxHP": 260,
+  "enemyMinHP": -4,
+  "enemyDmgTaken": 264,
   "heroes": [
    {
     "name": "Warrior L10",
@@ -466,6 +490,8 @@
   "actions": 5,
   "enemyHP": -291,
   "enemyMaxHP": 400,
+  "enemyMinHP": -291,
+  "enemyDmgTaken": 691,
   "heroes": [
    {
     "name": "Mage L20",
@@ -527,6 +553,8 @@
   "actions": 5,
   "enemyHP": -207,
   "enemyMaxHP": 400,
+  "enemyMinHP": -207,
+  "enemyDmgTaken": 607,
   "heroes": [
    {
     "name": "Mage L20",
@@ -588,6 +616,8 @@
   "actions": 5,
   "enemyHP": -291,
   "enemyMaxHP": 400,
+  "enemyMinHP": -291,
+  "enemyDmgTaken": 691,
   "heroes": [
    {
     "name": "Mage L20",
@@ -649,6 +679,8 @@
   "actions": 2,
   "enemyHP": -186,
   "enemyMaxHP": 210,
+  "enemyMinHP": -186,
+  "enemyDmgTaken": 396,
   "heroes": [
    {
     "name": "Mage L20",
@@ -710,6 +742,8 @@
   "actions": 2,
   "enemyHP": -186,
   "enemyMaxHP": 210,
+  "enemyMinHP": -186,
+  "enemyDmgTaken": 396,
   "heroes": [
    {
     "name": "Mage L20",
@@ -771,6 +805,8 @@
   "actions": 2,
   "enemyHP": -186,
   "enemyMaxHP": 210,
+  "enemyMinHP": -186,
+  "enemyDmgTaken": 396,
   "heroes": [
    {
     "name": "Mage L20",
@@ -832,6 +868,8 @@
   "actions": 5,
   "enemyHP": -45,
   "enemyMaxHP": 450,
+  "enemyMinHP": -45,
+  "enemyDmgTaken": 495,
   "heroes": [
    {
     "name": "Mage L20",
@@ -893,6 +931,8 @@
   "actions": 5,
   "enemyHP": -45,
   "enemyMaxHP": 450,
+  "enemyMinHP": -45,
+  "enemyDmgTaken": 495,
   "heroes": [
    {
     "name": "Mage L20",
@@ -954,6 +994,8 @@
   "actions": 5,
   "enemyHP": -45,
   "enemyMaxHP": 450,
+  "enemyMinHP": -45,
+  "enemyDmgTaken": 495,
   "heroes": [
    {
     "name": "Mage L20",
@@ -1015,6 +1057,8 @@
   "actions": 7,
   "enemyHP": -239,
   "enemyMaxHP": 960,
+  "enemyMinHP": -239,
+  "enemyDmgTaken": 1199,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1103,6 +1147,8 @@
   "actions": 3,
   "enemyHP": -7,
   "enemyMaxHP": 960,
+  "enemyMinHP": -7,
+  "enemyDmgTaken": 967,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1187,6 +1233,8 @@
   "actions": 3,
   "enemyHP": -7,
   "enemyMaxHP": 960,
+  "enemyMinHP": -7,
+  "enemyDmgTaken": 967,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1271,6 +1319,8 @@
   "actions": 3,
   "enemyHP": -132,
   "enemyMaxHP": 640,
+  "enemyMinHP": -132,
+  "enemyDmgTaken": 772,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1355,6 +1405,8 @@
   "actions": 3,
   "enemyHP": -285,
   "enemyMaxHP": 640,
+  "enemyMinHP": -285,
+  "enemyDmgTaken": 925,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1439,6 +1491,8 @@
   "actions": 3,
   "enemyHP": -285,
   "enemyMaxHP": 640,
+  "enemyMinHP": -285,
+  "enemyDmgTaken": 925,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1523,6 +1577,8 @@
   "actions": 15,
   "enemyHP": -364,
   "enemyMaxHP": 1200,
+  "enemyMinHP": -364,
+  "enemyDmgTaken": 1564,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1615,6 +1671,8 @@
   "actions": 11,
   "enemyHP": -157,
   "enemyMaxHP": 1200,
+  "enemyMinHP": -157,
+  "enemyDmgTaken": 1357,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1707,6 +1765,8 @@
   "actions": 11,
   "enemyHP": -24,
   "enemyMaxHP": 1200,
+  "enemyMinHP": -24,
+  "enemyDmgTaken": 1224,
   "heroes": [
    {
     "name": "Cleric L30",
@@ -1799,6 +1859,8 @@
   "actions": 35,
   "enemyHP": -1609,
   "enemyMaxHP": 7200,
+  "enemyMinHP": -1609,
+  "enemyDmgTaken": 8809,
   "heroes": [
    {
     "name": "Bard L45",
@@ -1959,6 +2021,8 @@
   "actions": 29,
   "enemyHP": -715,
   "enemyMaxHP": 7200,
+  "enemyMinHP": -715,
+  "enemyDmgTaken": 7915,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2119,6 +2183,8 @@
   "actions": 29,
   "enemyHP": -209,
   "enemyMaxHP": 7200,
+  "enemyMinHP": -209,
+  "enemyDmgTaken": 7409,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2279,6 +2345,8 @@
   "actions": 23,
   "enemyHP": -386,
   "enemyMaxHP": 4000,
+  "enemyMinHP": -386,
+  "enemyDmgTaken": 4386,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2429,6 +2497,8 @@
   "actions": 23,
   "enemyHP": -615,
   "enemyMaxHP": 4000,
+  "enemyMinHP": -615,
+  "enemyDmgTaken": 4615,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2579,6 +2649,8 @@
   "actions": 23,
   "enemyHP": -650,
   "enemyMaxHP": 4000,
+  "enemyMinHP": -650,
+  "enemyDmgTaken": 4650,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2729,6 +2801,8 @@
   "actions": 41,
   "enemyHP": 234,
   "enemyMaxHP": 6000,
+  "enemyMinHP": 234,
+  "enemyDmgTaken": 5766,
   "heroes": [
    {
     "name": "Bard L45",
@@ -2885,6 +2959,8 @@
   "actions": 41,
   "enemyHP": 358,
   "enemyMaxHP": 6000,
+  "enemyMinHP": 358,
+  "enemyDmgTaken": 5642,
   "heroes": [
    {
     "name": "Bard L45",
@@ -3041,6 +3117,8 @@
   "actions": 41,
   "enemyHP": 827,
   "enemyMaxHP": 6000,
+  "enemyMinHP": 827,
+  "enemyDmgTaken": 5173,
   "heroes": [
    {
     "name": "Bard L45",
@@ -3197,6 +3275,8 @@
   "actions": 41,
   "enemyHP": -5683,
   "enemyMaxHP": 20000,
+  "enemyMinHP": -5683,
+  "enemyDmgTaken": 25683,
   "heroes": [
    {
     "name": "Mage L60",
@@ -3386,6 +3466,8 @@
   "actions": 34,
   "enemyHP": -3358,
   "enemyMaxHP": 20000,
+  "enemyMinHP": -3358,
+  "enemyDmgTaken": 23358,
   "heroes": [
    {
     "name": "Mage L60",
@@ -3575,6 +3657,8 @@
   "actions": 34,
   "enemyHP": -1267,
   "enemyMaxHP": 20000,
+  "enemyMinHP": -1267,
+  "enemyDmgTaken": 21267,
   "heroes": [
    {
     "name": "Mage L60",
@@ -3764,6 +3848,8 @@
   "actions": 27,
   "enemyHP": -3056,
   "enemyMaxHP": 19000,
+  "enemyMinHP": -3056,
+  "enemyDmgTaken": 22056,
   "heroes": [
    {
     "name": "Mage L60",
@@ -3941,6 +4027,8 @@
   "actions": 27,
   "enemyHP": -4159,
   "enemyMaxHP": 19000,
+  "enemyMinHP": -4159,
+  "enemyDmgTaken": 23159,
   "heroes": [
    {
     "name": "Mage L60",
@@ -4118,6 +4206,8 @@
   "actions": 27,
   "enemyHP": -3497,
   "enemyMaxHP": 19000,
+  "enemyMinHP": -3497,
+  "enemyDmgTaken": 22497,
   "heroes": [
    {
     "name": "Mage L60",
@@ -4295,6 +4385,8 @@
   "actions": 127,
   "enemyHP": 20352,
   "enemyMaxHP": 80000,
+  "enemyMinHP": 20352,
+  "enemyDmgTaken": 59648,
   "heroes": [
    {
     "name": "Mage L60",
@@ -4484,6 +4576,8 @@
   "actions": 127,
   "enemyHP": 15223,
   "enemyMaxHP": 80000,
+  "enemyMinHP": 15223,
+  "enemyDmgTaken": 64777,
   "heroes": [
    {
     "name": "Mage L60",
@@ -4673,6 +4767,8 @@
   "actions": 127,
   "enemyHP": 14305,
   "enemyMaxHP": 80000,
+  "enemyMinHP": 14305,
+  "enemyDmgTaken": 65695,
   "heroes": [
    {
     "name": "Mage L60",
@@ -4862,6 +4958,8 @@
   "actions": 89,
   "enemyHP": -2415,
   "enemyMaxHP": 45000,
+  "enemyMinHP": -2415,
+  "enemyDmgTaken": 47415,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5051,6 +5149,8 @@
   "actions": 95,
   "enemyHP": -920,
   "enemyMaxHP": 45000,
+  "enemyMinHP": -920,
+  "enemyDmgTaken": 45920,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5240,6 +5340,8 @@
   "actions": 89,
   "enemyHP": -1629,
   "enemyMaxHP": 45000,
+  "enemyMinHP": -1629,
+  "enemyDmgTaken": 46629,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5429,6 +5531,8 @@
   "actions": 55,
   "enemyHP": -929,
   "enemyMaxHP": 23000,
+  "enemyMinHP": -929,
+  "enemyDmgTaken": 27304,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5618,6 +5722,8 @@
   "actions": 48,
   "enemyHP": -1135,
   "enemyMaxHP": 23000,
+  "enemyMinHP": -1135,
+  "enemyDmgTaken": 27510,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5807,6 +5913,8 @@
   "actions": 48,
   "enemyHP": -2532,
   "enemyMaxHP": 23000,
+  "enemyMinHP": -2532,
+  "enemyDmgTaken": 28907,
   "heroes": [
    {
     "name": "Mage L60",
@@ -5996,6 +6104,8 @@
   "actions": 80,
   "enemyHP": 121944,
   "enemyMaxHP": 140000,
+  "enemyMinHP": 121944,
+  "enemyDmgTaken": 18056,
   "heroes": [
    {
     "name": "Mage L60",
@@ -6185,6 +6295,8 @@
   "actions": 80,
   "enemyHP": 123050,
   "enemyMaxHP": 140000,
+  "enemyMinHP": 123050,
+  "enemyDmgTaken": 16950,
   "heroes": [
    {
     "name": "Mage L60",
@@ -6374,6 +6486,8 @@
   "actions": 80,
   "enemyHP": 123191,
   "enemyMaxHP": 140000,
+  "enemyMinHP": 123191,
+  "enemyDmgTaken": 16809,
   "heroes": [
    {
     "name": "Mage L60",

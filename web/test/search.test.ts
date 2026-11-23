@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
 import {
-  catalogGearCandidates, ownedGearCandidates, SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls,
+  catalogGearCandidates, evaluate, score, ownedGearCandidates, SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls,
   searchSkills, soloMatrix, soloQuests, soloSummary, surveyMapIds, surveyMaps,
 } from "../src/tools/combat.ts";
 import { Sim } from "../src/tools/engine.ts";
@@ -106,4 +106,18 @@ test("shouldStop cancels a search and leaves the hero as it was", () => {
   assert.throws(() => searchSkills(sim, h, [h], [], { quest: 2 }, { nQuick: 2, nFinal: 2 }, { shouldStop: () => ++evals > 3 }),
     (e: unknown) => e instanceof SearchCancelled);
   assert.deepEqual(h.attackList, before);
+});
+
+test("healing enemies: lowest HP reached and total damage are reported and scored", () => {
+  // Goblin Warlord (quest 91) heals with Feast/Gluttony: against this hero it ends higher than its lowest point.
+  const ev = evaluate(sim, 91, [warrior()], [], 10);
+  assert.ok(ev.enemy_dmg_peak > ev.enemy_dmg, `peak ${ev.enemy_dmg_peak} vs end ${ev.enemy_dmg}`);
+  assert.ok(ev.enemy_dmg_total > 0 && ev.enemy_dmg_total_frac > 0);
+  assert.equal(ev.score, score(ev));
+  // The score counts the peak, not the end HP; total damage only breaks ties.
+  assert.ok(score({ ...ev, enemy_dmg_peak: ev.enemy_dmg }) < ev.score);
+  assert.ok(score({ ...ev, enemy_dmg_total_frac: 0 }) < ev.score && ev.score - score({ ...ev, enemy_dmg_total_frac: 0 }) <= 0.1);
+  // An enemy that does not heal: peak = end.
+  const plain = evaluate(sim, 1, [warrior()], [], 10);
+  assert.equal(plain.enemy_dmg_peak, plain.enemy_dmg);
 });

@@ -55,6 +55,8 @@ hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
     c._skillUses[name] = (c._skillUses[name] ?? 0) + 1;
   }
   const b = current.battle;
+  // Lowest enemy HP between actions: a self-healing enemy (Archon's Aeon Lash) can end a lost fight at full HP.
+  if (b) b._enemyMinHP = Math.min(b._enemyMinHP ?? Infinity, b.enemy.questHP);
   if (trace && b) {
     const hp: (number | false)[] = [];
     for (let i = 1; i <= 3; i++) {
@@ -178,9 +180,14 @@ export function fight(questID: number, front: (Hero | null | undefined)[], back:
   });
   battle.setup();
   battle.combatLoop();
+  const es = battle.enemy.combatStatistics;
   const result: Any = {
     won: Boolean(battle.hasWon), turns: battle.turns, actions: battle.actions,
-    enemyHP: battle.enemy.questHP, enemyMaxHP: battle.enemy.maxHP, heroes: [],
+    enemyHP: battle.enemy.questHP, enemyMaxHP: battle.enemy.maxHP,
+    // lowest enemy HP after any action (<= enemyHP; lower when the enemy healed) and all damage it took
+    enemyMinHP: Math.min(battle._enemyMinHP ?? Infinity, battle.enemy.questHP),
+    enemyDmgTaken: (es?.physicalDmgTaken ?? 0) + (es?.magicDmgTaken ?? 0),
+    heroes: [],
   };
   for (let i = 1; i <= 3; i++) {
     if (b[i]) result.heroes.push({ ...heroSummary(b[i]), slot: `back${i}` });

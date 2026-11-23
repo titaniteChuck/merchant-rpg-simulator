@@ -106,7 +106,13 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 ## Search methods
 
 - Every candidate is evaluated on the same seeds (common random numbers), so differences aren't noise.
-- Score: win rate first, then fewer turns, then party HP left; for losses, enemy HP removed.
+- Score: win rate first, then fewer turns, then party HP left; for losses, how far the enemy's HP was brought down
+  at its lowest point (`enemy_dmg_peak`), then, as a tiebreak only, the damage it took (`enemy_dmg_total_frac`).
+- Healing enemies: `enemy_dmg` is the share of HP removed at the end of the fight. An enemy that heals (Archon's
+  Aeon Lash, Goblin Warlord's Feast) can end a lost fight near full HP, so each fight also records the lowest enemy
+  HP after any action (`enemyMinHP`) and all damage it took (`enemyDmgTaken`, overkill on the killing blow included).
+  Example, the save's best six heroes vs Archon: 0.0% at the end, 0.5% at the lowest, ~1,700 of 200,000 HP per fight.
+  `enemy_dmg` can be negative when an enemy shields itself above its max HP (Murlok Monarch).
 - `skills`: every skill multiset within AP (one order, quick), then all orderings of the best ones,
   then each passive with more fights.
 - `gear`: coordinate descent, slot by slot, repeated `--passes` times.

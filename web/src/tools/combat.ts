@@ -102,7 +102,13 @@ export interface FightEval {
   turns: number;
   turns_win: number | null;
   grade: number;
+  /** Share of the enemy's HP removed at the end of the fight (0 when it healed back to full). */
   enemy_dmg: number;
+  /** Share of the enemy's HP removed at its lowest point (>= enemy_dmg; higher against enemies that heal). */
+  enemy_dmg_peak: number;
+  /** Damage the enemy took per fight, in HP, and as a share of its max HP (can exceed 1 when it heals). */
+  enemy_dmg_total: number;
+  enemy_dmg_total_frac: number;
   hp_left: number;
   heroes: Record<string, HeroEval>;
   score: number;
@@ -116,6 +122,7 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   if (rare && (q.enemyHpB === undefined || q.attackListB === undefined)) throw new Error(`quest ${quest} has no rare variant`);
   let wins = 0;
   const turns: number[] = [], turnsWin: number[] = [], grades: number[] = [], enemyFrac: number[] = [], hpFrac: number[] = [];
+  const peakFrac: number[] = [], dmgTotal: number[] = [], dmgFrac: number[] = [];
   const acc = heroAccumulator();
   for (let k = 0; k < n; k++) {
     const res = sim.fight(quest, front, back, { seed: seed0 + k, isRare: rare, amount });
@@ -126,12 +133,16 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
       grades.push(res.grade);
     }
     enemyFrac.push(1 - Math.max(res.enemyHP, 0) / res.enemyMaxHP);
+    peakFrac.push(1 - Math.max(res.enemyMinHP ?? res.enemyHP, 0) / res.enemyMaxHP);
+    dmgTotal.push(res.enemyDmgTaken ?? 0);
+    dmgFrac.push((res.enemyDmgTaken ?? 0) / res.enemyMaxHP);
     hpFrac.push(sum(res.heroes.map((h) => Math.max(h.hp, 0))) / sum(res.heroes.map((h) => h.maxHP)));
     for (const h of res.heroes) acc.add(h, true);
   }
   const out: FightEval = {
     n, win: wins / n, turns: mean(turns), turns_win: turnsWin.length ? mean(turnsWin) : null,
-    grade: grades.length ? mean(grades) : 0, enemy_dmg: mean(enemyFrac), hp_left: mean(hpFrac),
+    grade: grades.length ? mean(grades) : 0, enemy_dmg: mean(enemyFrac), enemy_dmg_peak: mean(peakFrac),
+    enemy_dmg_total: mean(dmgTotal), enemy_dmg_total_frac: mean(dmgFrac), hp_left: mean(hpFrac),
     heroes: acc.result(n), score: 0,
   };
   out.score = score(out);
@@ -140,14 +151,20 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
 
 /** Win rate first; among equal win rates, faster fights, then more HP left;
  * for lost fights, how much of the enemy's HP was removed. */
-export function score(ev: Pick<FightEval, "win" | "enemy_dmg" | "turns" | "hp_left">): number {
-  return ev.win * 1e6 + ev.enemy_dmg * 1e4 - ev.turns * 10 + ev.hp_left * 5;
+/** Win rate first; among equal win rates, faster fights, then more HP left; for lost fights, how far the
+ * enemy's HP was brought down at its lowest (end HP hides it when the enemy heals back), then, as a last
+ * tiebreak, the damage it took. */
+export function score(ev: Pick<FightEval, "win" | "enemy_dmg" | "turns" | "hp_left"> &
+  Partial<Pick<FightEval, "enemy_dmg_peak" | "enemy_dmg_total_frac">>): number {
+  return ev.win * 1e6 + (ev.enemy_dmg_peak ?? ev.enemy_dmg) * 1e4 - ev.turns * 10 + ev.hp_left * 5 +
+    Math.min(ev.enemy_dmg_total_frac ?? 0, 100) * 1e-3;
 }
 
 export function fmtEval(ev: FightEval): string {
   const tw = ev.turns_win !== null ? fx(ev.turns_win, 0, 1) : "-";
+  const peak = ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4 ? ` (lowest ${pct(ev.enemy_dmg_peak)}%)` : "";
   return `win ${pct(ev.win)}%  turns ${fx(ev.turns, 5, 1)} (wins ${tw})  grade ${fx(ev.grade, 0, 2)}  ` +
-    `enemy HP removed ${pct(ev.enemy_dmg)}%  party HP left ${pct(ev.hp_left)}%`;
+    `enemy HP removed ${pct(ev.enemy_dmg)}%${peak}  party HP left ${pct(ev.hp_left)}%`;
 }
 
 export const SCROLL_IDS = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69]; // consumables with scrollsData behaviour (70 has no item)
@@ -782,7 +799,7 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
     st.tick();
     return e;
   };
-  const original = [1, 2, 3, 4, 5, 6].map((slot) => h.heroInventory[slot]);
+  const original = h.heroInventory.slice(); // empty slots included: restore exactly what was there
   const perPass = [1, 2, 3, 4, 5, 6].reduce((acc, slot) => acc + (cands.get(slot)?.length ?? 0), 0);
   try {
     st.stage("current", 1);
@@ -824,9 +841,7 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
     });
     return { base, final, gear, evaluated };
   } finally {
-    [1, 2, 3, 4, 5, 6].forEach((slot, i) => {
-      if (original[i] !== undefined) h.heroInventory[slot] = original[i];
-    });
+    h.heroInventory = original;
     h.determineStats();
   }
 }

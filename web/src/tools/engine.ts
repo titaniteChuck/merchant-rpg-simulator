@@ -30,6 +30,10 @@ export interface FightResult {
   turns: number;
   enemyHP: number;
   enemyMaxHP: number;
+  /** Lowest enemy HP after any action (lower than enemyHP when the enemy healed). */
+  enemyMinHP: number;
+  /** All damage the enemy took during the fight. */
+  enemyDmgTaken: number;
   grade: number;
   heroes: HeroResult[];
 }
