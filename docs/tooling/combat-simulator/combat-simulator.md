@@ -18,6 +18,7 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [How it works](#how-it-works)
   - [Map runs](#map-runs)
 - [Commands](#commands)
+- [Search API](#search-api)
 - [Search methods](#search-methods)
 - [Validation](#validation)
 - [Limits](#limits)
@@ -63,8 +64,8 @@ flowchart LR
 ## Commands
 
 `web/src/tools/combat.ts` functions. The battle page runs `evaluate` (quest fights) and `evaluateMap` (map runs, with
-scrolls); the searches below are library functions not yet on a page (`cmdSkills`, `cmdGear`, `cmdParty`, …), kept from
-the former command line.
+scrolls). The searches are pure functions (see [Search API](#search-api)); the `cmd*` functions below are text reports
+built on them, kept from the former command line.
 
 | Command | What it answers |
 |---|---|
@@ -82,6 +83,25 @@ the former command line.
 | `scrolls --map ID --front --back` | Best loadout of up to 3 scrolls (all 286 combinations), with each scroll's crafted cost |
 
 Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per evaluation).
+
+## Search API
+
+Pure functions for pages and web workers: typed results, no output, no Node APIs. They take engine heroes, not save ids.
+
+| Function | Returns |
+|---|---|
+| `soloMatrix(sim, [[id, hero]], quests, {n, rare}, ctl)` + `soloSummary(rows, threshold)` | `SoloRow[]` (solo.csv); per-hero and per-class summary |
+| `searchSkills(sim, hero, front, back, {quest, rare, amount}, {nQuick, nFinal, top}, ctl)` | `current` and `ranked` `{rotation, passive, ev}` |
+| `searchGear(sim, hero, front, back, quest, candidates, {n, passes}, ctl)` | `base`, `final`, `gear[{slot, item, from}]` |
+| `catalogGearCandidates(sim, hero, {itemGrade, asc, …})`, `ownedGearCandidates(save, heroId)` | candidates by slot for `searchGear` |
+| `surveyMaps(sim, front, back, {n, mapGrade, scrolls, include70}, ctl)` | per map and asc: `MapSurveyRow` + `MapEval`, or the game error |
+| `searchScrolls(sim, mapSpec, front, back, {pool, scrollAsc, nQuick, nFinal, top, prices}, ctl)` | `ranked {loadout, ev, cost}` |
+| `searchParty(sim, Map<id, hero>, questOrMapTarget, {size, nQuick, nFinal}, ctl)` | `party {front, back}` (ids), `ev`, greedy steps |
+
+- `ctl: SearchControl = {onProgress(done, total, stage), shouldStop()}`. Totals are per stage; a stopped search
+  throws `SearchCancelled`. Heroes are always put back as they were (rotation, gear).
+- Same results as the former commands for the same seeds: checked on a real save for all six searches (return values
+  and every output line). `web/test/search.test.ts` covers them on made-up heroes, so CI runs it.
 
 ## Search methods
 
@@ -135,4 +155,4 @@ The first version (2026-11-23) ran the game's decompiled Lua through `lupa` from
 ## Code
 
 - `web/src/tools/combat.ts`, `engine.ts`; engine in `web/src/sim/`; page: `web/src/ui/battle*.ts`.
-- Tests: `web/test/tools.test.ts`; Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.
+- Tests: `web/test/tools.test.ts`, `web/test/search.test.ts`; Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.
