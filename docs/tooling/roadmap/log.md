@@ -21,3 +21,4 @@
 - **Update**: E11 committing, E10 started; docs/tooling/website moved to the UI lane; U6c waits for U6b.
 - **Update**: E11, U6b, U6c done; U8 started.
 - **Update**: E10 committing; E12 levelling/prestige economics started; U9 potions tab queued.
+- **Update**: E10 done; U10 save viewer overview tab (agent).
