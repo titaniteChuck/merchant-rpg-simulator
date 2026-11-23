@@ -27,6 +27,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
 - [Top earners](#top-earners)
 - [Class balance](#class-balance)
   - [Equal gear](#equal-gear)
+  - [Potions and enchants](#potions-and-enchants)
 - [Map runs](#map-runs)
   - [Scrolls](#scrolls)
 - [Open questions](#open-questions)
@@ -220,6 +221,18 @@ class's main offence per slot), rotation and passive searched per quest, 50 figh
 - Your roster's Assassin ranked 3rd: its standing there came from gear, not class.
 - Level-54 region-6 bosses (Desolation Wolf, Skorge) can't be soloed by any class at level 60.
 - The game's default rotation is all Basic for every class; ranking with it measures stats + passive only.
+
+### Potions and enchants
+
+Potions (flat stats for 3 quests; a map run counts as one) and permanent enchants (E10, `rankConsumables`,
+`consumableMatrix`, 2026-11-23).
+
+- Your Odin party: the best potion per hero adds at most +2.2 points of Odin's HP removed (Berserker with Dex/Acc
+  Boost +1 asc 2); no win. Your heroes use **0 of their 16 enchant slots**.
+- Potions flip borderline fights. Standard level-60 heroes solo vs Demon Mage: Mage 14% → 100% and Cleric 4% → 100%
+  with HP Boost asc 2; Bard 96% → 100% with Atk Boost +1 asc 2. Classes that already win gain only noise.
+- The best potion depends on the opponent: Str/Atk Boost +1 asc 2 first for every class vs Arkyos, HP Boost asc 2
+  first vs Region 5.
 
 ## Map runs
 

@@ -19,3 +19,5 @@
 - **Update**: E9 done; E11 started; U7 (optimiser on the battle page) added.
 - **Update**: E9 done; U8 battle page rework (mode first, two-column party, opponent card, quest size ×N) replaces U7.
 - **Update**: E11 committing, E10 started; docs/tooling/website moved to the UI lane; U6c waits for U6b.
+- **Update**: E11, U6b, U6c done; U8 started.
+- **Update**: E10 committing; E12 levelling/prestige economics started; U9 potions tab queued.
