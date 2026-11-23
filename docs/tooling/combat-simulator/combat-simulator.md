@@ -107,7 +107,7 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 | `searchScrolls(sim, mapSpec, front, back, {pool, scrollAsc, nQuick, nFinal, top, prices}, ctl)` | `ranked {loadout, ev, cost}` |
 | `searchParty(sim, Map<id, hero>, questOrMapTarget, {size, nQuick, nFinal}, ctl)` | `party {front, back}` (ids), `ev`, greedy steps |
 | `evaluateTarget(sim, questOrMapTarget, front, back, n)` | `FightEval` for a quest, `MapEval` for a map run (both have `score`) |
-| `optimiseFight(sim, Map<id, hero>, questOrMapTarget, {save, size, nQuick, nFinal, maxRounds, minGain, timeBudgetMs, steps}, ctl)` (`optimise.ts`) | `config {party, skills, gear, scrolls}`, final `ev`, `firstPartyEv`, per-step `trace {round, step, before, after, change, ms}` |
+| `optimiseFight(sim, Map<id, hero>, questOrMapTarget, {save, size, startParty, lock, nQuick, nFinal, maxRounds, minGain, timeBudgetMs, steps}, ctl)` (`optimise.ts`) | `config {party, skills, gear, scrolls}`, final `ev`, `firstPartyEv`, per-step `trace {round, step, before, after, change, ms}` |
 
 - `ctl: SearchControl = {onProgress(done, total, stage), shouldStop()}`. Totals are per stage; a stopped search
   throws `SearchCancelled`. Heroes are always put back as they were (rotation, gear).
@@ -135,11 +135,38 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 - `party`: greedy add (hero × slot) while it helps, then swaps and moves until no improvement.
 - `searchSkills` and `searchGear` take a quest or a map target (typed overloads: a quest still returns `FightEval`).
 - **Joint optimiser** (`optimiseFight`, `web/src/tools/optimise.ts`): coordinate descent over party and rows (round 1),
-  each member's rotation and passive, each member's gear (owned items: inventory, sale slots, gear of heroes outside
-  the party; never one item for two heroes), then scrolls for a map run. A step is kept only if the score rises by
-  `minGain` (default 5: half a turn or 1 % HP); another round runs while skills or gear still improve
-  (`maxRounds` 2). Defaults: 10 fights / 4 map runs per candidate, 200 / 30 for the final evaluation, 2-minute budget
-  (`timeBudgetMs`), after which the best configuration so far is returned. Heroes are restored; apply `config`.
+  the layout steps below, each member's rotation and passive, the layout steps again, each member's gear (owned items:
+  inventory, sale slots, gear of heroes outside the party; never one item for two heroes), then scrolls for a map run.
+  A step is kept only if the score rises by `minGain` (default 5: half a turn or 1 % HP); another round runs while
+  a step other than the party still improves (`maxRounds` 2). Defaults: 10 fights / 4 map runs per candidate, 200 / 30
+  for the final evaluation, 2-minute budget (`timeBudgetMs`, the layout steps included), after which the best
+  configuration so far is returned. Heroes are restored; apply `config`.
+- **Layout steps** (`steps.order`, `steps.swap`, `steps.phase`, all on by default). The turn order is back 1, front 1,
+  back 2, front 2, back 3, front 3, then the enemy ([combat](../../combat/combat.md#battle-loop)), and slot k of every
+  rotation, the enemy's included, plays on turns k, k + 5, …, so who acts first and when each skill lands both matter.
+
+| Step | Candidates (same seeds as the current layout) | Trace step name |
+|---|---|---|
+| Order within rows | the 3! × 3! = 36 orders of the front and back rows, empty slots included | `Order within rows` |
+| Row swaps | one front slot exchanged with one back slot (9 pairs; a hero may move to an empty slot); if kept, the order step again | `Swap rows: A ↔ B`, then `Order within rows (after swap)` |
+| Phase shift | each member's rotation shifted cyclically by 1-4 slots, passive unchanged | `Phase of X: +s` |
+
+  - The pass runs after the party step and again after the skill steps, and is skipped when nothing changed since the
+    last pass (same seeds, same result). A pass scores up to about 110 candidates (35 orders, 9 swaps, 35 more orders
+    after a kept swap, 4 shifts per hero) at `nQuick` each: 3-10 s on Odin, Archon or a map run.
+  - A shift keeps the AP total, the only rule the game puts on a rotation (`Hero:calculateAPRemainder`; slot order is
+    free), so every shift is valid; a shift the engine would replace is still skipped.
+- **Starting party and locks**: `startParty {front, back}` (hero ids) is the layout to start from when the party
+  step is off, and the candidate the party search must beat when it is on. `lock: [ids]` keeps heroes in the party:
+  the party step places them first (their `startParty` slot, else the best free slot) and never swaps them out; the
+  layout steps may still move them.
+- **Quest amount**: with `amount` > 1 the party must contain a hero whose prestige allows it (`maxQuestAmount`); a
+  candidate party that doesn't scores −∞ (skipped) instead of throwing, and the party step uses the constrained search
+  (as with locks). If no party of the pool is valid, `optimiseFight` throws "no party could be formed".
+- **Gear and AP**: a gear candidate that lowers the hero's AP below its rotation's cost makes the game swap in the
+  default rotation and passive. `searchGear` restores the gear but not the skills, so the gear step puts them back
+  and re-scores the kept gear with the rotation the game would really play. Before this fix, one hero's gear search
+  could silently reset that hero's rotation (Archon: score 801 → 423 between two gear steps).
 
 | Target (save's 17 heroes) | `searchParty` alone | `optimiseFight` (2 min) | Unbounded |
 |---|---|---|---|
@@ -149,6 +176,22 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 
   The rotation search is the costly step on long fights (Odin: 15-19 turns) and on map runs; a page should let the
   player raise the budget.
+
+  With and without the layout steps (E14a), same save; gear AP fix in both columns. "HP removed" is the enemy's lowest
+  point, 200 fights (30 map runs) in the final evaluation:
+
+| Target | 2 min, without | 2 min, with | Unbounded, without | Unbounded, with | Steps that gained (unbounded trace) |
+|---|---|---|---|---|---|
+| Odin (72) | 0 %, 31.0 %, 19 turns | 0 %, 31.9 %, 15 turns | 0 %, 33.5 % (249 s) | 0 %, 35.1 % (243 s) | Mage phase +1 (score 791 → 918, before any rotation search), Paladin phase +1 (+22), order in round 2 (Paladin to front 1, Berserker to back 1: +232) |
+| Archon (97) | 0 %, 6.3 % | 0 %, 10.1 % | 0 %, 6.3 % (183 s) | 0 %, 9.9 % (205 s) | order (177 → 243), front-back swap (+7), Rogue phase +3 (+18); after the rotations, swap back and re-order (+19) |
+| Demon Mage (50) | 100 %, 1 turn | same | same | same | none (already won in one turn) |
+| Gnoll Vendetta asc 1 | 93.3 %, grade 5 | same | same | same | none at 4 runs per candidate |
+
+  - The gains come from timing more than from rows: a phase shift is a 0.1-0.5 s step that can be worth more than a
+    20 s rotation search (Odin's Mage: Silence one turn earlier). Rotations found by the skill search are already
+    best among their own orderings, so the phase step gains mostly before it, or after the order changes.
+  - Losing fights score fewer turns as better (`score`), so Odin's 15 vs 19 turns is not a gain in itself; the higher
+    lowest-HP point is.
 
 ## Potions and enchants in combat
 

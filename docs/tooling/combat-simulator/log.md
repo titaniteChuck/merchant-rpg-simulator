@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Party order and rotation timing (E14a)**: `optimiseFight` adds order within rows (36 layouts), front-back swaps and rotation phase shifts, each on the same seeds and in the trace with readable step names; `startParty`, `lock` and quest amounts above the prestige limit (skipped, not fatal); the gear step restores a rotation reset by an AP-lowering candidate. Odin 33.5 → 35.1 % lowest HP, Archon 6.3 → 9.9 %.
 - **Schedule (E13)**: new [schedule](./schedule.md) page: skill probe, `inventory/timelines.json`, `schedule.ts` lookups and counter-schedule score with validation; `searchParty` takes `lock` and skips parties that can't take the quest amount; `searchGear` keeps the hero's rotation and passive.
 - **Levelling and prestige (E12)**: `levelling.ts` (XP/h per quest, levelling plan per band, prestige payoff); farming rows add XP per hour and revive gold; map runs report XP per hero; prestige tables exported to gamedata.json.
 - **Potions and enchants (E10)**: `consumables.ts` ranks potions and enchants per hero and fight, and per class; `Hero.applyBoost` ported; fights keep a potion a tool applied (`_keepBoost`).
