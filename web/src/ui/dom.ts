@@ -49,7 +49,7 @@ export const GRADE_LETTERS = ["D", "C", "B", "A", "S"];
 
 /**
  * A grade badge: "S", "B" … A stack split by grade ("C14 B21 A164" = 14 items of grade C, 21 of B …)
- * becomes one "count × letter" chip per grade.
+ * becomes one "count letter" chip per grade ("14 C"), the letter as its coloured badge.
  */
 export function gradeBadge(label: string): HTMLElement {
   if (/^[DCBAS]$/.test(label)) return el("span", { class: `grade grade-${label}` }, label);
@@ -58,8 +58,7 @@ export function gradeBadge(label: string): HTMLElement {
   const title = parts.map(([, g, n]) => `${n} of grade ${g}`).join(", ");
   return el("span", { class: "grade-stack", title, "aria-label": title },
     ...parts.map(([, g, n]) => el("span", { class: "gq" },
-      el("span", { class: "gq-n" }, fmt.format(Number(n))), el("span", { class: "gq-x", "aria-hidden": "true" }, "×"),
-      el("span", { class: `grade grade-${g}` }, g))));
+      el("span", { class: "gq-n" }, fmt.format(Number(n))), el("span", { class: `grade grade-${g}` }, g))));
 }
 
 // ---------------------------------------------------------------- ascension
@@ -97,7 +96,7 @@ export function ascLegend(): HTMLElement {
 export function ascSwatch(v: unknown): HTMLElement {
   const n = ascLevel(v);
   return n
-    ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) })
+    ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) }, String(n))
     : el("span", { class: "muted", "aria-label": ascText(0) }, "–");
 }
 

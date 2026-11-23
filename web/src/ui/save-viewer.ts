@@ -91,43 +91,73 @@ export function rotationRows(skills: string[]): HTMLElement {
     ...(sk === "Basic" ? [] : [el("span", { class: "muted small eff" }, skillDesc(sk))]))));
 }
 
-function heroCard(v: HeroView, best: Best): HTMLElement {
+/** A hero's id in the save (for its details link). */
+const heroId = (v: HeroView, sv: Save) => sv.raw.hero[Number(v.row.n) - 1]?.id ?? Number(v.row.n);
+const heroHref = (id: unknown) => `#hero=${id}`;
+
+function avatar(v: HeroView, size = ""): HTMLElement {
+  const name = String(v.row.name);
+  return withAsc(el("span", { class: `avatar ${size}`.trim() }, name.slice(0, 1).toUpperCase()), heroAsc(v.row.asc), name);
+}
+
+/** One hero in full (save.html#hero=<id>): radar and stats beside rotation, passive and gear. */
+function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLElement {
   const r = v.row;
   const name = String(r.name);
   const stats = v.stats
-    ? el("div", { class: "hero-stats" }, statRadar(v.stats, best, `${name}'s combat stats`),
+    ? el("div", { class: "hero-stats" }, statRadar(v.stats, best, `${name}'s combat stats`, 340),
       el("dl", { class: "stats extra" }, ...EXTRA_STATS.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k]))
         .map((k) => {
           const x = v.stats![k];
           return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
         })))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
-  const rotation = rotationRows(v.rotation);
   const gear = el("ul", { class: "gear" }, ...v.gear.map((g) =>
     el("li", { class: `rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${g.slot}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
       el("span", { class: "slot-ico", "aria-label": String(g.slot) }, SLOT_ICONS[String(g.slot)] ?? "•"),
       itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc),
       el("span", { class: "meta" }, gradeBadge(String(g.grade))))));
-  return el("article", { class: `card hero cls-${v.cls}` },
-    el("header", { class: "hero-head" },
-      withAsc(el("span", { class: "avatar" }, name.slice(0, 1).toUpperCase()), heroAsc(r.asc), name),
-      el("div", {}, el("h3", {}, name),
-        el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"),
-          pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
-    stats,
-    el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotation),
-    el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, passiveLink(String(r.passive || ""), "pill t-gold"))),
-    gear,
-    el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`)),
-  );
+  const k = views.indexOf(v);
+  const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
+  return el("div", { class: "hero-detail-page" },
+    el("nav", { class: "hero-nav", "aria-label": "Heroes" }, el("a", { href: "#", class: "secondary-link" }, "← All heroes"),
+      el("span", { class: "hero-nav-step" }, nav(views[k - 1], `‹ ${views[k - 1]?.row.name ?? ""}`), nav(views[k + 1], `${views[k + 1]?.row.name ?? ""} ›`))),
+    el("article", { class: `card hero hero-detail cls-${v.cls}` },
+      el("header", { class: "hero-head" }, avatar(v, "big"),
+        el("div", {}, el("h2", {}, name),
+          el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"),
+            pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
+      el("div", { class: "hero-detail-grid" },
+        el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
+        el("section", { class: "hero-detail-side" },
+          el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotationRows(v.rotation)),
+          el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, passiveLink(String(r.passive || ""), "pill t-gold"))),
+          el("div", {}, el("p", { class: "section-label" }, "Gear"), gear))),
+      el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`))));
 }
 
-function renderHeroes(views: HeroView[]): HTMLElement {
+/** The heroes as a sortable table; each name opens the hero's page. */
+function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
+  const rows: Cells[] = views.map((v) => ({
+    k: views.indexOf(v), id: heroId(v, sv), name: String(v.row.name), cls: v.cls, class: String(v.row.class), level: Number(v.row.level),
+    asc: heroAsc(v.row.asc), status: String(v.row.status), passive: String(v.row.passive || ""), quests: Number(v.row.quests), deaths: Number(v.row.deaths),
+    ...Object.fromEntries(["maxHP", "atk", "matk", "def", "mdef", "acc", "crit", "maxActionPoints"].map((s) => [s, v.stats?.[s] ?? null])),
+  }));
+  const num = (key: string, label: string) => ({ key, label, num: true });
   return el("div", {},
-    toolbar(el("p", { class: "muted small" }, "Combat stats are computed with the game's rules from your gear, level, passive and enchants. Each radar axis runs from 0 to your strongest hero for that stat."),
+    toolbar(el("p", { class: "muted small" }, "Combat stats computed with the game's rules from gear, level, passive and enchants. Click a hero for its page (radar chart, rotation, gear)."),
       csvButton("heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
       csvButton("hero_gear", () => gearRows(views), "gear")),
-    el("div", { class: "cards" }, ...views.map((v) => heroCard(v, bestOf(views)))));
+    table(rows, [
+      { key: "name", label: "Hero", render: (x) => el("a", { href: heroHref(x.id), class: `hero-link cls-${x.cls}` }, avatar(views[Number(x.k)], "small"), String(x.name)) },
+      { key: "class", label: "Class", render: (x) => el("span", { class: `cls-${x.cls}` }, pill(String(x.class))) },
+      num("level", "Lvl"), { key: "asc", label: "Asc", num: true, render: (x) => ascSwatch(x.asc) },
+      num("maxHP", "HP"), num("atk", "Atk"), num("matk", "Matk"), num("def", "Def"), num("mdef", "Mdef"), num("acc", "Acc"), num("crit", "Crit"),
+      num("maxActionPoints", "AP"),
+      { key: "passive", label: "Passive", render: (x) => passiveLink(String(x.passive)) },
+      { key: "status", label: "Status", render: (x) => pill(String(x.status), STATUS_TONE[String(x.status)] ?? "t-slate") },
+      num("quests", "Quests"), num("deaths", "Deaths"),
+    ]));
 }
 
 const ITEM_COLS: Column[] = [
@@ -183,26 +213,53 @@ function renderCrafters(sv: Save): HTMLElement {
   const jobs = [...sv.crafters.entries()].sort(([x], [y]) => x - y)
     .map(([, c]) => (c.isCrafting && typeof c.isCrafting === "object" ? c.isCrafting : null));
   const jobOf = new Map(rows.map((r, i) => [String(r.crafter), jobs[i]]));
+  /** A crafter level for items of one ascension, outlined like those items; "—" before the crafter reaches it. */
+  const levelCell = (key: string, asc: number) => (r: Cells) => {
+    const v = r[key];
+    if (v === null || v === undefined || v === "") return el("span", { class: "muted", title: "Not reached yet: the crafter can't make items of this ascension." }, "—");
+    return withAsc(el("span", { class: "nowrap" }, fmt.format(Number(v))), asc);
+  };
   return el("div", {}, toolbar(csvButton("crafters", () => rows)), table(rows, [
-    { key: "crafter", label: "Crafter", render: (r) => withAsc(el("strong", {}, String(r.crafter)), r.asc) },
-    { key: "level", label: "Level", num: true }, { key: "asc", label: "Asc", num: true, render: (r) => ascSwatch(r.asc) },
-    { key: "prestige_level", label: "Prestige level", num: true },
+    { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) },
+    { key: "level", label: "Level", num: true },
+    { key: "asc1_level", label: "Ascension 1 level", num: true, render: levelCell("asc1_level", 1) },
+    { key: "asc2_level", label: "Ascension 2 level", num: true, render: levelCell("asc2_level", 2) },
     { key: "crafting", label: "Working on", render: (r) => {
       const job = jobOf.get(String(r.crafter));
       if (!job) return el("span", { class: "muted" }, "idle");
       return el("span", { class: "nowrap" }, `🔨 ${job.amount ?? 1} × `,
         itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel));
     } },
-  ]));
+  ]), el("p", { class: "muted small" }, "Each crafter has its own level per ascension: crafting items of its current ascension uses that level " +
+    "(it restarts at 1 when the crafter ascends), items of ascension 0 use the normal level. Above that level, it can only craft them one ascension lower."));
 }
 
 // ---------------------------------------------------------------- page
 const TABS = ["Heroes", "Inventory", "Maps", "Crafters"] as const;
 
+let current: { sv: Save; views: HeroView[] } | null = null;
+
 function render(sv: Save, fileName: string): void {
-  const views = heroViews(sv);
+  void fileName;
+  current = { sv, views: heroViews(sv) };
+  route();
+}
+
+/** save.html#hero=<id> shows one hero; anything else the overview with its tabs. */
+function route(): void {
+  if (!current) return;
+  const { sv, views } = current;
+  const m = /^#hero=(\d+)$/.exec(location.hash);
+  const v = m ? views.find((x) => String(heroId(x, sv)) === m[1]) : undefined;
+  if (v) {
+    $("#result").replaceChildren(heroDetail(v, bestOf(views), views, sv));
+    document.title = `${v.row.name} · Save viewer · Merchant RPG Simulator`;
+    window.scrollTo(0, 0);
+    return;
+  }
+  document.title = "Save Viewer · Merchant RPG Simulator";
   const panels: Record<string, () => HTMLElement> = {
-    Heroes: () => renderHeroes(views), Inventory: () => renderInventory(sv), Maps: () => renderMaps(sv), Crafters: () => renderCrafters(sv),
+    Heroes: () => renderHeroes(views, sv), Inventory: () => renderInventory(sv), Maps: () => renderMaps(sv), Crafters: () => renderCrafters(sv),
   };
   const tabList = el("div", { role: "tablist", class: "tabs", "aria-label": "Save sections" });
   const panel = el("div", { role: "tabpanel", class: "panel" });
@@ -216,9 +273,9 @@ function render(sv: Save, fileName: string): void {
     tabList.append(b);
   }
   $("#result").replaceChildren(renderSummary(sv), ascLegend(), tabList, panel);
-  void fileName;
   select("Heroes");
 }
+window.addEventListener("hashchange", route);
 
 function showError(msg: string): void {
   $("#result").replaceChildren(el("p", { class: "error", role: "alert" }, msg));

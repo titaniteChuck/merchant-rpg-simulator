@@ -56,8 +56,14 @@ flowchart LR
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export`; checked equal to its CSVs on a real
   save (inventory 167, maps 5, heroes 17, gear 102 rows).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
-- Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
-  CSV download per table.
+- Sections: summary tiles, heroes, inventory (filter, sort, base value), maps, crafters; CSV download per table.
+- Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
+  name opens its page, `save.html#hero=<id>` (back with "All heroes", previous/next): radar chart, rotation rows,
+  passive, gear with outlines.
+- Crafters: Level, Ascension 1 level, Ascension 2 level (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
+  `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each
+  ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
+  `prestigeLevel` and lower ascensions use `level`; an ascension not unlocked shows "—".
 - Maps: essence per run from the profit model (`mapEssence`, with the map's grade, ascension, prefix and suffix).
 
 ## Battle simulator
@@ -66,7 +72,7 @@ flowchart LR
 
 - Party: six slots (front/back × 3) filled from the save's heroes; per hero, an optional rotation and passive editor
   with the AP budget (`api.skillInfo`). Over budget, the game falls back to the default rotation: shown as a warning.
-- Opponent: a quest enemy (rare variant, 1-4 enemies) or a map run (owned map from the save, or any catalog map
+- Opponent: a quest enemy (rare variant, quest amount = enemy HP ×1 to ×5, up to `maxQuestAmount` of the party) or a map run (owned map from the save, or any catalog map
   with ascension 0/1 and grade, up to 3 scrolls).
 - The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n (common random numbers:
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
@@ -154,20 +160,22 @@ flowchart LR
 
 - Top bar on every page: Save viewer, Battle simulator, Profit, Farming, Wiki, and the GitHub link (right).
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
-  page, so moving between pages never asks again. Bar: file name and age, Reload (rereads the same file without a dialog
-  when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser).
+  page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
+  (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
+  menu: file name and age, Reload (rereads the same file without a dialog
+  when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser and brings
+  the drop zone back). Dropping a file anywhere on the page still loads it.
 - File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
   open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.
 - Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest
   hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
-  effect); grade stacks read "14 × C".
+  effect); grade stacks read "14 C" (count, then the grade letter in its colour).
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
 - Ascension is an outline, not text: silver for 1, gold for 2 (`ascClass` / `withAsc` / `ascSwatch` / `ascLegend` in
   `dom.ts`, tokens `--silver-*` / `--gold-*` in `style.css`, a masked gradient ring so it looks metallic on any surface).
-  Items, maps and crafters (`ascLevel`) count 0–2; heroes store `prestigeLevel` 1–3, shown as ascensions = level − 1
-  (`heroAsc`); the crafter `prestigeLevel` (a level counter) stays a number. Applied wherever an item-like object is
+  Items and maps count 0–2; heroes store `prestigeLevel` 1–3, shown as ascensions = level − 1 (`heroAsc`). Applied wherever an item-like object is
   shown: item links (inventory, counter, maps, hero gear, crafting jobs, wiki sell values), hero avatars (save viewer,
-  battle slots), crafter names, the sortable Asc columns (swatch), the battle page's chosen map (options can't be
+  battle slots), crafter levels per ascension, the sortable Asc columns (swatch with the number), the battle page's chosen map (options can't be
   outlined), and the wiki class growth table. Each outline also has a title and a screen-reader label ("ascension 1").
 
 ## What can run in the browser
@@ -240,7 +248,7 @@ CI-safe drift check (no save data, runs in CI): fixed-seed outputs compared with
 
 | Test | Covers | Snapshot |
 |---|---|---|
-| `test/snapshots-sim.test.ts` | 57 fights: 5 parties, all 9 classes, L10-60, normal + rare, 1-4 enemies, seeds 1-3 | `fights.json` |
+| `test/snapshots-sim.test.ts` | 57 fights: 5 parties, all 9 classes, L10-60, normal + rare, quest amount 1-4, seeds 1-3 | `fights.json` |
 | | 10 map runs: maps 1, 8, 13, 17, 21, asc 0 + 1, prefix/suffix, scrolls, seeds 1-2 | `maps.json` |
 | | Goblin Warlord's Feast heal (quest 91 x10, map 3 asc 1): HP rises on turns 3, 8, 13 | `feast.json` |
 | `test/snapshots-profit.test.ts` | `profitReport` default and grade 5 + crafter level 40: top 30 rows, essence table, sha256 of every table | `profit-*.json` |

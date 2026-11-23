@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Save viewer heroes as a sortable table with a page per hero (`#hero=<id>`); crafters show their level per ascension (`getEffectiveLevelForItem`); the loaded save moves to one top-bar button (Reload, Choose another file, Forget); battle quest size capped at the party's max (enemy HP ×1 to ×5).
 - **Update**: Farming planner (`farming.html`, `farming-worker.ts`): quests and map runs simulated with the party, ranked by value per hour; Profit and Farming in every top bar; essence per run in the save viewer's maps table; ascension outlines on the profit page.
 - **Update**: Profit page (`profit.html`, web worker): item ranking, enchanting, orb sources, options; owned items from the save.
 - **Update**: Battle page search tabs (best rotation, gear, party, scrolls) on the combat search API, with progress and Cancel; lowest enemy HP shown when the enemy heals.

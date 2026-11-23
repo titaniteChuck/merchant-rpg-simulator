@@ -6,7 +6,7 @@
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { SCROLL_IDS } from "../tools/combat.ts";
+import { maxQuestAmount, SCROLL_IDS } from "../tools/combat.ts";
 import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
@@ -204,6 +204,7 @@ function renderParty(): void {
       el("div", { class: "slots" }, ...cells));
   });
   $("#party").replaceChildren(...rows);
+  syncAmount();
   search?.refresh();
 }
 
@@ -217,13 +218,14 @@ function renderTarget(): void {
   if (mode === "quest") {
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
     const rare = el("input", { type: "checkbox", id: "rare" }) as HTMLInputElement;
-    const amount = select({ id: "amount", "aria-label": "Number of enemies" }, [["1", "1 enemy"], ["2", "2 enemies"], ["3", "3 enemies"], ["4", "4 enemies"]]);
+    const amount = select({ id: "amount", "aria-label": "Quest size (enemy HP ×N)" }, [["1", "enemy HP ×1"]]);
     const info = el("div", { class: "enemy" });
     const update = () => {
       const d = G.questData[q.value];
       const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined;
       rare.disabled = !hasRare;
       if (!hasRare) rare.checked = false;
+      syncAmount();
       const r = rare.checked;
       const v = (k: string) => fmt.format(d[r ? `${k}B` : k] ?? 0);
       const stat = (label: string, k: string) => el("span", { class: "nowrap" }, el("span", { class: "muted" }, `${label} `), v(k));
@@ -274,6 +276,21 @@ function renderTarget(): void {
       el("p", { class: "muted small" }, "Each run uses a new map layout (rooms, enemies, rare spawns, boss). Hero HP carries over between rooms."));
     $<HTMLInputElement>("#runs").value = "50";
   }
+}
+
+/**
+ * The quest size choices the game offers this party: enemy HP ×1 up to maxQuestAmount (from the highest hero
+ * prestige; a rare quest is always ×1). Keeps the current choice when it is still allowed.
+ */
+function syncAmount(): void {
+  const amount = document.querySelector<HTMLSelectElement>("#amount");
+  if (!amount || !state.sv) return;
+  const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
+  const max = maxQuestAmount(partyOf().members.map((m) => m.raw), rare, state.sv.raw.gameMode || "Standard");
+  const was = Number(amount.value) || 1;
+  amount.replaceChildren(...Array.from({ length: max }, (_, k) => el("option", { value: String(k + 1) }, `enemy HP ×${k + 1}`)));
+  amount.value = String(Math.min(was, max));
+  amount.title = rare ? "A rare quest is always ×1." : `Quest size: one enemy with ×N HP and ×N loot. Up to ×${max} for this party (highest hero prestige × 2 − 1).`;
 }
 
 // ---------------------------------------------------------------- run

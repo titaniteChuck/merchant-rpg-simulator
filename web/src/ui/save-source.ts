@@ -1,8 +1,10 @@
 /**
- * Where a page gets the save from: the one already opened on any page of the site (kept in this
- * browser by save-store.ts), or a file the visitor picks or drops. Once a save is loaded, the big drop
- * zone shrinks to a status bar: file name and age, Reload (same file, no dialog when the browser kept
- * its handle), Choose another file, Forget.
+ * Where a page gets the save from: the one already opened on any page of the site (kept in this browser by
+ * save-store.ts), or a file the visitor picks or drops. Before a save is loaded the page shows its big drop zone.
+ * Once one is loaded, the drop zone and the save help (elements marked data-save-help) are hidden and a small
+ * "📜 PlayerData.txt ▾" button in the top bar takes over: its menu says when the save was opened and offers
+ * Reload (same file, no dialog when the browser kept its handle), Choose another file and Forget. Dropping a file
+ * anywhere on the page still works.
  */
 import { el } from "./dom.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
@@ -11,7 +13,7 @@ import { forgetSave, getHandle, getSave, putSave, rereadHandle, type SaveHandle 
 export interface SaveSourceOptions {
   input: HTMLInputElement;
   drop: HTMLElement;
-  /** Where the status bar goes. */
+  /** Where "Reading…" and errors go. */
   status: HTMLElement;
   /** Parse and show a save; throw an Error with a readable message when it isn't one. */
   load: (text: string, name: string) => Promise<void>;
@@ -28,21 +30,69 @@ function age(ms: number): string {
 
 export function initSaveSource(o: SaveSourceOptions): void {
   const showError = (msg: string) => o.status.replaceChildren(el("p", { class: "error", role: "alert" }, msg));
+  // The drop zone, with the <details> that wraps it on some pages, and the page's save help.
+  const dropBlock = (o.drop.closest("details") as HTMLElement | null) ?? o.drop;
+  const helps = () => [...document.querySelectorAll<HTMLElement>("[data-save-help]")];
+  let chip: HTMLElement | null = null;
 
-  const showLoaded = async (name: string, savedAt: number) => {
-    o.drop.classList.add("compact");
+  const setLoaded = (loaded: boolean) => {
+    dropBlock.hidden = loaded;
+    for (const h of helps()) h.hidden = loaded;
+    if (!loaded) {
+      chip?.remove();
+      chip = null;
+    }
+  };
+
+  /** The top-bar button and its menu. */
+  const showChip = async (name: string, savedAt: number) => {
     const canReread = Boolean(await getHandle());
-    const btn = (label: string, title: string, f: () => void) => {
-      const b = el("button", { type: "button", class: "secondary", title }, label);
-      b.addEventListener("click", f);
+    chip?.remove();
+    const menu = el("div", { class: "save-menu", role: "menu", hidden: "" });
+    const button = el("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false",
+      title: `Save: ${name}, opened ${age(savedAt)}` }, "📜 ", el("span", { class: "save-chip-name" }, name), " ▾");
+    const close = () => {
+      menu.hidden = true;
+      button.setAttribute("aria-expanded", "false");
+    };
+    const item = (label: string, hint: string, f: () => void) => {
+      const b = el("button", { type: "button", role: "menuitem", title: hint }, label);
+      b.addEventListener("click", () => {
+        close();
+        f();
+      });
       return b;
     };
-    o.status.replaceChildren(el("div", { class: "save-bar" },
-      el("span", { class: "save-bar-file" }, "📜 ", el("strong", {}, name), el("span", { class: "muted small" }, ` · opened ${age(savedAt)}`)),
-      el("span", { class: "save-bar-actions" },
-        btn("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload),
-        btn("Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
-        btn("Forget", "Remove the save from this browser", forget))));
+    menu.append(
+      el("p", { class: "muted small" }, el("strong", {}, name), el("br"), `opened ${age(savedAt)} · kept in this browser only`),
+      item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload),
+      item("📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
+      item("🗑 Forget", "Remove the save from this browser", forget));
+    button.addEventListener("click", () => {
+      menu.hidden = !menu.hidden;
+      button.setAttribute("aria-expanded", String(!menu.hidden));
+      if (!menu.hidden) (menu.querySelector("button") as HTMLButtonElement | null)?.focus();
+    });
+    chip = el("div", { class: "save-chip" }, button, menu);
+    document.addEventListener("click", (e) => {
+      if (chip && !chip.contains(e.target as Node)) close();
+    });
+    chip.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        close();
+        button.focus();
+      }
+    });
+    const bar = document.querySelector(".topbar");
+    const gh = bar?.querySelector(".gh");
+    if (bar && gh) bar.insertBefore(chip, gh);
+    else o.status.after(chip); // a page without the top bar
+  };
+
+  const loaded = async (name: string, savedAt: number) => {
+    o.status.replaceChildren();
+    setLoaded(true);
+    await showChip(name, savedAt);
   };
 
   const accept = async (file: File, handle?: SaveHandle) => {
@@ -52,7 +102,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
       await o.load(text, file.name);
       const savedAt = Date.now();
       await putSave({ name: file.name, text, savedAt }, handle);
-      await showLoaded(file.name, savedAt);
+      await loaded(file.name, savedAt);
     } catch (e) {
       showError(`Could not read ${file.name}: ${e instanceof Error ? e.message : e}`);
     }
@@ -66,7 +116,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
 
   const forget = async () => {
     await forgetSave();
-    o.drop.classList.remove("compact");
+    setLoaded(false);
     o.status.replaceChildren(el("p", { class: "muted small" }, "The save was removed from this browser."));
     o.onForget?.();
   };
@@ -74,12 +124,24 @@ export function initSaveSource(o: SaveSourceOptions): void {
   const pickerOpts = { input: o.input, drop: o.drop, onFile: accept, onError: showError };
   bindSaveInput(pickerOpts);
 
+  // Once a save is loaded the drop zone is hidden: dropping a file anywhere on the page still loads it.
+  document.addEventListener("dragover", (e) => {
+    if (chip && e.dataTransfer?.types.includes("Files")) e.preventDefault();
+  });
+  document.addEventListener("drop", (e) => {
+    if (!chip || o.drop.contains(e.target as Node)) return;
+    const f = e.dataTransfer?.files?.[0];
+    if (!f) return;
+    e.preventDefault();
+    accept(f);
+  });
+
   // The save opened on any page before: use it right away.
   getSave().then(async (s) => {
     if (!s) return;
     try {
       await o.load(s.text, s.name);
-      await showLoaded(s.name, s.savedAt);
+      await loaded(s.name, s.savedAt);
     } catch (e) {
       showError(`The stored save ${s.name} could not be read: ${e instanceof Error ? e.message : e}`);
     }

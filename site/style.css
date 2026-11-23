@@ -1,5 +1,8 @@
 /* Merchant RPG Simulator: one stylesheet for every page. Light and dark themes follow the OS. */
 
+/* The hidden attribute wins over any display rule (the drop zone is hidden once a save is loaded). */
+[hidden] { display: none !important; }
+
 /* ------------------------------------------------------------------ tokens */
 :root {
   color-scheme: light dark;
@@ -136,6 +139,7 @@ input[type="number"] { width: 6.5em; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
 .toolbar input[type="search"] { flex: 1 1 200px; }
+.toolbar > p { flex: 1 1 320px; margin: 0; }
 .toolbar .secondary { margin-left: auto; }
 .toolbar .secondary + .secondary { margin-left: 0; }
 
@@ -325,20 +329,23 @@ section > h2:first-child { margin-top: 36px; }
 .card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; }
 
 /* ------------------------------------------------------------------ saved save */
-.drop.compact { padding: 10px 16px; flex-direction: row; justify-content: center; gap: 10px; }
-.drop.compact::before { font-size: 1.2rem; margin: 0; }
-.drop.compact .muted { display: none; }
-.drop.compact .drop-title { font-size: 0.95rem; font-weight: 600; color: var(--muted); }
-.save-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 12px 0 4px;
-  padding: 10px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
-.save-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.save-bar .secondary { margin: 0; padding: 5px 12px; font-size: 0.88rem; }
+/* Once a save is loaded: a small button in the top bar (save-source.ts) replaces the drop zone. */
+.save-chip { position: relative; margin-left: auto; }
+.save-chip + .gh { margin-left: 0; }
+.save-chip-btn { display: inline-flex; align-items: center; gap: 2px; max-width: 220px; padding: 5px 12px; border-radius: 999px;
+  font-size: 0.88rem; font-weight: 650; }
+.save-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.save-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 230px; display: flex; flex-direction: column; gap: 4px;
+  padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-hover); }
+.save-menu[hidden] { display: none; }
+.save-menu p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.save-menu button { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font-weight: 600; }
+.save-menu button:hover, .save-menu button:focus-visible { background: var(--card-2); color: var(--accent); }
 
 /* ------------------------------------------------------------------ grade stacks: "14 × C" */
 .grade-stack { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .gq { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
 .gq-n { font-weight: 750; font-variant-numeric: tabular-nums; }
-.gq-x { color: var(--muted); font-size: 0.8em; }
 
 /* ------------------------------------------------------------------ rotation rows */
 ol.rotation { margin: 0; padding: 0; list-style: none; counter-reset: rot; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; }
@@ -415,7 +422,7 @@ a.wl.asc { border-bottom: 0; }
 .avatar.asc { display: grid; padding: 0; overflow: visible; }
 .avatar.asc::before { inset: -4px; padding: 2px; border-radius: 17px; }
 .slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
-.asc-swatch { width: 18px; height: 18px; padding: 0; vertical-align: middle; border-radius: 6px; }
+.asc-swatch { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; vertical-align: middle; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 1; }
 .chosen-map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 0.92rem; }
 .asc-legend { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
@@ -533,3 +540,20 @@ tr.row-link:hover td.name a.wl { border-bottom-style: solid; }
 @media (prefers-reduced-motion: reduce) { tr.row-link { transition: none; } }
 .lc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* end wiki review */
+
+/* ------------------------------------------------------------------ save viewer: hero table and hero page */
+a.hero-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--fg); font-weight: 650; }
+a.hero-link:hover { color: var(--accent); }
+.avatar.small { width: 26px; height: 26px; border-radius: 8px; font-size: 0.8rem; box-shadow: none; }
+.avatar.small.asc::before { inset: -3px; border-radius: 10px; }
+.avatar.big { width: 60px; height: 60px; border-radius: 18px; font-size: 1.6rem; }
+.avatar.big.asc::before { inset: -5px; border-radius: 22px; padding: 3px; }
+.hero-nav { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0 14px; }
+.hero-nav-step { display: flex; gap: 14px; }
+a.secondary-link { text-decoration: none; font-weight: 650; color: var(--accent); }
+a.secondary-link:hover { text-decoration: underline; }
+.hero-detail .hero-head h2 { margin: 0 0 4px; }
+.hero-detail-grid { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; }
+.hero-detail-side { display: flex; flex-direction: column; gap: 16px; }
+.hero-detail .radar-fig { max-width: 380px; }
+@media (max-width: 760px) { .hero-detail-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -156,12 +156,25 @@ export function mapRows(sv: Save): Row[] {
 }
 
 /** Crafters, with what they are working on. */
+/**
+ * The level a crafter works at for items of ascension `asc` (obj.Crafter getEffectiveLevelForItem): its
+ * prestigeLevel for items of its current ascension (ascLevel; prestigeUp resets it to 1), its level for
+ * ascension 0 and for ascensions it has passed, null for ascensions it hasn't reached. (getMaxAscLevel: items above
+ * the prestigeLevel can only be crafted one ascension lower.)
+ */
+export function crafterLevelFor(c: Any, asc: number): number | null {
+  const current = c.ascLevel ?? 0;
+  if (asc > 0 && asc === current) return c.prestigeLevel ?? 1;
+  if (asc <= current) return c.level ?? null;
+  return null;
+}
+
 export function crafterRows(sv: Save): Row[] {
   return [...sv.crafters.entries()].sort(([a], [b]) => a - b).map(([id, c]) => {
     const busy = c.isCrafting && typeof c.isCrafting === "object" ? c.isCrafting : null;
     return {
-      crafter: (G as Any).crafterData?.[id]?.name ?? `#${id}`, level: c.level ?? "", asc: c.ascLevel ?? 0,
-      prestige_level: c.prestigeLevel ?? 0,
+      crafter: (G as Any).crafterData?.[id]?.name ?? `#${id}`,
+      level: crafterLevelFor(c, 0), asc1_level: crafterLevelFor(c, 1), asc2_level: crafterLevelFor(c, 2),
       crafting: busy ? `${busy.amount ?? 1}x ${itemLabel(busy)}${busy.prestigeLevel ? ` (asc ${busy.prestigeLevel})` : ""}` : "",
     };
   });
