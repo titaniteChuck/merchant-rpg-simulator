@@ -15,6 +15,7 @@ timestamp: 2026-11-23
 - [Deployment](#deployment)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
+- [TypeScript combat engine](#typescript-combat-engine)
 - [Roadmap](#roadmap)
 
 ## Public repo rules
@@ -44,7 +45,7 @@ flowchart LR
 | Save decoding (`savegame.py`) | Yes | Standard library only; run through Pyodide or port to JS. File stays local. |
 | Item names, recipes, sell values | Yes | `data/inventory.json`. |
 | Profit calculator (`profit.py`) | Needs work | `gamedata.load_game()` reads `decompiled/`; needs a loader from `inventory.json`. |
-| Combat simulator (`combat.py`) | Not as is | Runs the game's own Lua, which is not published. Options: port the combat rules, or let the user load their own game files. |
+| Combat engine (fights, map runs) | Yes | Ported to TypeScript in `web/src/sim/` (see below). |
 
 ## Battle simulation in the browser
 
@@ -67,8 +68,39 @@ Game code the simulator runs (decompiled line counts):
 - B depends on visitors being able to supply the `.lu` files (where the PC build keeps them is not checked yet).
 - A's test oracle: same seed and a shared PRNG injected in both engines, compare logs fight by fight.
 
+## TypeScript combat engine
+
+Option A was chosen: the game's combat rules re-written in TypeScript, `web/src/sim/` (rules: `PORTING.md`).
+
+```mermaid
+flowchart LR
+  A[decompiled/*.lua] -->|harness.lua + USE_LCG| B[tools/sim/fixtures.py]
+  B --> C[web/test/fixtures/*.json]
+  D[web/src/sim] --> E[difftest*.ts]
+  C --> E
+  F[tools/export_gamedata.py] --> G[inventory/gamedata.json] --> D
+```
+
+- **Shared random generator**: Park-Miller LCG with Lua 5.1 `math.random` argument rules, in `lua.ts` and
+  `harness.lua`. `USE_LCG` installs it before the game loads, so locals like `data.Default`'s `random` use it too.
+- **Differential tests** (local only, need the game files): every action compared (turn, actor, skill,
+  RNG draw count, all HP, effect names) plus the full result.
+
+| Test | Result |
+|---|---|
+| `node test/difftest.ts` (single fights) | 600/600 |
+| `node test/difftest-maps.ts` (full map runs) | 150/150 |
+| `node test/difftest-items.ts` (`makeItem` rolls) | 385/385 |
+
+- **Lua quirks emulated**: `pairs()` order and `#t` with holes (`lua-table.ts`, an ltable.c emulation checked
+  against 400 real tables); Lua truthiness of `0`; level-70 map nil treasure (crash or dropped rooms).
+- **Not verified yet**: 43 of 223 skill functions never appear in fixtures; map prefixes/suffixes; scrolls
+  63-65 and 67; crafting new maps (`isNew`) throws; new heroes with starting gear throw.
+- **Speed**: about 0.34 ms per single-hero fight in Node.
+- Search/optimisation tools (port of `combat.py`, `profit.py`) live in `web/src/tools/`.
+
 ## Roadmap
 
 1. Save viewer: drop a save file, show heroes, gear, inventory, maps.
 2. Profit tables from `inventory.json` (pre-computed or in Pyodide).
-3. Battle simulation and gear/party optimisation (blocked on the combat-code question above).
+3. Battle simulation and gear/party optimisation pages on top of `web/src/sim` + `web/src/tools`.

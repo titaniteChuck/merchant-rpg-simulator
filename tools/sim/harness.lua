@@ -65,6 +65,34 @@ Game = setmetatable({campaigns = {}, saveFileName = "sim"}, {
   __index = function() return function() end end,
 })
 
+---------------------------------------------------------------- deterministic RNG
+-- Park-Miller LCG with Lua 5.1 math.random argument handling. The TypeScript
+-- port (web/src/sim/lua.ts) uses the same generator, so both engines draw the
+-- same rolls and fights can be compared action by action.
+local LCG_MOD = 2147483647
+local lcgState, lcgCalls = 1, 0
+local function trunc(v) if v >= 0 then return math.floor(v) end return math.ceil(v) end
+local function lcgSeed(x)
+  lcgState = math.floor(math.abs(tonumber(x) or 0)) % (LCG_MOD - 1) + 1
+end
+local function lcgRandom(m, n)
+  lcgState = (lcgState * 16807) % LCG_MOD
+  lcgCalls = lcgCalls + 1
+  local r = (lcgState - 1) / (LCG_MOD - 1)
+  if m == nil then return r end
+  if n == nil then return math.floor(r * trunc(m)) + 1 end
+  m, n = trunc(m), trunc(n)
+  return math.floor(r * (n - m + 1)) + m
+end
+
+-- USE_LCG (set before this file runs): install the LCG before any game file is
+-- loaded, so modules that keep a local copy (data.Default: local random =
+-- math.random) also draw from it.
+if USE_LCG then
+  math.random = lcgRandom
+  math.randomseed = lcgSeed
+end
+
 ---------------------------------------------------------------- module loader
 -- require("obj.combat.Battle") -> SRC/obj.combat.Battle.lua ; unknown -> stub.
 local STUB_MODULES = {
@@ -153,6 +181,7 @@ local function wrapAction(cls)
       self._skillDmg[name] = (self._skillDmg[name] or 0) + dealt(self) - before
       self._skillUses[name] = (self._skillUses[name] or 0) + 1
     end
+    if sim_trace then sim_traceAction(self, name) end
     return result
   end
 end
@@ -179,8 +208,35 @@ for n = 1, #prefixList do prefixWeightTable[n] = prefixList[n].weight end
 for n = 1, #suffixList do suffixWeightTable[n] = suffixList[n].weight end
 crafterArray = crafterArray or {}
 
+-- Trace of every action (differential tests): who acted, the skill in its
+-- rotation slot, RNG draws so far, and every HP after the action.
+function sim_traceAction(c, name)
+  local b = sim_lastBattle
+  if not b then return end
+  local hp = {}
+  for i = 1, 3 do
+    hp[i * 2 - 1] = b.backRow[i] and b.backRow[i].questHP or false
+    hp[i * 2] = b.frontRow[i] and b.frontRow[i].questHP or false
+  end
+  local fx = {}
+  for i, e in ipairs(c.effectList or {}) do fx[i] = e.name or "?" end
+  sim_trace[#sim_trace + 1] = {turn = b.turns, who = c.partyLocation or 0, act = name, rng = lcgCalls,
+                               enemyHP = b.enemy.questHP, hp = hp, effects = fx}
+end
+
 ---------------------------------------------------------------- simulator API
 sim = {loadErrors = loadErrors, setMode = sim_setMode}
+
+-- Switch math.random to the shared LCG (for the rest of this Lua state).
+-- Prefer USE_LCG at load time: local copies taken by game files keep C rand otherwise.
+function sim.useLcg()
+  math.random = lcgRandom
+  math.randomseed = lcgSeed
+end
+function sim.rngCalls() return lcgCalls end
+-- Start / stop recording sim_traceAction entries; stop returns the trace.
+function sim.traceStart() sim_trace = {} end
+function sim.traceStop() local t = sim_trace or {} ; sim_trace = nil ; return t end
 
 -- Build a Hero exactly as the game loads one from a save entry
 -- (heroInventory = compact item strings, skillSet/attackList = skill indices).
@@ -316,6 +372,9 @@ function sim.mapRun(mapSpec, front, back, opts)
   opts = opts or {}
   if opts.seed then math.randomseed(opts.seed) end
   local map = sim.makeMap(mapSpec, opts.mapSeed or opts.seed)
+  -- Map:determineSeedBasedStats ends with math.randomseed(os.time()): re-seed so
+  -- the fights are reproducible (same seed = same run, in any process).
+  if opts.seed then math.randomseed(opts.seed * 7919 + 17) end
   local saved = {}
   for i = 1, 3 do
     for _, h in pairs({front[i] or false, back[i] or false}) do

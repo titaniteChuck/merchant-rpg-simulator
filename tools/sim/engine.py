@@ -26,12 +26,14 @@ DEFAULT_SRC = ROOT / "decompiled"
 
 
 class Sim:
-    def __init__(self, src: str | Path = DEFAULT_SRC, game_mode: str = "Standard"):
-        """game_mode: the save's gameMode ("Standard", "Hard Enemies", ...)."""
+    def __init__(self, src: str | Path = DEFAULT_SRC, game_mode: str = "Standard", use_lcg: bool = False):
+        """game_mode: the save's gameMode ("Standard", "Hard Enemies", ...).
+        use_lcg: draw every random number from the LCG shared with the TypeScript port."""
         self.L = lua51.LuaRuntime(unpack_returned_tuples=True)
         g = self.L.globals()
         g.SRC = str(src)
         g.GAME_MODE = game_mode
+        g.USE_LCG = use_lcg
         self.L.execute((HERE / "harness.lua").read_text(encoding="utf-8"))
         self.g = g
         self.api = g.sim

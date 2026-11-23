@@ -32,3 +32,5 @@ Thumbs.db
 
 # Built website (CI assembles it into _site/)
 /_site/
+/web/test/fixtures/
+node_modules/
