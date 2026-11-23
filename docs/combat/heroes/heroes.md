@@ -19,6 +19,7 @@ Rules for the fight itself: [combat](../combat.md).
 - [Gear](#gear)
 - [Skills and action points](#skills-and-action-points)
 - [Passives](#passives)
+- [Potions and enchants](#potions-and-enchants)
 - [Code](#code)
 
 ## Stats
@@ -57,6 +58,19 @@ Max level 60 per tier (`heroLevelRequirement`).
 
 - One active, from the class `passiveList` (3 each), all available from level 10. Examples: Might atk +10%,
   Vitality def +12% & atk +6%, Juggernaut HP +25%, Critical Strike crit dmg +35%, Wisdom AP +2.
+
+## Potions and enchants
+
+- **Potion** ("Boost" consumable, 28): flat stats (Atk Boost +1: +120 atk, HP Boost: +500 HP, Crit Boost: +10 crit,
+  Speed/XP/Luck boosts) for `duration` quests (3; Witch's Brew 6). One map run counts as one (`Campaign` calls
+  `reduceBoost`). One potion at a time; the same potion again extends it (`Hero:applyBoost`).
+  Usable from hero level `itemLevel − 5 − 4 × (tier − 1)` (`default.heroBoostLevelReq`).
+- **Enchant** ("Enchant" consumable, 10): permanent, flat (+3 atk/matk/acc/def/mdef) or per level ("Plv": +0.1 growth,
+  so +6 atk at level 60). Up to `8 + 4 × (tier − 1)` per hero. Enchant bonuses to luck, XP, AP, crit multiplier and
+  percent stats are applied before those fields are reset in `determineStats`, so they have no effect.
+- Ascended potions and enchants: stats × `potionStat` (×2 at asc 1, ×3 at asc 2 for atk/matk/acc/def/mdef/HP/str/int/dex
+  and Plv; ×1.25/×1.5 for speed and crit; ×1.75/×2.5 for luck).
+- Flat bonuses are added before percent stats, so a passive like Might (+10 % atk) also multiplies them.
 
 ## Code
 

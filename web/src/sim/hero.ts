@@ -130,6 +130,19 @@ export class Hero extends Combatant {
     }
   }
 
+  /** Hero:applyBoost: a potion for `potionDuration` quests (default 3); the same potion again extends it. */
+  applyBoost(id: number, stats: Any, prestigeLevel: number, potionDuration = 3): void {
+    if (this.boost) {
+      if (this.boost.id === id && this.boost.prestigeLevel === prestigeLevel) {
+        this.boost.amount = this.boost.amount + potionDuration;
+        return;
+      }
+      this.removeBoost();
+    }
+    this.boost = { id, stats, prestigeLevel, amount: potionDuration };
+    this.determineStats();
+  }
+
   removeBoost(): boolean | void {
     if (!this.boost) return false;
     for (const k of Object.keys(this.boost.stats)) this[k] = this[k] - this.boost.stats[k];

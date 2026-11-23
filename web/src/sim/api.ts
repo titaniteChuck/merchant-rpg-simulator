@@ -168,7 +168,8 @@ export function fight(questID: number, front: (Hero | null | undefined)[], back:
       if (h) {
         h._skillDmg = {};
         h._skillUses = {};
-        h.boost = false;
+        // potions are dropped before a fight (as the reference harness did) unless a tool applied one on purpose
+        if (!h._keepBoost) h.boost = false;
         h.determineStats();
         h.hp = h.maxHP;
         h.questHP = h.maxHP;
@@ -273,7 +274,7 @@ export function mapRun(spec: MapSpec | string, front: (Hero | null | undefined)[
       h._runHeal = 0;
       h._skillDmg = {};
       h._skillUses = {};
-      h.boost = false;
+      if (!h._keepBoost) h.boost = false;
       h.campaignID = -1;
       h.resetStatsAndStatus();
       h.hp = h.maxHP;

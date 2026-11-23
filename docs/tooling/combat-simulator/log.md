@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Potions and enchants (E10)**: `consumables.ts` ranks potions and enchants per hero and fight, and per class; `Hero.applyBoost` ported; fights keep a potion a tool applied (`_keepBoost`).
 - **Quest amount**: described as enemy HP × amount (not several enemies); `maxQuestAmount` and validation in `evaluate` / farming report.
 - **Joint optimiser (E9)**: `optimiseFight` tunes party, rotations, gear and scrolls together for one quest or map run (coordinate descent, common random numbers, trace, 2-minute budget); `searchSkills`/`searchGear` accept map targets; `evaluateTarget`.
 - **Class matrix search (E8)**: `classMatrix` uses the combat.ts `searchSkills` (cheaper defaults, ~30 s for 9 classes); rows add `enemyHpRemovedPeak`; `searchSkills` respects the AP budget of each passive (Wisdom) and never scores a rotation the game would replace.

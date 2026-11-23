@@ -148,6 +148,30 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   The rotation search is the costly step on long fights (Odin: 15-19 turns) and on map runs; a page should let the
   player raise the budget.
 
+## Potions and enchants in combat
+
+`web/src/tools/consumables.ts` (rules: [heroes](../../combat/heroes/heroes.md#potions-and-enchants)). Browser-safe.
+
+```ts
+consumableOptions(hero, "boost" | "enchant", ascs = [0, 1, 2]): ConsumableOption[]   // what the hero may use now
+applyConsumable(hero, option): undo                                                  // a potion survives fights (_keepBoost)
+rankConsumables(sim, hero, front, back, questOrMapTarget, { kind, n, ascs, solver }, ctl): { base, ranked, freeSlots, fillGain }
+consumableMatrix(sim, target, { classes, level, prestige, gearPolicy, kind, n, ascs, top, solver }, ctl): rows per class
+```
+
+- Each option is evaluated against the hero without it on the same seeds: score gain, win and lowest-enemy-HP change,
+  Solver cost and gain per 1,000 g. Enchants: one more on top of the hero's; `fillGain` = all free slots with the best.
+- `api.fight` / `mapRun` drop potions before a fight (as the reference harness did) unless the hero has `_keepBoost`.
+
+| Case (n = 40-50, asc 0 and 2) | Result |
+|---|---|
+| Save's Odin party (quest 72), per hero | Best potion +2.2 points of Odin's HP (Berserker: Dex / Acc Boost +1 asc 2); no win. The save's heroes use 0 of 16 enchant slots |
+| Standard level-60 heroes vs Demon Mage (quest 50) | Potions flip borderline fights: Mage 14 % → 100 % and Cleric 4 % → 100 % with HP Boost asc 2, Bard 96 % → 100 % with Atk Boost +1 asc 2; winners gain only noise |
+| vs Arkyos (55), Region 5 (60): no class wins | Atk / Str Boost +1 asc 2 (Arkyos) and HP Boost asc 2 (Region 5) rank first for every class |
+
+- Gains of a few score points are noise: an extra stat shifts which random rolls land. With class-blind `best` gear,
+  Mage and Cleric gain from Atk Boost (they carry a physical weapon).
+
 ## Class balance on equal gear
 
 `web/src/tools/classes.ts` compares classes, not the player's heroes: every class is built the same way and fights
