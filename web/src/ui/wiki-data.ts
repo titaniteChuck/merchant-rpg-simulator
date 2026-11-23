@@ -73,12 +73,41 @@ export function classesWith(kind: "skill" | "passive", name: string): [number, A
   return classes().filter(([, c]) => seq<string>(kind === "skill" ? c.skillList : c.passiveList).includes(name));
 }
 
-/** Quest enemies (and their rare variant) that use a skill. */
+/**
+ * Quest ids that are not fighters, so the wiki never lists them as enemies (Enemies list, "enemies with this skill",
+ * enemy links, map roles). Static on purpose: the data has no single "is an enemy" flag. Built once by reading every
+ * entry of questData (inventory/gamedata.json, 104 quests) next to decompiled/data.QuestData.lua:
+ * - Gathering quests = questType 1 (nickname "Gathering", enemyAtk/Matk 0, rewards are herbs). The game treats them as
+ *   non-fights too: scene.maps.MapEnemyDescriptionOverlay draws the enemy stats only when `questType ~= 1`.
+ *   1 Forest, 11 Yarsol, 21 Aldur, 30 Vulkrum, 42 Grimhal, 77 Hoarfrost Gathering.
+ * - Placeholders: nickname "MissNo", title "Placeholder", dummy stats (9999 HP, 999 Atk, level 99 or 50). Unused slots the
+ *   game skips itself (data.OrderData: `nickname ~= "MissNo"`). 39–41 "Region 4 Other", 58–60 "Region 5",
+ *   75 "Weekly 15", 76 "Region 6".
+ * No map's room list or boss list holds any of them. Every other quest (questType 2–8: quests, bosses, Epic Bosses 61–74,
+ * Map Bosses 91–98, Treasure Bushes 99–104) is a real fight and stays an enemy. Recheck when the game data changes
+ * (test/wiki-data.test.ts fails if a new questType-1 or "MissNo" quest appears).
+ */
+export const NON_ENEMY_QUEST_IDS = new Set<number>([
+  1, 11, 21, 30, 42, 77, // gathering quests (questType 1)
+  39, 40, 41, 58, 59, 60, 75, 76, // "MissNo" placeholders
+]);
+
+/** A quest that is a real fight: named, not gathering, not a placeholder. */
+export const isEnemy = (id: number): boolean => !NON_ENEMY_QUEST_IDS.has(id) && !!quest(id)?.name;
+/** Quest ids of every enemy, in id order. */
+export const enemyIds = (): number[] => Object.keys(G.questData ?? {}).map(Number).filter(isEnemy).sort((a, b) => a - b);
+/** The quest has a rare variant with its own stats (nameB, enemyHpB…). */
+export const hasRare = (id: number): boolean => !!quest(id)?.nameB && quest(id)?.enemyHpB !== undefined;
+/** "Party Boss", "Map Boss", "Epic Boss"…, or "Quest" when the game gives no title. */
+export const enemyKind = (id: number): string => quest(id)?.title || "Quest";
+
+/** Enemies (and their rare variant) that use a skill; gathering quests and placeholders left out. */
 export function enemiesWith(skill: string): { id: number; name: string; rare: boolean }[] {
   const out: { id: number; name: string; rare: boolean }[] = [];
-  for (const [id, q] of Object.entries<Any>(G.questData ?? {})) {
-    if (seq<string>(q.attackList ?? {}).includes(skill)) out.push({ id: Number(id), name: q.name, rare: false });
-    if (q.nameB && seq<string>(q.attackListB ?? {}).includes(skill)) out.push({ id: Number(id), name: q.nameB, rare: true });
+  for (const id of enemyIds()) {
+    const q = quest(id);
+    if (seq<string>(q.attackList ?? {}).includes(skill)) out.push({ id, name: q.name, rare: false });
+    if (q.nameB && seq<string>(q.attackListB ?? {}).includes(skill)) out.push({ id, name: q.nameB, rare: true });
   }
   return out;
 }
@@ -94,17 +123,65 @@ export function enemyNamesWith(skill: string): { id: number; name: string; rare:
   });
 }
 
-let mapsOf: Map<number, number[]> | null = null;
-/** Maps whose rooms or boss slot hold this quest enemy, lowest map level first. */
-export function enemyMaps(questId: number): number[] {
-  if (!mapsOf) {
-    mapsOf = new Map();
+/**
+ * Treasure Bush quest per map level band (obj.Map: treasureId[ceil(levelReq / 10)]); it hides in a room at grade B or
+ * better (treasurePerRoomPerGradeChance: 1% / 8% / 10% per room at B / A / S).
+ */
+const TREASURE_IDS = [99, 100, 101, 102, 103, 104];
+export const treasureBushOf = (mapLevel: number): number | undefined => TREASURE_IDS[Math.ceil(mapLevel / 10) - 1];
+
+export interface MapRole { map: number; room: boolean; boss: boolean; treasure: boolean }
+let rolesOf: Map<number, MapRole[]> | null = null;
+/** Maps whose rooms, boss slot or treasure room hold this enemy, lowest map level first (non-enemies have none). */
+export function enemyMapRoles(questId: number): MapRole[] {
+  if (!rolesOf) {
+    rolesOf = new Map();
     const sorted = items("map").sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0]);
     for (const [mid, m] of sorted) {
-      for (const q of new Set([...mapEnemies(m), ...seq<number>(m.bossList ?? {})])) mapsOf.set(q, [...(mapsOf.get(q) ?? []), mid]);
+      const rooms = new Set(mapEnemies(m)), bosses = new Set(seq<number>(m.bossList ?? {}));
+      const bush = treasureBushOf(m.itemLevel ?? 0);
+      for (const q of new Set([...rooms, ...bosses, ...(bush ? [bush] : [])])) {
+        if (isEnemy(q)) rolesOf.set(q, [...(rolesOf.get(q) ?? []), { map: mid, room: rooms.has(q), boss: bosses.has(q), treasure: q === bush }]);
+      }
     }
   }
-  return mapsOf.get(questId) ?? [];
+  return rolesOf.get(questId) ?? [];
+}
+
+/** Map ids that hold this enemy (rooms or boss), lowest map level first. */
+export const enemyMaps = (questId: number): number[] => enemyMapRoles(questId).map((r) => r.map);
+
+/** One entry of a loot table: an item, its share of the roll (percent) and the amounts it can come in. */
+export interface LootEntry { type: string; id: number; pct: number; amounts: number[] }
+/**
+ * A parcel (loot table) at base odds: the "nothing" share and each item's share of one roll. Grade and party luck
+ * shrink the "nothing" share in game (campaign.generateParcelItem); amounts are the possible stack sizes.
+ */
+export function parcelRoll(name: string): { nilPct: number; entries: LootEntry[] } | null {
+  const p = name ? G.parcelData?.[name] : null;
+  if (!p) return null;
+  const list = seq<Any>(p.itemList ?? {});
+  const total = (p.nilOdds ?? 0) + list.reduce((s, e) => s + (e.odds ?? 0), 0);
+  if (!total) return null;
+  return {
+    nilPct: (100 * (p.nilOdds ?? 0)) / total,
+    entries: list.map((e) => {
+      const ids = seq<Any>(e.id ?? {});
+      const amt = seq<number>(e.amount ?? {});
+      // [id] = a material; [type, id] = another item type, always 1. Amounts with several entries are (amount, weight) pairs.
+      const amounts = ids.length > 1 ? [1] : amt.length > 1 ? amt.filter((_, i) => i % 2 === 0) : [amt[0] ?? 1];
+      return { type: ids.length > 1 ? String(ids[0]) : "material", id: Number(ids.length > 1 ? ids[1] : ids[0]), pct: (100 * (e.odds ?? 0)) / total, amounts };
+    }),
+  };
+}
+
+/** What one win against an enemy gives: fixed materials (min–max per win, before grade) and its loot-table rolls. */
+export function enemyDrops(id: number, rare: boolean): { fixed: [number, number, number][]; rolls: string[] } {
+  const q = quest(id) ?? {};
+  const s = rare ? "B" : "A";
+  const fixed = [1, 2].map((n) => seq<number>(q[`reward${s}${n}`] ?? {})).filter((r) => r[0]).map((r) => [r[0], r[1], r[2]] as [number, number, number]);
+  const rolls = [3, 4].map((n) => q[`reward${s}${n}`]).filter((p) => typeof p === "string" && G.parcelData?.[p]);
+  return { fixed, rolls };
 }
 
 /** [type, id, amount] ingredients of a craftable item. */
@@ -133,32 +210,29 @@ export function usedInRecipes(type: string, id: number): [string, number, number
   return usedIn.get(`${type}:${id}`) ?? [];
 }
 
-/** Where a material drops: quests (fixed rewards and loot tables) and map essence rewards. */
-export function dropSources(id: number): { kind: "quest" | "map"; id: number; label: string; detail: string }[] {
-  const out: { kind: "quest" | "map"; id: number; label: string; detail: string }[] = [];
+/** Where an item drops: quests (fixed rewards and loot tables) and, for materials, map essence rewards. */
+export function dropSources(id: number, type = "material"): { kind: "quest" | "map"; id: number; rare: boolean; label: string; detail: string }[] {
+  const out: { kind: "quest" | "map"; id: number; rare: boolean; label: string; detail: string }[] = [];
   for (const [qid, q] of Object.entries<Any>(G.questData ?? {})) {
-    for (const [key, rare] of [["rewardA1", false], ["rewardA2", false], ["rewardB1", true], ["rewardB2", true]] as const) {
-      const r = seq<number>(q[key] ?? {});
-      if (r[0] === id) out.push({ kind: "quest", id: Number(qid), label: rare ? q.nameB ?? q.name : q.name, detail: `${r[1]}–${r[2]} per win${rare ? " (rare)" : ""}` });
-    }
-    for (const [key, rare] of [["rewardA3", false], ["rewardA4", false], ["rewardB3", true], ["rewardB4", true]] as const) {
-      const p = q[key] ? G.parcelData?.[q[key]] : null;
-      if (!p) continue;
-      const list = seq<Any>(p.itemList ?? {});
-      const total = (p.nilOdds ?? 0) + list.reduce((s, e) => s + (e.odds ?? 0), 0);
-      for (const e of list) {
-        const ids = seq<Any>(e.id ?? {});
-        if (ids.length === 1 && ids[0] === id) {
-          out.push({ kind: "quest", id: Number(qid), label: rare ? q.nameB ?? q.name : q.name,
-            detail: `${fmt.format((100 * e.odds) / total)}% loot roll${rare ? " (rare)" : ""}` });
+    for (const rare of [false, true]) {
+      if (rare && !q.nameB) continue;
+      const label = rare ? q.nameB : q.name, note = rare ? " (rare)" : "";
+      const drops = enemyDrops(Number(qid), rare);
+      if (type === "material") {
+        for (const r of drops.fixed) if (r[0] === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${r[1]}–${r[2]} per win${note}` });
+      }
+      for (const p of drops.rolls) {
+        for (const e of parcelRoll(p)?.entries ?? []) {
+          if (e.type === type && e.id === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${fmt.format(e.pct)}% loot roll${note}` });
         }
       }
     }
   }
+  if (type !== "material") return out;
   for (const [mid, m] of items("map")) {
     const br = seq<number>(m.baseReward ?? {});
     const half = Math.floor(br.length / 2);
-    for (let i = 0; i < half; i++) if (br[i] === id) out.push({ kind: "map", id: mid, label: m.name, detail: `${br[i + half]} essence per run` });
+    for (let i = 0; i < half; i++) if (br[i] === id) out.push({ kind: "map", id: mid, rare: false, label: m.name, detail: `${br[i + half]} essence per run` });
   }
   return out;
 }
@@ -213,6 +287,7 @@ export const href = {
   passive: (n: string) => `wiki.html#/passive/${encodeURIComponent(n)}`,
   item: (t: string, id: number) => `wiki.html#/${t === "map" ? "map" : `item/${t}`}/${id}`,
   cls: (id: number) => `wiki.html#/class/${id}`,
+  enemy: (id: number) => `wiki.html#/enemy/${id}`,
 };
 
 function tipBox(title: string, kind: string, body: string, extra = ""): HTMLElement {
@@ -260,17 +335,17 @@ export function classLink(id: number): HTMLElement {
 }
 
 /**
- * An enemy's name. Enemies have no wiki page of their own, so the name links to the lowest-level map it appears in
- * (rooms or boss); the tooltip gives its level and every such map. Plain text when no map holds it (quest only).
+ * A link to an enemy's wiki page (normal and rare variant share the quest's page); the tooltip gives its kind, level
+ * and the maps it appears in. Gathering quests and placeholders (NON_ENEMY_QUEST_IDS) stay plain text.
  */
-export function enemyLink(e: { id: number; name: string; rare: boolean }): HTMLElement {
+export function enemyLink(e: { id: number; name?: string; rare?: boolean }): HTMLElement {
+  const q = quest(e.id);
+  const name = e.name ?? (e.rare ? q?.nameB : q?.name) ?? `quest #${e.id}`;
+  if (!isEnemy(e.id)) return el("span", { class: "wl" }, name);
   const maps = enemyMaps(e.id);
-  const level = quest(e.id)?.levelReq;
-  const kind = `Enemy${e.rare ? " · rare" : ""}${level !== undefined ? ` · level ${level}` : ""}`;
+  const kind = `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
   const where = maps.length ? `Appears in ${maps.map((m) => item("map", m)?.name).join(", ")}.` : "Quest only, in no map.";
-  const node = maps.length
-    ? el("a", { class: "wl enemy-link", href: href.item("map", maps[0]) }, e.name)
-    : el("span", { class: "wl enemy-link", tabindex: "0" }, e.name);
-  tip(node, () => tipBox(e.name, kind, where));
-  return node;
+  const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
+  tip(a, () => tipBox(name, kind, where));
+  return a;
 }

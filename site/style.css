@@ -539,6 +539,20 @@ tr.row-link:hover td.name a.wl { border-bottom-style: solid; }
 }
 @media (prefers-reduced-motion: reduce) { tr.row-link { transition: none; } }
 .lc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Enemy pages (U6c): one card per variant (rotation, drops), maps with their multiplier. */
+.wl.enemy-link.rare { color: color-mix(in srgb, #ec4899 75%, var(--fg)); }
+.enemy-variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+.enemy-variant { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; min-width: 0; }
+.enemy-variant.rare { border-top: 3px solid #ec4899; }
+.enemy-variant h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.enemy-variant h4 { margin: 14px 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.enemy-variant h4 .muted { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.plain-list.loot { padding-left: 0; }
+.plain-list.loot li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.loot-pct { min-width: 3.2em; text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
+.mod-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.mod-asc { padding: 0 5px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 /* end wiki review */
 
 /* ------------------------------------------------------------------ save viewer: hero table and hero page */

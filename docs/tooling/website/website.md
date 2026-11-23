@@ -108,8 +108,20 @@ flowchart LR
 - Links everywhere: skills, passives, items and maps on the save viewer and battle pages link to the wiki and show a
   summary in a tooltip on hover or keyboard focus (`web/src/ui/tooltip.ts`).
 - Skills list (U6a): the Enemies column shows the first 3 enemy names, then "+N more" with every name in a tooltip;
-  it still sorts by count. Enemies have no page, so a name links to the lowest-level map it appears in
-  (`enemyLink`, `enemyMaps` in `wiki-data.ts`); quest-only enemies stay plain text.
+  it still sorts by count. Each name links to the enemy page (U6c).
+- Enemies (U6c, `web/src/ui/wiki-enemies.ts`, routes `#/enemies`, `#/enemy/QUESTID`): one page per quest id, normal
+  and rare variant together. Facts (kind = quest `title` or "Quest", level, region, party size, rare variant and its
+  `abRand` % chance per map room), stats table (base quest stats, XP, gold), one card per variant with the 5-turn
+  rotation (`attackList[(turn-1) % 5 + 1]`, skill links and effects) and drops (`rewardX1/2` fixed per win, `rewardX3/4`
+  loot tables via `parcelRoll`: share of one roll at base odds, "nothing" share, items incl. equipment), and the maps
+  (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
+  enemy multiplier and the ascension-1 one (×2, silver outline). The nav link is added by `wiki.ts` after Maps.
+- Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
+  "Where it drops" (now also for equipment), home search. Gathering quests and placeholders stay plain text.
+- Not enemies: `NON_ENEMY_QUEST_IDS` in `wiki-data.ts`, a static, commented list: gathering quests (questType 1: 1, 11,
+  21, 30, 42, 77; the game hides enemy stats for them) and "MissNo" placeholders (39–41, 58–60, 75, 76; the game skips
+  them too). Used by `enemyIds`, `enemiesWith`/`enemyNamesWith`, `enemyMapRoles`/`enemyMaps`. `test/wiki-data.test.ts`
+  checks it still equals "questType 1 or nickname MissNo" in the data.
 - Class page (U6a): a "Stats" row with the radar (`radar.ts`, level 60, ascension 0/1/2 switch, rim = best class at
   the same level and ascension) beside the growth curves (`web/src/ui/line-chart.ts`, inline SVG, no library): one
   small chart per stat, stat = base + growth[prestige] × level for levels 1-60, one line per ascension (dotted 0,

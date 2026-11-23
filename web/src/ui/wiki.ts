@@ -4,6 +4,7 @@
  *   #/skills  #/skill/NAME      #/passives  #/passive/NAME
  *   #/items/TYPE  #/item/TYPE/ID   (equipment, consumable, material)
  *   #/maps    #/map/ID          #/classes   #/class/ID
+ *   #/enemies #/enemy/ID        (ID = quest id; the rare variant shares the page)
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -13,10 +14,11 @@ import { $, ascLegend, ascText, type Column, el, fmt, gradeBadge, pill, type Row
 import { group, lineChart } from "./line-chart.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { tip } from "./tooltip.ts";
+import { enemyBody, enemyListColumns, enemyListRows, enemyTable } from "./wiki-enemies.ts";
 import {
-  classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyLink, enemyNamesWith, GRADES, href, item, itemLink,
-  items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest, recipe, SLOT_NAMES,
-  skillAp, skillDesc, skillLink, skillNames, statText, usedInRecipes,
+  classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
+  isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
+  recipe, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText, usedInRecipes,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -37,6 +39,7 @@ const CATEGORIES: [string, string, string, () => number][] = [
   ["#/items/consumable", "🧪", "Consumables", () => items("consumable").length],
   ["#/items/material", "🪨", "Materials", () => items("material").length],
   ["#/maps", "🗺️", "Maps", () => items("map").length],
+  ["#/enemies", "👹", "Enemies", () => enemyIds().length],
   ["#/classes", "🛡️", "Classes", () => classes().length],
 ];
 
@@ -84,8 +87,12 @@ function home(): HTMLElement {
     ...(["equipment", "consumable", "material", "map"] as const).flatMap((t) =>
       items(t).map(([id, it]) => ({ label: it.name, kind: itemTypeLabel[t], node: () => itemLink(t, id) }))),
     ...classes().map(([id, c]) => ({ label: c.name, kind: "Class", node: () => classLink(id) })),
+    ...enemyIds().flatMap((id) => [false, ...(hasRare(id) ? [true] : [])].map((rare) => {
+      const name = rare ? quest(id).nameB : quest(id).name;
+      return { label: name, kind: rare ? "Enemy (rare)" : "Enemy", node: () => enemyLink({ id, name, rare }) };
+    })),
   ];
-  const search = filterBox("Search skills, items, maps…", (q) => {
+  const search = filterBox("Search skills, items, maps, enemies…", (q) => {
     if (!q) return results.replaceChildren();
     const hits = all.filter((x) => x.label.toLowerCase().includes(q)).slice(0, 60);
     results.replaceChildren(hits.length
@@ -94,7 +101,7 @@ function home(): HTMLElement {
   });
   search.classList.add("big-search");
   return el("div", {}, el("h1", {}, "Wiki"),
-    el("p", { class: "lead" }, "Bare stats of everything in the game, read from the game's data: skills, passives, items, maps and classes."),
+    el("p", { class: "lead" }, "Bare stats of everything in the game, read from the game's data: skills, passives, items, maps, enemies and classes."),
     search, results,
     el("ul", { class: "cards wiki-cats" }, ...CATEGORIES.map(([h, icon, label, n]) =>
       el("li", {}, el("span", { class: "icon", "aria-hidden": "true" }, icon), el("h3", {}, el("a", { href: h }, label)),
@@ -252,10 +259,10 @@ function itemPage(type: string, id: number): HTMLElement {
   ];
   if (type !== "material" && safeSell(type, id, 1) !== null) kids.push(ascLegend());
   if (type === "equipment") kids.push(section("Stats by grade", gradeTable(id)));
-  if (type === "material") {
-    const src = dropSources(id);
+  const src = type === "material" || type === "equipment" ? dropSources(id, type) : [];
+  if (type === "material" || src.length) {
     kids.push(section(`Where it drops (${src.length})`, src.length
-      ? el("ul", { class: "plain-list" }, ...src.map((s) => el("li", {}, s.kind === "map" ? itemLink("map", s.id) : el("span", {}, `👹 ${s.label}`),
+      ? el("ul", { class: "plain-list" }, ...src.map((s) => el("li", {}, s.kind === "map" ? itemLink("map", s.id) : enemyLink({ id: s.id, name: s.label, rare: s.rare }),
         el("span", { class: "muted small" }, ` · ${s.detail}`))))
       : none("Not dropped by quests or maps (crafted, bought or event only).")));
   }
@@ -278,34 +285,9 @@ function mapsPage(): HTMLElement {
   return listPage("Maps", "Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the map modifier.", rows, [
     { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) }, { key: "level", label: "Level", num: true },
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Minutes", num: true }, { key: "mod", label: "Enemy ×", num: true },
-    { key: "boss", label: "Boss" }, { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
+    { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
+    { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
   ], (r) => `${r.name} ${r.boss}`);
-}
-
-const ENEMY_STATS: [string, string][] = [["enemyHp", "HP"], ["enemyAtk", "Atk"], ["enemyMatk", "Matk"], ["enemyDef", "Def"], ["enemyMdef", "Mdef"], ["enemyEva", "Eva"]];
-
-function enemyTable(ids: number[], mod: number): HTMLElement {
-  const rows: Row[] = [];
-  for (const id of [...new Set(ids)]) {
-    const q = quest(id);
-    if (!q?.name) continue;
-    for (const rare of [false, true]) {
-      if (rare && !(q.nameB && q.enemyHpB !== undefined)) continue;
-      const sfx = rare ? "B" : "";
-      const r: Row = { id, rare, name: rare ? q.nameB : q.name, level: q.levelReq ?? null };
-      for (const [k, label] of ENEMY_STATS) r[label] = q[k + sfx] !== undefined ? Math.round(q[k + sfx] * mod) : null;
-      rows.push(r);
-    }
-  }
-  return table(rows, [
-    { key: "name", label: "Enemy", render: (r) => el("span", {}, String(r.name), ...(r.rare ? [" ", pill("rare", "t-pink")] : [])) },
-    { key: "level", label: "Level", num: true }, ...ENEMY_STATS.map(([, l]) => ({ key: l, label: l, num: true })),
-    { key: "skills", label: "Skills", render: (r) => {
-      const q = quest(Number(r.id));
-      const list = seq<string>((r.rare ? q.attackListB : q.attackList) ?? {});
-      return el("span", { class: "skill-line" }, ...joinNodes([...new Set(list)].map((s) => skillLink(s))));
-    } },
-  ]);
 }
 
 function mapPage(id: number): HTMLElement {
@@ -322,6 +304,21 @@ function mapPage(id: number): HTMLElement {
     section("Room enemies", enemyTable(mapEnemies(m), mod)),
     el("p", { class: "muted small" }, `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`),
     section("Recipe", recipeList("map", id)));
+}
+
+// ---------------------------------------------------------------- enemies
+function enemiesPage(): HTMLElement {
+  return listPage("Enemies", "Every quest and map enemy with its base stats (before a map's multiplier). Gathering quests and unused "
+    + "placeholder quests are not enemies and are left out.", enemyListRows(), enemyListColumns,
+  (r) => `${r.name} ${r.rareName} ${r.kind} ${r.skills}`);
+}
+
+function enemyPage(id: number): HTMLElement {
+  const q = quest(id);
+  if (!isEnemy(id)) return notFound(`enemy #${id}`);
+  return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], q.name), el("h1", {}, "👹 ", q.name),
+    el("p", { class: "lead" }, [q.title || "Quest enemy", `level ${q.levelReq}`, `region ${q.region}`].join(" · ")),
+    ...enemyBody(id, facts, section));
 }
 
 // ---------------------------------------------------------------- classes
@@ -458,6 +455,8 @@ function route(): HTMLElement {
     case "item": return itemPage(b, Number(c));
     case "maps": return mapsPage();
     case "map": return mapPage(Number(b));
+    case "enemies": return enemiesPage();
+    case "enemy": return enemyPage(Number(b));
     case "classes": return classesPage();
     case "class": return classPage(Number(b));
     default: return notFound(`page “${parts.join("/")}”`);
@@ -473,7 +472,8 @@ async function render(): Promise<void> {
     document.title = `${h1?.textContent?.replace(/^[^\w]+/, "") || "Wiki"} · Merchant RPG Simulator`;
     document.querySelectorAll(".wiki-nav a").forEach((x) => {
       const cat = (x as HTMLAnchorElement).getAttribute("href")!;
-      const on = location.hash === cat || location.hash.startsWith(cat.replace(/s$/, "")) && cat !== "#/";
+      // a detail route is the list's singular: #/enemies → #/enemy/ID, #/maps → #/map/ID
+      const on = location.hash === cat || location.hash.startsWith(cat.replace(/ies$/, "y").replace(/s$/, "")) && cat !== "#/";
       if (on) x.setAttribute("aria-current", "page");
       else x.removeAttribute("aria-current");
     });
@@ -483,6 +483,17 @@ async function render(): Promise<void> {
   }
 }
 
+/** The Enemies entry of the section nav, after Maps (wiki.html lists the static sections). */
+function addEnemiesNav(): void {
+  const nav = document.querySelector(".wiki-nav");
+  if (!nav || nav.querySelector('a[href="#/enemies"]')) return;
+  const link = el("a", { href: "#/enemies" }, "Enemies");
+  const maps = nav.querySelector('a[href="#/maps"]');
+  if (maps) maps.after(link);
+  else nav.append(link);
+}
+
+addEnemiesNav();
 window.addEventListener("hashchange", render);
 render();
 export { href };
