@@ -8,3 +8,4 @@
 - **Update**: E1 done (fbe6c34); E5 done (no bug); E6 added; E2 started; U2 unblocked.
 - **Update**: E4 merged (0ae0fe8): CI-safe regression snapshots incl. Feast.
 - **Update**: E6 done (ebb995d); U0 acceptance list (user's 8-point site review) recorded.
+- **Update**: Only the Roadmap session commits and pushes; U5 (ascension outlines, silver/gold) added.

@@ -32,9 +32,11 @@ The site is the only product ([website](../website/website.md)). Three Claude se
 Session titles may change; the ref in brackets and the lane column are what count.
 
 Rules:
-- Each session commits only the files it owns. A file outside the lane needs a hand-off message first.
+- **Only the Roadmap session commits and pushes** (user rule, 2026-11-23). A lane session that finishes a task sends
+  Roadmap its file list, a commit summary and its tsc / npm test / site build results; Roadmap commits, pushes and checks CI.
+- Each session edits only the files it owns. A file outside the lane needs a hand-off message first.
 - `web/src/tools/export-gamedata.ts` is in the UI lane until the wiki batch is committed (wikidata export).
-- Push with `agent_utils.sh push`, then check the GitHub Actions run (CI + Pages).
+- Roadmap pushes with `agent_utils.sh push`, then checks the GitHub Actions runs (CI + Pages).
 - Every task ships with tests (`npm test`) and the OKF docs update of the folder it touches.
 - New engine APIs are pure functions returning typed data, with a progress callback and a cancel check, so the
   web worker can run them. No `console` output and no `node:*` imports outside `export-gamedata.ts` and tests.
@@ -54,7 +56,8 @@ Rules:
 
 | Id | Task | Needs | Status |
 |---|---|---|---|
-| U0 | **User's site review (8 items):** 1 remove "How it works"; 2 GitHub link kept, moved to a header; 3 save picker opens "Pictures"; 4 party stats as a radar chart with values shown; 5 items/skills/passives/maps clickable to a Wiki page + hover tooltip summary; 6 rotation as rows; 7 grades as "14 × C" with a styled letter; 8 save kept across pages (no re-upload). | - | In progress |
+| U0 | **User's site review (8 items):** 1 remove "How it works"; 2 GitHub link kept, moved to a header; 3 save picker opens "Pictures"; 4 party stats as a radar chart with values shown; 5 items/skills/passives/maps clickable to a Wiki page + hover tooltip summary; 6 rotation as rows; 7 grades as "14 × C" with a styled letter; 8 save kept across pages (no re-upload). Browser-checked: all ✓ except 3 partial (picker reopens the last save folder; %APPDATA% can't be preset for the first pick). | - | Waiting for the user's commit approval |
+| U5 | **Ascension outlines** (user request): asc 1 = silver outline, asc 2 = gold, replacing the "asc N" text; one helper applied wherever an item/map with `prestigeLevel` is rendered (targets derived, not listed by hand); hero/crafter prestige checked separately. | U0 | Next for UI session |
 | U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Queued |
 | U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. Show the "lowest" enemy HP (`enemy_dmg_peak`, E6) next to HP removed. | E1 ✓ | Next for UI session after U0 |
 | U3 | **Farming planner page**: where the player's party should spend hero time (essence/h, gold/h per quest and map). | E2 | Queued |
