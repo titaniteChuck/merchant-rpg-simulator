@@ -48,15 +48,15 @@ Rules:
 | E3 | **Equal-gear class balance.** `standardHero(classId, level, prestige, gearPolicy)` (best catalog gear with itemLevel ≤ level, default rotation) and `classMatrix(quests, n)`, to separate class power from the player's gear. | Agent, branch `e3-class-balance` |
 | E4 | **CI-safe regression tests.** Fixed-seed snapshot tests using catalog/standard heroes only (no save data), for fights, map runs and `profitReport`, so CI catches drift without the local fixtures. | Done (0ae0fe8; `web/test/snapshots/`, `npm run test:update-snapshots`) |
 | E5 | **Engine anomalies.** Archon "0%": not a bug (self-heal + reflect, scored on end-of-fight HP). Feast: ported correctly; TS regression case added to E4. | Done |
-| E6 | **Healing enemies read 0%.** `evaluate` scores the enemy by end-of-fight HP (`combat.ts`); also report the lowest enemy HP reached and total damage dealt. Small, after E1. | Queued |
+| E6 | **Healing enemies read 0%.** `evaluate` scores the enemy by end-of-fight HP (`combat.ts`); also report the lowest enemy HP reached and total damage dealt. Small, after E1. | Done (ebb995d: `enemy_dmg_peak`, `enemy_dmg_total`; also fixed `searchGear` restore of empty slots) |
 
 ## UI lane
 
 | Id | Task | Needs | Status |
 |---|---|---|---|
-| U0 | Wiki, tooltips, save kept across pages (IndexedDB), top bar, radar chart, rotation rows, grade stacks | - | In progress |
+| U0 | **User's site review (8 items):** 1 remove "How it works"; 2 GitHub link kept, moved to a header; 3 save picker opens "Pictures"; 4 party stats as a radar chart with values shown; 5 items/skills/passives/maps clickable to a Wiki page + hover tooltip summary; 6 rotation as rows; 7 grades as "14 × C" with a styled letter; 8 save kept across pages (no re-upload). | - | In progress |
 | U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Queued |
-| U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. | E1 ✓ | Next for UI session after U0 |
+| U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. Show the "lowest" enemy HP (`enemy_dmg_peak`, E6) next to HP removed. | E1 ✓ | Next for UI session after U0 |
 | U3 | **Farming planner page**: where the player's party should spend hero time (essence/h, gold/h per quest and map). | E2 | Queued |
 | U4 | **Class balance page**: class × quest win matrix on equal gear. | E3 | Queued |
 
