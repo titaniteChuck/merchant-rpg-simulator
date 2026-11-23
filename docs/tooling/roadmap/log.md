@@ -22,3 +22,5 @@
 - **Update**: E11, U6b, U6c done; U8 started.
 - **Update**: E10 committing; E12 levelling/prestige economics started; U9 potions tab queued.
 - **Update**: E10 done; U10 save viewer overview tab (agent).
+- **Update**: E12 committing; U12 levelling page queued.
+- **Update**: Schedule-aware optimisation approved by the user (must): E13, E14a, E14b, E15, U11.

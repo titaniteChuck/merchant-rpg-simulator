@@ -16,3 +16,4 @@
 - **Update**: Joint optimiser (E9) results on Odin, Desolation Wolf, Gnoll Vendetta asc 1.
 - **Update**: Forced essence sources and free by-products (E11).
 - **Update**: Potions and enchants (E10).
+- **Update**: Levelling and prestige (E12).

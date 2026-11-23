@@ -28,6 +28,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
 - [Class balance](#class-balance)
   - [Equal gear](#equal-gear)
   - [Potions and enchants](#potions-and-enchants)
+  - [Levelling and prestige](#levelling-and-prestige)
 - [Map runs](#map-runs)
   - [Scrolls](#scrolls)
 - [Open questions](#open-questions)
@@ -233,6 +234,20 @@ Potions (flat stats for 3 quests; a map run counts as one) and permanent enchant
   with HP Boost asc 2; Bard 96% → 100% with Atk Boost +1 asc 2. Classes that already win gain only noise.
 - The best potion depends on the opponent: Str/Atk Boost +1 asc 2 first for every class vs Arkyos, HP Boost asc 2
   first vs Region 5.
+
+### Levelling and prestige
+
+E12 (`levellingPlan`, `prestigePayoff`, 2026-11-23). Hero tier caps are level 50 / 50 / 60.
+
+- Your level-60 tier-3 party earns 0 XP everywhere: it is at the cap.
+- A tier-3 Berserker solo from level 1 to 60 takes **~34 h / 334 quests** on the best quest per band: Forest Gathering ×5
+  (levels 1–16, ~6k XP/h), Goblin Enchanter, Maexna, Goblin Warlord (26–41, ~17k XP/h), Murlok Monarch ×5
+  (41–60, ~41k XP/h). Quest size ×5 multiplies XP, so the size cap from prestige speeds levelling.
+- Prestige tier 2 (level 50) → tier 3: HP 823 → 1,183, atk 919 → 1,159, def 404 → 444, enchant slots 12 → 16,
+  quest size cap ×3 → ×5; costs 50,000 g and ~34 h of relevelling (enchants, potion and skills are reset).
+  Against Nightmare Bison the lowest HP reached improves from 4% to 26% removed, still no win.
+- Gathering quests (e.g. Forest Gathering) are excluded from the wiki's enemies but do give XP and are the best
+  early levelling source.
 
 ## Map runs
 
