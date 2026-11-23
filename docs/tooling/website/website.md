@@ -103,18 +103,28 @@ flowchart LR
 
 `site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
 
+- Page order (U23): (1) mode, its options and its Run button; (2) party and opponent, then the 5-turn plan; then
+  Results. No page title or lead paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
 - Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Best potion / enchant (U9), Optimise everything (`MODES` in
   `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
   is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
-  `battle-mode`). Under 560px the modes are two compact columns (hint in the title).
-- Step 2 (U15), the same arrangement in every mode: the opponent card on the left, the six hero slots on the right
-  (back row 1-3 | front row 1-3; stacked, opponent first, below 960px). A hero card: avatar, class and level, a
-  compact stat strip (HP, Atk, Matk, Def, Mdef, Acc, Crit), the rotation as 5 small skill chips with their AP (wiki
-  link and summary on hover), the passive as a chip, and "Edit rotation and passive" in a fold-out (5 turns within the
-  AP budget, `api.skillInfo`; over budget, the game falls back to the default rotation: shown as a warning). In Best
-  party and Optimise everything the slots are the search's: empty ones read "to be found", and a filled slot has a
-  🔒 toggle (a hero picked by hand is locked; locked heroes stay in the party and follow their hero when the search
-  moves it). The opponent:
+  `battle-mode`). Under 560px the modes are two compact columns (hint in the title). Under the mode cards, one box
+  (`.run-box`, U23; was a separate step 3) holds the chosen mode's options and its Run button: Runs and ▶ Simulate, or
+  the search's panel and 🔎 Search. The output goes to the Results section at the bottom (`#results` for Simulate,
+  `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
+  opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
+- Step 2 (U15, reworked in U23), the same arrangement in every mode: the six hero slots on the left (back row 1-3 |
+  front row 1-3), the opponent card on the right (stacked below 960px, party first), then the 5-turn plan across the
+  full width. Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
+  (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
+  Mdef, Acc, Crit), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
+  whole row opens the wiki page via `clickableRow`, AP via `apBadge`): passive row (name, bonus), rotation rows (turn,
+  skill, AP), and "x / y AP" beside the Rotation label (over budget: red, ⚠, the game then plays the default rotation).
+  Editing in place, no fold-out: each row ends with a ⇄ control (a transparent `<select>` over the icon), which swaps
+  the skill (Basic and the unlocked skills, with AP) or the passive without changing the slot's size; focus returns to
+  the same control. Gear is not shown in the slots. In Best party and Optimise everything the slots are the search's:
+  empty ones read "to be found", and a filled slot has a 🔒 toggle (a hero picked by hand is locked; locked heroes stay
+  in the party and follow their hero when the search moves it). The opponent:
   - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
     strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
     placeholders are not offered (`isEnemy`).
@@ -131,12 +141,14 @@ flowchart LR
   where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
 - Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (Node-only scripts such as the data exporter)
   are external.
-- Step 3 runs the mode: Simulate, or one search of the search API of `web/src/tools/combat.ts`
+- The Run button of step 1 runs the mode: Simulate, or one search of the search API of `web/src/tools/combat.ts`
   (`web/src/ui/battle-search.ts`, run in the worker by `runSearch`):
   - Best rotation (quest): `searchSkills` for a party hero; ranked rotation + passive cards, "Use this rotation" applies
-    it in the party editor.
+    it in the party editor. With the warm start loaded, a "Suggested start: passive · rotation" line (U23) shows the
+    offline table's rotation the search tried first (`result.warm`), "(adapted)" when skills had to become Basic.
   - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
-    ascension (`catalogGearCandidates`); now vs best, and the item per slot.
+    ascension (`catalogGearCandidates`); now vs best, and the six slots in two columns (`gearGrid`, U23: changed slots
+    marked with a "change" pill, the others "keep"), the source of each change listed under it.
   - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
     ticked in "Leave heroes out", the locked slots' heroes kept (`lock`); the result fills the slots at once, with
     "Put back the previous party" (party and rotations as before the search).
@@ -153,10 +165,15 @@ flowchart LR
     rotation phase shifts may still move it), with it on it is the party to beat. Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
     the party (back, front), each member's rotation and passive, gear to equip (the page can't change the save),
     scrolls, and the step trace (hero ids shown as names; E14a steps "Order within rows", "Swap rows", "Phase of X";
-    score gain, time). The result fills the slots, the rotations and the map's scrolls at once, with "Put back the
+    score gain, time). Gear to equip (U23): one card per hero with its six slots in two columns (`gearGrid`; unchanged
+    slots read "keep") and where to take each item from. Passives are listed before rotations in every result card. The result fills the slots, the rotations and the map's scrolls at once, with "Put back the
     previous party". When the budget runs out, the best setup so far is shown. The battle worker loads
     `data/timelines.json` at start, so `searchSkills` / `optimiseFight` pre-filter rotations by their schedule score
-    (E14b, 10-19x faster); without the file the searches run in full.
+    (E14b, 10-19x faster); without the file the searches run in full. It also loads `data/warmstart.json`
+    (`inventory/warmstart.json`, ~560 KB, copied by `assemble-site.sh`; E15, wired in U23) with `loadWarmStart`, only a
+    table of `WARMSTART_VERSION`: `searchSkills` and `optimiseFight` then try its rotation for the class, tier and enemy
+    first. A failed fetch or another version is ignored (the searches start from scratch). The empty slots show no
+    suggestion: they have no class to look up.
   - Progress per stage (throttled to ~10 updates per second), fight counts editable (smaller = faster). The searches
     are synchronous in the worker, so Cancel terminates it. Results show the enemy's lowest HP point (`enemy_dmg_peak`)
     when the enemy heals back; the Simulate results do too.
@@ -171,7 +188,7 @@ flowchart LR
     cast turn, wrapping from T5 to T1 (Soul Barrier cast on T4 covers T5 and T1). Tooltips: duration, stats, cleanse /
     dispel, and the rules (durations count in the owner's own actions; the enemy always follows its rotation and hits
     the front row, split evenly, unless the skill says otherwise).
-  - 5-turn plan (under the party, every mode, quest opponent): one row per actor in the real action order
+  - 5-turn plan (under the party and opponent block since U23, full width, every mode, quest opponent): one row per actor in the real action order
     (back 1, front 1, back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), each hero's
     slot k under turn k, with `scoreSchedule`'s notes per cell (✓ helps, ⚠ hurts: "into Soul Barrier", "cleanses
     Alternate Reality", "heals after enemy damage") and the score per turn; stats from `scheduleContext`.
@@ -378,6 +395,10 @@ link ("Balance", U18) and a home card; not part of the wiki (it depends on hero 
   The OS setting is not used; the sweep (`check-site.ts`) sets the stored theme for its light and dark runs.
 - Page width: content up to 1280 px (was 1040), 16 px side padding; phones unchanged. Page titles (h1) are solid
   text: the former gradient text (background-clip: text) vanished on repaint in desktop Chrome / Edge.
+- Page headers (U23): only the home page (its cards describe each tool) and the wiki show a title and lead. Save,
+  Battle, Profit, Farming, Levelling and Class balance start right under the top bar; each keeps a visually-hidden h1
+  (`.visually-hidden` in the "battle v3" block of `style.css`) for screen readers, the active top-bar link
+  (`aria-current="page"`) and its document `<title>`.
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Balance, Wiki (short labels so it stays on one
   line at 1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
   coin on the site gradient, no game art), linked from every page.

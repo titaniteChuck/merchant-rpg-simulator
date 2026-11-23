@@ -1018,3 +1018,60 @@ ul.wiki-cats > li p.wiki-cat-count { margin: 0; flex: 0; }
 .good-table tbody tr:last-child td { border-bottom: 0; }
 .good-table .good-name { margin-right: 0; }
 /* end wiki v4 */
+/* battle v3 */
+/* U23. Page headers: every page but the home page and the wiki keeps its h1 for screen readers only. */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* Step 1: the mode cards, then the chosen mode's options and Run button in one box. */
+.run-box { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+  border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+.run-title { margin: 0; font-size: 1rem; }
+.run-box .toolbar { margin: 0; }
+.run-box .search-panel, .run-box .simulate { background: none; border: 0; padding: 0; box-shadow: none; }
+.run-box .search-panel > p:first-child { margin-top: 0; }
+.run-box .search-form { margin-bottom: 0; }
+/* Step 2: the party on the left, the opponent on the right; stacked below 960px, party first. */
+.setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+@media (max-width: 960px) { .setup-grid.b3-grid { grid-template-columns: minmax(0, 1fr); } }
+.b3-plan:not(:empty) { margin-top: 20px; }
+.b3-results #results-empty { margin: 0; }
+.b3-results:has(#results:not([hidden]) > *, #search-results > .search-out > *) #results-empty { display: none; }
+.b3-results .search-out { margin-top: 0; }
+/* Hero slots: the same skeleton filled or empty (stats, passive, rotation), so every slot has the same size. */
+.b3-slot { gap: 7px; padding: 12px; }
+.b3-slot .slot-head { min-height: 28px; }
+.b3-slot .slot-name { min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+.b3-slot .avatar.off { opacity: 0.45; background: var(--card-2); color: var(--muted); box-shadow: none; }
+.b3-slot.empty .stat-strip, .b3-slot.empty .ab-block { opacity: 0.55; }
+.b3-slot .ab-block { min-width: 0; }
+.b3-slot .section-label { margin: 0 0 3px; }
+.b3-slot .rot-head { margin: 0 0 3px; align-items: center; flex-wrap: nowrap; height: 18px; }
+table.slot-rows { table-layout: fixed; width: 100%; font-size: 0.82rem; }
+table.slot-rows td { padding: 2px 4px; height: 30px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.slot-rows tr:last-child td { border-bottom: 0; }
+table.slot-rows td.n { width: 1.6em; padding-right: 2px; }
+table.slot-rows td.ap-col { width: 2.6em; text-align: center; overflow: visible; }
+table.slot-rows td.swap-col { width: 32px; padding: 1px 0 1px 2px; text-align: right; overflow: visible; }
+table.slot-rows td.name { overflow: hidden; text-overflow: ellipsis; }
+table.slot-rows.passive-rows td.name { width: 46%; }
+table.slot-rows td.eff { min-width: 0; font-size: 0.78rem; }
+.slot-rows .ap-badge { min-width: 22px; height: 22px; padding: 0 5px; font-size: 0.75rem; }
+.slot-rows .ap-badge.off { background: var(--card-2); color: var(--muted); }
+/* "⇄": a transparent <select> over the icon, so a click opens the list and the row keeps its size. */
+.swap { position: relative; display: inline-grid; place-items: center; width: 28px; height: 24px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--card-2); color: var(--accent); font-weight: 700; font-size: 0.85rem; line-height: 1; }
+.swap:hover { border-color: var(--accent); }
+.swap:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.swap.off { color: var(--muted); }
+.b3-slot .swap select.swap-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; padding: 0; margin: 0; border: 0; cursor: pointer; }
+.ap-mini { font-size: 0.78rem; line-height: 18px; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.ap-mini strong { color: var(--fg); font-size: 0.9rem; line-height: 18px; }
+.b3-slot .rot-head .section-label { line-height: 18px; }
+.ap-mini.over, .ap-mini.over strong { color: var(--bad); font-weight: 700; }
+/* Gear in search results: the two-column gearGrid; changed slots outlined. */
+.search-out .gear-grid { margin: 4px 0 6px; }
+.search-card .gear-grid { font-size: 0.8rem; }
+/* "change" on the sand inset: white on dark green (the pill's own green text is too light there). */
+.gear-item .meta .pill.t-green { background: #2f6b34; color: #fff; border-color: #2f6b34; }
+.gear-from { margin: 0 0 10px; padding-left: 18px; }
+/* end battle v3 */

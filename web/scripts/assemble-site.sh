@@ -9,7 +9,7 @@ OUT="$(realpath -m "${1:-$ROOT/_site}")"
 rm -rf "$OUT"
 mkdir -p "$OUT/data" "$OUT/js"
 cp -r "$ROOT/site/." "$OUT/"
-cp "$ROOT/inventory/gamedata.json" "$ROOT/inventory/wikidata.json" "$ROOT/inventory/timelines.json" "$OUT/data/"
+cp "$ROOT/inventory/gamedata.json" "$ROOT/inventory/wikidata.json" "$ROOT/inventory/timelines.json" "$ROOT/inventory/warmstart.json" "$OUT/data/"
 cd "$ROOT/web"
 # node:* = CLI-only code paths (profit.ts main) that never run in a page.
 npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts src/ui/wiki.ts src/ui/profit.ts src/ui/profit-worker.ts src/ui/farming.ts src/ui/farming-worker.ts src/ui/levelling.ts src/ui/levelling-worker.ts src/ui/class-balance.ts src/ui/class-balance-worker.ts \

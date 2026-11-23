@@ -10,6 +10,7 @@ import {
 } from "../tools/combat.ts";
 import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
 import { loadTimelines } from "../tools/schedule.ts";
+import { loadWarmStart, WARMSTART_VERSION } from "../tools/warmstart.ts";
 import { type ConsumableKind, type ConsumableRanking, rankConsumables } from "../tools/consumables.ts";
 import { gameFromData } from "../tools/gamedata.ts";
 import { Solver } from "../tools/profit.ts";
@@ -83,6 +84,11 @@ function loadData(): Promise<void> {
     // 10-19x faster); without them the searches still run, in full.
     fetch(new URL("../data/timelines.json", self.location.href)).then((r) => (r.ok ? r.json() : null))
       .then((json) => json && loadTimelines(json)).catch(() => {}),
+    // Offline warm start (E15): searchSkills / optimiseFight try its rotation for the class, tier and enemy first;
+    // without the file they start from scratch.
+    fetch(new URL("../data/warmstart.json", self.location.href)).then((r) => (r.ok ? r.json() : null))
+      // Only a table of this version (a stale or foreign file is ignored, like a missing one).
+      .then((json) => json?.version === WARMSTART_VERSION && json.entries && loadWarmStart(json)).catch(() => {}),
   ]).then(() => {});
   return loaded;
 }

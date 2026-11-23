@@ -13,7 +13,7 @@ import { SCROLL_IDS } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
-import { bar, el, fmt, fmt1, pct, pill, rateTone, select, table } from "./dom.ts";
+import { bar, bySlot, el, fmt, fmt1, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, type GearSlot, pct, pill, rateTone, select, table } from "./dom.ts";
 import { locationOf, notesFor, type PlanMember, scheduleFor } from "./timeline.ts";
 import { itemLink, passiveLink, skillLink, statText } from "./wiki-data.ts";
 
@@ -70,21 +70,44 @@ function mapLine(ev: MapEval): HTMLElement {
     ` · progress ${pct(ev.cleared)} · grade ${fmt1.format(ev.grade)} · ${fmt1.format(ess)} essence · ${fmt.format(ev.loot_value)} g loot per run`);
 }
 const isMapEval = (ev: FightEval | MapEval): ev is MapEval => "cleared" in ev;
+
+/** An equipment item by name (search results name items): its wiki link in its rarity colour, or plain text. */
+function equipLink(name: string): HTMLElement {
+  const id = Object.entries<Any>(G.itemData?.equipment ?? {}).find(([, it]) => it?.name === name)?.[0];
+  return id === undefined ? el("span", { class: "item" }, name) : itemLink("equipment", Number(id));
+}
+/** One gear cell of a search result (gearGrid): slot icon, item, and "change · from …" or "keep". */
+function gearCell(item: string | undefined, from: string | null, slot: GearSlot): HTMLElement {
+  const it = item ? Object.values<Any>(G.itemData?.equipment ?? {}).find((x) => x?.name === item) : undefined;
+  return el("div", { class: `gear-item rar-${typeof it?.rarity === "number" ? it.rarity : 1}${from ? " changed" : ""}`, title: GEAR_SLOT_NAMES[slot] },
+    el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[slot] }, GEAR_SLOT_ICONS[slot]),
+    item ? equipLink(item) : el("span", { class: "muted" }, "nothing"),
+    el("span", { class: "meta" }, from ? pill("change", "t-green") : el("span", { class: "muted small" }, "keep")));
+}
 const evLine = (ev: FightEval | MapEval) => (isMapEval(ev) ? mapLine(ev) : fightLine(ev));
 
-/** The search panels; show(key) puts one in `mount`, refresh() rebuilds it after the party or the opponent changed. */
-export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: SearchKey | null): void; refresh(): void } {
+/**
+ * The search panels; show(key) puts one in `mount` (step 1, under the mode cards) and its progress and results in
+ * `results` (the page's results, under the 5-turn plan); refresh() rebuilds the panel after the party or the opponent
+ * changed, keeping the results (and a running search) where they are.
+ */
+export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTMLElement): { show(key: SearchKey | null): void; refresh(): void } {
   let worker: Worker | null = null;
   let current: SearchKey | null = null;
+  let out: HTMLElement = el("div", { class: "search-out" });
   const stopWorker = () => {
     worker?.terminate();
     worker = null;
   };
-  const show = (key: SearchKey | null) => {
+  const show = (key: SearchKey | null, keep = false) => {
     if (key !== current) stopWorker();
+    if (key !== current || !keep) {
+      out = el("div", { class: "search-out" });
+      results.replaceChildren(...(key ? [out] : []));
+    }
     current = key;
     mount.hidden = key === null;
-    mount.replaceChildren(...(key ? [panel(key)] : []));
+    mount.replaceChildren(...(key ? [panel(key, out)] : []));
   };
 
   /** Run a search in a fresh worker; progress and results go to `out`. */
@@ -143,13 +166,12 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
   }
 
   // ---------------------------------------------------------------- panels
-  function panel(key: SearchKey): HTMLElement {
+  function panel(key: SearchKey, out: HTMLElement): HTMLElement {
     const t = ctx.target();
-    const out = el("div", { class: "search-out", "aria-live": "polite" });
     const needQuest = (key === "skills" || key === "gear") && !t.quest;
     const needMap = key === "scrolls" && !t.map;
-    if (needQuest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in step 2.");
-    if (needMap) return el("p", { class: "muted" }, "This search optimises map runs: choose 🗺️ Map run in step 2.");
+    if (needQuest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in the opponent card (step 2).");
+    if (needMap) return el("p", { class: "muted" }, "This search optimises map runs: choose 🗺️ Map run in the opponent card (step 2).");
     if (key !== "party" && key !== "optimise" && !ctx.party().members.length) return el("p", { class: "muted" }, "Put at least one hero in the party (step 2).");
     const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
     let form: HTMLElement[] = [];
@@ -170,8 +192,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
           const res = r.result;
           const card = (label: string, rot: string[], passive: string, ev: FightEval, apply: boolean) =>
             el("article", { class: "search-card" }, el("header", {}, el("strong", {}, label), evLine(ev)),
-              el("ol", { class: "rotation compact" }, ...rot.map((s) => el("li", {}, skillLink(s)))),
+              // Passive first, then the rotation (the page's rule).
               el("p", { class: "small" }, "Passive: ", passiveLink(passive)),
+              el("ol", { class: "rotation compact" }, ...rot.map((s) => el("li", {}, skillLink(s)))),
               ...[whyRotation(m.row, m.i, rot)].filter((x): x is HTMLElement => x !== null),
               ...(apply ? [(() => {
                 const b = el("button", { type: "button", class: "secondary" }, "Use this rotation");
@@ -183,6 +206,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
                 return b;
               })()] : []));
           return [el("p", { class: "muted small" }, `${res.counts.combos} skill sets, ${res.counts.orderings} orderings, ${res.counts.final} finalists · AP budget ${res.maxAP}.`),
+            // The offline warm start (E15) the search tried first, as the hero could play it.
+            ...(res.warm ? [el("p", { class: "small warm-line" }, el("strong", {}, "Suggested start: "), "Passive ", passiveLink(res.warm.passive), " · ",
+              ...res.warm.rotation.flatMap((x, k) => [...(k ? [" → "] : []), skillLink(x)]), ...(res.warm.adapted ? [el("span", { class: "muted" }, " (adapted)")] : []))] : []),
             el("div", { class: "search-cards" }, card("Now", res.current.rotation, res.current.passive, res.current.ev, false),
               ...res.ranked.slice(0, 5).map((x, k) => card(`#${k + 1}`, x.rotation, x.passive, x.ev, true)))];
         });
@@ -212,10 +238,10 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
           return [el("div", { class: "search-cards" },
             el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "Now"), evLine(g.base))),
             el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "With the best gear"), evLine(g.final)))),
-          table(g.gear.map((x) => ({ slot: x.slotName, item: x.item ?? "", from: x.from ?? "" })), [
-            { key: "slot", label: "Slot" }, { key: "item", label: "Item", render: (rr) => el("strong", {}, String(rr.item)) },
-            { key: "from", label: "Source", render: (rr) => (rr.from ? pill(`change · ${rr.from}`, "t-green") : el("span", { class: "muted" }, "keep")) },
-          ]),
+          // Two columns: weapon, head, chest | bracers, feet, talisman (gearGrid); the source of each change below.
+          gearGrid(bySlot(g.gear, (x) => x.slot), (x, slot) => gearCell(x.item, x.from, slot), { label: "Best gear" }),
+          ...(g.gear.some((x) => x.from) ? [el("ul", { class: "gear-from small muted" }, ...g.gear.filter((x) => x.from).map((x) =>
+            el("li", {}, `${GEAR_SLOT_NAMES[x.slotName as GearSlot] ?? x.slotName}: ${x.item} (from ${x.from})`)))] : []),
           el("p", { class: "muted small" }, `${fmt.format(g.evaluated)} candidates evaluated. The hero keeps its own gear; equip the items in the game.`)];
         });
       };
@@ -231,7 +257,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       const excl = excludePicker(sv);
       form = [...form, excl.node];
       intro += " Every hero of the save is a candidate, except the ones you leave out; locked slots (🔒) keep their hero. "
-        + "The result fills the six slots above. This can take a few minutes.";
+        + "The result fills the six slots (step 2). This can take a few minutes.";
       start = () => {
         const undo = snapshot();
         const locks = ctx.locks();
@@ -240,7 +266,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
           if (r.search !== "party") return [];
           const p = r.result;
           ctx.applyParty(p.party.front, p.party.back);
-          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the slots above"), evLine(p.ev)), undo),
+          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the party slots above"), evLine(p.ev)), undo),
             el("p", { class: "muted small" }, `${p.added.length} heroes added, ${p.improvements} improvement${p.improvements === 1 ? "" : "s"} by swapping or moving.`)];
         });
       };
@@ -317,7 +343,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       };
       go.addEventListener("click", () => start());
       return el("div", { class: "search-panel" }, el("p", { class: "muted small" }, intro), slots,
-        el("div", { class: "toolbar search-form" }, ...form, go), out);
+        el("div", { class: "toolbar search-form" }, ...form, go));
     }
 
     if (key === "optimise") {
@@ -357,7 +383,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
 
     go.addEventListener("click", () => start());
     return el("div", { class: "search-panel" }, el("p", { class: "muted small" }, intro),
-      el("div", { class: "toolbar search-form" }, ...form, go), out);
+      el("div", { class: "toolbar search-form" }, ...form, go));
   }
 
   /** Ranked potions or enchants: the baseline, free enchant slots, and one row per option. */
@@ -465,17 +491,23 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
           el("p", { class: "muted small" }, "The party search only, with every hero's current rotation and gear."))] : []),
         el("article", { class: "search-card best" }, el("header", {}, el("strong", {}, "✨ Optimised"), evLine(res.ev)),
           partyLayout(res.config.party, name), use)),
-      el("h3", { class: "sub" }, "Rotations"),
+      el("h3", { class: "sub" }, "Passives and rotations"),
       el("div", { class: "search-cards" }, ...placed.map((id) => {
         const s = res.config.skills[id];
         return el("article", { class: "search-card" }, el("header", {}, el("strong", {}, name(id))),
-          el("ol", { class: "rotation compact" }, ...s.rotation.map((x) => el("li", {}, skillLink(x)))),
           el("p", { class: "small" }, "Passive: ", passiveLink(s.passive)),
+          el("ol", { class: "rotation compact" }, ...s.rotation.map((x) => el("li", {}, skillLink(x)))),
           ...(sched ? [notesFor(sched.score, locationOf(where.get(id)!.row, where.get(id)!.i))].filter((x): x is HTMLElement => x !== null) : []));
       })),
       ...(gearRows.length ? [el("h3", { class: "sub" }, "Gear to equip"),
-        table(gearRows, [{ key: "hero", label: "Hero" }, { key: "slot", label: "Slot" }, { key: "item", label: "Item", render: (r) => el("strong", {}, String(r.item)) },
-          { key: "from", label: "Take it from" }]),
+        // Per hero, the six slots in two columns (gearGrid); slots without a change read "keep".
+        el("div", { class: "search-cards" }, ...placed.filter((id) => res.config.gear[id]?.length).map((id) => {
+          const changes = res.config.gear[id];
+          return el("article", { class: "search-card" }, el("header", {}, el("strong", {}, name(id))),
+            gearGrid(bySlot(changes, (g) => g.slot), (g, slot) => gearCell(g.item, named(g.from), slot),
+              { label: `${name(id)}: gear to equip`, empty: (slot) => el("span", { class: "gear-empty" }, el("span", { class: "slot-ico", "aria-hidden": "true" }, GEAR_SLOT_ICONS[slot]), `${GEAR_SLOT_NAMES[slot]}: keep`) }),
+            el("ul", { class: "gear-from small muted" }, ...changes.map((g) => el("li", {}, `${GEAR_SLOT_NAMES[g.slot as GearSlot] ?? g.slot}: ${g.item}, take it from ${named(g.from)}`))));
+        })),
         el("p", { class: "muted small" }, "The page can't change your save: equip these in the game. The simulation above already uses them.")] : []),
       ...(res.config.scrolls ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scrolls: "), ...(res.config.scrolls.length
         ? res.config.scrolls.flatMap((x, k) => [...(k ? [", "] : []), itemLink("consumable", x.id)]) : ["none"]))] : []),
@@ -496,7 +528,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
   return {
     show,
     refresh() {
-      if (current) show(current);
+      if (current) show(current, true);
     },
   };
 }

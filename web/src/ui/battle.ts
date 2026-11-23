@@ -1,7 +1,8 @@
 /**
- * Battle simulator page (site/battle.html). Step 1 picks a mode (MODES: simulate, or one of the searches), which
- * decides what step 2 asks for: the party (back row left, front row right) and/or the opponent card on the right
- * (a quest enemy or a map run). Step 3 runs it in a web worker with the game's rules (TypeScript engine).
+ * Battle simulator page (site/battle.html), U23 order: step 1 picks a mode (MODES: simulate, or one of the searches)
+ * and shows its options and Run button right there; step 2 holds the party (six slots, back row | front row) on the
+ * left and the opponent card (a quest enemy or a map run) on the right, then the 5-turn plan; the results come last.
+ * Runs go to a web worker with the game's rules (TypeScript engine).
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -11,12 +12,12 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
 import { initSaveSource } from "./save-source.ts";
-import { enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, skillLink } from "./wiki-data.ts";
+import { enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -133,71 +134,94 @@ function heroRaw(i: number | null): Any | null {
   return i === null || i === undefined || !state.sv ? null : state.sv.raw.hero[i];
 }
 
-/** Rotation editor for one hero: 5 skill slots within the hero's AP budget, and the passive. */
-function skillEditor(i: number): HTMLElement {
-  const raw = heroRaw(i);
-  const hero = api.newHero(raw);
-  const info = api.skillInfo(hero);
-  const unlocked = info.skills.slice(0, info.unlocked);
-  const ap = Object.fromEntries(info.skills.map((s: Any) => [s.name, s.ap]));
-  const current: SkillChoice = state.skills[i] ?? { attackList: hero.attackList.slice(1, 6), passive: hero.passiveSelect };
-  const apText = el("span", { class: "small" });
-  const update = () => {
-    const spent = current.attackList.reduce((s, n) => s + (n === "Basic" ? 0 : ap[n] ?? 0), 0);
-    apText.textContent = `AP ${spent} / ${info.maxAP}`;
-    apText.className = `small ${spent > info.maxAP ? "error" : "muted"}`;
-    if (spent > info.maxAP) apText.textContent += " — over budget: the game falls back to the default rotation";
-    state.skills[i] = { attackList: [...current.attackList], passive: current.passive };
-    persistParty();
-    renderPlan();
-    // The card's chips follow the editor.
-    const chips = document.querySelector(`[data-chips="${i}"]`);
-    if (chips && raw) chips.replaceWith(rotationChips(i, raw));
+/** A compact "⇄" control over a transparent <select>: swaps a skill or the passive in place (the slot keeps its size). */
+function swapControl(label: string, options: [string, string][], value: string, onChange: (v: string) => void): HTMLElement {
+  const s = select({ "aria-label": label, class: "swap-select" }, options);
+  s.value = value;
+  s.addEventListener("change", () => onChange(s.value));
+  return el("span", { class: "swap", title: label }, el("span", { "aria-hidden": "true" }, "⇄"), s);
+}
+/** The same control, greyed, for an empty slot. */
+const swapPlaceholder = () => el("span", { class: "swap off", "aria-hidden": "true" }, "⇄");
+
+/** Rebuild the party after an in-place edit, then put the focus back on the control that made it. */
+function afterEdit(focusKey: string): void {
+  persistParty();
+  renderParty(false);
+  document.querySelector<HTMLElement>(`[data-focus="${focusKey}"] select`)?.focus();
+}
+
+/**
+ * Passive, then rotation, as the wiki / save viewer's ability rows (U22): the whole row opens the wiki page, the AP
+ * as apBadge, the "x / y AP" budget beside the label; each row edits in place with its ⇄ control. An empty slot
+ * (`raw` null) shows the same skeleton, greyed, so every slot has the same size.
+ */
+function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLElement[] {
+  const hero = raw ? api.newHero(raw) : null;
+  const info = hero ? api.skillInfo(hero) : null;
+  const apOf: Record<string, number> = Object.fromEntries((info?.skills ?? []).map((x: Any) => [x.name, x.ap]));
+  const rot: string[] = idx !== null && hero ? state.skills[idx]?.attackList ?? hero.attackList.slice(1, 6) : ["", "", "", "", ""];
+  const passive: string = idx !== null && hero ? state.skills[idx]?.passive ?? hero.passiveSelect : "";
+  const edit = (attackList: string[], p: string) => {
+    state.skills[idx!] = { attackList, passive: p };
   };
-  const slots = current.attackList.map((name, k) => {
-    const s = select({ "aria-label": `Turn ${k + 1} skill` },
-      [["Basic", "Basic"], ...unlocked.map((sk: Any): [string, string] => [sk.name, `${sk.name} (${sk.ap} AP)`])]);
-    s.value = unlocked.some((sk: Any) => sk.name === name) ? name : "Basic";
-    current.attackList[k] = s.value;
-    s.addEventListener("change", () => {
-      current.attackList[k] = s.value;
-      update();
-    });
-    return el("label", { class: "turn" }, el("span", { class: "muted small" }, `Turn ${k + 1}`), s);
+
+  // Passive row: name, bonus, ⇄.
+  const pLink = raw ? passiveLink(passive || "None") : el("span", { class: "muted" }, "—");
+  const pRow = el("tr", {}, el("td", { class: "name" }, pLink),
+    el("td", { class: "eff" }, raw ? (passive && passive !== "None" ? passiveText(passive) : "no passive") : ""),
+    el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
+      ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, x]), passive, (v) => {
+        edit([...rot], v);
+        afterEdit(`${key}-p`);
+      }) : swapPlaceholder()));
+  if (raw) clickableRow(pRow, pLink);
+
+  // Rotation rows: turn, skill, AP, ⇄.
+  const unlocked: Any[] = info ? info.skills.slice(0, info.unlocked) : [];
+  const rows = rot.map((sk, k) => {
+    const link = raw ? (sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk)) : el("span", { class: "muted" }, "—");
+    const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${u.name} (${u.ap} AP)`])];
+    // A skill the hero plays but hasn't unlocked (old save) stays listed, so the control shows the truth.
+    if (raw && sk !== "Basic" && !unlocked.some((u) => u.name === sk)) opts.push([sk, `${sk} (${apOf[sk] ?? "?"} AP)`]);
+    const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
+      el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
+      el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
+        const next = [...rot];
+        next[k] = v;
+        edit(next, passive);
+        afterEdit(`${key}-${k}`);
+      }) : swapPlaceholder()));
+    if (raw) clickableRow(tr, link);
+    return tr;
   });
-  const passive = select({ "aria-label": "Passive" }, info.passives.map((p: string): [string, string] => [p, p]));
-  if (current.passive && info.passives.includes(current.passive)) passive.value = current.passive;
-  current.passive = passive.value;
-  passive.addEventListener("change", () => {
-    current.passive = passive.value;
-    update();
-  });
-  update();
-  return el("div", { class: "skills" }, el("div", { class: "turns" }, ...slots),
-    el("div", { class: "toolbar" }, el("label", { class: "turn" }, el("span", { class: "muted small" }, "Passive"), passive), apText));
+
+  // "14 / 20 AP"; over budget the game plays the default rotation (Hero.calculateAPRemainder).
+  const used = rot.reduce((a, n) => a + (n && n !== "Basic" ? apOf[n] ?? skillAp(n) ?? 0 : 0), 0);
+  const max = info?.maxAP ?? 0;
+  const over = info !== null && used > max;
+  const apTitle = info ? `${used} of ${max} action points used${over ? `: ${used - max} over budget, the game plays the default rotation instead` : `, ${max - used} remaining`}` : "";
+  const ap = info
+    ? el("span", { class: `ap-mini${over ? " over" : ""}`, title: apTitle, role: "img", "aria-label": apTitle }, over ? "⚠ " : "", el("strong", {}, String(used)), ` / ${max} AP`)
+    : el("span", { class: "ap-mini off", "aria-hidden": "true" }, "– / – AP");
+  return [
+    el("div", { class: "ab-block" }, el("p", { class: "section-label" }, "Passive"),
+      el("table", { class: "ability-rows slot-rows passive-rows", "aria-label": "Passive" }, el("tbody", {}, pRow))),
+    el("div", { class: "ab-block" }, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ap),
+      el("table", { class: "ability-rows slot-rows skill-rows", "aria-label": "Rotation, turns 1 to 5" }, el("tbody", {}, ...rows))),
+  ];
 }
 
-/** The hero's rotation (edited or its own) as 5 small chips with their AP, and its passive as one chip. */
-function rotationChips(idx: number, raw: Any): HTMLElement {
-  const hero = api.newHero(raw);
-  const ap = Object.fromEntries(api.skillInfo(hero).skills.map((x: Any) => [x.name, x.ap]));
-  const rot: string[] = state.skills[idx]?.attackList ?? hero.attackList.slice(1, 6);
-  const passive = state.skills[idx]?.passive ?? hero.passiveSelect;
-  return el("div", { class: "chips", "data-chips": String(idx) },
-    el("ol", { class: "skill-chips", "aria-label": "Rotation, turns 1 to 5" }, ...rot.map((sk, k) => el("li", { class: `skill-chip${sk === "Basic" ? " basic" : ""}`, title: `Turn ${k + 1}` },
-      sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk), ...(ap[sk] ? [el("span", { class: "ap", "aria-label": `${ap[sk]} AP` }, String(ap[sk]))] : [])))),
-    ...(passive && passive !== "None" ? [el("span", { class: "passive-chip" }, passiveLink(passive))] : []));
-}
-
-/** A hero's combat stats as a compact two-line table (labels, values). */
-function statStrip(raw: Any): HTMLElement {
-  const st = api.heroStats(api.newHero(raw));
+/** A hero's combat stats as a compact two-line table (labels, values); dashes for an empty slot. */
+function statStrip(raw: Any | null): HTMLElement {
+  const st: Any = raw ? api.heroStats(api.newHero(raw)) : {};
   return el("table", { class: "stat-strip" }, el("thead", {}, el("tr", {}, ...CARD_STATS.map(([, l]) => el("th", { scope: "col" }, l)))),
-    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k]) => el("td", {}, fmt.format(st[k] ?? 0))))));
+    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k]) => el("td", {}, raw ? fmt.format(st[k] ?? 0) : "–")))));
 }
 
-/** The six slots, back row (left) and front row (right). In the modes that choose the party (Best party, Optimise
- * everything), empty slots are "to be found" and a filled slot can be locked: the search keeps its hero. */
+/** The six slots, back row (left) and front row (right), every slot the same size, filled or not. In the modes that
+ * choose the party (Best party, Optimise everything), empty slots are "to be found" and a filled slot can be locked:
+ * the search keeps its hero. */
 function renderParty(refreshSearch = true): void {
   const sv = state.sv!;
   const picks = !state.mode.party;
@@ -206,8 +230,8 @@ function renderParty(refreshSearch = true): void {
     const key = slotKey(row, i);
     const s = select({ "aria-label": `${row} row slot ${i + 1}` }, options);
     s.value = state.slots[key] === null || state.slots[key] === undefined ? "" : String(state.slots[key]);
-    const idx = state.slots[key];
-    const raw = heroRaw(idx ?? null);
+    const idx = state.slots[key] ?? null;
+    const raw = heroRaw(idx);
     s.addEventListener("change", () => {
       const v = s.value === "" ? null : Number(s.value);
       // A hero can stand in one slot only: clear it elsewhere.
@@ -233,18 +257,12 @@ function renderParty(refreshSearch = true): void {
       return b;
     })() : null;
     const head = el("div", { class: "slot-head" }, el("span", { class: "slot-name" },
-      ...(raw ? [withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))] : []),
-      `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(`${className(raw.class)} · ${raw.level}`)] : [])), ...(lock ? [lock] : []));
-    const body: Node[] = [];
-    if (idx !== null && idx !== undefined && raw) {
-      body.push(statStrip(raw), rotationChips(idx, raw));
-      const edit = el("details", { class: "slot-edit" }, el("summary", { class: "small" }, "Edit rotation and passive"));
-      edit.addEventListener("toggle", () => {
-        if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
-      });
-      body.push(edit);
-    } else if (picks) body.push(el("p", { class: "muted small slot-hint" }, "The search fills this slot."));
-    return el("div", { class: raw ? `slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot empty" }, head, s, ...body);
+      raw ? withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))
+        : el("span", { class: "avatar off", "aria-hidden": "true" }, "?"),
+      `${row === "front" ? "Front" : "Back"} ${i + 1}`,
+      raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(picks ? "to be found" : "empty", "plain")), ...(lock ? [lock] : []));
+    return el("div", { class: raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty" },
+      head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
   };
   const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
     el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
@@ -255,7 +273,7 @@ function renderParty(refreshSearch = true): void {
   el("div", { class: "party-cols" }, ...cols));
   syncAmount();
   renderPlan();
-  // Not after a search filled the slots: rebuilding the search panel would wipe its results.
+  // Not after a search filled the slots: rebuilding the search panel would reset its form.
   if (refreshSearch) search?.refresh();
 }
 
@@ -655,7 +673,7 @@ function init(): void {
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
     },
-  }, $("#search-panel"));
+  }, $("#search-panel"), $("#search-results"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
 }
