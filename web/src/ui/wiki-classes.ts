@@ -15,6 +15,7 @@ import { ascText, el } from "./dom.ts";
 import { group, type LineChart, lineChart } from "./line-chart.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { classes } from "./wiki-data.ts";
+import { isVisible } from "./expansion-state.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -73,7 +74,8 @@ const ascName = (a: number) => ascText(a)[0].toUpperCase() + ascText(a).slice(1)
  */
 export function classStats(id: number, start: Partial<Selection> = {}, onSelect?: (s: Selection) => void): { cards: HTMLElement; block: HTMLElement } {
   const c = G.heroList[id];
-  const tiers = tiersOf(c);
+  // U28: hero ascension 2 (prestige 3, levels 51-60) needs the Frozen Tome; hidden when the visitor hides it.
+  const tiers = tiersOf(c).filter((p) => isVisible("prestige", p));
   const top = topLevel(tiers);
   const levels = Array.from({ length: top }, (_, i) => i + 1);
   let sel = clampSelection(tiers, { level: start.level ?? tierMaxLevel(1), asc: start.asc ?? 0 });
@@ -109,8 +111,9 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     const at = (p: number) => Math.min(sel.level, tierMaxLevel(p));
     const axes: RadarAxis[] = CHARTED.map((g) => {
       let max = 0, best = "";
-      for (const [, o] of classes()) {
-        for (const p of tiersOf(o)) {
+      for (const [cid, o] of classes()) {
+        if (!isVisible("class", cid)) continue; // the rim compares with the classes the visitor can have
+        for (const p of tiersOf(o).filter((t) => isVisible("prestige", t))) {
           const v = statAt(o, g, p, at(p));
           if (v > max) [max, best] = [v, `${o.name}, ${ascText(p - 1)}`];
         }

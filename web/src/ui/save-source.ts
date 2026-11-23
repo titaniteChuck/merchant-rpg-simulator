@@ -9,8 +9,14 @@
  * Example save (U20): "Try with an example save" (a button under the drop zone, and an entry in the save menu) fetches
  * data/example-save.txt (an anonymised real save, web/scripts/make-example-save.ts) and loads it exactly like a picked
  * file named "Example save": same parsing, kept in IndexedDB for the other pages, Forget and choosing a file as usual.
+ *
+ * Expansions (U28): every loaded save goes to expansion-state.ts (noteSave), which guesses the expansions it owns; the
+ * save menu ends with the expansions items ("I own Frozen Tome", "I own Scribe", "Show expansion content"). With no
+ * save loaded, the top bar's expansions button (expansion-menu.ts) holds them instead.
  */
 import { el } from "./dom.ts";
+import { expansionMenuSection, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
+import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, putSave, rereadHandle, type SaveHandle } from "./save-store.ts";
 
@@ -75,6 +81,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     if (!loaded) {
       chip?.remove();
       chip = null;
+      mountExpansionChip(); // no save menu: the expansions toggles get their own button
     }
   };
 
@@ -105,7 +112,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
       ...(isExample ? [] : [item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload)]),
       item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
       ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
-      item("🗑 Forget", "Remove the save from this browser", forget), extras);
+      item("🗑 Forget", "Remove the save from this browser", forget), extras, expansionMenuSection());
     /** The page's own entries, rebuilt on every opening (they follow what the page shows). */
     const fillExtras = () => {
       const x = o.menuExtras?.();
@@ -123,21 +130,9 @@ export function initSaveSource(o: SaveSourceOptions): void {
     document.addEventListener("click", (e) => {
       if (chip && !chip.contains(e.target as Node)) close();
     });
-    chip.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        close();
-        button.focus();
-        return;
-      }
-      // Up / Down move between the menu items (menu pattern), wrapping.
-      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu.hidden) {
-        const items = [...menu.querySelectorAll<HTMLButtonElement>("button")];
-        const i = items.indexOf(document.activeElement as HTMLButtonElement);
-        const j = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
-        e.preventDefault();
-        items[j]?.focus();
-      }
-    });
+    // Escape closes; Up / Down move between the menu items (menu pattern), wrapping.
+    menuKeys(chip, menu, button, close);
+    unmountExpansionChip(); // the save menu holds the expansions toggles
     const bar = document.querySelector(".topbar");
     const gh = bar?.querySelector(".gh");
     if (bar && gh) bar.insertBefore(chip, gh);
@@ -155,6 +150,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     try {
       const text = await file.text();
       await o.load(text, file.name);
+      void noteSave(text, file.name);
       const savedAt = Date.now();
       await putSave({ name: file.name, text, savedAt }, handle);
       await loaded(file.name, savedAt);
@@ -185,6 +181,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
 
   const forget = async () => {
     await forgetSave();
+    void noteSave(null);
     setLoaded(false);
     o.status.replaceChildren(el("p", { class: "muted small" }, "The save was removed from this browser."));
     o.onForget?.();
@@ -206,10 +203,12 @@ export function initSaveSource(o: SaveSourceOptions): void {
   });
 
   // The save opened on any page before: use it right away.
+  mountExpansionChip();
   getSave().then(async (s) => {
-    if (!s) return;
+    if (!s) return void noteSave(null);
     try {
       await o.load(s.text, s.name);
+      void noteSave(s.text, s.name);
       await loaded(s.name, s.savedAt);
     } catch (e) {
       showError(`The stored save ${s.name} could not be read: ${e instanceof Error ? e.message : e}`);

@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Expansion-aware site (U28): `expansion-state.ts` (owned = the save's guess + manual toggles, "Show expansion content", `isVisible`), toggles in the save menu or a top-bar expansions button (`expansion-menu.ts`), expansion badges on every name (`expansionBadge` in `dom.ts`), hidden content left out of lists and pickers with "N hidden" notes and greyed placeholders, wiki page `#/expansions` (`wiki-expansions.ts`); see [Expansions](./website.md#expansions).
 - **Update**: Wiki v5 (U24): timeline cards with effects and whole-card links, "?" help tooltips (`wiki-help.ts`), drop table columns, regions (`regionOf`), Treasure sections on map pages.
 - **Update**: Wiki reference pages (U25): "Stats" (how every number is calculated) and "Battle" (how a fight runs), one anchored section per topic (`#/stats/<topic>`, `#/battle/<topic>`) with formulas, variables, worked examples and the game source line; `statLink` / `battleLink` in `wiki-ref.ts` for other pages.
 - **Update**: Phone navs and example save (U20): on phones (600 px and less) the top bar, the wiki section chips and the tab rows stay on one line (links scroll sideways with an edge fade, the current one scrolled into view; the top bar keeps the theme switch, save chip and GitHub mark as icons); "Try with an example save" next to every drop zone and in the save menu loads `data/example-save.txt` like a picked file; the sweep checks the rows are one line.

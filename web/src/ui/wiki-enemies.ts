@@ -11,6 +11,8 @@ import {
   skillDesc, skillLink,
 } from "./wiki-data.ts";
 import { sectionHelp, withHelp } from "./wiki-help.ts";
+import { isVisible } from "./expansion-state.ts";
+import { hiddenNote } from "./expansion-menu.ts";
 import { rarityChip } from "./wiki-items.ts";
 import { amountOddsText, amountRange, BASE_GRADE, fixedAmounts, LOOT_GRADES, lootTable, pctText } from "./wiki-loot.ts";
 
@@ -206,9 +208,13 @@ function variantCard(id: number, rare: boolean): HTMLElement {
     withHelp(banner("Drops"), DROPS_HELP, "the drops"), dropsBlock(id, rare));
 }
 
+/** The maps the enemy appears in; maps the visitor hides (no Scribe expansion) are counted in a note (U28). */
 function mapsTable(id: number): HTMLElement {
-  const roles = enemyMapRoles(id);
-  if (!roles.length) return el("p", { class: "muted" }, "In no map: met only as a quest.");
+  const all = enemyMapRoles(id);
+  if (!all.length) return el("p", { class: "muted" }, "In no map: met only as a quest.");
+  const roles = all.filter((r) => isVisible("map", r.map));
+  const note = hiddenNote(all.length - roles.length, all.length - roles.length === 1 ? "map" : "maps");
+  if (!roles.length) return note!;
   const hp = quest(id).enemyHp ?? 0;
   const rows: Row[] = roles.map(({ map, room, boss, treasure }) => {
     const m = item("map", map);
@@ -217,13 +223,14 @@ function mapsTable(id: number): HTMLElement {
       mod, hp: Math.round(hp * mod) };
   });
   const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
-  return table(rows, [
+  const t = table(rows, [
     { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.map)) }, { key: "level", label: "Level", num: true },
     { key: "role", label: "As", render: (r) => el("span", { class: "nowrap" }, ...String(r.role).split(" ").flatMap((x, i) => [...(i ? [" "] : []), pill(x, tone[x])])) },
     { key: "mod", label: "Enemy ×", num: true, render: (r) => el("span", { class: "mod-pair" }, `×${fmt.format(Number(r.mod))}`,
       withAsc(el("span", { class: "mod-asc" }, `×${fmt.format(Number(r.mod) * MAP_ASC_MOD)}`), 1)) },
     { key: "hp", label: "HP there", num: true },
   ]);
+  return note ? el("div", {}, t, note) : t;
 }
 
 /** The "?" text of an enemy page's Maps section. */

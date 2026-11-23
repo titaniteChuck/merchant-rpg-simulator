@@ -16,6 +16,8 @@ import { gameFromData } from "../tools/gamedata.ts";
 import { Solver } from "../tools/profit.ts";
 import type { Save } from "../tools/save.ts";
 import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
+import { contentExpansion, type Expansion } from "../tools/expansions.ts";
+import { G } from "../sim/data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -46,7 +48,9 @@ export type SearchRequest = {
 } & (
   | { search: "skills"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; nQuick: number; nFinal: number; top: number }
   | { search: "gear"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; n: number; passes: number;
-    pool: "owned" | "catalog"; save?: Save; itemGrade?: number; asc?: number }
+    pool: "owned" | "catalog"; save?: Save; itemGrade?: number; asc?: number;
+    /** Catalog items allowed (U28): "all", or the owned expansions (items of the others are left out). Default "all". */
+    expansions?: Expansion[] | "all" }
   | { search: "party"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; size: number; nQuick: number; nFinal: number }
   | { search: "optimise"; pool: Any[]; lock?: number[]; startParty?: { front: (number | null)[]; back: (number | null)[] };
@@ -174,6 +178,16 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
         if (!hero) throw new Error("pick a hero of the party");
         const cands = req.pool === "owned" && req.save ? ownedGearCandidates(req.save, raw.id)
           : catalogGearCandidates(sim, hero, { itemGrade: req.itemGrade, asc: req.asc });
+        const allowed = req.expansions;
+        if (req.pool === "catalog" && Array.isArray(allowed)) {
+          // Catalog items behind an expansion the visitor hides (level 51+ gear, the Scribe-locked recipes) are dropped.
+          for (const [slot, list] of cands) {
+            cands.set(slot, list.filter(([, it]) => {
+              const g = typeof it === "object" && it ? contentExpansion("equipment", Number(it.id), { ascension: req.asc ?? 0 }, G) : null;
+              return !g || g.needs.every((x) => allowed.includes(x));
+            }));
+          }
+        }
         const result = searchGear(sim, hero, front, back, quest(req.quest), cands, { n: req.n, passes: req.passes }, ctl);
         return post({ type: "done", search: "gear", result, ms: ms() });
       }

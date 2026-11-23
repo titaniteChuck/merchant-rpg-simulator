@@ -24,6 +24,8 @@ export interface ClassesRequest {
   n: number;
   searchN: number;
   searchNFinal: number;
+  /** Hero classes to compare (U28: the ones the visitor can have); default every class. */
+  classes?: number[];
 }
 
 export type ClassesResponse =
@@ -59,7 +61,7 @@ export async function runClasses(req: ClassesRequest, post: (m: ClassesResponse)
         post({ type: "progress", done, total, stage });
       }
     };
-    const base = { quests: req.quests, level: req.level, prestige: req.prestige, gearPolicy: req.gearPolicy };
+    const base = { quests: req.quests, level: req.level, prestige: req.prestige, gearPolicy: req.gearPolicy, ...(req.classes ? { classes: req.classes } : {}) };
     let searchQuest: number | "each" | null = null;
     if (req.skills === "search") {
       if (req.searchQuest === "auto") {

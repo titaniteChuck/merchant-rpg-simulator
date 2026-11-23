@@ -251,3 +251,71 @@ export function gearGrid<T>(slots: Partial<Record<GearSlot, T>>, render: (item: 
       return el("li", { class: `gear-cell${it === undefined ? " is-empty" : ""}`, "data-slot": s }, it === undefined ? empty(s) : render(it, s));
     }));
 }
+
+// ---------------------------------------------------------------- expansions (U28)
+/**
+ * The two paid expansions as a small icon after a name: a snowflake for the Frozen Tome, a quill for Scribe. Content
+ * that needs both shows both. Inline SVG (no text, so a link's text and the page title stay the name); each icon is a
+ * role="img" with its name ("Frozen Tome expansion") as label and tooltip. The rules: web/src/tools/expansions.ts;
+ * who owns what: expansion-state.ts.
+ */
+export type ExpansionId = "Frozen" | "Scribe";
+/** The Wiki's Expansions page (what each expansion adds, how ownership is guessed). */
+export const EXPANSIONS_HREF = "wiki.html#/expansions";
+export const EXPANSION_LABEL: Record<ExpansionId, string> = { Frozen: "Frozen Tome expansion", Scribe: "Scribe expansion" };
+const EXPANSION_SVG: Record<ExpansionId, string> = {
+  // three crossing strokes with a small V near each end
+  Frozen: '<svg viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+    + [0, 60, 120].map((r) => `<path transform="rotate(${r} 8 8)" d="M8 1.2v13.6M6.1 2.6 8 4.4l1.9-1.8M6.1 13.4 8 11.6l1.9 1.8"/>`).join("")
+    + "</svg>",
+  // a feather (filled vane) on a slanted shaft
+  Scribe: '<svg viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false">'
+    + '<path fill="currentColor" d="M14.6 1.4c-4.6.3-8.3 3.2-9.3 8.2l-.3 1.5 1.5-.4c4.7-1.2 7.6-4.8 8.1-9.3z"/>'
+    + '<path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M11.2 4.8 2 14.6"/></svg>',
+};
+
+/** One icon per expansion of `needs`, in the game's order (Frozen, Scribe). */
+function expansionIcons(needs: readonly ExpansionId[], suffix = ""): HTMLElement[] {
+  return (["Frozen", "Scribe"] as const).filter((x) => needs.includes(x)).map((x) => {
+    const s = el("span", { class: `xp-ico xp-${x.toLowerCase()}`, role: "img", "aria-label": EXPANSION_LABEL[x], title: `${EXPANSION_LABEL[x]}${suffix}` });
+    s.innerHTML = EXPANSION_SVG[x];
+    return s;
+  });
+}
+
+/**
+ * The expansion badge of a piece of content: one icon per expansion it needs (none: an empty span). `link`: the badge
+ * is a link to the wiki's Expansions page (never inside another link: a name link carries the badge as plain icons and
+ * says it in its tooltip).
+ */
+export function expansionBadge(needs: readonly ExpansionId[] | null | undefined, opts: { link?: boolean } = {}): HTMLElement {
+  const list = needs ?? [];
+  if (opts.link && list.length) {
+    return el("a", { class: "xp-badge", href: EXPANSIONS_HREF, title: `${list.map((x) => EXPANSION_LABEL[x]).join(" + ")}: what it adds (Wiki › Expansions)` },
+      ...expansionIcons(list));
+  }
+  return el("span", { class: "xp-badge" }, ...expansionIcons(list, " (see Wiki › Expansions)"));
+}
+
+/**
+ * The badge as text, for places that can't hold markup (an <option>): " ❄" for the Frozen Tome, " ✒" for Scribe
+ * (both: " ❄✒"), or "".
+ */
+export const expansionMark = (needs: readonly ExpansionId[] | null | undefined): string =>
+  needs?.length ? ` ${needs.includes("Frozen") ? "❄" : ""}${needs.includes("Scribe") ? "✒" : ""}` : "";
+
+/** "Needs the Frozen Tome expansion (see Wiki › Expansions)." for tooltips, or "". */
+export const expansionNote = (needs: readonly ExpansionId[] | null | undefined): string =>
+  needs?.length ? `Needs the ${needs.map((x) => EXPANSION_LABEL[x]).join(" and the ")} (see Wiki › Expansions).` : "";
+
+/**
+ * The greyed stand-in for content the visitor hides (an expansion they don't own): its badge and "expansion content",
+ * a link to the Expansions page. Tables keep the row, so their numbers (a drop table's chances) still add up.
+ */
+export function expansionPlaceholder(needs: readonly ExpansionId[]): HTMLElement {
+  const names = needs.map((x) => EXPANSION_LABEL[x]).join(" + ") || "an expansion";
+  return el("a", { class: "xp-hidden", href: EXPANSIONS_HREF,
+    title: `Hidden: content of the ${names}, which you don't own. Turn on “Show expansion content” in the expansions menu (top bar) to see it.` },
+  ...expansionIcons(needs), el("span", {}, "expansion content"));
+}

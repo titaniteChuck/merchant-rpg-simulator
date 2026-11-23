@@ -20,6 +20,7 @@ timestamp: 2026-11-23
 - [Farming planner](#farming-planner)
 - [Levelling page](#levelling-page)
 - [Class balance page](#class-balance-page)
+- [Expansions](#expansions)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -457,6 +458,70 @@ link ("Balance", U18) and a home card; not part of the wiki (it depends on hero 
   won, HP left, death rate, damage dealt / taken / healed. Classes link to their wiki page, quests to the enemy page
   (with its 5-turn timeline).
 - Progress per cell and rotation search; Cancel terminates the worker.
+
+## Expansions
+
+U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules in
+[Expansions](../../game-economy/expansions/expansions.md), library `web/src/tools/expansions.ts`).
+
+- State, one module for every page: `web/src/ui/expansion-state.ts`. Owned = `inferExpansions` of the loaded save
+  (what the save proves) with the visitor's manual toggles on top (`effectiveExpansions`); no save = nothing owned.
+  `showAll()` = "Show expansion content" (global). `isVisible(kind, id, extra)` = base game, owned, or show-all
+  (`contentExpansion`, cached). `subscribe(fn)` re-renders a page on every change; another tab's change arrives through
+  the `storage` event.
+- Storage (localStorage, every access in try/catch): `expansions-overrides` ({ Frozen?: bool, Scribe?: bool }),
+  `expansions-show-all`, and `expansions-inferred` (the last save's guess and evidence, so the wiki knows it at once;
+  removed on Forget). `save-source.ts` calls `noteSave(text, name)` after every load (it waits for the page's game
+  data) and `noteSave(null)` on Forget or when no save is stored; the wiki and class balance call `syncWithStoredSave()`.
+- Controls (`web/src/ui/expansion-menu.ts`): "I own Frozen Tome", "I own Scribe" (`menuitemcheckbox`; the hover
+  text gives the save's guess and its evidence, the line under says "from the save", "not in the save", "no save" or
+  "set by hand"), "Show expansion content", "↺ Use the save's guess" (only while a toggle is set by hand) and "What the
+  expansions add →". A toggle that agrees with the save's guess clears its override. They end the save menu when a
+  save is loaded; otherwise (no save, the wiki, the class balance) a small top-bar button (❄ ✒ ▾, "Expansions" in its
+  label) holds the same menu. Up / Down / Escape as in the save menu (`menuKeys`). The items update in place: the menu
+  stays open.
+- Badge (`dom.ts`): `expansionBadge(needs)` = one inline-SVG icon per expansion (a snowflake for the Frozen Tome,
+  colour `--xp-frozen`; a quill for Scribe, `--xp-scribe`), each `role="img"` with "Frozen Tome expansion" /
+  "Scribe expansion" as label and title; `{ link: true }` makes it a link to `#/expansions` (outside other links).
+  `expansionMark(needs)` = " ❄" / " ✒" for `<option>` text. The name links of `wiki-data.ts` add it systematically:
+  `itemLink` (items, maps; an ascended item also needs Scribe), `enemyLink`, `classLink`, plus `regionChip` (Frentir).
+  Their tooltip adds "Needs the … (see Wiki › Expansions)". The badge shows whether the content is visible or not.
+- Hidden content referenced in a table: `itemLink` / `enemyLink` / `classLink` return the greyed placeholder
+  (`expansionPlaceholder`: dashed pill, the badge, "expansion content", a link to the Expansions page) unless
+  `{ always: true }`. The save's own things always pass `always` (save viewer gear, inventory, maps, crafts; the
+  battle and farming pages' own maps). Per place:
+  - lists (wiki lists and search, battle / farming / levelling / class-balance pickers, profit tables): rows left out,
+    with a "N … from expansions you don't own are hidden. [Show expansion content]" note on the wiki lists;
+  - loot tables and recipes of visible content: the placeholder row (the chances still add up to 100 %);
+  - "Where it drops", "Used in", an enemy's Maps, "Enemies with this skill", "Good against": hidden entries counted in
+    a note, not listed;
+  - a hidden item, map, enemy or class page: its name and badge, why it's hidden, "Show expansion content" and
+    "I own …" buttons.
+- Per page:
+  - Wiki: lists, home search and home counts filtered; classes columns of skills and passives without the hidden
+    classes; class pages without the hidden ascension tier (levels 51–60; the radar's rims only compare visible classes
+    and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, nav link and home card):
+    your switches as checkboxes with the save's evidence, what the site does, then one section per group (Frozen
+    Tome, Scribe, content behind both) with the store text, what it adds, details, and folded lists of every gated
+    enemy, class, map, equipment, consumable and material (real links, `always`). Changing a switch re-renders the
+    current page in place (no jump to the top).
+  - Battle: enemy picker, catalog maps and scrolls filtered (options of expansion content end with ❄ / ✒); the save's
+    maps stay; "Map run" disappears when no map can be picked. Best gear: catalog ascension options 1–2 need Scribe and
+    the worker drops catalog items of hidden expansions (`expansions` in the gear request, `battle-worker.ts`). Best
+    scrolls and the potion / enchant search: hidden scrolls, ascension options and consumables left out. Best party /
+    Optimise: heroes of a hidden class start ticked in "Leave heroes out". A change keeps the chosen opponent when it is
+    still offered.
+  - Save viewer: never hides the player's things; badges on items and the Bard.
+  - Profit / Farming / Levelling (frozen pages, minimal): profit rows, orbs and map sources filtered; farming quests,
+    catalog maps (and their ascension) and scrolls filtered, ticks kept on a change; levelling's reference quests
+    filtered and "next ascension" replaced by a note when it is the Frozen tier.
+  - Class balance: the Bard (request `classes`), ascension 2 and the level cap (50), and quest bands follow.
+- Not gated: skills and passives themselves (a Bard-only skill keeps its row; its Classes cell is empty without the
+  Bard), the home page (`index.html`, no expansions button).
+- Tests: `web/test/expansion-state.test.ts` (no save, example save, overrides, show-all). Sweep: `check-site.ts` runs
+  every page without a save, which is the "no expansion owned" variant; pages `expansions` (`#/expansions`) and
+  `wiki-enemies` (`#/enemies`) added.
+- CSS: block `/* expansions */ … /* end expansions */` at the end of `site/style.css`.
 
 ## Shared page parts
 

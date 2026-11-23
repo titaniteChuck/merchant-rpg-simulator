@@ -3,6 +3,10 @@
  * optimise everything. Each runs one search of web/src/tools/combat.ts (optimiseFight of optimise.ts for the last)
  * in the battle worker, with progress and Cancel (the search is synchronous inside the worker, so Cancel terminates
  * it). The page passes a SearchContext so this module doesn't import it.
+ *
+ * Expansions (U28): candidates from expansions the visitor hides are left out: catalog gear (the worker filters it with
+ * `expansions`), ascension options (Scribe), scrolls, and heroes of a hidden class start ticked in "Leave heroes out".
+ * Potion and enchant results of hidden consumables are dropped from the ranking.
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -16,6 +20,13 @@ import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker
 import { bar, bySlot, el, fmt, fmt1, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, type GearSlot, pct, pill, rateTone, select, table } from "./dom.ts";
 import { locationOf, notesFor, type PlanMember, scheduleFor } from "./timeline.ts";
 import { itemLink, passiveLink, skillLink, statText } from "./wiki-data.ts";
+import { isVisible, ownedExpansions, showAll } from "./expansion-state.ts";
+
+/** Ascension options (0, 1, 2) the visitor can use: 1 and 2 need Scribe (item ascension). */
+const ascOptions = (max: number): [string, string][] => [["0", "No ascension"], ["1", "Ascension 1"], ["2", "Ascension 2"]]
+  .filter(([v]) => Number(v) <= max && isVisible("itemAscension", Number(v))) as [string, string][];
+/** What the worker may offer: "all", or the owned expansions (catalog candidates of the others are dropped). */
+const allowedExpansions = () => (showAll() ? "all" as const : [...ownedExpansions()]);
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -224,7 +235,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       const pool = select({ "aria-label": "Candidate items" }, [["owned", "Items you own (inventory, counter, other heroes)"], ["catalog", "Craftable catalog items"]]);
       const grade = select({ "aria-label": "Catalog grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
       grade.value = "5";
-      const asc = select({ "aria-label": "Catalog ascension" }, [["0", "No ascension"], ["1", "Ascension 1"], ["2", "Ascension 2"]]);
+      const asc = select({ "aria-label": "Catalog ascension" }, ascOptions(2));
       const n = num({ "aria-label": "Fights per candidate" }, 60), passes = num({ "aria-label": "Passes", max: "5" }, 2);
       const sync = () => {
         grade.hidden = asc.hidden = pool.value !== "catalog";
@@ -235,7 +246,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       start = () => {
         const [row, i] = hero.value.split(":");
         runSearch({ ...base(), search: "gear", hero: { row: row as "front" | "back", i: Number(i) }, quest: ctx.target().quest!, n: intOf(n), passes: intOf(passes, 1, 5),
-          pool: pool.value as "owned" | "catalog", save: pool.value === "owned" ? ctx.save() : undefined, itemGrade: Number(grade.value), asc: Number(asc.value) }, out, (r) => {
+          pool: pool.value as "owned" | "catalog", save: pool.value === "owned" ? ctx.save() : undefined, itemGrade: Number(grade.value), asc: Number(asc.value),
+          expansions: allowedExpansions() }, out, (r) => {
           if (r.search !== "gear") return [];
           const g = r.result;
           return [el("div", { class: "search-cards" },
@@ -277,9 +289,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
 
     if (key === "scrolls") {
       intro = "Tries every loadout of up to 3 scrolls on this map with this party, then re-runs the best ones with more runs.";
-      const asc = select({ "aria-label": "Scroll ascension" }, [["0", "No ascension"], ["1", "Ascension 1"], ["2", "Ascension 2"]]);
+      const asc = select({ "aria-label": "Scroll ascension" }, ascOptions(2));
       const quick = num({ "aria-label": "Runs per loadout" }, 5), final = num({ "aria-label": "Runs for the finalists" }, 30), top = num({ "aria-label": "Finalists", max: "20" }, 6);
-      const pool = SCROLL_IDS.filter((id) => G.itemData.consumable?.[id]);
+      const pool = SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id));
       form = [asc, field("runs per loadout", quick), field("finalists", top), field("runs per finalist", final)];
       intro += ` ${pool.length} scrolls, every loadout of 0 to 3.`;
       start = () => runSearch({ ...base(), search: "scrolls", map: { spec: ctx.target().map!.spec }, pool, scrollAsc: Number(asc.value),
@@ -315,7 +327,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         c.checked = on;
         return { c, node: el("label", { class: "check" }, c, ` asc ${v}`) };
       };
-      const ascs = [asc(0, true), asc(1, false), asc(2, false)];
+      const ascs = [asc(0, true), asc(1, false), asc(2, false)].filter((_, v) => isVisible("itemAscension", v));
       const n = num({ "aria-label": isMap ? "Runs per option" : "Fights per option" }, isMap ? 6 : 40);
       const prices = el("input", { type: "checkbox" }) as HTMLInputElement;
       prices.checked = true;
@@ -393,12 +405,14 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
   function consumableResult(res: ConsumableRanking, kind: "boost" | "enchant", isMap: boolean): Node[] {
     const signed = (x: number) => `${x >= 0 ? "+" : "−"}${fmt.format(Math.abs(x))}`;
     const pp = (x: number) => `${x >= 0 ? "+" : "−"}${fmt1.format(Math.abs(x) * 100)} pts`;
-    const rows = res.ranked.map((x: ConsumableRank, k: number) => ({
+    // Potions and enchants of an expansion the visitor hides are dropped (the ranking keeps its order).
+    const ranked = res.ranked.filter((x) => isVisible("consumable", x.option.id, { ascension: x.option.asc }));
+    const rows = ranked.map((x: ConsumableRank, k: number) => ({
       rank: k + 1, id: x.option.id, name: x.option.name, asc: x.option.asc,
       effect: Object.entries(x.option.stats).map(([s, v]) => statText(s, v)).join(", "),
       win: x.winDelta, peak: x.peakDelta, gain: x.gain, cost: x.cost ?? null, perK: x.gainPerKGold ?? null,
     }));
-    const best = res.ranked[0];
+    const best = ranked[0] === res.ranked[0] ? ranked[0] : undefined; // fillGain is about the overall best
     return [
       el("article", { class: "search-card" }, el("header", {}, el("strong", {}, kind === "boost" ? "Without a potion" : "With the hero's own enchants"), evLine(res.base))),
       ...(kind === "enchant" && res.freeSlots !== undefined ? [el("p", { class: "result-note" }, el("strong", {}, `🔮 ${res.freeSlots} free enchant slot${res.freeSlots === 1 ? "" : "s"}. `),
@@ -436,6 +450,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
   function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[] } {
     const out = sv.raw.hero.map((h: Any) => {
       const c = el("input", { type: "checkbox", value: String(h.id) }) as HTMLInputElement;
+      c.checked = !isVisible("class", Number(h.class)); // a class the visitor hides (the Bard without the Frozen Tome)
       return { h, c, node: el("label", { class: "chip-check out" }, c, ` ${h.name}`) };
     });
     const node = el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),

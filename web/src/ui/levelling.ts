@@ -8,7 +8,8 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { availableQuests, type LevellingPlan, maxLevel, type PrestigePayoff } from "../tools/levelling.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, ascText, bar, el, fmt, fmt1, heroAsc, pct, pill, rateTone, select, table, tile, withAsc } from "./dom.ts";
+import { $, ascText, bar, el, EXPANSION_LABEL, expansionBadge, fmt, fmt1, heroAsc, pct, pill, rateTone, select, table, tile, withAsc } from "./dom.ts";
+import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import type { LevelRequest, LevelResponse } from "./levelling-worker.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLink, isEnemy, loadWikiText } from "./wiki-data.ts";
@@ -207,8 +208,15 @@ function renderRefQuests(): void {
   }
   // Quests the hero could take at its tier's max level, toughest first. Default: the plan's last quest, else the
   // toughest quest at or below that max level (tougher ones are usually lost by both tiers).
+  // U28: the next tier may be expansion content (ascension 2 = prestige 3 needs the Frozen Tome).
+  if (!isVisible("prestige", tier + 1)) {
+    box.replaceChildren(el("p", { class: "muted" }, `${ascText(tier)[0].toUpperCase()}${ascText(tier).slice(1)} (levels 51–60) needs the `,
+      expansionBadge(needsOf("prestige", tier + 1), { link: true }), ` ${needsOf("prestige", tier + 1).map((x) => EXPANSION_LABEL[x]).join(" and the ")}, which you don't own. `
+      + "Set it in the expansions menu of the top bar to compare."));
+    return;
+  }
   const max = maxLevel(tier);
-  const ids = availableQuests(max, tier).filter((id) => isEnemy(id))
+  const ids = availableQuests(max, tier).filter((id) => isEnemy(id) && isVisible("enemy", id))
     .sort((a, b) => (G.questData[b].levelReq ?? 0) - (G.questData[a].levelReq ?? 0));
   const ref = select({ id: "ref-quest", "aria-label": "Quest to compare on" },
     ids.map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${G.questData[id].name}`]));
@@ -298,6 +306,8 @@ function init(): void {
   });
   loadWikiText();
   $("#plan-run").addEventListener("click", runPlan);
+  // U28: the next-ascension block and its quest list follow the expansion switches.
+  subscribe(() => renderRefQuests());
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
 }
 

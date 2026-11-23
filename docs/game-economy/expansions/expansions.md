@@ -145,6 +145,10 @@ The user can override each expansion by hand (`effectiveExpansions`).
 
 The committed example save (`site/data/example-save.txt`, an "unlock all" account) proves both.
 
+On the website (U28) the guess and the manual toggles drive what every page shows: content of an expansion the
+visitor doesn't own is hidden unless "Show expansion content" is on, and every piece of expansion content carries
+its badge. See [Website › Expansions](../../tooling/website/website.md#expansions).
+
 ## Code
 
 - Library: `web/src/tools/expansions.ts` (`EXPANSIONS`, `contentExpansion`, `inferExpansions`, `effectiveExpansions`,

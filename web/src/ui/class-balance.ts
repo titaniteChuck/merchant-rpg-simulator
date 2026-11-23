@@ -3,11 +3,16 @@
  * ascension, gear rule and rotation rule) fights the same quests solo on the same seeds, so the differences come from
  * the class. Runs classMatrix in class-balance-worker.ts; shows a per-class summary and a class × quest matrix
  * (win %, turns, the enemy's lowest HP point), heat-coloured by win rate. No save needed.
+ *
+ * Expansions (U28): the classes, the ascension 2 tier (levels 51–60) and the quests of expansions the visitor hides
+ * (expansion-state.ts) are left out; the options follow the expansion switches.
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import type { ClassMatrixRow, GearPolicy } from "../tools/classes.ts";
-import { summarizeByClass } from "../tools/classes.ts";
+import { classIds, summarizeByClass } from "../tools/classes.ts";
+import { isVisible, subscribe, syncWithStoredSave } from "./expansion-state.ts";
+import { mountExpansionChip } from "./expansion-menu.ts";
 import { maxLevel } from "../tools/levelling.ts";
 import { $, bar, el, fmt, fmt1, pct, select, table } from "./dom.ts";
 import type { ClassesRequest, ClassesResponse } from "./class-balance-worker.ts";
@@ -31,7 +36,7 @@ const withParty = () => document.querySelector<HTMLInputElement>("#party")?.chec
 /** Level bands of quests: 1-10, 11-20, ... (enemies only, normal variants; party bosses only when asked). */
 function questsIn(lo: number, hi: number): number[] {
   return Object.keys(G.questData).map(Number)
-    .filter((id) => isEnemy(id) && G.questData[id].enemyHp && G.questData[id].attackList && (withParty() || !G.questData[id].party))
+    .filter((id) => isEnemy(id) && G.questData[id].enemyHp && G.questData[id].attackList && (withParty() || !G.questData[id].party) && isVisible("enemy", id))
     .filter((id) => (G.questData[id].levelReq ?? 0) >= lo && (G.questData[id].levelReq ?? 0) <= hi)
     .sort((a, b) => (G.questData[a].levelReq ?? 0) - (G.questData[b].levelReq ?? 0) || a - b);
 }
@@ -42,8 +47,20 @@ const bandRange = (k: number): [number, number] => [10 * k + 1, 10 * k + 10];
 function renderOptions(): void {
   const asc = $<HTMLSelectElement>("#asc"), level = $<HTMLInputElement>("#level"), band = $<HTMLSelectElement>("#band");
   const ref = $<HTMLSelectElement>("#ref"), skills = $<HTMLSelectElement>("#skills");
-  const bands = Array.from({ length: 6 }, (_, k) => k).filter((k) => questsIn(...bandRange(k)).length);
-  band.replaceChildren(...bands.map((k) => el("option", { value: String(k) }, `Level ${bandRange(k)[0]}–${bandRange(k)[1]} (${questsIn(...bandRange(k)).length} quests)`)));
+  let bands: number[] = [];
+  const fillBands = () => {
+    const k = band.value;
+    bands = Array.from({ length: 6 }, (_, k) => k).filter((k) => questsIn(...bandRange(k)).length);
+    band.replaceChildren(...bands.map((b) => el("option", { value: String(b) }, `Level ${bandRange(b)[0]}–${bandRange(b)[1]} (${questsIn(...bandRange(b)).length} quests)`)));
+    if (bands.map(String).includes(k)) band.value = k;
+  };
+  /** Ascension 2 (prestige 3) needs the Frozen Tome: its option goes when the visitor hides it. */
+  const syncAsc = () => {
+    for (const o of [...asc.options]) o.hidden = o.disabled = !isVisible("prestige", Number(o.value) + 1);
+    if (asc.selectedOptions[0]?.disabled) asc.value = [...asc.options].filter((o) => !o.disabled).at(-1)?.value ?? "0";
+  };
+  syncAsc();
+  fillBands();
   const syncLevel = () => {
     const max = maxLevel(Number(asc.value) + 1);
     level.max = String(max);
@@ -68,14 +85,19 @@ function renderOptions(): void {
   band.addEventListener("change", syncRef);
   // The party toggle changes the quest counts of the bands and the reference quest list.
   $("#party").addEventListener("change", () => {
-    const k = band.value;
-    band.replaceChildren(...bands.map((b) => el("option", { value: String(b) }, `Level ${bandRange(b)[0]}–${bandRange(b)[1]} (${questsIn(...bandRange(b)).length} quests)`)));
-    band.value = k;
+    fillBands();
     syncRef();
   });
   skills.addEventListener("change", syncRef);
   syncLevel();
   syncBand();
+  // The expansion switches changed: ascension options, quest bands and the reference quest follow.
+  subscribe(() => {
+    syncAsc();
+    syncLevel();
+    fillBands();
+    syncBand();
+  });
 }
 
 function request(): ClassesRequest {
@@ -85,6 +107,7 @@ function request(): ClassesRequest {
   const ref = $<HTMLSelectElement>("#ref").value;
   return {
     quests: questsIn(...bandRange(Number($<HTMLSelectElement>("#band").value))), level, prestige,
+    classes: classIds().filter((c) => isVisible("class", c)),
     gearPolicy: $<HTMLSelectElement>("#gear").value as GearPolicy,
     skills: $<HTMLSelectElement>("#skills").value as "default" | "search",
     searchQuest: ref === "auto" || ref === "each" ? ref : Number(ref),
@@ -209,6 +232,9 @@ async function init(): Promise<void> {
   renderOptions();
   $("#run").addEventListener("click", run);
   $<HTMLButtonElement>("#run").disabled = false;
+  void syncWithStoredSave();
 }
+
+mountExpansionChip();
 
 init();

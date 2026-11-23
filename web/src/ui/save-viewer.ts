@@ -10,6 +10,7 @@ import {
 } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
+import { badgeFor } from "./expansion-state.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
   type ApBudget, crafterRows, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
@@ -50,7 +51,7 @@ function toolbar(...kids: Node[]): HTMLElement {
 }
 
 /** Item name coloured by rarity, linked to its wiki page (summary on hover). */
-const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc));
+const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc, { always: true }));
 /** The sortable "Asc" column: an outlined swatch, sorted by the number. */
 const ascCol: Column = { key: "asc", label: "Asc", num: true, render: (r) => ascSwatch(r.asc) };
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
@@ -183,7 +184,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
   const gear = gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
     el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
       el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
-      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc),
+      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true }),
       el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
@@ -193,7 +194,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
     el("article", { class: `card hero hero-detail cls-${v.cls}` },
       el("header", { class: "hero-head" }, avatar(v, "big"),
         el("div", {}, el("h2", {}, name),
-          el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"),
+          el("div", { class: "sub" }, pill(String(r.class)), ...[badgeFor("class", v.cls)].filter((x): x is HTMLElement => x !== null), pill(`lv ${r.level}`, "plain"),
             pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
       el("div", { class: "hero-detail-grid" },
         el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
@@ -217,7 +218,7 @@ function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
   return el("div", {},
     table(rows, [
       { key: "name", label: "Hero", render: (x) => el("a", { href: heroHref(x.id), class: `hero-link cls-${x.cls}` }, avatar(views[Number(x.k)], "small"), String(x.name)) },
-      { key: "class", label: "Class", render: (x) => el("span", { class: `cls-${x.cls}` }, pill(String(x.class))) },
+      { key: "class", label: "Class", render: (x) => el("span", { class: `cls-${x.cls}` }, pill(String(x.class)), badgeFor("class", Number(x.cls)) ?? "") },
       num("level", "Lvl"), { key: "asc", label: "Asc", num: true, render: (x) => ascSwatch(x.asc) },
       num("maxHP", "HP"), num("atk", "Atk"), num("matk", "Matk"), num("def", "Def"), num("mdef", "Mdef"), num("acc", "Acc"), num("crit", "Crit"),
       num("maxActionPoints", "AP"),
@@ -272,7 +273,7 @@ function renderMaps(sv: Save): HTMLElement {
       // Linked essence names; the row's text form goes to the CSV.
       const it = sv.mapInventory[Number(r.slot) - 1];
       const ess = it ? mapEssenceOf(it) : [];
-      return ess.length ? el("span", { class: "nowrap" }, ...ess.flatMap(([id, amt], k) => [...(k ? [", "] : []), `${fmt.format(amt)} × `, itemLink("material", id)]))
+      return ess.length ? el("span", { class: "nowrap" }, ...ess.flatMap(([id, amt], k) => [...(k ? [", "] : []), `${fmt.format(amt)} × `, itemLink("material", id, undefined, undefined, undefined, { always: true })]))
         : el("span", { class: "muted" }, "—");
     } },
     { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true }, { key: "enchant_attempts", label: "Enchant attempts" },
@@ -303,7 +304,7 @@ function renderCrafters(sv: Save): HTMLElement {
       const job = jobOf.get(String(r.crafter));
       if (!job) return el("span", { class: "muted" }, "idle");
       return el("span", { class: "nowrap" }, `🔨 ${job.amount ?? 1} × `,
-        itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel));
+        itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel, { always: true }));
     } },
   ];
   return el("div", {},

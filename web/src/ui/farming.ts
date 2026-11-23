@@ -5,6 +5,9 @@
  * Ranked by value per hour: gold from loot minus costs, plus essence at what it would cost to get otherwise.
  *
  * The party is the one picked on the battle page (same browser storage), editable here too.
+ *
+ * Expansions (U28): quests, catalog maps and scrolls of expansions the visitor hides are not offered (the save's own
+ * maps always are); the choices are rebuilt, ticks kept, when the expansion switches change.
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -14,6 +17,7 @@ import { $, bar, el, fmt, fmt1, gradeBadge, pct, rateTone, select, table, tile }
 import type { FarmRequest, FarmResponse } from "./farming-worker.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
+import { badgeFor, isVisible, subscribe } from "./expansion-state.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -106,14 +110,14 @@ function checkbox(label: Node | string, checked: boolean, value: string): HTMLLa
 function ownedMapLabel(it: Any): HTMLElement {
   const pre = it.prefix ? G.prefixList[it.prefix]?.name : "", suf = it.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
   const name = [pre, G.itemData.map?.[it.id]?.name ?? `map ${it.id}`, suf].filter(Boolean).join(" ");
-  return el("span", { class: "nowrap" }, itemLink("map", it.id, name, undefined, it.prestigeLevel), " ", gradeBadge(GRADES[(it.grade ?? 3) - 1] ?? String(it.grade)));
+  return el("span", { class: "nowrap" }, itemLink("map", it.id, name, undefined, it.prestigeLevel, { always: true }), " ", gradeBadge(GRADES[(it.grade ?? 3) - 1] ?? String(it.grade)));
 }
 
 function renderSources(): void {
   const sv = state.sv!;
   const maxLevel = Math.max(...sv.raw.hero.map((h: Any) => h.level ?? 1));
   // Quests: grouped by level band; by default the ones near the party's level.
-  const quests = Object.entries<Any>(G.questData).filter(([, q]) => q.enemyHp && q.attackList && q.name)
+  const quests = Object.entries<Any>(G.questData).filter(([id, q]) => q.enemyHp && q.attackList && q.name && isVisible("enemy", Number(id)))
     .map(([id, q]) => [Number(id), q] as [number, Any]).sort((a, b) => (a[1].levelReq ?? 0) - (b[1].levelReq ?? 0) || a[0] - b[0]);
   const near = (q: Any) => (q.levelReq ?? 0) <= maxLevel && (q.levelReq ?? 0) >= maxLevel - 12;
   const bands = new Map<number, [number, Any][]>();
@@ -121,21 +125,21 @@ function renderSources(): void {
   const rare = checkbox("Also the rare variants (where the quest has one)", false, "rare");
   const questBox = el("details", { class: "help" }, el("summary", {}, `Quests (preselected: level ${Math.max(0, maxLevel - 12)}–${maxLevel}, around your heroes)`),
     ...[...bands].map(([b, list]) => el("fieldset", { class: "plain" }, el("legend", { class: "muted small" }, `Level ${b}–${b + 9}`),
-      el("div", { class: "toolbar" }, ...list.map(([id, q]) => checkbox(`${q.name} (lv ${q.levelReq ?? "?"})`, near(q), `quest:${id}`))))),
+      el("div", { class: "toolbar" }, ...list.map(([id, q]) => checkbox(el("span", {}, `${q.name} (lv ${q.levelReq ?? "?"})`, badgeFor("enemy", id) ?? ""), near(q), `quest:${id}`))))),
     rare);
   // Maps you own, then catalog maps at ascension 0/1.
   const owned = sv.mapInventory;
   const ownedBox = el("div", { class: "toolbar" }, ...(owned.length
     ? owned.map((it: Any, i: number) => checkbox(ownedMapLabel(it), true, `own:${i}`))
     : [el("span", { class: "muted" }, "No maps in this save.")]));
-  const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([, m]) => m.name && (m.itemLevel ?? 0) <= 60)
+  const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([id, m]) => m.name && (m.itemLevel ?? 0) <= 60 && isVisible("map", Number(id)))
     .map(([id, m]) => [Number(id), m] as [number, Any]).sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0]);
   const catBox = el("details", { class: "help" }, el("summary", {}, "Catalog maps (grade S, no prefix or suffix): pick ascension 0 and/or 1"),
     el("div", { class: "toolbar" }, ...catalog.flatMap(([id, m]) => [
       checkbox(el("span", {}, itemLink("map", id), el("span", { class: "muted small" }, ` lv ${m.itemLevel ?? "?"}`)), false, `cat:${id}:0`),
-      checkbox(el("span", {}, itemLink("map", id, `${m.name}`, undefined, 1)), false, `cat:${id}:1`),
+      ...(isVisible("map", id, { ascension: 1 }) ? [checkbox(el("span", {}, itemLink("map", id, `${m.name}`, undefined, 1)), false, `cat:${id}:1`)] : []),
     ])));
-  const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id])
+  const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
     .map((id): [string, string] => [String(id), G.itemData.consumable[id].name])];
   const scrolls = [0, 1, 2].map((k) => select({ class: "farm-scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
   $("#sources").replaceChildren(
@@ -318,6 +322,19 @@ function init(): void {
   });
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
+  // The expansion switches changed: rebuild the sources, keeping what was ticked and the scrolls.
+  subscribe(() => {
+    if (!state.sv) return;
+    const ticked = new Map([...document.querySelectorAll<HTMLInputElement>("#sources input[type=checkbox]")].map((c) => [c.value, c.checked]));
+    const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.farm-scroll")].map((s) => s.value);
+    renderSources();
+    document.querySelectorAll<HTMLInputElement>("#sources input[type=checkbox]").forEach((c) => {
+      if (ticked.has(c.value)) c.checked = ticked.get(c.value)!;
+    });
+    document.querySelectorAll<HTMLSelectElement>("select.farm-scroll").forEach((s, k) => {
+      if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
+    });
+  });
 }
 
 init();

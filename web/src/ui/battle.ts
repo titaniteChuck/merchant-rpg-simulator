@@ -4,6 +4,10 @@
  * the Run button; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest
  * enemy or a map run) on the right, then the 5-turn plan. The searches fill step 3 with what they found.
  * Runs go to a web worker with the game's rules (TypeScript engine).
+ *
+ * Expansions (U28): the enemy and map pickers and the scrolls leave out content of expansions the visitor hides
+ * (expansion-state.ts); the save's own maps always stay. Options of expansion content end with ❄ / ✒. The opponent
+ * card is rebuilt (keeping the choice when it is still there) whenever the expansion switches change.
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -13,7 +17,8 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, el, expansionMark, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
@@ -101,11 +106,12 @@ function questOptions(): [string, [string, string][]][] {
   for (const [id, q] of Object.entries<Any>(G.questData)) {
     // Gathering quests and placeholders are not fights (wiki-data NON_ENEMY_QUEST_IDS).
     if (!q.enemyHp || !q.attackList || !q.name || !isEnemy(Number(id))) continue;
+    if (!isVisible("enemy", Number(id))) continue; // an expansion the visitor hides (Frentir, map bosses)
     const lvl = q.levelReq ?? 0;
     const tier = `Level ${Math.floor(lvl / 10) * 10}–${Math.floor(lvl / 10) * 10 + 9}`;
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${q.nameB}` : "";
     const list = byTier.get(tier) ?? [];
-    list.push([lvl, id, `Lv ${lvl} · ${q.name}${rare}`]);
+    list.push([lvl, id, `Lv ${lvl} · ${q.name}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
     byTier.set(tier, list);
   }
   return [...byTier.entries()].sort((a, b) => a[1][0][0] - b[1][0][0])
@@ -113,9 +119,9 @@ function questOptions(): [string, [string, string][]][] {
 }
 
 function mapOptions(sv: Save | null): [string, [string, string][]][] {
-  const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([, m]) => m.name)
+  const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([id, m]) => m.name && isVisible("map", Number(id)))
     .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || Number(a[0]) - Number(b[0]))
-    .map(([id, m]): [string, string] => [`cat:${id}`, `Lv ${m.itemLevel ?? "?"} · ${m.name}`]);
+    .map(([id, m]): [string, string] => [`cat:${id}`, `Lv ${m.itemLevel ?? "?"} · ${m.name}${expansionMark(needsOf("map", Number(id)))}`]);
   const groups: [string, [string, string][]][] = [];
   const owned = sv?.mapInventory ?? [];
   if (owned.length) {
@@ -126,8 +132,29 @@ function mapOptions(sv: Save | null): [string, [string, string][]][] {
       return [`own:${i}`, `${name}${mods ? ` (${mods})` : ""} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
     })]);
   }
-  groups.push(["All maps (choose ascension and grade)", catalog]);
+  if (catalog.length) groups.push(["All maps (choose ascension and grade)", catalog]);
   return groups;
+}
+
+/** A map run can be set up: the save has maps, or some catalog map is visible (maps are Scribe content). */
+const mapsAvailable = (): boolean => mapOptions(state.sv).some(([, list]) => list.length > 0);
+
+/** Hide "Map run" when no map can be picked (no Scribe, no maps in the save); fall back to the quest enemy. */
+function syncOppKinds(): boolean {
+  let changed = false;
+  const maps = mapsAvailable();
+  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => {
+    const ok = state.mode.opp.includes(r.value as Opp) && (r.value !== "map" || maps);
+    (r.closest("label") as HTMLElement).hidden = !ok;
+    if (!ok && r.checked) {
+      r.checked = false;
+      changed = true;
+    }
+  });
+  const left = state.mode.opp.filter((o) => o !== "map" || maps);
+  if (changed && left.length) $<HTMLInputElement>(`input[name=opp][value=${left[0]}]`).checked = true;
+  $("#opp-switch").hidden = left.length < 2;
+  return changed;
 }
 
 // ---------------------------------------------------------------- party
@@ -342,8 +369,8 @@ function renderTarget(): void {
     const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "No ascension"], ["1", "Ascension 1"]]);
     const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
     grade.value = "3";
-    const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id])
-      .map((id): [string, string] => [String(id), G.itemData.consumable[id].name])];
+    const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
+      .map((id): [string, string] => [String(id), `${G.itemData.consumable[id].name}${expansionMark(needsOf("consumable", id))}`])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
     const card = el("article", { class: "opp-card map" });
     const sync = () => {
@@ -359,7 +386,7 @@ function renderTarget(): void {
       const fact = (k: string, v: Node | string) => [el("dt", {}, k), el("dd", {}, v)];
       card.replaceChildren(
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "🗺️"),
-          el("div", {}, el("h3", {}, itemLink("map", id, name, undefined, a)),
+          el("div", {}, el("h3", {}, itemLink("map", id, name, undefined, a, { always: own })),
             el("div", { class: "pills" }, pill(`level ${d.itemLevel ?? "?"}`, "plain"), gradeBadge(GRADES[g - 1] ?? String(g)),
               ...(own ? [pill("yours", "t-green")] : [])))),
         el("dl", { class: "facts" },
@@ -449,17 +476,7 @@ function setMode(key: string): void {
   } catch { /* not remembered */ }
   const m = state.mode;
   $("#run-title").textContent = m.label;
-  let kindChanged = false;
-  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => {
-    const ok = m.opp.includes(r.value as Opp);
-    (r.closest("label") as HTMLElement).hidden = !ok;
-    if (!ok && r.checked) {
-      r.checked = false;
-      kindChanged = true;
-    }
-  });
-  if (kindChanged) $<HTMLInputElement>(`input[name=opp][value=${m.opp[0]}]`).checked = true;
-  $("#opp-switch").hidden = m.opp.length < 2;
+  syncOppKinds();
   const sim = m.key === "simulate";
   document.querySelector<HTMLElement>(".simulate")!.hidden = !sim;
   $("#results").hidden = !sim;
@@ -698,6 +715,39 @@ function init(): void {
   }, $("#search-panel"), $("#search-results"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
+  subscribe(onExpansions);
+}
+
+/**
+ * The expansion switches changed: rebuild the opponent card (the pickers' lists change), keeping the chosen enemy or
+ * map when it is still offered, and the search panel (its candidate options).
+ */
+function onExpansions(): void {
+  if (!state.sv) return;
+  const keep = (sel: string) => document.querySelector<HTMLSelectElement>(sel)?.value;
+  const was = { quest: keep("#quest"), rare: document.querySelector<HTMLInputElement>("#rare")?.checked, map: keep("#map"), asc: keep("#map-asc"), grade: keep("#map-grade") };
+  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value);
+  syncOppKinds();
+  renderTarget();
+  const put = (sel: string, v: string | undefined) => {
+    const s = document.querySelector<HTMLSelectElement>(sel);
+    if (s && v !== undefined && [...s.options].some((o) => o.value === v)) {
+      s.value = v;
+      s.dispatchEvent(new Event("change"));
+    }
+  };
+  put("#quest", was.quest);
+  const rare = document.querySelector<HTMLInputElement>("#rare");
+  if (rare && was.rare && !rare.disabled) {
+    rare.checked = true;
+    rare.dispatchEvent(new Event("change"));
+  }
+  put("#map", was.map);
+  put("#map-asc", was.asc);
+  put("#map-grade", was.grade);
+  document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => {
+    if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
+  });
 }
 
 init();

@@ -1220,3 +1220,60 @@ th.num button { text-align: center; }
 tr.reg-1 + tr:not(.reg-1) > td, tr.reg-2 + tr:not(.reg-2) > td, tr.reg-3 + tr:not(.reg-3) > td,
 tr.reg-4 + tr:not(.reg-4) > td, tr.reg-5 + tr:not(.reg-5) > td, tr.reg-6 + tr:not(.reg-6) > td { border-top: 2px solid var(--trim); }
 /* end wiki v5 */
+
+/* expansions */
+/* U28: the expansion badge (dom.ts expansionBadge: a snowflake for the Frozen Tome, a quill for Scribe) after the
+   names of expansion content, the greyed placeholder of hidden content, the "N hidden" notes, the expansions items of
+   the save menu and the top bar's expansions button (expansion-menu.ts), and the wiki's Expansions page. */
+:root, :root[data-theme="dark"] { --xp-frozen: #8fd8ff; --xp-scribe: #d9b8ff; }
+:root[data-theme="light"] { --xp-frozen: #17628c; --xp-scribe: #6b3a9e; }
+.xp-badge { display: inline-flex; align-items: center; gap: 2px; margin-left: 0.3em; vertical-align: -0.12em; text-decoration: none; white-space: nowrap; }
+.xp-badge:empty { display: none; }
+.xp-ico { display: inline-flex; font-size: 0.92em; line-height: 1; }
+.xp-ico svg { display: block; }
+.xp-ico.xp-frozen { color: var(--xp-frozen); }
+.xp-ico.xp-scribe { color: var(--xp-scribe); }
+a.xp-badge { border-radius: 6px; padding: 0 2px; }
+a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
+.region-chip .xp-badge { margin-left: 4px; }
+/* Hidden content still referenced by a table (a drop, a recipe): greyed, dashed, with its badge. */
+.xp-hidden { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px dashed color-mix(in srgb, var(--muted) 70%, transparent);
+  border-radius: 999px; color: var(--muted); font-size: 0.85em; font-style: italic; line-height: 1.6; text-decoration: none;
+  background: color-mix(in srgb, var(--muted) 10%, transparent); white-space: nowrap; }
+.xp-hidden:hover, .xp-hidden:focus-visible { color: var(--fg); border-style: solid; }
+.xp-hidden .xp-ico { opacity: 0.85; }
+.tip-xp { display: flex; align-items: center; gap: 4px; font-size: 0.85em; }
+.tip-xp .xp-badge { margin-left: 0; }
+.xp-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 6px 0 10px; }
+.xp-note .xp-badge { margin-left: 0; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+  font: inherit; font-weight: 650; }
+/* Menu items (save menu and the expansions button) */
+.xp-menu { display: flex; flex-direction: column; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.save-menu .xp-toggle { display: grid; grid-template-columns: 1.15em auto 1fr; align-items: center; column-gap: 6px; }
+.xp-toggle .xp-badge { margin-left: 0; }
+.xp-toggle.xp-show .xp-label { grid-column: 2 / -1; }
+.xp-toggle .xp-src { grid-column: 2 / -1; font-weight: 500; font-size: 0.75rem; }
+.xp-check { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; border: 1.5px solid var(--border); border-radius: 4px;
+  font-size: 0.8em; line-height: 1; }
+.xp-toggle[aria-checked="true"] .xp-check { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.save-menu .xp-about { padding: 7px 10px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.save-menu .xp-about:hover, .save-menu .xp-about:focus-visible { background: var(--card-2); }
+.topbar .save-chip + .theme-btn { margin-left: 0; }
+.topbar .xp-chip-btn { gap: 6px; }
+.topbar .xp-chip-btn .xp-badge { margin-left: 0; gap: 4px; }
+.topbar .xp-chip-btn .xp-ico { color: var(--banner-fg); font-size: 1em; }
+.topbar .xp-chip-icons.xp-none .xp-ico { opacity: 0.55; }
+/* Wiki: the Expansions page and the hidden-content pages */
+.xp-page h1 .xp-badge, .wiki-section h2 .xp-badge { margin-left: 0; }
+.xp-section .xp-lists { display: flex; flex-direction: column; gap: 6px; }
+.xp-list summary { cursor: pointer; font-weight: 650; padding: 4px 0; }
+.xp-list ul { margin: 6px 0 10px; }
+.xp-controls { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
+.xp-controls p { margin: 0 0 8px; }
+.xp-controls ul { margin: 0 0 8px; }
+.xp-switch .xp-badge { margin-left: 0; }
+.xp-hidden-page { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; }
+.xp-hidden-page .toolbar { margin: 8px 0 0; }
+.xp-hidden-page .xp-badge { margin-left: 0; }
+/* end expansions */

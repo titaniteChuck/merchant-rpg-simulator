@@ -5,7 +5,8 @@
  */
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { ascLevel, ascText, el, fmt, withAsc } from "./dom.ts";
+import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, withAsc } from "./dom.ts";
+import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansion-state.ts";
 import { tip } from "./tooltip.ts";
 import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
@@ -296,10 +297,15 @@ export const regionSortKey = (r: Region | null, level: number | null | undefined
 /** "Grimhal", "Yarsol · event" (for search and plain text). */
 export const regionText = (r: Region | null): string => (r ? [r.name, GROUP_TAG[r.group]].filter(Boolean).join(" · ") : "");
 
-/** The region as a small chip in its colour (+ "event" / "map boss"); the tooltip says how it was decided. */
+/**
+ * The region as a small chip in its colour (+ "event" / "map boss"); the tooltip says how it was decided. A region
+ * behind an expansion (6, Frentir: the Frozen Tome) carries its badge (U28).
+ */
 export function regionChip(r: Region | null, withWhy = false): HTMLElement {
   if (!r) return el("span", { class: "muted" }, "–");
-  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full}: ${r.why}` }, r.name);
+  const needs = needsOf("region", r.id);
+  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full}: ${r.why}${needs.length ? `. ${expansionNote(needs)}` : ""}` }, r.name,
+    ...(needs.length ? [expansionBadge(needs)] : []));
   const tag = GROUP_TAG[r.group] ? [el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : [];
   return el("span", { class: "region-cell" }, chip, ...tag, ...(withWhy ? [el("span", { class: "muted small" }, ` ${r.why}`)] : []));
 }
@@ -436,9 +442,26 @@ export const href = {
   enemy: (id: number) => `wiki.html#/enemy/${id}`,
 };
 
-function tipBox(title: string, kind: string, body: string, extra = ""): HTMLElement {
+function tipBox(title: string, kind: string, body: string, extra = "", xp: string[] = []): HTMLElement {
   return el("span", { class: "tip-body" }, el("strong", {}, title), el("span", { class: "tip-kind" }, kind),
-    ...(body ? [el("span", {}, body)] : []), ...(extra ? [el("span", { class: "muted" }, extra)] : []));
+    ...(body ? [el("span", {}, body)] : []), ...(extra ? [el("span", { class: "muted" }, extra)] : []),
+    ...(xp.length ? [el("span", { class: "tip-xp" }, expansionBadge(xp as ("Frozen" | "Scribe")[]), ` ${expansionNote(xp as ("Frozen" | "Scribe")[])}`)] : []));
+}
+
+/** Options of the name links (U28). */
+export interface LinkOpts {
+  /**
+   * Always the real link, even for content of an expansion the visitor hides: the save's own items, heroes and maps
+   * (the player has them), and pages that already filtered their rows. Without it, hidden content becomes the greyed
+   * "expansion content" placeholder.
+   */
+  always?: boolean;
+}
+
+/** Put the expansion badge inside a name link (plain icons: a link can't hold another link). */
+function withBadge<T extends HTMLElement>(a: T, needs: string[]): T {
+  if (needs.length) a.append(expansionBadge(needs as ("Frozen" | "Scribe")[]));
+  return a;
 }
 
 /** A link to a skill's wiki page, with its effect on hover. */
@@ -456,42 +479,54 @@ export function passiveLink(name: string, cls = ""): HTMLElement {
   return a;
 }
 
+/** The content kind of an item type for the expansion rules (null: not an item). */
+const itemKind = (type: string): ContentKind | null => ((ITEM_TYPES as readonly string[]).includes(type) ? type as ContentKind : null);
+
 /**
  * A link to an item or map, coloured by rarity, with a summary on hover. `label` shows modifiers (e.g. "Strong Iron Sword +3");
- * `asc` (0–2) outlines it silver or gold.
+ * `asc` (0–2) outlines it silver or gold. Expansion content carries its badge; content the visitor hides becomes the
+ * "expansion content" placeholder unless `opts.always` (U28).
  */
-export function itemLink(type: string, id: number, label?: string, rarity?: unknown, asc?: unknown): HTMLElement {
+export function itemLink(type: string, id: number, label?: string, rarity?: unknown, asc?: unknown, opts: LinkOpts = {}): HTMLElement {
   const it = item(type, id);
   const r = typeof rarity === "number" ? rarity : it?.rarity ?? 1;
   const name = label ?? it?.name ?? `${type} #${id}`;
+  const kind = itemKind(type);
+  const extra = { ascension: ascLevel(asc) };
+  const needs = it && kind ? needsOf(kind, id, extra) : [];
+  if (needs.length && !opts.always && !isVisible(kind!, id, extra)) return placeholderFor(kind!, id, extra);
   if (!it) return withAsc(el("span", { class: `item rar-${r}` }, name), asc);
   const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id) }, name);
   const ascNote = ascLevel(asc) ? ` · ${ascText(asc)}` : "";
   tip(a, () => tipBox(it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",
-    type === "equipment" ? itemText(type, id) : "")); // materials and consumables already show their text as the body
-  withAsc(a, asc);
-  return a;
+    type === "equipment" ? itemText(type, id) : "", needs)); // materials and consumables already show their text as the body
+  withAsc(a, asc, name);
+  return withBadge(a, needs);
 }
 
-export function classLink(id: number): HTMLElement {
+export function classLink(id: number, opts: LinkOpts = {}): HTMLElement {
   const c = G.heroList?.[id];
+  const needs = needsOf("class", id);
+  if (needs.length && !opts.always && !isVisible("class", id)) return placeholderFor("class", id);
   const a = el("a", { class: `wl cls-${id}`, href: href.cls(id) }, c?.name ?? `class ${id}`);
-  tip(a, () => tipBox(c?.name ?? "", "Hero class", classText(id)));
-  return a;
+  tip(a, () => tipBox(c?.name ?? "", "Hero class", classText(id), "", needs));
+  return withBadge(a, needs);
 }
 
 /**
  * A link to an enemy's wiki page (normal and rare variant share the quest's page); the tooltip gives its kind, level
  * and the maps it appears in. Gathering quests and placeholders (NON_ENEMY_QUEST_IDS) stay plain text.
  */
-export function enemyLink(e: { id: number; name?: string; rare?: boolean }): HTMLElement {
+export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts: LinkOpts = {}): HTMLElement {
   const q = quest(e.id);
   const name = e.name ?? (e.rare ? q?.nameB : q?.name) ?? `quest #${e.id}`;
-  if (!isEnemy(e.id)) return el("span", { class: "wl" }, name);
+  const needs = q ? needsOf("enemy", e.id) : [];
+  if (needs.length && !opts.always && !isVisible("enemy", e.id)) return placeholderFor("enemy", e.id);
+  if (!isEnemy(e.id)) return withBadge(el("span", { class: "wl" }, name), needs);
   const maps = enemyMaps(e.id);
   const kind = `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
   const where = maps.length ? `Appears in ${maps.map((m) => item("map", m)?.name).join(", ")}.` : "Quest only, in no map.";
   const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
-  tip(a, () => tipBox(name, kind, where));
-  return a;
+  tip(a, () => tipBox(name, kind, where, "", needs));
+  return withBadge(a, needs);
 }

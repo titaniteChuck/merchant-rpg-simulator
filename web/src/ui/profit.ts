@@ -10,6 +10,10 @@ import type { Orb, ProfitRequest, ProfitResponse, Row } from "./profit-worker.ts
 import { enchantColumns, essenceColumns, type InfoColumn, itemColumns, rankedTable, type SortState, STRATEGY } from "./profit-tables.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
+import { isVisible, subscribe } from "./expansion-state.ts";
+
+/** U28: an orb source on a map (or an orb) of an expansion the visitor hides is left out. */
+const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension: Number(x.map_asc) || 0 }) && isVisible("material", Number(x.essence_id));
 
 type Result = Extract<ProfitResponse, { ok: true }>;
 
@@ -139,17 +143,19 @@ function buildOrbSelects(r: Result): void {
   const box = $("#orb-selects");
   if (box.dataset.built) return;
   box.dataset.built = "1";
-  const selects = r.orbs.map((o) => {
+  const selects = r.orbs.filter((o) => isVisible("material", o.id)).map((o) => {
     const seen = new Set<string>();
     const s = el("select", { "aria-label": `${o.name} source` });
     s.append(el("option", { value: "" }, "Cheapest"));
-    for (const row of r.essence.filter((x) => x.essence_id === o.id)) {
+    for (const row of r.essence.filter((x) => x.essence_id === o.id && visibleOrbRow(x))) {
       const key = `${row.map_id}@${row.map_asc}`;
       if (seen.has(key)) continue;
       seen.add(key);
       // Options can't be outlined; an ascended map needs a word to tell it from the plain one.
       s.append(el("option", { value: key }, `${row.map}${Number(row.map_asc) ? " · ascension 1" : ""}`));
     }
+    const chosen = state.orbChoice.get(o.id);
+    if (chosen && [...s.options].some((x) => x.value === chosen)) s.value = chosen; // kept across a rebuild (U28)
     s.addEventListener("change", () => {
       if (s.value) state.orbChoice.set(o.id, s.value);
       else state.orbChoice.delete(o.id);
@@ -168,10 +174,13 @@ function withOwned(rows: Row[], type?: string): Row[] {
   return rows.map((r) => ({ ...r, owned: state.owned!.get(type ? `${type}|${r.id}|${r.asc}` : ownedKey(r)) ?? 0 }));
 }
 
+/** U28: an item (at its ascension) of an expansion the visitor hides is left out of every table. */
+const visibleRow = (r: Row) => isVisible("item", Number(r.id), { type: String(r.type ?? "equipment") as "equipment", ascension: Number(r.asc) || 0 });
+
 function itemFilter(rows: Row[], withType: boolean): Row[] {
   const f = state.filters;
   const q = f.q.trim().toLowerCase();
-  return rows.filter((r) => (!withType || f.type === "all" || r.type === f.type)
+  return rows.filter((r) => visibleRow(r) && (!withType || f.type === "all" || r.type === f.type)
     && (r.level === null || (Number(r.level) >= f.min && Number(r.level) <= f.max))
     && (f.asc === "all" || String(r.asc) === f.asc)
     && (!f.ownedOnly || Number(r.owned) > 0)
@@ -274,7 +283,7 @@ function orbsPanel(r: Result): HTMLElement[] {
   const best = (tier: number) => el("div", { class: "table-wrap" }, el("table", {},
     el("thead", {}, el("tr", {}, ...["Orb", "Ascends items of level", "Cost per orb", "Cheapest map", "Orbs per run"]
       .map((h, i) => el("th", { scope: "col", class: i === 2 || i === 4 ? "num" : "" }, h)))),
-    el("tbody", {}, ...r.orbs.filter((o) => o.tier === tier).map((o) => el("tr", {},
+    el("tbody", {}, ...r.orbs.filter((o) => o.tier === tier && isVisible("material", o.id)).map((o) => el("tr", {},
       el("td", {}, itemLink("material", o.id, o.name)),
       el("td", {}, REGION[o.region] ?? "?"),
       el("td", { class: "num" }, o.cost === null ? "—" : `${fmt1.format(o.cost)} g`),
@@ -282,7 +291,7 @@ function orbsPanel(r: Result): HTMLElement[] {
         ...(o.label && o.label !== "as crafted" ? [el("span", { class: "muted small" }, ` · ${o.label}`)] : []))),
       el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun)))))));
   const f = state.filters;
-  const rows = r.essence.filter((x) => f.orb === "all" || String(x.essence_id) === f.orb)
+  const rows = r.essence.filter(visibleOrbRow).filter((x) => f.orb === "all" || String(x.essence_id) === f.orb)
     .filter((x) => !f.q.trim() || `${x.map} ${x.essence}`.toLowerCase().includes(f.q.trim().toLowerCase()));
   const tiers = [...new Set(r.orbs.map((o) => o.tier))].sort();
   return [
@@ -297,14 +306,15 @@ const TABS = ["Items", "Enchanting", "Orbs"] as const;
 const TAB_LABELS: Record<string, string> = { Items: "💰 What to make", Enchanting: "✨ Enchanting", Orbs: "🔮 Orb sources" };
 
 function summaryTiles(r: Result): HTMLElement {
-  const top = r.items.reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
-  const topAsc0 = r.items.filter((x) => x.asc === 0).reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
+  const items = r.items.filter(visibleRow);
+  const top = items.reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
+  const topAsc0 = items.filter((x) => x.asc === 0).reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
   // The item, outlined for its ascension (silver 1, gold 2).
   const mk = (x: Row | null): Node | string => (x ? itemLink(String(x.type ?? "equipment"), Number(x.id), String(x.name), x.rarity, x.asc) : "—");
   return el("div", { class: "tiles" },
     tile("Most profit", mk(top), top ? `${fmt.format(Number(top.best_profit))} g · ${STRATEGY[String(top.best_strategy)] ?? ""}` : undefined, { icon: "🏆", tone: "t-gold" }),
     tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${fmt.format(Number(topAsc0.best_profit))} g, no ascension` : undefined, { icon: "🔨", tone: "t-blue" }),
-    tile("Items priced", fmt.format(r.items.length), "item × ascension level", { icon: "📦", tone: "t-teal" }),
+    tile("Items priced", fmt.format(items.length), "item × ascension level", { icon: "📦", tone: "t-teal" }),
     tile("Cheapest orb", r.orbs.length ? `${fmt1.format(Math.min(...r.orbs.map((o) => o.cost ?? Infinity)))} g` : "—",
       r.orbs.length ? r.orbs.reduce((a, b) => ((b.cost ?? Infinity) < (a.cost ?? Infinity) ? b : a)).name : undefined, { icon: "🔮", tone: "t-violet" }));
 }
@@ -378,6 +388,13 @@ function init(): void {
     },
   });
   loadWikiText();
+  // U28: the tables, tiles and orb choices follow the expansion switches.
+  subscribe(() => {
+    if (!state.result) return;
+    delete $("#orb-selects").dataset.built;
+    buildOrbSelects(state.result);
+    render();
+  });
   // item names and tooltips need the game data in the page too (the worker loads its own copy)
   loadData().then(compute).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
 }
