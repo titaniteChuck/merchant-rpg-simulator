@@ -424,7 +424,6 @@ a.wl.asc { border-bottom: 0; }
 .slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
 .asc-swatch { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; vertical-align: middle; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 1; }
 .chosen-map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 0.92rem; }
-.asc-legend { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 /* ------------------------------------------------------------------ battle page: search tabs */
 #sim-tabs .tabs { margin-bottom: 14px; flex-wrap: wrap; }
@@ -638,3 +637,9 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .save-overview .ov-hint { display: block; color: var(--muted); font-size: 0.72rem; }
 #result > .tabs { margin-top: 14px; flex-wrap: wrap; }
 /* end save overview */
+.enchant-slots { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; padding: 10px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--card-2)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.enchant-slots:empty { display: none; }
+.enchant-slots .slots-big { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.enchant-slots.none-free .slots-big { color: var(--muted); }
+

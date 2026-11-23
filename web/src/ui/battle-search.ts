@@ -4,7 +4,9 @@
  * in the battle worker, with progress and Cancel (the search is synchronous inside the worker, so Cancel terminates
  * it). The page passes a SearchContext so this module doesn't import it.
  */
+import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
+import type { ConsumableRank, ConsumableRanking } from "../tools/consumables.ts";
 import type { FightEval, MapEval, ScrollLoadout } from "../tools/combat.ts";
 import type { OptimiseResult } from "../tools/optimise.ts";
 import { SCROLL_IDS } from "../tools/combat.ts";
@@ -12,7 +14,7 @@ import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import { bar, el, fmt, fmt1, pct, pill, rateTone, select, table } from "./dom.ts";
-import { itemLink, passiveLink, skillLink } from "./wiki-data.ts";
+import { itemLink, passiveLink, skillLink, statText } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -42,7 +44,7 @@ export interface SearchContext {
   applyScrolls(ids: number[]): void;
 }
 
-export type SearchKey = "skills" | "gear" | "party" | "scrolls" | "optimise";
+export type SearchKey = "skills" | "gear" | "party" | "scrolls" | "optimise" | "consumables";
 
 const GRADES = ["D", "C", "B", "A", "S"];
 const num = (attrs: Record<string, string>, value: number) => {
@@ -271,6 +273,51 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       });
     }
 
+    if (key === "consumables") {
+      const isMap = Boolean(t.map);
+      intro = "Tries every potion (or one more permanent enchant) the hero can use, on the same rolls as the hero without it, "
+        + "and ranks them by how much better the fights go. Potions last 3 quests (a map run counts as one); enchants are permanent.";
+      const hero = heroPicker()!;
+      const kind = select({ "aria-label": "Potions or enchants" }, [["boost", "🧪 Potions"], ["enchant", "🔮 Enchants"]]);
+      const asc = (v: number, on: boolean) => {
+        const c = el("input", { type: "checkbox", value: String(v) }) as HTMLInputElement;
+        c.checked = on;
+        return { c, node: el("label", { class: "check" }, c, ` asc ${v}`) };
+      };
+      const ascs = [asc(0, true), asc(1, false), asc(2, false)];
+      const n = num({ "aria-label": isMap ? "Runs per option" : "Fights per option" }, isMap ? 6 : 40);
+      const prices = el("input", { type: "checkbox" }) as HTMLInputElement;
+      prices.checked = true;
+      const slots = el("div", { class: "enchant-slots", "aria-live": "polite" });
+      // Free enchant slots of the chosen hero, before any search: maxEnchants = 8 + 4 x (prestige - 1).
+      const showSlots = () => {
+        const [row, i] = hero.value.split(":");
+        const m = ctx.party().members.find((x) => x.row === row && x.i === Number(i));
+        slots.replaceChildren();
+        if (!m) return;
+        const h = api.newHero(m.raw);
+        const used = h.enchantList.length, max = h.maxEnchants;
+        slots.append(el("span", { class: "slots-big" }, `${max - used}`), el("span", {},
+          el("strong", {}, ` of ${max} enchant slots free`), el("br"),
+          el("span", { class: "muted small" }, `${m.raw.name} uses ${used}. Enchants are permanent stats; each one here is tested on top of the hero's own.`)));
+        slots.classList.toggle("none-free", used >= max);
+      };
+      hero.addEventListener("change", showSlots);
+      showSlots();
+      form = [hero, kind, ...ascs.map((a) => a.node), field(isMap ? "runs per option" : "fights per option", n),
+        el("label", { class: "check" }, prices, " crafted cost (prices take a few seconds once)")];
+      start = () => {
+        const [row, i] = hero.value.split(":");
+        const picked = ascs.filter((a) => a.c.checked).map((a) => Number(a.c.value));
+        runSearch({ ...base(), search: "consumables", hero: { row: row as "front" | "back", i: Number(i) }, ...ctx.target(),
+          kind: kind.value as "boost" | "enchant", n: intOf(n), ascs: picked.length ? picked : [0], prices: prices.checked }, out,
+        (r) => (r.search === "consumables" ? consumableResult(r.result, kind.value as "boost" | "enchant", isMap) : []));
+      };
+      go.addEventListener("click", () => start());
+      return el("div", { class: "search-panel" }, el("p", { class: "muted small" }, intro), slots,
+        el("div", { class: "toolbar search-form" }, ...form, go), out);
+    }
+
     if (key === "optimise") {
       const sv = ctx.save();
       const isMap = Boolean(t.map);
@@ -301,6 +348,36 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
     go.addEventListener("click", () => start());
     return el("div", { class: "search-panel" }, el("p", { class: "muted small" }, intro),
       el("div", { class: "toolbar search-form" }, ...form, go), out);
+  }
+
+  /** Ranked potions or enchants: the baseline, free enchant slots, and one row per option. */
+  function consumableResult(res: ConsumableRanking, kind: "boost" | "enchant", isMap: boolean): Node[] {
+    const signed = (x: number) => `${x >= 0 ? "+" : "−"}${fmt.format(Math.abs(x))}`;
+    const pp = (x: number) => `${x >= 0 ? "+" : "−"}${fmt1.format(Math.abs(x) * 100)} pts`;
+    const rows = res.ranked.map((x: ConsumableRank, k: number) => ({
+      rank: k + 1, id: x.option.id, name: x.option.name, asc: x.option.asc,
+      effect: Object.entries(x.option.stats).map(([s, v]) => statText(s, v)).join(", "),
+      win: x.winDelta, peak: x.peakDelta, gain: x.gain, cost: x.cost ?? null, perK: x.gainPerKGold ?? null,
+    }));
+    const best = res.ranked[0];
+    return [
+      el("article", { class: "search-card" }, el("header", {}, el("strong", {}, kind === "boost" ? "Without a potion" : "With the hero's own enchants"), evLine(res.base))),
+      ...(kind === "enchant" && res.freeSlots !== undefined ? [el("p", { class: "result-note" }, el("strong", {}, `🔮 ${res.freeSlots} free enchant slot${res.freeSlots === 1 ? "" : "s"}. `),
+        best && res.fillGain !== undefined ? el("span", {}, `Filling ${res.freeSlots === 1 ? "it" : "all of them"} with `, itemLink("consumable", best.option.id, undefined, undefined, best.option.asc),
+          ` changes the score by ${signed(res.fillGain)} (one: ${signed(best.gain)}).`) : el("span", { class: "muted" }, "No slot left: an enchant can't be added."))] : []),
+      rows.length ? table(rows, [
+        { key: "rank", label: "#", num: true },
+        { key: "name", label: kind === "boost" ? "Potion" : "Enchant", render: (r) => itemLink("consumable", Number(r.id), undefined, undefined, Number(r.asc)) },
+        { key: "effect", label: "Effect" },
+        { key: "win", label: "Win", num: true, show: (v) => pp(Number(v)) },
+        { key: "peak", label: isMap ? "Progress" : "Lowest enemy HP", num: true, show: (v) => pp(Number(v)) },
+        { key: "gain", label: "Score gain", num: true, show: (v) => signed(Number(v)) },
+        { key: "cost", label: "Crafted cost", num: true, show: (v) => (v === null ? "?" : `${fmt.format(Number(v))} g`) },
+        { key: "perK", label: "Gain per 1,000 g", num: true, show: (v) => (v === null ? "–" : fmt.format(Number(v))) },
+      ]) : el("p", { class: "muted" }, kind === "boost" ? "No potion this hero can drink yet (level requirement)." : "No enchant slot left on this hero."),
+      el("p", { class: "muted small" }, `Win and ${isMap ? "progress" : "lowest enemy HP"}: change in percentage points against the line above. `
+        + "Score: wins first, then enemy HP removed, then fewer turns and more party HP left."),
+    ];
   }
 
   /** "Leave out" chips: every hero of the save, ticked ones are not candidates. */

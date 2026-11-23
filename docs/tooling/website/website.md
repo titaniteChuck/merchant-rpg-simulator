@@ -75,7 +75,7 @@ flowchart LR
 
 `site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
 
-- Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Optimise everything (`MODES` in
+- Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Best potion / enchant (U9), Optimise everything (`MODES` in
   `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
   is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
   `battle-mode`). Under 560px the modes are two compact columns (hint in the title).
@@ -108,6 +108,12 @@ flowchart LR
   - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
     ticked in "Leave heroes out"; "Use this party" fills the slots.
   - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
+  - Best potion / enchant (quest or map, U9): potions and enchants: `rankConsumables` (`web/src/tools/consumables.ts`)
+    rank what a hero should drink or enchant for a fight. Per party hero: potions (one at a time, last 3 quests) or one
+    more permanent enchant, ascensions 0/1/2 to try, fights per option (editable: ~56 potions × 40 fights take ~25 s).
+    The hero's free enchant slots are shown first (big number; max = 8 + 4 × (prestige − 1)). Table: effect, win and
+    lowest-enemy-HP (map: progress) change in points, score gain, crafted cost (profit Solver, solved once per worker,
+    optional) and gain per 1,000 g; for enchants, the gain of filling every free slot with the best one (`fillGain`).
   - Optimise everything (quest or map): `optimiseFight` (`web/src/tools/optimise.ts`) over all heroes but the left-out
     ones, time budget 2 / 5 / 10 min (bar = time used), optional rotation, gear (owned items) and scroll steps; the party
     step always runs (the optimiser starts from no party). Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
@@ -208,7 +214,7 @@ flowchart LR
   hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
   effect); grade stacks read "14 C" (count, then the grade letter in its colour).
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
-- Ascension is an outline, not text: silver for 1, gold for 2 (`ascClass` / `withAsc` / `ascSwatch` / `ascLegend` in
+- Ascension is an outline, not text: silver for 1, gold for 2 (`ascClass` / `withAsc` / `ascSwatch` in
   `dom.ts`, tokens `--silver-*` / `--gold-*` in `style.css`, a masked gradient ring so it looks metallic on any surface).
   Items and maps count 0–2; heroes store `prestigeLevel` 1–3, shown as ascensions = level − 1 (`heroAsc`). Applied wherever an item-like object is
   shown: item links (inventory, counter, maps, hero gear, crafting jobs, wiki sell values), hero avatars (save viewer,

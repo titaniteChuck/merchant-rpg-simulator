@@ -86,12 +86,6 @@ export function withAsc<T extends Element>(e: T, v: unknown, name = e.textConten
   return e;
 }
 
-/** Key for the outlines: "[silver] ascension 1 [gold] ascension 2". */
-export function ascLegend(): HTMLElement {
-  return el("p", { class: "asc-legend muted small" }, "Outline: ",
-    el("span", { class: "asc asc-1" }, "ascension 1"), " ", el("span", { class: "asc asc-2" }, "ascension 2"));
-}
-
 /** The sortable "Asc" table cell: an outlined swatch (none for 0), the number for screen readers. */
 export function ascSwatch(v: unknown): HTMLElement {
   const n = ascLevel(v);

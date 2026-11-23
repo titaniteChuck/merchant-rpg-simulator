@@ -9,6 +9,9 @@ import {
   type PartySearch, type ScrollLoadout, searchGear, searchParty, searchScrolls, searchSkills, type SkillSearch,
 } from "../tools/combat.ts";
 import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
+import { type ConsumableKind, type ConsumableRanking, rankConsumables } from "../tools/consumables.ts";
+import { gameFromData } from "../tools/gamedata.ts";
+import { Solver } from "../tools/profit.ts";
 import type { Save } from "../tools/save.ts";
 import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 
@@ -47,6 +50,8 @@ export type SearchRequest = {
   | { search: "optimise"; pool: Any[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; save: Save; size: number; timeBudgetMs: number;
     steps: { party?: boolean; skills?: boolean; gear?: boolean; scrolls?: boolean } }
+  | { search: "consumables"; hero: { row: "front" | "back"; i: number }; quest?: { id: number; rare: boolean; amount: number };
+    map?: { spec: MapSpec; scrolls: Scroll[] }; kind: ConsumableKind; n: number; ascs: number[]; prices: boolean }
   | { search: "scrolls"; map: { spec: MapSpec }; pool: number[]; scrollAsc: number; nQuick: number; nFinal: number; top: number }
 );
 
@@ -57,6 +62,7 @@ export type SearchResponse =
   | { type: "done"; search: "party"; result: PartySearch; ms: number }
   | { type: "done"; search: "scrolls"; result: { ranked: ScrollLoadout[]; priceError?: string }; ms: number }
   | { type: "done"; search: "optimise"; result: OptimiseResult; ms: number }
+  | { type: "done"; search: "consumables"; result: ConsumableRanking; ms: number }
   | { type: "error"; error: string };
 
 export type BattleResponse =
@@ -100,6 +106,9 @@ export async function runBattle(req: BattleRequest): Promise<BattleResponse> {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/** The profit Solver prices potions and enchants (crafted cost); solved once per worker, a few seconds. */
+let solver: Solver | null = null;
 
 /**
  * Run a search, reporting progress through `post` (throttled to ~10 per second). The searches are synchronous,
@@ -159,6 +168,18 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
         const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
         const result = searchParty(sim, pool, target, { size: req.size, nQuick: req.nQuick, nFinal: req.nFinal }, ctl);
         return post({ type: "done", search: "party", result, ms: ms() });
+      }
+      case "consumables": {
+        const hero = (req.hero.row === "front" ? front : back)[req.hero.i];
+        if (!hero) throw new Error("pick a hero of the party");
+        if (req.prices && !solver) {
+          post({ type: "progress", done: 0, total: 1, stage: "pricing (once)" });
+          solver = new Solver(gameFromData(), { grade: 3 }).solve();
+        }
+        const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
+        const result = rankConsumables(sim, hero, front, back, target,
+          { kind: req.kind, n: req.n, ascs: req.ascs, solver: req.prices ? solver! : undefined }, ctl);
+        return post({ type: "done", search: "consumables", result, ms: ms() });
       }
       case "optimise": {
         const pool = poolOf(req.pool, req.poolSkills);

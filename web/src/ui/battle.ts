@@ -36,6 +36,7 @@ const MODES: Mode[] = [
   { key: "gear", icon: "🛡️", label: "Best gear", hint: "The best item in each slot for one hero, from what you own or the catalog.", party: true, opp: ["quest"] },
   { key: "party", icon: "👥", label: "Best party", hint: "Which heroes, in which row, from all your heroes. Only the opponent is needed.", party: false, opp: ["quest", "map"] },
   { key: "scrolls", icon: "📜", label: "Best scrolls", hint: "The best 0 to 3 scrolls for your party on a map.", party: true, opp: ["map"] },
+  { key: "consumables", icon: "🧪", label: "Best potion / enchant", hint: "Which potion to drink, or enchant to add, for one hero against this opponent.", party: true, opp: ["quest", "map"] },
   { key: "optimise", icon: "✨", label: "Optimise everything", hint: "Party, rotations, gear and scrolls tuned together within a time budget.", party: false, opp: ["quest", "map"] },
 ];
 const modeOf = (key: string) => MODES.find((m) => m.key === key) ?? MODES[0];
