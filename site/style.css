@@ -922,3 +922,38 @@ h2, h3 { color: var(--fg); }
   .wiki-nav { margin: -6px 0 18px; }
 }
 /* end phone navs + example save */
+
+/* hero page v2 */
+/* U22: save viewer hero page. Passive and rotation reuse the wiki's ability rows (table.ability-rows, tr.row-link,
+   .ap-badge); the rotation's AP budget sits beside its label; gear in two columns (gearGrid in dom.ts). */
+.hero-rows td.name a.wl, .hero-rows td.name .wl { font-weight: 650; }
+.hero-rows td.n { width: 1.6em; }
+.rot-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 6px 14px; margin: 0 0 6px; }
+.rot-head .section-label { margin: 0; }
+.ap-budget { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 2px 12px; min-width: 210px; }
+.ap-budget-used { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.ap-budget-used strong { font-size: 1.35rem; font-weight: 800; }
+.ap-budget-left { justify-self: end; font-weight: 700; font-size: 0.85rem; color: var(--good); font-variant-numeric: tabular-nums; }
+.ap-budget .bar { grid-column: 1 / -1; --c: #7c3aed; }
+.ap-budget.over .ap-budget-left { color: var(--bad); }
+.ap-budget.over .bar { --c: var(--bad); }
+/* Gear: two columns of three (weapon, head, chest | bracers, feet, talisman); .compact = one column. */
+.gear-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 5px 8px; font-size: 0.88rem; }
+.gear-grid.compact { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; }
+.gear-cell { min-width: 0; display: flex; }
+.gear-item { flex: 1; min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 5px 8px;
+  border-radius: 9px; background: var(--inset); color: var(--inset-fg); border: 2px solid var(--r, var(--trim)); border-left-width: 4px; }
+.gear-item .item, .gear-item a.wl { color: var(--inset-fg); overflow-wrap: anywhere; }
+.gear-item .slot-ico { font-size: 0.95rem; text-align: center; }
+.gear-item .meta { display: inline-flex; gap: 4px; align-items: center; }
+.gear-empty { flex: 1; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 9px; border: 2px dashed var(--border);
+  color: var(--muted); font-size: 0.82rem; }
+.gear-empty .slot-ico { width: 22px; text-align: center; opacity: 0.6; }
+@media (max-width: 520px) {
+  .gear-grid { gap: 4px 5px; font-size: 0.8rem; }
+  .gear-item { grid-template-columns: 18px minmax(0, 1fr); gap: 4px; padding: 4px 6px; }
+  .gear-item .meta { grid-column: 2; }
+  .ap-budget { min-width: 0; width: 100%; }
+}
+/* end hero page v2 */

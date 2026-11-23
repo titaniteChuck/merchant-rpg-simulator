@@ -180,3 +180,73 @@ export function select(attrs: Record<string, string>, options: ([string, string]
   }
   return s;
 }
+
+// ---------------------------------------------------------------- ability rows and gear (U22)
+/** An action-point cost as the compact badge of the wiki's skill rows ("?" when unknown). */
+export function apBadge(ap: number | undefined): HTMLElement {
+  const t = `${ap ?? "?"} action points`;
+  return el("span", { class: "ap-badge", role: "img", title: t, "aria-label": t }, String(ap ?? "?"));
+}
+
+/**
+ * The whole table row opens `link` (hover style: `tr.row-link`); the name stays a real link (keyboard, middle-click,
+ * screen readers). Clicks on other controls or a text selection are left alone; Ctrl / Cmd opens a new tab.
+ * A `link` that is not an <a> ("Basic", an unknown passive) leaves the row as it is.
+ */
+export function clickableRow(tr: HTMLTableRowElement, link: Element): void {
+  if (!(link instanceof HTMLAnchorElement)) return;
+  tr.classList.add("row-link");
+  tr.addEventListener("click", (e) => {
+    if ((e.target as Element).closest("a, button, input, select, summary")) return;
+    if (window.getSelection()?.toString()) return;
+    if (e.ctrlKey || e.metaKey) window.open(link.href, "_blank");
+    else link.click();
+  });
+}
+
+/** The six equipment slots in the game's itemSlot order (1..6). */
+export const GEAR_SLOTS = ["weapon", "head", "body", "hands", "feet", "trinket"] as const;
+export type GearSlot = typeof GEAR_SLOTS[number];
+/** The game's names for the slots (body = chest, hands = bracers, trinket = talisman). */
+export const GEAR_SLOT_NAMES: Record<GearSlot, string> = { weapon: "Weapon", head: "Head", body: "Chest", hands: "Bracers", feet: "Feet", trinket: "Talisman" };
+export const GEAR_SLOT_ICONS: Record<GearSlot, string> = { weapon: "⚔️", head: "🪖", body: "🥋", hands: "🧤", feet: "👢", trinket: "💍" };
+
+/** A slot from its name ("weapon" … "trinket") or the game's itemSlot number (1..6); undefined otherwise. */
+export function gearSlot(v: unknown): GearSlot | undefined {
+  if (typeof v === "number" || (typeof v === "string" && /^\d+$/.test(v))) return GEAR_SLOTS[Number(v) - 1];
+  return GEAR_SLOTS.find((s) => s === v);
+}
+
+/** Items keyed by their slot (`slotOf` gives a slot name or itemSlot number); the first item of a slot wins. */
+export function bySlot<T>(items: T[], slotOf: (item: T) => unknown): Partial<Record<GearSlot, T>> {
+  const out: Partial<Record<GearSlot, T>> = {};
+  for (const it of items) {
+    const s = gearSlot(slotOf(it));
+    if (s && !(s in out)) out[s] = it;
+  }
+  return out;
+}
+
+export interface GearGridOptions {
+  /** One column (a compact strip, e.g. a small card) instead of two. */
+  compact?: boolean;
+  /** Content of a slot with no item; default: the slot's icon and name, "empty". */
+  empty?: (slot: GearSlot) => Node | string;
+  /** Accessible name of the list (default "Equipment"). */
+  label?: string;
+}
+
+/**
+ * The six equipment slots as a list laid out in two columns: weapon, head, chest on the left; bracers, feet,
+ * talisman on the right (`compact`: one column, same order). The DOM order is the reading order (column by column).
+ * Each slot is an <li class="gear-cell" data-slot="…"> holding `render(item, slot)`. CSS: `.gear-grid` in style.css.
+ */
+export function gearGrid<T>(slots: Partial<Record<GearSlot, T>>, render: (item: T, slot: GearSlot) => Node | string, opts: GearGridOptions = {}): HTMLElement {
+  const empty = opts.empty ?? ((s: GearSlot) => el("span", { class: "gear-empty" },
+    el("span", { class: "slot-ico", "aria-hidden": "true" }, GEAR_SLOT_ICONS[s]), `${GEAR_SLOT_NAMES[s]}: empty`));
+  return el("ul", { class: `gear-grid${opts.compact ? " compact" : ""}`, "aria-label": opts.label ?? "Equipment" },
+    ...GEAR_SLOTS.map((s) => {
+      const it = slots[s];
+      return el("li", { class: `gear-cell${it === undefined ? " is-empty" : ""}`, "data-slot": s }, it === undefined ? empty(s) : render(it, s));
+    }));
+}

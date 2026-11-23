@@ -81,7 +81,22 @@ export interface HeroView {
   rotation: string[];
   stats: Record<string, number> | null; // computed by the combat engine; null if the hero cannot be built
   statsError?: string;
+  /** AP of the rotation and the hero's budget (null when the hero cannot be built). */
+  ap: ApBudget | null;
   gear: Row[];
+}
+
+/**
+ * A rotation's action points against the hero's budget. `max` is the engine's rule (api.skillInfo → default
+ * heroMaxActionPoints): heroStartingAP + floor((min(level, heroMaxAPLevel) − heroLevelUnlockSkills) / heroAPEveryLevel)
+ * + apMod (gear and passive), i.e. 5 + floor((min(level, 40) − 10) / 2) + apMod. Over budget, the game drops the
+ * rotation for the class's default one (Hero.calculateAPRemainder).
+ */
+export interface ApBudget { used: number; max: number }
+
+/** Sum of the skills' apCost (Basic and unknown skills cost 0). */
+export function rotationAp(skills: string[]): number {
+  return skills.reduce((s, n) => s + (Number(G.abilityData?.[n]?.apCost) || 0), 0);
 }
 
 /** Heroes with their summary row, engine-computed combat stats and equipped items. */
@@ -98,9 +113,13 @@ export function heroViews(sv: Save): HeroView[] {
     };
     let stats: Record<string, number> | null = null;
     let statsError: string | undefined;
+    let ap: ApBudget | null = null;
+    const rotation = skillNames(h.class, set.attackList ?? []);
     try {
-      const all = api.heroStats(api.newHero(sv.raw.hero[i]));
+      const hero = api.newHero(sv.raw.hero[i]);
+      const all = api.heroStats(hero);
       stats = Object.fromEntries(HERO_STATS.map((k) => [k, all[k] ?? 0]));
+      ap = { used: rotationAp(rotation), max: api.skillInfo(hero).maxAP };
     } catch (e) {
       statsError = e instanceof Error ? e.message : String(e);
     }
@@ -109,7 +128,7 @@ export function heroViews(sv: Save): HeroView[] {
       for (const k of GEAR_STATS) if (it[k] !== undefined && it[k] !== 0) r[k] = it[k];
       return r;
     });
-    return { row, cls: h.class, rotation: skillNames(h.class, set.attackList ?? []), stats, statsError, gear };
+    return { row, cls: h.class, rotation, stats, statsError, ap, gear };
   });
 }
 

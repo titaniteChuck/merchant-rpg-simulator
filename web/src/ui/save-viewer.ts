@@ -4,12 +4,15 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, tabKeys, withAsc } from "./dom.ts";
+import {
+  $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gradeBadge, heroAsc, pill,
+  type Row as Cells, table, tabKeys, withAsc,
+} from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
-import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
+import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  crafterRows, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
+  type ApBudget, crafterRows, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -113,14 +116,46 @@ export function statRadar(stats: Record<string, number>, best: Best, title: stri
   const axes: RadarAxis[] = RADAR_STATS.map((k) => ({ label: STAT_LABELS[k] ?? k, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
   return radar(axes, { title, size });
 }
-const SLOT_ICONS: Record<string, string> = { weapon: "⚔️", head: "🪖", body: "🥋", hands: "🧤", feet: "👢", trinket: "💍" };
 const STATUS_TONE: Record<string, string> = { idle: "t-green", "on a map": "t-violet", "on a quest": "t-blue" };
 
-/** The rotation as numbered rows: skill (wiki link, effect on hover), AP cost, effect. */
+/**
+ * The rotation as the wiki class page's skill rows (table.ability-rows): turn, skill, AP badge, effect; the whole row
+ * opens the skill's wiki page (Basic has none).
+ */
 export function rotationRows(skills: string[]): HTMLElement {
-  return el("ol", { class: "rotation" }, ...skills.map((sk) => el("li", {}, skillLink(sk),
-    el("span", { class: "ap" }, sk === "Basic" ? "0 AP" : `${skillAp(sk) ?? "?"} AP`),
-    ...(sk === "Basic" ? [] : [el("span", { class: "muted small eff" }, skillDesc(sk))]))));
+  const head = el("tr", {}, el("th", { scope: "col", class: "n" }, "#"), el("th", { scope: "col" }, "Skill"),
+    el("th", { scope: "col", class: "ap-col" }, el("abbr", { title: "Action points" }, "AP")), el("th", { scope: "col" }, "Effect"));
+  const rows = skills.map((sk, i) => {
+    const link = skillLink(sk);
+    const tr = el("tr", {}, el("td", { class: "n" }, String(i + 1)), el("td", { class: "name" }, link),
+      el("td", { class: "ap-col" }, apBadge(sk === "Basic" ? 0 : skillAp(sk))),
+      el("td", { class: "eff" }, sk === "Basic" ? "Basic attack" : skillDesc(sk) || "–"));
+    clickableRow(tr, link);
+    return tr;
+  });
+  return el("div", { class: "table-wrap" }, el("table", { class: "ability-rows skill-rows hero-rows", "aria-label": "Rotation" },
+    el("thead", {}, head), el("tbody", {}, ...rows)));
+}
+
+/** The passive as one row of the same table style (name, bonus); the whole row opens its wiki page. */
+export function passiveRows(passive: string): HTMLElement {
+  const link = passiveLink(passive);
+  const tr = el("tr", {}, el("td", { class: "name" }, link),
+    el("td", { class: "eff" }, passive && passive !== "None" ? passiveText(passive) : "–"));
+  clickableRow(tr, link);
+  return el("div", { class: "table-wrap" }, el("table", { class: "ability-rows passive-rows hero-rows", "aria-label": "Passive" },
+    el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Passive"), el("th", { scope: "col" }, "Bonus"))), el("tbody", {}, tr)));
+}
+
+/** "18 / 20 AP used · 2 left" (over budget: a warning, the game then plays the default rotation). */
+export function apBudget(ap: ApBudget): HTMLElement {
+  const left = ap.max - ap.used;
+  const over = left < 0;
+  const label = `${ap.used} of ${ap.max} action points used, ${over ? `${-left} over budget` : `${left} remaining`}`;
+  return el("div", { class: `ap-budget${over ? " over" : ""}`, role: "group", "aria-label": label, title: label },
+    el("span", { class: "ap-budget-used" }, el("strong", {}, String(ap.used)), ` / ${ap.max} AP used`),
+    el("span", { class: "ap-budget-left" }, over ? `⚠ ${-left} over: the game plays the default rotation` : `Remaining ${left} / ${ap.max}`),
+    bar(ap.max > 0 ? ap.used / ap.max : 0));
 }
 
 /** A hero's id in the save (for its details link). */
@@ -144,11 +179,12 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
           return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
         })))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
-  const gear = el("ul", { class: "gear" }, ...v.gear.map((g) =>
-    el("li", { class: `rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${g.slot}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
-      el("span", { class: "slot-ico", "aria-label": String(g.slot) }, SLOT_ICONS[String(g.slot)] ?? "•"),
+  // Two columns: weapon, head, chest | bracers, feet, talisman (gearGrid in dom.ts).
+  const gear = gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
+    el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
+      el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
       itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc),
-      el("span", { class: "meta" }, gradeBadge(String(g.grade))))));
+      el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
   return el("div", { class: "hero-detail-page" },
@@ -162,8 +198,10 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
       el("div", { class: "hero-detail-grid" },
         el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
         el("section", { class: "hero-detail-side" },
-          el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotationRows(v.rotation)),
-          el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, passiveLink(String(r.passive || ""), "pill t-gold"))),
+          // Passive first, then the rotation with its AP budget, then the gear.
+          el("div", {}, el("p", { class: "section-label" }, "Passive"), passiveRows(String(r.passive || ""))),
+          el("div", {}, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ...(v.ap ? [apBudget(v.ap)] : [])),
+            rotationRows(v.rotation)),
           el("div", {}, el("p", { class: "section-label" }, "Gear"), gear))),
       el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`))));
 }

@@ -74,8 +74,23 @@ flowchart LR
 - Header icons: `iconHeaders` in `save-viewer.ts` swaps a sortable header's text for nodes (badge, bar) with an
   `aria-label` and tooltip, since `table()` in `dom.ts` takes text labels.
 - Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
-  name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): radar chart, rotation rows,
-  passive, gear with outlines.
+  name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): radar chart, then
+  passive, rotation and gear (U22).
+- Hero page (U22): rule everywhere in the save viewer: the passive comes before the rotation (hero page; the heroes
+  CSV row already has `passive` before `rotation`).
+  - Passive and rotation use the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
+    (hover highlight, `clickableRow` in `dom.ts`), the AP shown with the same badge (`apBadge` in `dom.ts`); Basic
+    rows (0 AP) have no page. Passive row: name, bonus. Rotation rows: turn, skill, AP, effect.
+  - AP budget beside the "Rotation" label: "18 / 20 AP used", "Remaining 2 / 20" and a bar; over budget it warns that
+    the game plays the default rotation instead (`Hero.calculateAPRemainder`). `HeroView.ap` in `save-tables.ts`:
+    `used` = sum of the skills' `apCost` (`rotationAp`), `max` = `api.skillInfo(hero).maxAP`, the engine's
+    `heroMaxActionPoints`: 5 + floor((min(level, 40) − 10) / 2) + apMod (gear, passive); 20 at level 40 and above.
+  - Gear in two columns (`gearGrid` in `dom.ts`, CSS `.gear-grid`): weapon, head, chest on the left; bracers, feet,
+    talisman on the right (game slots body / hands / trinket); an empty slot shows a dashed placeholder. Rule for the
+    site: six equipment slots go in these two columns, except where a compact layout is intended (`compact: true`
+    gives one column). `bySlot(items, slotOf)` keys items by slot name or itemSlot number 1-6; the battle page can
+    adopt the same helper.
+  - Tests: `web/test/hero-page.test.ts` (AP budget against the formula for levels 10-60, rotation AP, slot order).
 - Crafters: Level (ascension 0), Level + a silver bar (ascension 1), Level + a gold bar (ascension 2), the bar being the
   ascension outline's gradient (`.lvl-asc`), named "Level for ascension-1 items" / "…-2 items" for screen readers
   (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
