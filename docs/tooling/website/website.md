@@ -121,14 +121,16 @@ flowchart LR
 
 | Test | Result |
 |---|---|
-| `node test/difftest.ts` (single fights) | 600/600 |
-| `node test/difftest-maps.ts` (full map runs) | 150/150 |
-| `node test/difftest-items.ts` (`makeItem` rolls) | 385/385 |
+| `node test/difftest.ts` (single fights) | 3000/3000 |
+| `node test/difftest-maps.ts` (full map runs, 119 with a map prefix, 102 with a suffix) | 400/400 |
+| `node test/difftest-items.ts` (`makeItem` rolls) | 1949/1949 |
 
 - **Lua quirks emulated**: `pairs()` order and `#t` with holes (`lua-table.ts`, an ltable.c emulation checked
   against 400 real tables); Lua truthiness of `0`; level-70 map nil treasure (crash or dropped rooms).
-- **Not verified yet**: 43 of 223 skill functions never appear in fixtures; map prefixes/suffixes; scrolls
-  63-65 and 67; crafting new maps (`isNew`) throws; new heroes with starting gear throw.
+- **Final reference set** (frozen 2026-11-23, scenario seed 2): covers 189 of the 223 skill functions and all 10
+  scrolls. The other 34 skill functions belong to no hero class and no quest enemy, so the game never runs them.
+  Fixtures embed the player's save heroes: they stay local (`web/test/fixtures/`, git-ignored).
+- **Not verified**: crafting new maps (`isNew`) and new heroes with starting gear throw "not supported"
 - **Speed**: about 0.34 ms per single-hero fight in Node.
 - Search/optimisation tools (port of `combat.py`, `profit.py`) live in `web/src/tools/`.
 

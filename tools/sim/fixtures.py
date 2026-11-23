@@ -161,6 +161,11 @@ def record_maps(sim, raws, rnd, mode, n, path):
             heroes.append(sim.hero(raws[idx]))
             (front if slot < 3 else back)[slot % 3] = len(heroes) - 1
         spec = {"id": rnd.choice(map_ids), "prestigeLevel": rnd.choice([0, 0, 1]), "grade": rnd.randint(1, 5)}
+        if rnd.random() < 0.4:   # crafted/enchanted maps: prefix 1-43 (map stats), suffix +1..+12
+            if rnd.random() < 0.7:
+                spec["prefix"] = rnd.randint(1, 43)
+            if rnd.random() < 0.7:
+                spec["suffix"] = rnd.randint(1, 12)
         scrolls = [{"id": rnd.randint(60, 69), "prestigeLevel": 0} for _ in range(rnd.choice([0, 0, 1, 3]))]
         seed = rnd.randint(1, 10**9)
         rng_start = sim.api.rngCalls()

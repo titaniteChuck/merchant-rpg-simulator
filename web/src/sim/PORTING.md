@@ -5,6 +5,14 @@ differential test (`npm run difftest`): the same fights, with the same random
 generator, must give the same trace as the game's own code. So the port is
 **faithful first**: same order of operations, same rounding, same random draws.
 
+## Reference fixtures
+
+`web/test/fixtures/{fights,maps,items}.json` were recorded from the game's own code
+(`tools/sim/fixtures.py`, running `harness.lua` in Lua 5.1 with the shared LCG) and are frozen:
+final set of 2026-11-23, 3000 fights, 400 map runs, 1949 item rolls, all matching.
+They embed the player's heroes, so they stay local (git-ignored). Any change to `web/src/sim/`
+must keep `npm run difftest`, `difftest:maps` and `difftest:items` at 100 %.
+
 ## Module map
 
 | Lua (decompiled) | TypeScript |
