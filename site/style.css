@@ -326,7 +326,7 @@ section > h2:first-child { margin-top: 36px; }
 .gh { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--fg); font-weight: 650; font-size: 0.9rem;
   padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
 .gh:hover { border-color: var(--accent); color: var(--accent); }
-.card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; }
+.card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; } .card-levelling { --c: #0ea5e9; }
 
 /* ------------------------------------------------------------------ saved save */
 /* Once a save is loaded: a small button in the top bar (save-source.ts) replaces the drop zone. */
@@ -642,4 +642,22 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .enchant-slots:empty { display: none; }
 .enchant-slots .slots-big { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
 .enchant-slots.none-free .slots-big { color: var(--muted); }
+
+/* ------------------------------------------------------------------ levelling page (U12) */
+.lv-hero { display: flex; gap: 14px; align-items: center; margin: 12px 0; }
+.lv-hero h3 { margin: 0 0 4px; font-size: 1.15rem; }
+.lv-hero .pills, .lv-cost .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.lv-companions { display: grid; gap: 10px 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.lv-companions select { width: 100%; }
+.lv-run { margin: 14px 0; }
+.lv-ref { min-width: min(100%, 320px); }
+.lv-payoff { display: grid; gap: 16px; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); align-items: start; margin-top: 12px; }
+@media (max-width: 800px) { .lv-payoff { grid-template-columns: minmax(0, 1fr); } }
+.lv-cost { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+.lv-cost h3 { margin: 0 0 8px; font-size: 1rem; }
+.lv-cost .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+.lv-cost .facts dt { color: var(--muted); }
+.lv-cost .facts dd { margin: 0; }
+.lv-payoff .up { color: var(--good, #16a34a); font-weight: 600; }
+.lv-payoff .down { color: var(--bad, #dc2626); font-weight: 600; }
 

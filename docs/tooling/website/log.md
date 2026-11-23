@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Levelling page (`levelling.html`, U12): best XP quest per level band with hours, runs and revive gold (gathering quests labelled), and the next ascension's gains against gold, lost enchants and relevel hours; Levelling in every top bar and on the home page; top bar labels shortened to Save and Battle.
 - **Update**: Battle page "Best potion / enchant" mode (U9, `rankConsumables`): ranked potions or one more enchant for a hero, free enchant slots shown first, crafted cost and gain per 1,000 g; ascension legend helper removed.
 - **Update**: Battle page rework (U8): mode first (simulate, best rotation / gear / party / scrolls, optimise everything with a time budget), party in back/front columns, opponent card on the right (enemy radar and skills, map card), quest size ×1 to ×5; static Enemies link in the wiki nav; ascension legend removed from wiki item pages.
 - **Update**: Wiki enemy pages (U6c): Enemies list and one page per enemy (stats normal/rare, rotation, drops, maps with multiplier); enemy names link there everywhere; gathering quests and placeholders excluded via the static `NON_ENEMY_QUEST_IDS`.

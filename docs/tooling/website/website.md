@@ -18,6 +18,7 @@ timestamp: 2026-11-23
 - [Wiki](#wiki)
 - [Profit page](#profit-page)
 - [Farming planner](#farming-planner)
+- [Levelling page](#levelling-page)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -199,9 +200,29 @@ flowchart LR
   "best use of your heroes' time", or a warning when every source costs more than it earns. Tests:
   `web/test/farming-worker.test.ts`.
 
+## Levelling page
+
+`site/levelling.html` + `web/src/ui/levelling.ts` (page) + `web/src/ui/levelling-worker.ts` (web worker), on
+`levellingPlan` / `prestigePayoff` of `web/src/tools/levelling.ts` (E12, U12).
+
+- Step 1: the hero (default: the lowest one below its tier's max level) with avatar, class, level of max and
+  ascension; up to 5 companions (Front 2-3, Back 1-3; the hero stands in Front 1), who fight alongside and share the XP.
+- Step 2, levelling plan: from level (the hero's by default; lower it to plan a fresh hero), target level, levels per
+  step, quest size (×1 and the max, ×1, the max), minimum win rate, XP potion (+30 / +60 / +100 %), fights per quest.
+  Result: time, quest runs and revive gold, then one row per step: best quest by XP per hour among those won often
+  enough, size, win rate, XP per run, runs, hours, XP per hour, revive gold. Gathering quests (questType 1, e.g.
+  Forest Gathering) are included and labelled "gathering" (the best early XP; the wiki hides them from Enemies).
+  "Stuck at level N" when no quest is won often enough.
+- Step 3, next ascension (none at the last tier): a reference quest (default: the plan's last quest, else the
+  toughest quest at or below the tier's max level). Now vs after: max level, enchant slots, quest size cap, stats at
+  max level, solo win and enemy HP removed on the reference quest; costs: level required (reached or not), gold,
+  enchants lost, hours and runs to level back to max (the relevel plan is in a fold-out).
+- Progress per level band; Cancel terminates the worker.
+
 ## Shared page parts
 
-- Top bar on every page: Save viewer, Battle simulator, Profit, Farming, Wiki, and the GitHub link (right).
+- Top bar on every page: Save, Battle, Profit, Farming, Levelling, Wiki (short labels so it stays on one line at
+  1280px), and the GitHub link (right). Home page: one card per page.
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
