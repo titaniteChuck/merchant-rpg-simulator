@@ -14,6 +14,7 @@ import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import { bar, el, fmt, fmt1, pct, pill, rateTone, select, table } from "./dom.ts";
+import { locationOf, notesFor, type PlanMember, scheduleFor } from "./timeline.ts";
 import { itemLink, passiveLink, skillLink, statText } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -169,6 +170,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
             el("article", { class: "search-card" }, el("header", {}, el("strong", {}, label), evLine(ev)),
               el("ol", { class: "rotation compact" }, ...rot.map((s) => el("li", {}, skillLink(s)))),
               el("p", { class: "small" }, "Passive: ", passiveLink(passive)),
+              ...[whyRotation(m.row, m.i, rot)].filter((x): x is HTMLElement => x !== null),
               ...(apply ? [(() => {
                 const b = el("button", { type: "button", class: "secondary" }, "Use this rotation");
                 b.addEventListener("click", () => {
@@ -227,7 +229,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       const excl = excludePicker(sv);
       form = [...form, excl.node];
       intro += " Every hero of the save is a candidate, except the ones you leave out; this can take a few minutes.";
-      start = () => runSearch({ ...base(), search: "party", pool: excl.pool(), poolSkills: ctx.poolSkills(), ...ctx.target(), size: intOf(size, 1, 6),
+      start = () => runSearch({ ...base(), search: "party", pool: excl.pool(), lock: excl.lock(), poolSkills: ctx.poolSkills(), ...ctx.target(), size: intOf(size, 1, 6),
         nQuick: intOf(quick), nFinal: intOf(final) }, out, (r) => {
         if (r.search !== "party") return [];
         const p = r.result;
@@ -321,7 +323,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
     if (key === "optimise") {
       const sv = ctx.save();
       const isMap = Boolean(t.map);
-      intro = "Tunes the party and rows, every member's rotation and passive, their gear from the items you own"
+      intro = "Tunes the party, its order and rows, every member's rotation, passive and timing, their gear from the items you own"
         + `${isMap ? " and the scrolls" : ""} together: each step is kept only when the fights go better on the same rolls, `
         + "and the cycle repeats while it improves. The best setup so far is shown when the time runs out.";
       const budget = select({ "aria-label": "Time budget" }, [["2", "2 minutes"], ["5", "5 minutes"], ["10", "10 minutes"]]);
@@ -331,16 +333,23 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
         c.checked = on;
         return { c, node: el("label", { class: "check" }, c, ` ${label}`) };
       };
-      // The party step always runs: the optimiser starts from an empty party.
-      const sSkills = step("rotations"), sGear = step("gear (items you own)"), sScrolls = step("scrolls");
+      // Party step off: the optimiser keeps the party of step 2 (it may still reorder it). On: that party is the one to beat.
+      const sParty = step("party (off: keep the party of step 2)"), sSkills = step("rotations"), sGear = step("gear (items you own)"), sScrolls = step("scrolls");
       const excl = excludePicker(sv);
-      form = [field("time", budget), field("heroes", size), el("span", { class: "muted small" }, "Also tune:"), sSkills.node, sGear.node,
+      form = [field("time", budget), field("heroes", size), el("span", { class: "muted small" }, "Tune:"), sParty.node, sSkills.node, sGear.node,
         ...(isMap ? [sScrolls.node] : []), excl.node];
       start = () => {
         const budgetMs = Number(budget.value) * 60000;
-        runSearch({ ...base(), search: "optimise", pool: excl.pool(), poolSkills: ctx.poolSkills(), ...ctx.target(), save: sv,
-          size: intOf(size, 1, 6), timeBudgetMs: budgetMs,
-          steps: { party: true, skills: sSkills.c.checked, gear: sGear.c.checked, scrolls: isMap && sScrolls.c.checked } }, out,
+        const p = ctx.party();
+        const startParty = { front: p.front.map((h) => h?.id ?? null), back: p.back.map((h) => h?.id ?? null) };
+        const placed = [...startParty.front, ...startParty.back].filter((x): x is number => x !== null);
+        if (!sParty.c.checked && !placed.length) {
+          out.replaceChildren(el("p", { class: "error", role: "alert" }, "With the party step off, put the party in step 2 first (the optimiser keeps it)."));
+          return;
+        }
+        runSearch({ ...base(), search: "optimise", pool: excl.pool(placed), lock: excl.lock(), poolSkills: ctx.poolSkills(), ...ctx.target(), save: sv,
+          size: intOf(size, 1, 6), timeBudgetMs: budgetMs, ...(placed.length ? { startParty } : {}),
+          steps: { party: sParty.c.checked, skills: sSkills.c.checked, gear: sGear.c.checked, scrolls: isMap && sScrolls.c.checked } }, out,
         (r) => (r.search === "optimise" ? optimiseResult(r.result, sv) : []), budgetMs);
       };
     }
@@ -380,22 +389,50 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
     ];
   }
 
-  /** "Leave out" chips: every hero of the save, ticked ones are not candidates. */
-  function excludePicker(sv: Save): { node: HTMLElement; pool(): Any[] } {
-    const boxes = sv.raw.hero.map((h: Any) => {
+  /** "Why this rotation": hero (row, i) playing `rot`, the others their current rotations, against the quest's timeline. */
+  function whyRotation(row: "front" | "back", i: number, rot: string[]): HTMLElement | null {
+    const q = ctx.target().quest;
+    if (!q) return null;
+    const p = ctx.party();
+    const members: PlanMember[] = p.members.map((m) => ({
+      row: m.row, i: m.i, raw: m.raw,
+      rotation: m.row === row && m.i === i ? rot : (p.skills[m.row][m.i]?.attackList ?? api.newHero(m.raw).attackList.slice(1, 6)),
+    }));
+    const r = scheduleFor(q, members);
+    return r ? notesFor(r.score, locationOf(row, i)) : null;
+  }
+
+  /**
+   * Candidate chips: "Leave heroes out" (not candidates) and "Must be in the party" (lock). A locked hero, or one
+   * of `keep` (the starting party), stays a candidate even when it is also left out.
+   */
+  function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[]; lock(): number[] } {
+    const chips = (cls: string) => sv.raw.hero.map((h: Any) => {
       const c = el("input", { type: "checkbox", value: String(h.id) }) as HTMLInputElement;
-      return { h, c, node: el("label", { class: "chip-check" }, c, ` ${h.name}`) };
+      return { h, c, node: el("label", { class: `chip-check ${cls}` }, c, ` ${h.name}`) };
     });
-    const node = el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),
-      el("div", { class: "chip-checks" }, ...boxes.map((b: Any) => b.node)));
-    return { node, pool: () => boxes.filter((b: Any) => !b.c.checked).map((b: Any) => b.h) };
+    const out = chips("out"), locked = chips("lock");
+    const lock = () => locked.filter((b: Any) => b.c.checked).map((b: Any) => Number(b.h.id));
+    const node = el("div", { class: "pickers" },
+      el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),
+        el("div", { class: "chip-checks" }, ...out.map((b: Any) => b.node))),
+      el("details", { class: "exclude" }, el("summary", { class: "small" }, "Must be in the party"),
+        el("div", { class: "chip-checks" }, ...locked.map((b: Any) => b.node))));
+    return {
+      node, lock,
+      pool: (keep = []) => {
+        const must = new Set([...lock(), ...keep]);
+        return out.filter((b: Any) => !b.c.checked || must.has(Number(b.h.id))).map((b: Any) => b.h);
+      },
+    };
   }
 
   /** The optimiser's result: before/after, the setup (party, rotations, gear, scrolls), Use this setup, the trace. */
   function optimiseResult(res: OptimiseResult, sv: Save): Node[] {
     const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
     const name = (id: number | null) => (id === null ? "—" : hero(id)?.name ?? `#${id}`);
-    const named = (s: string) => s.replace(/#(\d+)/g, (_, id) => name(Number(id)));
+    // "Guerrier (#3)" (the optimiser's labels) → "Guerrier"; a bare "#3" → its name.
+    const named = (s: string) => s.replace(/ \(#\d+\)/g, "").replace(/#(\d+)/g, (_, id) => name(Number(id)));
     const placed = [...res.config.party.front, ...res.config.party.back].filter((x): x is number => x !== null);
     const use = el("button", { type: "button", class: "primary" }, "Use this setup");
     use.addEventListener("click", () => {
@@ -406,6 +443,11 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
       use.textContent = "✓ Party and rotations set in step 2";
       use.setAttribute("disabled", "");
     });
+    // "Why this rotation": the schedule notes of the optimised party against the quest's enemy timeline.
+    const q = ctx.target().quest;
+    const where = new Map<number, { row: "front" | "back"; i: number }>();
+    (["front", "back"] as const).forEach((row) => res.config.party[row].forEach((id, i) => id !== null && where.set(id, { row, i })));
+    const sched = q ? scheduleFor(q, placed.map((id) => ({ ...where.get(id)!, raw: hero(id), rotation: res.config.skills[id].rotation }))) : null;
     const gearRows = placed.flatMap((id) => (res.config.gear[id] ?? []).map((g) => ({ hero: name(id), slot: g.slot, item: g.item, from: named(g.from) })));
     return [
       ...(res.stopped ? [el("p", { class: "muted small" }, "⏱️ The time budget ran out: this is the best setup found so far.")] : []),
@@ -419,7 +461,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement): { show(key: 
         const s = res.config.skills[id];
         return el("article", { class: "search-card" }, el("header", {}, el("strong", {}, name(id))),
           el("ol", { class: "rotation compact" }, ...s.rotation.map((x) => el("li", {}, skillLink(x)))),
-          el("p", { class: "small" }, "Passive: ", passiveLink(s.passive)));
+          el("p", { class: "small" }, "Passive: ", passiveLink(s.passive)),
+          ...(sched ? [notesFor(sched.score, locationOf(where.get(id)!.row, where.get(id)!.i))].filter((x): x is HTMLElement => x !== null) : []));
       })),
       ...(gearRows.length ? [el("h3", { class: "sub" }, "Gear to equip"),
         table(gearRows, [{ key: "hero", label: "Hero" }, { key: "slot", label: "Slot" }, { key: "item", label: "Item", render: (r) => el("strong", {}, String(r.item)) },

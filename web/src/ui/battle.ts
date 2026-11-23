@@ -14,6 +14,7 @@ import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker
 import { $, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
+import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLink, href, isEnemy, itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
@@ -158,6 +159,7 @@ function skillEditor(i: number): HTMLElement {
     if (spent > info.maxAP) apText.textContent += " — over budget: the game falls back to the default rotation";
     state.skills[i] = { attackList: [...current.attackList], passive: current.passive };
     persistParty();
+    renderPlan();
   };
   const slots = current.attackList.map((name, k) => {
     const s = select({ "aria-label": `Turn ${k + 1} skill` },
@@ -222,6 +224,7 @@ function renderParty(): void {
     el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
   $("#party").replaceChildren(el("div", { class: "party-cols" }, ...cols));
   syncAmount();
+  renderPlan();
   search?.refresh();
 }
 
@@ -270,13 +273,15 @@ function renderTarget(): void {
               ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
         radar(axes, { title: `${r ? d.nameB : d.name}'s stats`, size: 240 }),
         el("p", { class: "muted small" }, `Rims: the strongest ${(d.title || "quest").toLowerCase()} enemy of level ${Math.floor((d.levelReq ?? 0) / 10) * 10}–${Math.floor((d.levelReq ?? 0) / 10) * 10 + 9}.`),
-        el("h4", {}, "Skills"),
-        el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk)))),
+        // The 5-turn timeline with effect windows (U11); the plain rotation without timeline data.
+        ...((tl) => tl ? [el("h4", {}, "Timeline"), enemyStrip(tl)]
+          : [el("h4", {}, "Skills"), el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))])(
+          timelineOf(Number(q.value), r)),
         el("p", { class: "small" }, el("a", { href: href.enemy(Number(q.value)) }, "Enemy page in the wiki →")));
     };
-    q.addEventListener("change", update);
-    rare.addEventListener("change", update);
-    amount.addEventListener("change", syncAmount);
+    q.addEventListener("change", () => (update(), renderPlan()));
+    rare.addEventListener("change", () => (update(), renderPlan()));
+    amount.addEventListener("change", () => (syncAmount(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, q,
       el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
         el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount)), sizeNote), card);
@@ -328,19 +333,21 @@ function renderTarget(): void {
     sync();
     $<HTMLInputElement>("#runs").value = "50";
   }
+  renderPlan();
 }
 
 /**
  * The quest sizes the game offers (questService.getCurrentAndMaxAmount): ×1 up to maxQuestAmount, from the highest
- * hero prestige of the party; a rare quest is always ×1. The modes that pick the party themselves run at ×1, since
- * the cap depends on who ends up in it. Keeps the current choice when it is still allowed.
+ * hero prestige of the party; a rare quest is always ×1. The modes that pick the party allow up to the strongest hero
+ * of the save (searchParty / optimiseFight skip parties that can't take the size). Keeps the current choice when allowed.
  */
 function syncAmount(): void {
   const amount = document.querySelector<HTMLSelectElement>("#amount");
   const note = document.querySelector<HTMLElement>("#amount-note");
   if (!amount || !state.sv) return;
   const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
-  const max = state.mode.party ? maxQuestAmount(partyOf().members.map((m) => m.raw), rare, state.sv.raw.gameMode || "Standard") : 1;
+  // Modes that choose the party: up to the strongest hero of the save (the search skips parties that can't take it).
+  const max = maxQuestAmount(state.mode.party ? partyOf().members.map((m) => m.raw) : state.sv.raw.hero, rare, state.sv.raw.gameMode || "Standard");
   const was = Number(amount.value) || 1;
   amount.replaceChildren(...Array.from({ length: max }, (_, k) => el("option", { value: String(k + 1) }, `×${k + 1}`)));
   amount.value = String(Math.min(was, max));
@@ -348,10 +355,28 @@ function syncAmount(): void {
   const n = Number(amount.value);
   if (note) {
     note.textContent = rare ? "Quest size: a rare quest is always ×1."
-      : !state.mode.party ? "Quest size ×1: the size cap depends on the party, which this mode chooses."
+      : !state.mode.party ? `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}. `
+        + `Up to ×${max} with your strongest hero; parties that can't take this size are skipped.`
       : `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}. `
         + `Up to ×${max} for this party (highest hero ascension: prestige × 2 − 1).`;
   }
+}
+
+// ---------------------------------------------------------------- party plan (U11)
+/** The party's 5-turn plan under the enemy's timeline, for the modes with a party, against a quest. */
+function renderPlan(): void {
+  const box = document.querySelector<HTMLElement>("#plan");
+  if (!box || !state.sv) return;
+  box.replaceChildren();
+  if (!state.mode.party || oppKind() !== "quest" || !document.querySelector("#quest")) return;
+  const t = targetOf().quest!;
+  const members: PlanMember[] = partyOf().members.map((m) => ({
+    row: m.row, i: m.i, raw: m.raw,
+    rotation: state.skills[m.idx]?.attackList ?? api.newHero(m.raw).attackList.slice(1, 6),
+  }));
+  if (!members.length) return;
+  const plan = partyPlan(t, members);
+  if (plan) box.append(el("h3", { class: "col-title" }, "🗓️ 5-turn plan"), plan);
 }
 
 // ---------------------------------------------------------------- modes
@@ -538,7 +563,8 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
 // ---------------------------------------------------------------- page
 /** Parse and use a save (from a file or from the browser's storage); throws when it isn't one. */
 async function loadSave(text: string, name: string): Promise<void> {
-  await Promise.all([loadData(), loadWikiText()]);
+  // Timelines are optional: without them the opponent card shows the plain rotation and there is no party plan.
+  await Promise.all([loadData(), loadWikiText(), loadTimelineData().catch(() => {})]);
   let sv: Save;
   try {
     sv = loadSaveText(text);

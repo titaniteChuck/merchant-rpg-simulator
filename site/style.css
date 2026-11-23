@@ -661,3 +661,39 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .lv-payoff .up { color: var(--good, #16a34a); font-weight: 600; }
 .lv-payoff .down { color: var(--bad, #dc2626); font-weight: 600; }
 
+/* ------------------------------------------------------------------ enemy timeline (U11) */
+.tl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tl-grid, .tl-winrow { display: grid; gap: 4px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tl-grid.plan, .tl-winrow.plan { grid-template-columns: minmax(84px, 0.8fr) repeat(5, minmax(0, 1fr)); }
+.tl-head { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: center; }
+.tl-grid.plan .tl-head:first-child { text-align: left; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.tl-cell { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; border-radius: 8px; font-size: 0.8rem;
+  background: var(--card-2); border: 1px solid var(--border); }
+.tl-cell.enemy { background: color-mix(in srgb, #ec4899 8%, var(--card-2)); }
+.tl-cell.hero.ok { border-color: color-mix(in srgb, var(--good) 55%, var(--border)); }
+.tl-cell.hero.warn { border-color: color-mix(in srgb, #f59e0b 70%, var(--border)); }
+.tl-skill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.tl-tags { display: flex; flex-wrap: wrap; gap: 2px; font-size: 0.9rem; line-height: 1; min-height: 1em; }
+.tl-actor { display: flex; flex-direction: column; justify-content: center; font-size: 0.82rem; min-width: 0; padding-left: 8px; border-left: 3px solid var(--c, var(--border)); }
+.tl-actor.enemy { border-left-color: #ec4899; }
+.tl-actor strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-win { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; font-weight: 600;
+  padding: 2px 6px; border-radius: 999px; cursor: help; }
+.tl-win.on-enemy { background: color-mix(in srgb, #ec4899 22%, transparent); color: var(--fg); }
+.tl-win.on-heroes { background: color-mix(in srgb, #f59e0b 25%, transparent); color: var(--fg); }
+.tl-win.k-reflect, .tl-win.k-shield, .tl-win.k-counter { background: color-mix(in srgb, #8b5cf6 28%, transparent); }
+.tl-win.k-stun { background: color-mix(in srgb, #ef4444 28%, transparent); }
+.tl-win:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tl-note { margin: 2px 0 0; }
+.tl-noteline { font-size: 0.72rem; line-height: 1.25; white-space: normal; }
+.tl-noteline.good { color: var(--good); }
+.tl-noteline.bad { color: color-mix(in srgb, #f59e0b 85%, var(--fg)); }
+.tl-why { display: flex; flex-direction: column; gap: 2px; }
+.tl-plan { margin-top: 18px; overflow-x: auto; }
+.tl-plan .tl-grid, .tl-plan .tl-winrow { min-width: 620px; }
+.opp-card .tl { margin-top: 2px; }
+.enemy-variant .tl { margin-bottom: 4px; }
+.pickers { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.chip-check.lock:has(input:checked) { text-decoration: none; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.search-card .tl-why { border-top: 1px dashed var(--border); padding-top: 6px; }
+

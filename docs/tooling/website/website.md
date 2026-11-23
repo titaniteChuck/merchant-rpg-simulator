@@ -88,8 +88,8 @@ flowchart LR
     strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
     placeholders are not offered (`isEnemy`).
   - Quest size ×1 to ×max: one enemy with N× HP, N× loot and N× quest time, max = `maxQuestAmount` of the party
-    (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything run at ×1, since
-    the cap depends on the party they choose.
+    (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything allow up to the
+    strongest hero of the save; the searches skip parties that can't take the size.
   - Map run: owned map from the save (prefix, suffix, grade, ascension outline) or any catalog map with ascension 0/1
     and grade; card with level, grade, rooms, time, enemy power ×, boss links, modifiers, and up to 3 scrolls (hidden in
     Best scrolls).
@@ -107,7 +107,7 @@ flowchart LR
   - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
     ascension (`catalogGearCandidates`); now vs best, and the item per slot.
   - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
-    ticked in "Leave heroes out"; "Use this party" fills the slots.
+    ticked in "Leave heroes out", with the ones in "Must be in the party" locked (`lock`); "Use this party" fills the slots.
   - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
   - Best potion / enchant (quest or map, U9): potions and enchants: `rankConsumables` (`web/src/tools/consumables.ts`)
     rank what a hero should drink or enchant for a fight. Per party hero: potions (one at a time, last 3 quests) or one
@@ -116,15 +116,34 @@ flowchart LR
     lowest-enemy-HP (map: progress) change in points, score gain, crafted cost (profit Solver, solved once per worker,
     optional) and gain per 1,000 g; for enchants, the gain of filling every free slot with the best one (`fillGain`).
   - Optimise everything (quest or map): `optimiseFight` (`web/src/tools/optimise.ts`) over all heroes but the left-out
-    ones, time budget 2 / 5 / 10 min (bar = time used), optional rotation, gear (owned items) and scroll steps; the party
-    step always runs (the optimiser starts from no party). Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
+    ones, locked heroes (`lock`), time budget 2 / 5 / 10 min (bar = time used), party, rotation, gear (owned items) and
+    scroll steps. The step-2 party is passed as `startParty`: with the party step off it is kept (order, row swaps and
+    rotation phase shifts may still move it), with it on it is the party to beat. Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
     the party (back, front), each member's rotation and passive, gear to equip (the page can't change the save),
-    scrolls, and the step trace (hero ids shown as names, score gain, time). "Use this setup" fills the party, the
+    scrolls, and the step trace (hero ids shown as names; E14a steps "Order within rows", "Swap rows", "Phase of X";
+    score gain, time). "Use this setup" fills the party, the
     rotations and the map's scrolls. When the budget runs out, the best setup so far is shown.
   - Progress per stage (throttled to ~10 updates per second), fight counts editable (smaller = faster). The searches
     are synchronous in the worker, so Cancel terminates it. Results show the enemy's lowest HP point (`enemy_dmg_peak`)
     when the enemy heals back; the Simulate results do too.
   - Tests: `web/test/battle-search.test.ts` (made-up heroes, runs in CI).
+
+- Enemy timeline (U11, `web/src/ui/timeline.ts` on `web/src/tools/schedule.ts`, data `data/timelines.json` =
+  `inventory/timelines.json`): what the enemy does on each of its 5 turns and how long each effect lasts; time
+  cleanses, heals and big hits around it.
+  - Strip (opponent card and wiki enemy pages): one cell per turn (skill link, tag icons: hits one / split / row /
+    everyone, heal, buff, debuff, stun, shield, reflect …), and one bar per effect over the turns the heroes act while
+    it is on: an effect on the enemy covers `facingTurns`, an effect on the heroes their `ownerTurns`, offsets from the
+    cast turn, wrapping from T5 to T1 (Soul Barrier cast on T4 covers T5 and T1). Tooltips: duration, stats, cleanse /
+    dispel, and the rules (durations count in the owner's own actions; the enemy always follows its rotation and hits
+    the front row, split evenly, unless the skill says otherwise).
+  - 5-turn plan (under the party, modes with a party, quest opponent): one row per actor in the real action order
+    (back 1, front 1, back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), each hero's
+    slot k under turn k, with `scoreSchedule`'s notes per cell (✓ helps, ⚠ hurts: "into Soul Barrier", "cleanses
+    Alternate Reality", "heals after enemy damage") and the score per turn; stats from `scheduleContext`.
+  - Search results: "Against the enemy's timeline" notes under each Best rotation candidate and each optimised
+    rotation (quests only).
+  - Without the timeline data the pages fall back to the plain rotation list.
 
 ## Wiki
 
@@ -147,7 +166,8 @@ flowchart LR
   rotation (`attackList[(turn-1) % 5 + 1]`, skill links and effects) and drops (`rewardX1/2` fixed per win, `rewardX3/4`
   loot tables via `parcelRoll`: share of one roll at base odds, "nothing" share, items incl. equipment), and the maps
   (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
-  enemy multiplier and the ascension-1 one (×2, silver outline). Nav link "Enemies" after Maps, static in `wiki.html`.
+  enemy multiplier and the ascension-1 one (×2, silver outline). Each variant card shows the 5-turn timeline strip (U11)
+  above the rotation. Nav link "Enemies" after Maps, static in `wiki.html`.
 - Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
   "Where it drops" (now also for equipment), home search. Gathering quests and placeholders stay plain text.
 - Not enemies: `NON_ENEMY_QUEST_IDS` in `wiki-data.ts`, a static, commented list: gathering quests (questType 1: 1, 11,

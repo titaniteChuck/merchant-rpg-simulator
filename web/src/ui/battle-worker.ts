@@ -45,9 +45,10 @@ export type SearchRequest = {
   | { search: "skills"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; nQuick: number; nFinal: number; top: number }
   | { search: "gear"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; n: number; passes: number;
     pool: "owned" | "catalog"; save?: Save; itemGrade?: number; asc?: number }
-  | { search: "party"; pool: Any[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
+  | { search: "party"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; size: number; nQuick: number; nFinal: number }
-  | { search: "optimise"; pool: Any[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
+  | { search: "optimise"; pool: Any[]; lock?: number[]; startParty?: { front: (number | null)[]; back: (number | null)[] };
+    poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; save: Save; size: number; timeBudgetMs: number;
     steps: { party?: boolean; skills?: boolean; gear?: boolean; scrolls?: boolean } }
   | { search: "consumables"; hero: { row: "front" | "back"; i: number }; quest?: { id: number; rare: boolean; amount: number };
@@ -166,7 +167,7 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
       case "party": {
         const pool = poolOf(req.pool, req.poolSkills);
         const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
-        const result = searchParty(sim, pool, target, { size: req.size, nQuick: req.nQuick, nFinal: req.nFinal }, ctl);
+        const result = searchParty(sim, pool, target, { size: req.size, nQuick: req.nQuick, nFinal: req.nFinal, lock: req.lock }, ctl);
         return post({ type: "done", search: "party", result, ms: ms() });
       }
       case "consumables": {
@@ -184,7 +185,8 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
       case "optimise": {
         const pool = poolOf(req.pool, req.poolSkills);
         const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
-        const result = optimiseFight(sim, pool, target, { save: req.save, size: req.size, timeBudgetMs: req.timeBudgetMs, steps: req.steps }, ctl);
+        const result = optimiseFight(sim, pool, target, { save: req.save, size: req.size, timeBudgetMs: req.timeBudgetMs, steps: req.steps,
+          startParty: req.startParty, lock: req.lock }, ctl);
         return post({ type: "done", search: "optimise", result, ms: ms() });
       }
       case "scrolls": {

@@ -6,6 +6,7 @@
  *   #/maps    #/map/ID          #/classes   #/class/ID
  *   #/enemies #/enemy/ID        (ID = quest id; the rare variant shares the page)
  */
+import { loadTimelineData } from "./timeline.ts";
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
@@ -30,6 +31,8 @@ const ready = Promise.all([
     return r.json();
   }).then((j) => api.loadGameData(j)),
   loadWikiText(),
+  // Enemy timelines (U11): optional, the enemy pages show the plain rotation without them.
+  loadTimelineData().catch(() => {}),
 ]);
 
 const CATEGORIES: [string, string, string, () => number][] = [

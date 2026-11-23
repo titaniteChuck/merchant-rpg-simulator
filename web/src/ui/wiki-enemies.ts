@@ -3,6 +3,7 @@
  * together, with stats, rotation, drops and the maps it appears in. Gathering quests and placeholders are not enemies
  * (NON_ENEMY_QUEST_IDS in wiki-data.ts).
  */
+import { enemyStrip, timelineOf } from "./timeline.ts";
 import { seq } from "../sim/lua.ts";
 import { el, fmt, pill, type Row, table, withAsc } from "./dom.ts";
 import { enemyDrops, enemyIds, enemyKind, enemyLink, enemyMapRoles, hasRare, item, itemLink, parcelRoll, quest, skillDesc, skillLink } from "./wiki-data.ts";
@@ -109,6 +110,10 @@ function variantCard(id: number, rare: boolean): HTMLElement {
   const q = quest(id);
   return el("div", { class: `enemy-variant${rare ? " rare" : ""}` },
     el("h3", {}, rare ? q.nameB : q.name, ...(rare ? [" ", pill("rare", "t-pink")] : [])),
+    ...(() => {
+      const tl = timelineOf(id, rare);
+      return tl ? [el("h4", {}, "Timeline"), enemyStrip(tl)] : [];
+    })(),
     el("h4", {}, "Rotation"), rotationList(id, rare),
     el("h4", {}, "Drops"), dropsBlock(id, rare));
 }
