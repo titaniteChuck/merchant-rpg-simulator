@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Class balance moves to the top bar ("Balance"), out of the wiki nav; save viewer CSV exports move into the top-bar save menu, and the heroes instruction line is gone (U18).
 - **Fix**: Page titles visible again in desktop Chrome / Edge (solid text instead of gradient text); pages about 23% wider (1280 px).
 - **Update**: Save viewer v3 (U17): Overview as small cards again (label, number, hint; several per row), inventory grades split into sortable S / A / B / C / D count columns plus Total (badge headers, same columns in the CSV), crafter ascension levels headed "Level" with a silver or gold bar.
 - **Update**: Site quality pass (U13): favicon, top-bar titles with the long names, keyboard tabs and save menu, link focus rings, and a local regression sweep (`web/scripts/check-site.ts`: every page at 1280/375, light/dark, with/without a save; console errors, 404s, overflow).

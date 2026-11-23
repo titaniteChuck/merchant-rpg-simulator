@@ -19,6 +19,8 @@ export interface SaveSourceOptions {
   load: (text: string, name: string) => Promise<void>;
   /** Called after "Forget" (the page clears what it showed). */
   onForget?: () => void;
+  /** More entries for the save menu (e.g. the save viewer's CSV exports), asked for each time the menu opens. */
+  menuExtras?: () => { title: string; items: { label: string; hint: string; run: () => void }[] };
 }
 
 function age(ms: number): string {
@@ -63,12 +65,21 @@ export function initSaveSource(o: SaveSourceOptions): void {
       });
       return b;
     };
+    const extras = el("div", { class: "save-menu-extras", role: "group" });
     menu.append(
       el("p", { class: "muted small" }, el("strong", {}, name), el("br"), `opened ${age(savedAt)} · kept in this browser only`),
       item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload),
       item("📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
-      item("🗑 Forget", "Remove the save from this browser", forget));
+      item("🗑 Forget", "Remove the save from this browser", forget), extras);
+    /** The page's own entries, rebuilt on every opening (they follow what the page shows). */
+    const fillExtras = () => {
+      const x = o.menuExtras?.();
+      extras.replaceChildren(...(x && x.items.length
+        ? [el("p", { class: "muted small save-menu-title" }, x.title), ...x.items.map((e) => item(e.label, e.hint, e.run))] : []));
+      extras.setAttribute("aria-label", x?.title ?? "");
+    };
     button.addEventListener("click", () => {
+      if (menu.hidden) fillExtras();
       menu.hidden = !menu.hidden;
       button.setAttribute("aria-expanded", String(!menu.hidden));
       if (!menu.hidden) (menu.querySelector("button") as HTMLButtonElement | null)?.focus();

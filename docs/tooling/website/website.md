@@ -58,7 +58,8 @@ flowchart LR
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export` (checked equal to its CSVs on a real
   save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
-- Tabs: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters; CSV download per table.
+- Tabs: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters. CSV downloads (heroes,
+  hero gear, inventory, maps, crafters; whole tables) are in the top-bar save menu, not on the tabs.
   Each tab has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`); a click updates it with
   `history.replaceState` (no re-render, no history entry). No hash or an unknown one opens Overview.
 - Overview: small cards (`.save-cards`, about 80px tall, several per row, two per row on a phone), each with a label,
@@ -253,8 +254,8 @@ flowchart LR
 ## Class balance page
 
 `site/class-balance.html` + `web/src/ui/class-balance.ts` (page) + `web/src/ui/class-balance-worker.ts` (web
-worker), on `classMatrix` / `summarizeByClass` of `web/src/tools/classes.ts` (E3, U4). No save needed. Linked from
-the wiki section nav ("Class balance", after Classes) and the home page, not the top bar (it stays on one line).
+worker), on `classMatrix` / `summarizeByClass` of `web/src/tools/classes.ts` (E3, U4). No save needed. Its own top-bar
+link ("Balance", U18) and a home card; not part of the wiki (it depends on hero build, level and rotations).
 
 - Options: level, ascension (level capped at 50 / 50 / 60), quests by level band (1-10, 11-20 …, enemies only;
   "Party quests and bosses" on by default, off = solo quests only), gear (`best` same catalog items for all, `fit`
@@ -274,8 +275,8 @@ the wiki section nav ("Class balance", after Classes) and the home page, not the
 
 - Page width: content up to 1280 px (was 1040), 16 px side padding; phones unchanged. Page titles (h1) are solid
   text: the former gradient text (background-clip: text) vanished on repaint in desktop Chrome / Edge.
-- Top bar on every page: Save, Battle, Profit, Farming, Levelling, Wiki (short labels so it stays on one line at
-  1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
+- Top bar on every page: Save, Battle, Profit, Farming, Levelling, Balance, Wiki (short labels so it stays on one
+  line at 1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
   coin on the site gradient, no game art), linked from every page.
 - Keyboard: `tabKeys` in `dom.ts` gives a tab list the WAI-ARIA tabs pattern (Left / Right / Home / End, only the
   selected tab in the Tab order), for the save viewer's tabs (wired with U17); the save menu moves with Up / Down and closes with Escape;
@@ -287,7 +288,8 @@ the wiki section nav ("Class balance", after Classes) and the home page, not the
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
   menu: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser and brings
-  the drop zone back). Dropping a file anywhere on the page still loads it.
+  the drop zone back). Dropping a file anywhere on the page still loads it. A page can add its own menu entries
+  (`menuExtras`, rebuilt at each opening): the save viewer's "Export (CSV)" group (U18), one download per table.
 - File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
   open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.
 - Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest

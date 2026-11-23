@@ -336,6 +336,8 @@ section > h2:first-child { margin-top: 36px; }
 .save-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 230px; display: flex; flex-direction: column; gap: 4px;
   padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-hover); }
 .save-menu[hidden] { display: none; }
+.save-menu-extras:not(:empty) { display: flex; flex-direction: column; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.save-menu-title { margin: 2px 8px 2px; text-transform: uppercase; letter-spacing: .05em; font-size: 0.7rem; font-weight: 700; }
 .save-menu p { margin: 0 0 6px; overflow-wrap: anywhere; }
 .save-menu button { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font-weight: 600; }
 .save-menu button:hover, .save-menu button:focus-visible { background: var(--card-2); color: var(--accent); }

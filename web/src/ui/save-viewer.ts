@@ -21,16 +21,25 @@ function loadData(): Promise<void> {
   return dataReady;
 }
 
-function csvButton(name: string, rows: () => Row[], label = name): HTMLElement {
-  const b = el("button", { type: "button", class: "secondary" }, `${label[0].toUpperCase()}${label.slice(1)} CSV`);
-  b.title = `Download ${name}.csv`;
-  b.addEventListener("click", () => {
-    const url = URL.createObjectURL(new Blob([toCsv(rows())], { type: "text/csv" }));
-    const a = el("a", { href: url, download: `${name}.csv` });
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-  return b;
+function downloadCsv(name: string, rows: Row[]): void {
+  const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: "text/csv" }));
+  const a = el("a", { href: url, download: `${name}.csv` });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** CSV downloads, one per table, offered in the top-bar save menu (save-source.ts menuExtras). */
+function csvExports(): { label: string; hint: string; run: () => void }[] {
+  if (!current) return [];
+  const { sv, views } = current;
+  const one = (label: string, file: string, rows: () => Row[]) => ({ label: `⬇ ${label}`, hint: `Download ${file}.csv`, run: () => downloadCsv(file, rows()) });
+  return [
+    one("Heroes", "heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
+    one("Hero gear", "hero_gear", () => gearRows(views)),
+    one("Inventory", "inventory", () => inventoryRows(sv)),
+    one("Maps", "maps", () => mapRows(sv)),
+    one("Crafters", "crafters", () => crafterRows(sv)),
+  ];
 }
 
 function toolbar(...kids: Node[]): HTMLElement {
@@ -168,9 +177,6 @@ function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
   }));
   const num = (key: string, label: string) => ({ key, label, num: true });
   return el("div", {},
-    toolbar(el("p", { class: "muted small" }, "Combat stats computed with the game's rules from gear, level, passive and enchants. Click a hero for its page (radar chart, rotation, gear)."),
-      csvButton("heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
-      csvButton("hero_gear", () => gearRows(views), "gear")),
     table(rows, [
       { key: "name", label: "Hero", render: (x) => el("a", { href: heroHref(x.id), class: `hero-link cls-${x.cls}` }, avatar(views[Number(x.k)], "small"), String(x.name)) },
       { key: "class", label: "Class", render: (x) => el("span", { class: `cls-${x.cls}` }, pill(String(x.class))) },
@@ -214,14 +220,14 @@ function renderInventory(sv: Save): HTMLElement {
   search.addEventListener("input", update);
   kind.addEventListener("change", update);
   update();
-  return el("div", {}, toolbar(search, kind, total, csvButton("inventory", filtered)), holder,
+  return el("div", {}, toolbar(search, kind, total), holder,
     el("p", { class: "muted small" }, "Value = base customer price before haggling, preferences and counter bonuses."));
 }
 
 function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
   if (!rows.length) return el("p", { class: "muted" }, "No maps in this save.");
-  return el("div", {}, toolbar(csvButton("maps", () => rows)), table(rows, [
+  return el("div", {}, table(rows, [
     { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, ascCol,
     { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
     { key: "essence", label: "Essence / run", render: (r) => {
@@ -262,7 +268,7 @@ function renderCrafters(sv: Save): HTMLElement {
         itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel));
     } },
   ];
-  return el("div", {}, toolbar(csvButton("crafters", () => rows)),
+  return el("div", {},
     iconHeaders(table(rows, cols), cols, { asc1_level: levelHeader(1), asc2_level: levelHeader(2) }),
     el("p", { class: "muted small" }, "Each crafter has its own level per ascension: crafting items of its current ascension uses that level " +
     "(it restarts at 1 when the crafter ascends), items of ascension 0 use the normal level. Above that level, it can only craft them one ascension lower."));
@@ -345,6 +351,7 @@ function init(): void {
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: loadSave,
     onForget: () => $("#result").replaceChildren(),
+    menuExtras: () => ({ title: "Export (CSV)", items: csvExports() }),
   });
   loadWikiText();
   loadData().catch((e) => showError(String(e)));
