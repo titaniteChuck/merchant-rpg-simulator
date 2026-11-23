@@ -220,12 +220,15 @@ flowchart LR
   `scene.SpinGame` names the prize-wheel slices), so a "Rarity N" chip in the game's own colour (`UI.rarityColor`:
   1 white, 2 #80ff80, 3 #50a0ff, 4 #ff00ff, 5-6 #ffff00, 7-8 #ff0000, 10 = 3, 11 = 4) with dark text and a thin outline
   (readable in both themes). Item links keep the contrast-tuned `--rar-*` text colours; 10 and 11 now map to 3 and 4.
-- Crafting chain (U19, `web/src/ui/recipe-chain.ts`): on item and map pages, a horizontal diagram of boxes and arrows
-  (HTML + CSS borders, scrolls sideways in its frame on a phone): craftable ingredients on the left, the item on the
-  right; raw materials stay in the recipe list. Each box: linked name, gold cost, own craft time (`runTime`), total
-  (own + amount × each craftable ingredient's total, one after the other), crafter and level needed. Rules
-  (`obj.Craft`, `obj.Crafter`): time = floor(runTime × craftGradeSpeed[grade]) × amount × craftTimeMod (standard:
-  1.1, 1, 0.9, 0.8, 0.75 for D..S); the crafter level only changes the start grade, not the time; cost = `cost` × amount.
+- Crafting chain (U19, `web/src/ui/recipe-chain.ts`): on equipment pages, a horizontal diagram of boxes and arrows
+  (HTML + CSS borders, scrolls sideways in its frame on a phone). Only equipment gets a box (crafted equipment
+  ingredients on the left, the item on the right); raw materials and crafted materials such as ingots or lumber stay in
+  the recipe list, and maps and consumables have no chain. An item whose crafted ingredients are all materials shows as
+  a single box. Each box: linked name, gold cost, own craft time (`runTime`), Total (own + amount × each crafted
+  ingredient's total, one after the other, the hidden material crafts included; the box's tooltip lists them), crafter
+  and level needed. Rules (`obj.Craft`, `obj.Crafter`): time = floor(runTime × craftGradeSpeed[grade]) × amount ×
+  craftTimeMod (standard: 1.1, 1, 0.9, 0.8, 0.75 for D..S); the crafter level only changes the start grade, not the
+  time; cost = `cost` × amount.
 - Skill pages (U19, `web/src/ui/wiki-skills.ts`): "Good against" for hero skills, from `inventory/timelines.json`
   (enemy timelines, skill tags and effect windows of `schedule.ts`), deterministic rules, no fight simulation: cleanse
   vs removable debuffs / damage over time / stuns on the heroes; dispel vs the enemy's removable buffs, shields,

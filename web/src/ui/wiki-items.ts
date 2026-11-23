@@ -137,19 +137,30 @@ export interface RecipeNode {
   cost: number;
   /** base craft time of one, seconds (grade C; × 1.1 at D down to × 0.75 at S) */
   time: number;
-  /** craftable ingredients, each with its own chain */
+  /** craftable equipment ingredients, each with its own chain (the only ingredients drawn as boxes) */
   kids: RecipeNode[];
-  /** non-craftable ingredients [type, id, amount] (not drawn as boxes) */
+  /** every other ingredient [type, id, amount]: raw materials and crafted non-equipment (ingots, lumber, maps…) */
   raw: [string, number, number][];
-  /** one of this item, everything crafted one after the other: own time + amount × each craftable ingredient's total */
+  /** crafted non-equipment ingredients (part of raw): their crafting counts in the totals, but they get no box */
+  hidden: { type: string; id: number; amount: number; time: number; cost: number }[];
+  /**
+   * One of this item, everything crafted one after the other: own time + amount × each crafted ingredient's total,
+   * hidden material crafts (ingots…) included.
+   */
   totalTime: number;
-  /** gold for one, ingredients' crafting included */
+  /** gold for one, every crafted ingredient included (hidden ones too) */
   totalCost: number;
-  /** longest chain of crafts below and including this one */
+  /** longest chain of equipment crafts below and including this one */
   depth: number;
 }
 
-/** The chain of crafts behind an item: craftable ingredients become nodes, raw materials stay a list. */
+/** Boxes in a crafting chain: equipment only (U19 follow-up: "let's stick to equippable items"). */
+const boxed = (type: string) => type === "equipment";
+
+/**
+ * The chain of crafts behind an item: crafted equipment ingredients become nodes; raw materials and crafted
+ * non-equipment ingredients stay a list, the latter still counted in the totals.
+ */
 export function recipeTree(type: string, id: number, amount = 1, seen: Set<string> = new Set()): RecipeNode | null {
   const it = G.itemData?.[type]?.[id];
   if (!it) return null;
@@ -158,18 +169,23 @@ export function recipeTree(type: string, id: number, amount = 1, seen: Set<strin
   const inner = new Set(seen).add(key);
   const kids: RecipeNode[] = [];
   const raw: [string, number, number][] = [];
+  const hidden: RecipeNode["hidden"] = [];
   for (const [t, mid, amt] of ingredients) {
     const sub = isCraftable(t, mid) ? recipeTree(t, mid, amt, inner) : null;
-    if (sub) kids.push(sub);
-    else raw.push([t, mid, amt]);
+    if (sub && boxed(t)) kids.push(sub);
+    else {
+      raw.push([t, mid, amt]);
+      if (sub) hidden.push({ type: t, id: mid, amount: amt, time: sub.totalTime, cost: sub.totalCost });
+    }
   }
   const own = ingredients.length ? it.runTime ?? 0 : 0;
   const ownCost = ingredients.length ? it.cost ?? 0 : 0;
+  const parts = [...kids.map((k) => ({ amount: k.amount, time: k.totalTime, cost: k.totalCost })), ...hidden];
   return {
     type, id, name: it.name ?? `${type} #${id}`, rarity: it.rarity ?? 1, amount, crafterID: it.crafterID ?? 0, level: it.itemLevel ?? 0,
-    cost: ownCost, time: own, kids, raw,
-    totalTime: own + kids.reduce((s, k) => s + k.amount * k.totalTime, 0),
-    totalCost: ownCost + kids.reduce((s, k) => s + k.amount * k.totalCost, 0),
+    cost: ownCost, time: own, kids, raw, hidden,
+    totalTime: own + parts.reduce((s, k) => s + k.amount * k.time, 0),
+    totalCost: ownCost + parts.reduce((s, k) => s + k.amount * k.cost, 0),
     depth: 1 + Math.max(0, ...kids.map((k) => k.depth)),
   };
 }

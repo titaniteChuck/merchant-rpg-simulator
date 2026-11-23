@@ -368,7 +368,6 @@ function mapPage(id: number): HTMLElement {
     section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")),
     section("Room enemies", enemyTable(mapEnemies(m), mod)),
     el("p", { class: "muted small" }, `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`),
-    ...(recipeChain("map", id) ? [section("Crafting chain", recipeChain("map", id)!)] : []),
     section("Recipe", recipeList("map", id)));
 }
 

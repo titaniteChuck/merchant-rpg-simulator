@@ -59,18 +59,24 @@ test("rarity colours are the game's (10 and 11 reuse 3 and 4)", () => {
   assert.equal(RARITY_COLOURS[7], "#ff0000");
 });
 
-test("recipe chain: craftable ingredients as nodes, totals add up", () => {
+test("recipe chain: equipment boxes only, crafted materials hidden but counted in the totals", () => {
   const t = recipeTree("equipment", 495)!; // Orous Spear: the deepest equipment chain
   assert.equal(t.name, "Orous Spear");
-  assert.equal(t.depth, 6);
+  assert.equal(t.depth, 5); // Adaman Ingot / Oak Lumber (crafted materials) are no longer boxes
   const sum = (n: typeof t): void => {
-    assert.equal(n.totalTime, n.time + n.kids.reduce((s, k) => s + k.amount * k.totalTime, 0));
-    assert.equal(n.totalCost, n.cost + n.kids.reduce((s, k) => s + k.amount * k.totalCost, 0));
-    for (const k of n.kids) assert.ok(recipeOf(k.type, k.id).length > 0, `${k.name} is craftable`);
-    for (const [rt, rid] of n.raw) assert.equal(recipeOf(rt, rid).length, 0);
+    const parts = [...n.kids.map((k) => [k.amount, k.totalTime, k.totalCost]), ...n.hidden.map((h) => [h.amount, h.time, h.cost])];
+    assert.equal(n.totalTime, n.time + parts.reduce((s, [a, tm]) => s + a * tm, 0));
+    assert.equal(n.totalCost, n.cost + parts.reduce((s, [a, , c]) => s + a * c, 0));
+    for (const k of n.kids) assert.ok(k.type === "equipment" && recipeOf(k.type, k.id).length > 0, `${k.name} is crafted equipment`);
+    for (const [rt, rid] of n.raw) assert.ok(rt !== "equipment" || recipeOf(rt, rid).length === 0, `${rid} should be a box`);
+    for (const h of n.hidden) assert.ok(h.type !== "equipment" && recipeOf(h.type, h.id).length > 0);
     n.kids.forEach(sum);
   };
   sum(t);
+  // Adaman Sword: its crafted ingredient is an ingot, so one box whose total includes the ingots' crafting
+  const sword = recipeTree("equipment", 32)!;
+  assert.equal(sword.kids.length, 0);
+  assert.ok(sword.hidden.length > 0 && sword.totalTime > sword.time);
   assert.equal(recipeTree("material", 1)!.kids.length, 0);
 });
 
