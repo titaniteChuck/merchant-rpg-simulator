@@ -4,12 +4,12 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, type Column, el, fmt, gradeBadge, pill, type Row as Cells, table, tile } from "./dom.ts";
+import { $, ascLegend, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row as Cells, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, mapRows, type Row, summary, toCsv,
+  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, itemLabel, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -38,7 +38,9 @@ function toolbar(...kids: Node[]): HTMLElement {
 }
 
 /** Item name coloured by rarity, linked to its wiki page (summary on hover). */
-const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity));
+const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc));
+/** The sortable "Asc" column: an outlined swatch, sorted by the number. */
+const ascCol: Column = { key: "asc", label: "Asc", num: true, render: (r) => ascSwatch(r.asc) };
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
 
 // ---------------------------------------------------------------- sections
@@ -104,13 +106,13 @@ function heroCard(v: HeroView, best: Best): HTMLElement {
   const gear = el("ul", { class: "gear" }, ...v.gear.map((g) =>
     el("li", { class: `rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${g.slot}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
       el("span", { class: "slot-ico", "aria-label": String(g.slot) }, SLOT_ICONS[String(g.slot)] ?? "•"),
-      itemLink("equipment", Number(g.id), String(g.name), g.rarity),
-      el("span", { class: "meta" }, gradeBadge(String(g.grade)), ...(g.asc ? [pill(`asc ${g.asc}`, "plain")] : [])))));
+      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc),
+      el("span", { class: "meta" }, gradeBadge(String(g.grade))))));
   return el("article", { class: `card hero cls-${v.cls}` },
     el("header", { class: "hero-head" },
-      el("span", { class: "avatar", "aria-hidden": "true" }, name.slice(0, 1).toUpperCase()),
+      withAsc(el("span", { class: "avatar" }, name.slice(0, 1).toUpperCase()), heroAsc(r.asc), name),
       el("div", {}, el("h3", {}, name),
-        el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"), pill(`asc ${r.asc}`, "plain"),
+        el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"),
           pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
     stats,
     el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotation),
@@ -130,7 +132,7 @@ function renderHeroes(views: HeroView[]): HTMLElement {
 
 const ITEM_COLS: Column[] = [
   { key: "name", label: "Item", render: itemCell }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
-  { key: "asc", label: "Asc", num: true }, { key: "grade", label: "Grade", render: gradeCell }, { key: "amount", label: "Qty", num: true },
+  ascCol, { key: "grade", label: "Grade", render: gradeCell }, { key: "amount", label: "Qty", num: true },
   { key: "unit_sell", label: "Unit value", num: true }, { key: "total_sell", label: "Total value", num: true },
 ];
 
@@ -162,7 +164,7 @@ function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
   if (!rows.length) return el("p", { class: "muted" }, "No maps in this save.");
   return el("div", {}, toolbar(csvButton("maps", () => rows)), table(rows, [
-    { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, { key: "asc", label: "Asc", num: true },
+    { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, ascCol,
     { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
     { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true }, { key: "enchant_attempts", label: "Enchant attempts" },
   ]));
@@ -170,10 +172,20 @@ function renderMaps(sv: Save): HTMLElement {
 
 function renderCrafters(sv: Save): HTMLElement {
   const rows = crafterRows(sv);
+  // The item each crafter works on (same order as crafterRows), linked and outlined for its ascension.
+  const jobs = [...sv.crafters.entries()].sort(([x], [y]) => x - y)
+    .map(([, c]) => (c.isCrafting && typeof c.isCrafting === "object" ? c.isCrafting : null));
+  const jobOf = new Map(rows.map((r, i) => [String(r.crafter), jobs[i]]));
   return el("div", {}, toolbar(csvButton("crafters", () => rows)), table(rows, [
-    { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) }, { key: "level", label: "Level", num: true }, { key: "asc", label: "Asc", num: true },
+    { key: "crafter", label: "Crafter", render: (r) => withAsc(el("strong", {}, String(r.crafter)), r.asc) },
+    { key: "level", label: "Level", num: true }, { key: "asc", label: "Asc", num: true, render: (r) => ascSwatch(r.asc) },
     { key: "prestige_level", label: "Prestige level", num: true },
-    { key: "crafting", label: "Working on", render: (r) => (r.crafting ? pill(`🔨 ${r.crafting}`, "t-blue") : el("span", { class: "muted" }, "idle")) },
+    { key: "crafting", label: "Working on", render: (r) => {
+      const job = jobOf.get(String(r.crafter));
+      if (!job) return el("span", { class: "muted" }, "idle");
+      return el("span", { class: "nowrap" }, `🔨 ${job.amount ?? 1} × `,
+        itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel));
+    } },
   ]));
 }
 
@@ -196,7 +208,7 @@ function render(sv: Save, fileName: string): void {
     b.addEventListener("click", () => select(name));
     tabList.append(b);
   }
-  $("#result").replaceChildren(renderSummary(sv), tabList, panel);
+  $("#result").replaceChildren(renderSummary(sv), ascLegend(), tabList, panel);
   void fileName;
   select("Heroes");
 }

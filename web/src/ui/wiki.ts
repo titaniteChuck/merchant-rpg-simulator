@@ -9,7 +9,7 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, type Column, el, fmt, gradeBadge, pill, type Row, table } from "./dom.ts";
+import { $, ascLegend, ascSwatch, type Column, el, fmt, gradeBadge, heroAsc, pill, type Row, table, withAsc } from "./dom.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, GRADES, href, item, itemLink, items, itemSummary,
   itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest, recipe, SLOT_NAMES,
@@ -226,12 +226,14 @@ function itemPage(type: string, id: number): HTMLElement {
       ["Sell value", [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
         : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => type !== "material" || a === 0).map((a) => {
           const v = safeSell(type, id, a);
-          return el("span", { class: "nowrap" }, `${fmt.format(v ?? 0)} g`, a ? el("span", { class: "muted small" }, ` at asc ${a}`) : "");
+          // ascension shown as the value's outline (silver 1, gold 2), not as text
+          return withAsc(el("span", { class: "nowrap" }, `${fmt.format(v ?? 0)} g`), a);
         }))],
       ["Bonus stats", Object.keys(it.bonusStat ?? {}).length ? Object.entries<number>(it.bonusStat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
       ["Effect", type === "consumable" && Object.keys(it.stat ?? {}).length ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
     ]),
   ];
+  if (type !== "material" && safeSell(type, id, 1) !== null) kids.push(ascLegend());
   if (type === "equipment") kids.push(section("Stats by grade", gradeTable(id)));
   if (type === "material") {
     const src = dropSources(id);
@@ -328,7 +330,7 @@ function classPage(id: number): HTMLElement {
   return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], c.name), el("h1", {}, classLink(id)),
     ...(classText(id) ? [el("p", { class: "lead" }, classText(id))] : []),
     facts([["Base HP", c.hp], ["Atk", c.atk], ["Matk", c.matk], ["Acc", c.acc], ["Crit", c.crit], ["Def", c.def], ["Mdef", c.mdef]]),
-    section("Growth per level", table(growth, [{ key: "asc", label: "Prestige", num: true },
+    section("Growth per level", table(growth, [{ key: "asc", label: "Ascension", num: true, render: (r) => ascSwatch(heroAsc(r.asc)) },
       ...GROWTH.map(([, l]) => ({ key: l, label: l, num: true, show: (v: unknown) => (typeof v === "number" ? dec.format(v) : "") }))])),
     section(`Skills (${skills.length}, in unlock order)`, el("ol", { class: "rotation" }, ...skills.map((s) =>
       el("li", {}, skillLink(s), el("span", { class: "ap" }, `${skillAp(s) ?? "?"} AP`), el("span", { class: "muted small eff" }, skillDesc(s)))))),

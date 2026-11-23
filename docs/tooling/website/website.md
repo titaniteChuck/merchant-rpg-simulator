@@ -101,6 +101,13 @@ flowchart LR
   hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
   effect); grade stacks read "14 × C".
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
+- Ascension is an outline, not text: silver for 1, gold for 2 (`ascClass` / `withAsc` / `ascSwatch` / `ascLegend` in
+  `dom.ts`, tokens `--silver-*` / `--gold-*` in `style.css`, a masked gradient ring so it looks metallic on any surface).
+  Items, maps and crafters (`ascLevel`) count 0–2; heroes store `prestigeLevel` 1–3, shown as ascensions = level − 1
+  (`heroAsc`); the crafter `prestigeLevel` (a level counter) stays a number. Applied wherever an item-like object is
+  shown: item links (inventory, counter, maps, hero gear, crafting jobs, wiki sell values), hero avatars (save viewer,
+  battle slots), crafter names, the sortable Asc columns (swatch), the battle page's chosen map (options can't be
+  outlined), and the wiki class growth table. Each outline also has a title and a screen-reader label ("ascension 1").
 
 ## What can run in the browser
 

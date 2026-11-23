@@ -62,6 +62,45 @@ export function gradeBadge(label: string): HTMLElement {
       el("span", { class: `grade grade-${g}` }, g))));
 }
 
+// ---------------------------------------------------------------- ascension
+/**
+ * Ascension is shown as an outline instead of text: silver for ascension 1, gold for ascension 2
+ * (classes .asc-1 / .asc-2 in style.css). Items, maps and crafters (ascLevel) count 0–2 directly;
+ * heroes store prestigeLevel 1–3 (1 = not ascended), see heroAsc().
+ */
+export const ascLevel = (v: unknown): number => Math.max(0, Math.min(2, Math.trunc(Number(v) || 0)));
+export const ascClass = (v: unknown): string => (ascLevel(v) ? `asc asc-${ascLevel(v)}` : "");
+export const ascText = (v: unknown): string => `ascension ${ascLevel(v)}`;
+/** Hero prestigeLevel (1–3) as an ascension count (0–2). */
+export const heroAsc = (prestigeLevel: unknown): number => ascLevel((Number(prestigeLevel) || 1) - 1);
+
+/**
+ * Outline `e` for its ascension and say it to screen readers (links keep their own tooltip).
+ * `name` replaces the element's text in that label (an avatar shows only an initial).
+ */
+export function withAsc<T extends Element>(e: T, v: unknown, name = e.textContent ?? ""): T {
+  const n = ascLevel(v);
+  if (!n) return e;
+  e.classList.add("asc", `asc-${n}`);
+  e.setAttribute("aria-label", `${name}, ${ascText(n)}`);
+  if (e.tagName !== "A") e.setAttribute("title", `${name} · ${ascText(n)[0].toUpperCase()}${ascText(n).slice(1)}`);
+  return e;
+}
+
+/** Key for the outlines: "[silver] ascension 1 [gold] ascension 2". */
+export function ascLegend(): HTMLElement {
+  return el("p", { class: "asc-legend muted small" }, "Outline: ",
+    el("span", { class: "asc asc-1" }, "ascension 1"), " ", el("span", { class: "asc asc-2" }, "ascension 2"));
+}
+
+/** The sortable "Asc" table cell: an outlined swatch (none for 0), the number for screen readers. */
+export function ascSwatch(v: unknown): HTMLElement {
+  const n = ascLevel(v);
+  return n
+    ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) })
+    : el("span", { class: "muted", "aria-label": ascText(0) }, "–");
+}
+
 /** An item name coloured by rarity (the game's rarity colours). */
 export function itemName(name: string, rarity: unknown): HTMLElement {
   return el("span", { class: `item rar-${typeof rarity === "number" ? rarity : 1}` }, name);

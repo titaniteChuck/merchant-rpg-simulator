@@ -27,6 +27,10 @@
   /* rarity: the game's colours (UI.rarityColor), tuned for contrast */
   --rar-0: #8a8fa3; --rar-1: #6b7085; --rar-2: #15994a; --rar-3: #2f6fe0;
   --rar-4: #b62fcf; --rar-5: #c98a00; --rar-6: #c98a00; --rar-7: #dc2626; --rar-8: #dc2626;
+
+  /* ascension outlines: metallic silver (1) and gold (2), as light / mid / highlight / shadow stops */
+  --silver-hi: #ffffff; --silver-mid: #a3acb9; --silver-sheen: #e6eaef; --silver-lo: #7b8594;
+  --gold-hi: #fff2bd; --gold-mid: #d39b12; --gold-sheen: #ffe08a; --gold-lo: #a06f05;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -51,6 +55,8 @@
     --ink: 78%;
     --rar-0: #7d8299; --rar-1: #d9dceb; --rar-2: #5fe08a; --rar-3: #6ea8ff;
     --rar-4: #f07cff; --rar-5: #ffd84a; --rar-6: #ffd84a; --rar-7: #ff6b6b; --rar-8: #ff6b6b;
+    --silver-hi: #ffffff; --silver-mid: #b8c0cb; --silver-sheen: #f2f4f7; --silver-lo: #8a94a3;
+    --gold-hi: #fff4c2; --gold-mid: #f0b429; --gold-sheen: #ffe594; --gold-lo: #c08a12;
   }
 }
 
@@ -387,9 +393,28 @@ ul.wiki-cats { margin-top: 22px; }
 .facts > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; min-width: 0; }
 .facts dt { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .facts dd { margin: 2px 0 0; font-weight: 650; overflow-wrap: anywhere; }
-.facts .stack { display: flex; flex-direction: column; }
+.facts .stack { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .wiki-section h2 { margin-top: 32px; }
 ul.plain-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 ul.plain-list.cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 18px; }
 .skill-line { white-space: normal; }
 td .skill-line { display: inline-block; min-width: 220px; }
+
+/* ------------------------------------------------------------------ ascension outlines */
+/* A 2px metallic ring drawn by a masked gradient, so it works on any surface. */
+.asc { position: relative; display: inline-block; padding: 0 6px; border-radius: 7px; }
+.asc::before {
+  content: ""; position: absolute; inset: 0; padding: 2px; border-radius: inherit; pointer-events: none;
+  background: var(--asc-grad);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.asc-1 { --asc-grad: linear-gradient(135deg, var(--silver-hi) 0%, var(--silver-mid) 30%, var(--silver-sheen) 52%, var(--silver-lo) 78%, var(--silver-mid) 100%); }
+.asc-2 { --asc-grad: linear-gradient(135deg, var(--gold-hi) 0%, var(--gold-mid) 30%, var(--gold-sheen) 52%, var(--gold-lo) 78%, var(--gold-mid) 100%); }
+a.wl.asc { border-bottom: 0; }
+.avatar.asc { display: grid; padding: 0; overflow: visible; }
+.avatar.asc::before { inset: -4px; padding: 2px; border-radius: 17px; }
+.slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
+.asc-swatch { width: 18px; height: 18px; padding: 0; vertical-align: middle; border-radius: 6px; }
+.chosen-map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 0.92rem; }
+.asc-legend { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

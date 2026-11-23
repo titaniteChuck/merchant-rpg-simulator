@@ -11,10 +11,10 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, el, fmt, fmt1, pct, pill, rateTone, type Row, select, table, tile } from "./dom.ts";
+import { $, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
-import { loadWikiText, skillLink } from "./wiki-data.ts";
+import { itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -75,7 +75,8 @@ function loadData(): Promise<void> {
 }
 
 const className = (cls: number) => G.heroList[cls]?.name ?? `class ${cls}`;
-const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level} · asc ${h.prestigeLevel ?? 1}`;
+// No "asc N" in option text: the chosen hero's avatar carries the ascension outline.
+const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
 const slotKey = (row: string, i: number) => `${row}${i}`;
 const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"} ${key.endsWith("1") ? 1 : key.endsWith("2") ? 2 : 3}`;
 
@@ -105,7 +106,8 @@ function mapOptions(sv: Save | null): [string, [string, string][]][] {
     groups.push(["Your maps", owned.map((m: Any, i: number): [string, string] => {
       const name = G.itemData.map?.[m.id]?.name ?? `map ${m.id}`;
       const mods = [G.prefixList[m.prefix || 0]?.name, m.suffix > 0 ? G.suffixList[m.suffix]?.name : ""].filter(Boolean).join(" ");
-      return [`own:${i}`, `${name}${mods ? ` (${mods})` : ""} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}${m.prestigeLevel ? ` · asc ${m.prestigeLevel}` : ""}`];
+      // Options can't be outlined: the chosen map is shown outlined under the pickers (renderTarget).
+      return [`own:${i}`, `${name}${mods ? ` (${mods})` : ""} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
     })]);
   }
   groups.push(["All maps (choose ascension and grade)", catalog]);
@@ -191,7 +193,7 @@ function renderParty(): void {
       const idx = state.slots[key];
       const raw = heroRaw(idx ?? null);
       const label = el("span", { class: "slot-name" },
-        ...(raw ? [el("span", { class: "avatar", "aria-hidden": "true" }, String(raw.name).slice(0, 1).toUpperCase())] : []),
+        ...(raw ? [withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))] : []),
         `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(className(raw.class))] : []));
       return el("div", { class: raw ? `slot filled cls-${raw.class}` : "slot empty" }, label, s, details);
     });
@@ -234,20 +236,35 @@ function renderTarget(): void {
     $<HTMLInputElement>("#runs").value = "200";
   } else {
     const m = select({ id: "map", "aria-label": "Map" }, mapOptions(state.sv));
-    const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "Asc 0"], ["1", "Asc 1"]]);
+    const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "No ascension"], ["1", "Ascension 1"]]);
     const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
     grade.value = "3";
     const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id])
       .map((id): [string, string] => [String(id), G.itemData.consumable[id].name])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
+    const chosen = el("p", { class: "chosen-map", "aria-live": "polite" });
     const sync = () => {
       const own = m.value.startsWith("own:");
       asc.disabled = own;
       grade.disabled = own;
+      // The chosen map, outlined for its ascension (select options can't carry the outline).
+      if (own) {
+        const it: Any = state.sv?.mapInventory[Number(m.value.slice(4))];
+        const pre = it?.prefix ? G.prefixList[it.prefix]?.name : "", suf = it?.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
+        const name = [pre, G.itemData.map?.[it?.id]?.name ?? `map ${it?.id}`, suf].filter(Boolean).join(" ");
+        chosen.replaceChildren(el("span", { class: "muted small" }, "Your map:"), itemLink("map", Number(it?.id), name, undefined, it?.prestigeLevel),
+          gradeBadge(GRADES[(it?.grade ?? 3) - 1] ?? String(it?.grade)));
+      } else {
+        const id = Number(m.value.slice(4));
+        chosen.replaceChildren(el("span", { class: "muted small" }, "Map:"), itemLink("map", id, undefined, undefined, Number(asc.value)),
+          gradeBadge(GRADES[Number(grade.value) - 1]));
+      }
     };
     m.addEventListener("change", sync);
+    asc.addEventListener("change", sync);
+    grade.addEventListener("change", sync);
     sync();
-    box.replaceChildren(el("div", { class: "toolbar" }, m, asc, grade),
+    box.replaceChildren(el("div", { class: "toolbar" }, m, asc, grade), chosen,
       el("div", { class: "toolbar" }, el("span", { class: "muted small" }, "Scrolls"), ...scrolls),
       el("p", { class: "muted small" }, "Each run uses a new map layout (rooms, enemies, rare spawns, boss). Hero HP carries over between rooms."));
     $<HTMLInputElement>("#runs").value = "50";

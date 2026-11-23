@@ -5,7 +5,7 @@
  */
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { el, fmt } from "./dom.ts";
+import { ascLevel, ascText, el, fmt, withAsc } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -211,15 +211,20 @@ export function passiveLink(name: string, cls = ""): HTMLElement {
   return a;
 }
 
-/** A link to an item or map, coloured by rarity, with a summary on hover. `label` shows modifiers (e.g. "Strong Iron Sword +3"). */
-export function itemLink(type: string, id: number, label?: string, rarity?: unknown): HTMLElement {
+/**
+ * A link to an item or map, coloured by rarity, with a summary on hover. `label` shows modifiers (e.g. "Strong Iron Sword +3");
+ * `asc` (0–2) outlines it silver or gold.
+ */
+export function itemLink(type: string, id: number, label?: string, rarity?: unknown, asc?: unknown): HTMLElement {
   const it = item(type, id);
   const r = typeof rarity === "number" ? rarity : it?.rarity ?? 1;
   const name = label ?? it?.name ?? `${type} #${id}`;
-  if (!it) return el("span", { class: `item rar-${r}` }, name);
+  if (!it) return withAsc(el("span", { class: `item rar-${r}` }, name), asc);
   const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id) }, name);
-  tip(a, () => tipBox(it.name, itemSummary(type, id).split(" — ")[0], itemSummary(type, id).split(" — ")[1] ?? "",
+  const ascNote = ascLevel(asc) ? ` · ${ascText(asc)}` : "";
+  tip(a, () => tipBox(it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",
     type === "equipment" ? itemText(type, id) : "")); // materials and consumables already show their text as the body
+  withAsc(a, asc);
   return a;
 }
 
