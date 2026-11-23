@@ -12,7 +12,7 @@ import { Combatant, hooks } from "./combatant.ts";
 import { G, loadGameData as loadData } from "./data.ts";
 import { attackListUnlocked, D, heroMaxActionPoints, setMode as setDefaultsMode } from "./defaults.ts";
 import { Equipment } from "./equipment.ts";
-import { Campaign } from "./campaign.ts";
+import { Campaign, determineQuestTime } from "./campaign.ts";
 import { LuaTable } from "./lua-table.ts";
 import { GameMap } from "./map.ts";
 import { Hero } from "./hero.ts";
@@ -194,6 +194,9 @@ export function fight(questID: number, front: (Hero | null | undefined)[], back:
     if (f[i]) result.heroes.push({ ...heroSummary(f[i]), slot: `front${i}` });
   }
   result.grade = result.won ? determineBattleGrade(battle, questID, opts.isRare ?? false) : 0;
+  // As a quest (Quest:endQuesting, Quest:createRewards): its duration, and the luck its loot rolls use.
+  result.questTime = determineQuestTime(battle, questID, opts.amount ?? 1, result.grade);
+  result.partyLuck = battle.getSumOfStat("lckMod");
   return result;
 }
 

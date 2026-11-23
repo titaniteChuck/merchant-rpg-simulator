@@ -44,6 +44,12 @@ function applyTimeMods(questTime: number, battle: Battle, bonusSpeedIn?: number)
   return questTime * (1 - Math.min(bonusSpeed, 0.75));
 }
 
+/** questService.determineQuestTime / Quest:endQuesting: seconds a quest takes (grade 0 = lost, gradeTime[0] = 2). */
+export function determineQuestTime(battle: Battle, questId: number, amount: number, grade: number): number {
+  const questTime = getBattleTime(battle) + G.questData[questId].time * amount * G.gradeTime[grade];
+  return applyTimeMods(questTime, battle);
+}
+
 export function determineMapBattleTime(battle: Battle, _questId: number, grade: number, mapSpeed?: number): number {
   const time = getBattleTime(battle) * G.gradeTime[grade];
   return mathRound(applyTimeMods(time, battle, mapSpeed));

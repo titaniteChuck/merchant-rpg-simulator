@@ -37,7 +37,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -77,7 +79,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -117,7 +121,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -157,7 +163,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 4
+  "grade": 4,
+  "questTime": 125.2,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -197,7 +205,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 4
+  "grade": 4,
+  "questTime": 125.2,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -237,7 +247,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 4
+  "grade": 4,
+  "questTime": 125.2,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -277,7 +289,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -317,7 +331,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -357,7 +373,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 29.5,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -397,7 +415,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 130,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -437,7 +457,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 130,
+  "partyLuck": 0
  },
  {
   "party": "solo L10",
@@ -477,7 +499,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 130,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -540,7 +564,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 159.79999999999998,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -603,7 +629,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 159.79999999999998,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -666,7 +694,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 159.79999999999998,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -729,7 +759,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 141,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -792,7 +824,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 141,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -855,7 +889,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 141,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -918,7 +954,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 371.29999999999995,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -981,7 +1019,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 371.29999999999995,
+  "partyLuck": 0
  },
  {
   "party": "duo L20",
@@ -1044,7 +1084,9 @@
     "slot": "front1"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 371.29999999999995,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1134,7 +1176,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1125,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1220,7 +1264,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1100,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1306,7 +1352,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1100,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1392,7 +1440,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 650,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1478,7 +1528,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 650,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1564,7 +1616,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 650,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1658,7 +1712,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 545,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1752,7 +1808,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 520,
+  "partyLuck": 0
  },
  {
   "party": "trio L30",
@@ -1846,7 +1904,9 @@
     "slot": "front2"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 520,
+  "partyLuck": 0
  },
  {
   "party": "five L45",
@@ -2008,7 +2068,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 2005,
+  "partyLuck": 17
  },
  {
   "party": "five L45",
@@ -2170,7 +2232,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1970,
+  "partyLuck": 16
  },
  {
   "party": "five L45",
@@ -2332,7 +2396,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1970,
+  "partyLuck": 16
  },
  {
   "party": "five L45",
@@ -2484,7 +2550,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1035,
+  "partyLuck": 16
  },
  {
   "party": "five L45",
@@ -2636,7 +2704,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1035,
+  "partyLuck": 16
  },
  {
   "party": "five L45",
@@ -2788,7 +2858,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1035,
+  "partyLuck": 16
  },
  {
   "party": "five L45",
@@ -2946,7 +3018,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 3150,
+  "partyLuck": 17
  },
  {
   "party": "five L45",
@@ -3104,7 +3178,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 3150,
+  "partyLuck": 17
  },
  {
   "party": "five L45",
@@ -3262,7 +3338,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 3150,
+  "partyLuck": 17
  },
  {
   "party": "six L60",
@@ -3453,7 +3531,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1135,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -3644,7 +3724,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1095,
+  "partyLuck": 50
  },
  {
   "party": "six L60",
@@ -3835,7 +3917,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1095,
+  "partyLuck": 50
  },
  {
   "party": "six L60",
@@ -4014,7 +4098,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1145,
+  "partyLuck": 50
  },
  {
   "party": "six L60",
@@ -4193,7 +4279,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1145,
+  "partyLuck": 50
  },
  {
   "party": "six L60",
@@ -4372,7 +4460,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1145,
+  "partyLuck": 50
  },
  {
   "party": "six L60",
@@ -4563,7 +4653,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 7475,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -4754,7 +4846,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 7475,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -4945,7 +5039,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 7475,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -5136,7 +5232,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 2040,
+  "partyLuck": 52
  },
  {
   "party": "six L60",
@@ -5327,7 +5425,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 2075,
+  "partyLuck": 52
  },
  {
   "party": "six L60",
@@ -5518,7 +5618,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 2040,
+  "partyLuck": 52
  },
  {
   "party": "six L60",
@@ -5709,7 +5811,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1815,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -5900,7 +6004,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1775,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -6091,7 +6197,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 5
+  "grade": 5,
+  "questTime": 1775,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -6282,7 +6390,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 10475,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -6473,7 +6583,9 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 10475,
+  "partyLuck": 51
  },
  {
   "party": "six L60",
@@ -6664,6 +6776,8 @@
     "slot": "front3"
    }
   ],
-  "grade": 0
+  "grade": 0,
+  "questTime": 10475,
+  "partyLuck": 51
  }
 ]

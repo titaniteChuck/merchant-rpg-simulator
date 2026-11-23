@@ -21,6 +21,7 @@ timestamp: 2026-11-23
 - [Solving the loop](#solving-the-loop)
 - [Options](#options)
 - [Outputs](#outputs)
+- [Farming report](#farming-report)
 - [Implementation](#implementation)
 - [Not modelled](#not-modelled)
 
@@ -95,6 +96,7 @@ A run drops several things. `--alloc` decides who pays:
 | Option | Default | Effect |
 |---|---|---|
 | `--grade` | 3 | Quest/map grade 1..5 |
+| `sourceStats` | none | Per quest (`"qid"`, `"qid\|rare"`) or map (`"mid\|asc"`): a grade distribution and hours per run from simulation, used instead of `grade` for that source's loot, essence and time (crafting odds keep `grade`) |
 | `--luck` | 0 | Party luck |
 | `--alloc` | value | See above |
 | `--essence-from` | cheapest | Force an essence source (repeatable) |
@@ -115,6 +117,40 @@ A run drops several things. `--alloc` decides who pays:
 - `reports/ascend_modded_g<grade>_<alloc>.csv`: upgrade gain per item and ascension step for 0/1/2 modifiers.
 - `reports/essence_sources_g<grade>_<alloc>.csv`: every map × essence with map cost, loot credit,
   cost per essence, and which one was chosen.
+
+## Farming report
+
+`web/src/tools/farming.ts`: where a party should spend its time. Each source is simulated with the combat engine;
+win rate, grades and time come from the fights, the economy from the game's loot rules and the Solver's prices.
+
+```mermaid
+flowchart LR
+  A[party + sources] --> B[sim.fight / sim.mapRun, seeds 1..n]
+  B --> C[win, grade per run, time]
+  C --> D[quest loot at each won grade, map rewards as dropped]
+  E[Solver prices] --> F[map + scroll cost, essence value]
+  D --> G[FarmRow: per run and per hour]
+  F --> G
+  G -->|sourceStatsFrom| H[Solver sourceStats]
+```
+
+| Field | Meaning |
+|---|---|
+| `win`, `grade`, `grades` | Won share; average won grade; share of runs at each grade 1..5 |
+| `time_h`, `runs_per_hour` | Hours per run (lost runs included) |
+| `cost` | Quest gold, or the map + every scroll equipped (the game removes them when the map starts) at Solver cost |
+| `loot_value` | Base sell value of the loot per run, essence excluded |
+| `essence`, `essence_total`, `essence_value` | Essence per run by name, total, and value at the Solver's unit cost |
+| `gold_per_hour`, `essence_per_hour`, `value_per_hour` | (loot - cost) / h, essence / h, (loot + essence value - cost) / h |
+
+- Quests (`Quest:endQuesting`, `Quest:createRewards`): time = battle time + quest time × enemies × `gradeTime[grade]`
+  (lost = grade 0, factor 2), speed bonus; loot only when won, at that fight's grade and the party's luck.
+  The enemy count scales fixed drops and parcel odds/amounts (`lootService`); `questLoot(…, enemyAmount)`.
+- Map runs use the engine's `Campaign` as is: rewards as dropped, essence at the run's grade (average of the rooms),
+  time = battles + walking. Checked equal to `evaluateMap` on win, grade, time and essence.
+- Map essence in the game is paid at the run's performance grade (`Campaign:getGrade`), not the map's crafted grade:
+  that's why `sourceStats` replaces only the run grade.
+- Not modelled: hero revive cost after a lost quest, hero XP.
 
 ## Implementation
 

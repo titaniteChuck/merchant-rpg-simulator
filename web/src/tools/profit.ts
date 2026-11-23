@@ -54,15 +54,15 @@ export function expectedFixedDrop(reward: number[], gradeBonus: number, luck: nu
   return total / (hi - lo + 1);
 }
 
-/** {"type|id": expected amount} of lootService.generateParcelItem. */
-export function expectedParcel(g: Game, pname: string | undefined, grade: number, luck: number): Map<string, number> {
+/** {"type|id": expected amount} of lootService.generateParcelItem (`enemyAmount` scales item odds and material amounts). */
+export function expectedParcel(g: Game, pname: string | undefined, grade: number, luck: number, enemyAmount = 1): Map<string, number> {
   const out = new Map<string, number>();
   const p = pname ? g.parcels[pname] : undefined;
   if (!p) return out;
   const nil = Math.max(p.nilOdds * g.gradeParcelBonus.get(grade)! - luck, 1);
-  const total = nil + sumOf(p.itemList.map((e: Any) => e.odds));
+  const total = nil + sumOf(p.itemList.map((e: Any) => e.odds * enemyAmount));
   for (const e of p.itemList) {
-    const prob = e.odds / total;
+    const prob = e.odds * enemyAmount / total;
     let key: string, amount: number;
     if (e.id.length > 1) [key, amount] = [k2(e.id[0], e.id[1]), 1];
     else {
@@ -73,13 +73,14 @@ export function expectedParcel(g: Game, pname: string | undefined, grade: number
         for (let i = 0; i + 1 < a.length; i += 2) (num += a[i] * a[i + 1], den += a[i + 1]);
         amount = num / den;
       } else amount = a[0];
+      amount *= enemyAmount; // summed per enemy (weighted amounts) or multiplied (fixed)
     }
     out.set(key, (out.get(key) ?? 0) + prob * amount);
   }
   return out;
 }
 
-export function questLoot(g: Game, qid: number, grade: number, luck: number, rare = false): Map<string, number> {
+export function questLoot(g: Game, qid: number, grade: number, luck: number, rare = false, enemyAmount = 1): Map<string, number> {
   const q = g.quests.get(qid);
   const fixed = rare ? ["rewardB1", "rewardB2"] : ["rewardA1", "rewardA2"];
   const parcels = rare ? ["rewardB3", "rewardB4"] : ["rewardA3", "rewardA4"];
@@ -87,9 +88,9 @@ export function questLoot(g: Game, qid: number, grade: number, luck: number, rar
   const add = (key: string, v: number) => out.set(key, (out.get(key) ?? 0) + v);
   for (const k of fixed) {
     const r = q[k];
-    if (Array.isArray(r) && r.length && r[0]) add(k2("material", r[0]), expectedFixedDrop(r, g.gradeBonus.get(grade)!, luck));
+    if (Array.isArray(r) && r.length && r[0]) add(k2("material", r[0]), expectedFixedDrop(r, g.gradeBonus.get(grade)!, luck) * enemyAmount);
   }
-  for (const k of parcels) for (const [key, amt] of expectedParcel(g, q[k], grade, luck)) add(key, amt);
+  for (const k of parcels) for (const [key, amt] of expectedParcel(g, q[k], grade, luck, enemyAmount)) add(key, amt);
   return out;
 }
 
@@ -209,8 +210,27 @@ export function mapEssenceMultiplier(g: Game, prefix: number, suffix: number): n
 }
 
 // ------------------------------------------------------------- cost solver
+/** Simulated performance of one quest or map run: share of runs ending at each grade (1..5; lost runs left out,
+ * shares need not sum to 1) and hours per run. Replaces the global grade for that source's loot, essence and time. */
+export interface SourceStat {
+  grades: [grade: number, share: number][];
+  timeH?: number;
+}
+
+/** Expected loot or essence over a grade distribution. */
+export function mixByGrade(grades: [number, number][], fn: (grade: number) => Map<string, number>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [grade, share] of grades) {
+    if (!share) continue;
+    for (const [k, v] of fn(grade)) out.set(k, (out.get(k) ?? 0) + share * v);
+  }
+  return out;
+}
+
 export interface SolverOptions {
   grade?: number;
+  /** Per-source overrides from simulation (see farming.ts): quests keyed "qid" or "qid|rare", maps keyed "mid|asc". */
+  sourceStats?: { quest?: Map<string, SourceStat>; map?: Map<string, SourceStat> };
   luck?: number;
   alloc?: "value" | "full";
   heroHourCost?: number;
@@ -239,6 +259,7 @@ export class Solver {
   readonly mapSuffixMax: number | null;
   readonly heroHourCost: number;
   readonly essenceFrom: Map<number, [number, number]>;
+  readonly sourceStats: { quest?: Map<string, SourceStat>; map?: Map<string, SourceStat> };
   essenceChoice = new Map<number, [number, number, string]>(); // essence id -> (map id, prestige, variant label)
   cost = new Map<string, number>(); // "type|id|p" -> best unit cost
   how = new Map<string, string>(); // "type|id|p" -> description of best method
@@ -260,6 +281,7 @@ export class Solver {
     this.mapSuffixMax = o.mapSuffixMax ?? null;
     this.heroHourCost = o.heroHourCost ?? 0;
     this.essenceFrom = o.essenceFrom ?? new Map();
+    this.sourceStats = o.sourceStats ?? {};
     this.questSources = this.buildQuestSources();
   }
 
@@ -296,9 +318,11 @@ export class Solver {
       const q = this.g.quests.get(qid);
       const gold = (rare ? (q.goldB !== undefined ? q.goldB : q.gold) : (q.gold ?? 0)) || 0;
       const qname = (q.nameB || q.name) + (rare ? " [rare]" : "");
-      const timeH = (q.time ?? 0) * this.g.gradeTime.get(this.grade)! / 3600;
+      const st = this.sourceStats.quest?.get(rare ? `${qid}|rare` : `${qid}`);
+      const timeH = st?.timeH ?? (q.time ?? 0) * this.g.gradeTime.get(this.grade)! / 3600;
       const runCost = gold + timeH * this.heroHourCost;
-      const loot = questLoot(this.g, qid, this.grade, this.luck, rare);
+      const loot = st ? mixByGrade(st.grades, (gr) => questLoot(this.g, qid, gr, this.luck, rare))
+        : questLoot(this.g, qid, this.grade, this.luck, rare);
       const totalValue = sumOf([...loot].map(([k, a]) => a * this.svKey(k)));
       for (const [key, amt] of loot) {
         if (amt <= 0) continue;
@@ -398,14 +422,23 @@ export class Solver {
       const [t, i] = un2(key);
       for (const [unit, how] of sources) this.try(k3(t, i, 0), unit, how);
     }
-    const mapLootCache = new Map<number, Map<string, number>>();
-    for (const mid of g.items.map.keys()) mapLootCache.set(mid, mapLoot(g, mid, this.grade, this.luck));
+    const mapLootCache = new Map<string, Map<string, number>>(); // "mid|p"
+    const mapStat = (mid: number, p: number) => this.sourceStats.map?.get(`${mid}|${p}`);
+    for (const mid of g.items.map.keys()) {
+      const plain = mapLoot(g, mid, this.grade, this.luck);
+      for (const p of ascLevels("map")) {
+        const st = mapStat(mid, p);
+        mapLootCache.set(`${mid}|${p}`, st ? mixByGrade(st.grades, (gr) => mapLoot(g, mid, gr, this.luck)) : plain);
+      }
+    }
     // essence yield of each variant doesn't depend on prices: compute it once
     const mapVariants = new Map<string, [string, () => number, Map<string, number>, number][]>();
     for (const mid of g.items.map.keys()) {
       for (const p of ascLevels("map")) {
+        const st = mapStat(mid, p);
         mapVariants.set(`${mid}|${p}`, this.mapVariants(mid, p)
-          .map(([label, extraFn, outcomes, secs]) => [label, extraFn, mapEssence(g, mid, p, this.grade, outcomes), secs]));
+          .map(([label, extraFn, outcomes, secs]) => [label, extraFn,
+            st ? mixByGrade(st.grades, (gr) => mapEssence(g, mid, p, gr, outcomes)) : mapEssence(g, mid, p, this.grade, outcomes), secs]));
       }
     }
     for (let iter = 0; iter < maxIter; iter++) {
@@ -455,8 +488,8 @@ export class Solver {
         for (const p of ascLevels("map")) {
           const mapCost = this.get("map", mid, p);
           if (mapCost === INF) continue;
-          const runCost = mapCost + (m.baseMapTime ?? 0) / 3600 * this.heroHourCost;
-          const loot = mapLootCache.get(mid)!;
+          const runCost = mapCost + (mapStat(mid, p)?.timeH ?? (m.baseMapTime ?? 0) / 3600) * this.heroHourCost;
+          const loot = mapLootCache.get(`${mid}|${p}`)!;
           const credit = this.alloc === "full" ? 0 : sumOf([...loot].map(([k, a]) => a * this.svKey(k)));
           // loot found only in maps is priced at its sell value (the gold you give up by using it)
           for (const [lkey, lamt] of loot) {

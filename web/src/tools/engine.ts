@@ -34,6 +34,10 @@ export interface FightResult {
   enemyMinHP: number;
   /** All damage the enemy took during the fight. */
   enemyDmgTaken: number;
+  /** Seconds the fight takes as a quest (battle time + quest time x enemies x grade factor, speed bonus). */
+  questTime: number;
+  /** Sum of the party's luck (lckMod), used by the quest's loot rolls. */
+  partyLuck: number;
   grade: number;
   heroes: HeroResult[];
 }

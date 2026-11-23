@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Profit Calculator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Farming report**: `farming.ts` simulates quests and map runs for a party (grade, time, loot, essence, costs per run and per hour); Solver `sourceStats` takes simulated grades/time per source; quest loot scales with the enemy count.
 - **Python removed**: `profit.py`, `enchant.py`, `gamedata.py` deleted; the model lives on in `profit.ts` (library, no command line).
 - **TypeScript port**: `profit.py`, `enchant.py` and the `gamedata.py` model ported to `web/src/tools/` (profit.ts, enchant.ts, gamedata.ts); output byte-identical to Python on 8 option sets.
 - **Map enchanting**: Enchanted maps as essence sources, exact Markov solvers (5 s full run, was 4 min), `--no-map-enchant`, `--map-suffix-max`.
