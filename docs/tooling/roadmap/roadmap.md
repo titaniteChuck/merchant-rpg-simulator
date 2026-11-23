@@ -77,11 +77,16 @@ Rules:
 | U9 | **Potions tab** on the battle page (U8 mode "Best potion / enchant"): `rankConsumables` per hero for the chosen opponent, gain per 1,000 g, free enchant slots; plus a class × potion view from `consumableMatrix` (wiki or class page). | E10, U8 | Done (9055014) |
 | U10 | **Save viewer overview** (user): the big summary cards become a compact first tab "Overview" (default); the ascension legend is removed (save viewer by agent; wiki by the UI session). | U6b | Done (9fa46f6) |
 | U12 | **Levelling page** on `levellingPlan` / `prestigePayoff` (E12): pick a hero (from the save), target level, companions; the plan per level band (quest, size, runs, hours, XP/h, revive gold), and the prestige panel (next tier's gains vs gold and relevel hours). Gathering quests shown, labelled "gathering". | E12 | Done (c2b29fd) |
-| U11 | **Timelines in the UI**: enemy 5-turn timeline strip on enemy wiki pages and the battle opponent card; "why this rotation" notes (e.g. "Cleanse on T3 after Dark Curse on T2"); warm start in the battle searches. | E13, U8 | In progress (UI session) |
+| U13 | **Site-wide quality pass**: favicon, landing overview of the tools, consistent loading/empty/error states and number formats, keyboard and screen-reader pass, and a local headless regression sweep of every page (1280/375, light/dark, with and without a save). | - | Wrapping up (favicon, a11y, sweep script) |
+| U14 | **Titles bug + width** (user): page titles appear then disappear on every page; content +20–25% wider. | - | Next (UI session) |
+| U15 | **Battle layout v2** (user): enemy always on the left, the 6 hero slots on the right in every mode (Best party / Optimise fill them); hero cards without radar, stats as a compact table, compact rotation/passive chips. | U14 | Queued (UI session) |
+| U16 | **Game colour theme** (user: colours only, no pixel art or fonts): taupe-brown panels, gold borders, sand insets, red banner top bar, rarity-coloured item frames; light parchment variant. | U15 | Queued (UI session) |
+| U17 | **Save viewer v3** (user): Overview as compact cards; inventory grades as numeric columns (one per grade + total); crafters' ascension levels as "Level" + silver/gold icon headers. | - | Agent, branch `u17-save-viewer-v3` |
+| U11 | **Timelines in the UI**: enemy 5-turn timeline strip on enemy wiki pages and the battle opponent card; "why this rotation" notes (e.g. "Cleanse on T3 after Dark Curse on T2"); warm start in the battle searches. | E13, U8 | Done (c2be8b9) |
 | U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Done (1bf8501); nav links, save-viewer essence column and asc pills follow with U3 |
 | U2 | **Search tabs on the battle page**: best rotation, best gear, best party for a quest or map run. Show the "lowest" enemy HP (`enemy_dmg_peak`, E6) next to HP removed. | E1 ✓ | Done (6dfca22) |
 | U3 | **Farming planner page**: where the player's party should spend hero time (essence/h, gold/h per quest and map). | E2 | Done (17fe2c2) |
-| U4 | **Class balance page**: class × quest win matrix on equal gear. | E3 | Queued (UI session, after U2; best after E8) |
+| U4 | **Class balance page**: class × quest win matrix on equal gear. | E3 | Done (7dbef8d) |
 
 ## Dependencies
 
@@ -97,6 +102,8 @@ flowchart LR
 E2 reuses the map-run evaluation and scroll search from E1. U1 waits only for U0 because both edit `site/` and `web/src/ui/`.
 
 ## Later
+
+- **Frozen by the user (2026-11-23):** no new work on the Profit, Farming and Levelling pages for now.
 
 - Economy model gaps: map suffix lowering the grade (E2 now simulates it), quest size ×N (E2 scales loot and time), Reset before a prefix (E7),
   enchant before or after ascending, bonus modifier odds from modded ingredients, customer preferences and haggling,

@@ -26,3 +26,5 @@
 - **Update**: Schedule-aware optimisation approved by the user (must): E13, E14a, E14b, E15, U11.
 - **Update**: E12, U8, U9, U10, U12 done; E14a built, merging after E13.
 - **Update**: E13, E14a done; E14b and U11 in progress.
+- **Update**: U11 done; U4 committing; U13 quality pass started.
+- **Update**: User batch: U14 titles bug + width, U15 battle layout v2, U16 colour theme, U17 save viewer v3; Profit/Farming/Levelling frozen.
