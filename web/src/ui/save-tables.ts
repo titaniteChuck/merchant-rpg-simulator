@@ -75,6 +75,8 @@ function currentSet(h: Any): Any {
 
 export interface HeroView {
   row: Row;
+  cls: number; // heroList id, for colours
+  rotation: string[];
   stats: Record<string, number> | null; // computed by the combat engine; null if the hero cannot be built
   statsError?: string;
   gear: Row[];
@@ -105,7 +107,7 @@ export function heroViews(sv: Save): HeroView[] {
       for (const k of GEAR_STATS) if (it[k] !== undefined && it[k] !== 0) r[k] = it[k];
       return r;
     });
-    return { row, stats, statsError, gear };
+    return { row, cls: h.class, rotation: skillNames(h.class, set.attackList ?? []), stats, statsError, gear };
   });
 }
 

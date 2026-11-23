@@ -26,24 +26,29 @@
 
     <div id="setup" hidden>
       <section>
-        <h2>1. Party</h2>
+        <h2><span class="step">1</span> Party</h2>
         <div id="party"></div>
       </section>
 
       <section>
-        <h2>2. Opponent</h2>
-        <div class="toolbar" role="radiogroup" aria-label="What to simulate">
-          <label class="check"><input type="radio" name="mode" value="quest" checked> Quest enemy</label>
-          <label class="check"><input type="radio" name="mode" value="map"> Map run</label>
+        <h2><span class="step">2</span> Opponent</h2>
+        <div class="toolbar">
+          <div class="mode-switch" role="radiogroup" aria-label="What to simulate">
+            <label><input type="radio" name="mode" value="quest" checked> ⚔️ Quest enemy</label>
+            <label><input type="radio" name="mode" value="map"> 🗺️ Map run</label>
+          </div>
         </div>
         <div id="target"></div>
       </section>
 
       <section>
-        <h2>3. Simulate</h2>
-        <div class="toolbar">
-          <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
-          <button id="run" type="button" class="primary">Simulate</button>
+        <h2><span class="step">3</span> Simulate</h2>
+        <div class="simulate">
+          <div class="toolbar">
+            <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
+            <button id="run" type="button" class="primary">▶ Simulate</button>
+            <span class="muted small">Same seeds every time, so changes you make are compared fairly.</span>
+          </div>
         </div>
         <section id="results" aria-live="polite"></section>
       </section>

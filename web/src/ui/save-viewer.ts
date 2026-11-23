@@ -4,20 +4,11 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
+import { $, type Column, el, fmt, gradeBadge, itemName, pill, type Row as Cells, table, tile } from "./dom.ts";
 import { bindSaveInput } from "./save-file.ts";
 import {
-  crafterRows, gearRows, HERO_STATS, type HeroView, heroViews, inventoryRows, mapRows, type Row, summary, toCsv,
+  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
-
-const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
-const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: (Node | string)[]) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-  e.append(...kids);
-  return e;
-}
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
@@ -26,48 +17,6 @@ function loadData(): Promise<void> {
     return r.json();
   }).then((json) => api.loadGameData(json));
   return dataReady;
-}
-
-// ---------------------------------------------------------------- tables
-interface Column {
-  key: string;
-  label: string;
-  num?: boolean;
-}
-
-/** A sortable table; click a header to sort. */
-function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string): HTMLElement {
-  let sortKey = "";
-  let asc = true;
-  const tbody = el("tbody");
-  const render = () => {
-    const sorted = sortKey ? [...rows].sort((a, b) => {
-      const x = a[sortKey], y = b[sortKey];
-      const c = typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""));
-      return asc ? c : -c;
-    }) : rows;
-    tbody.replaceChildren(...sorted.map((r) => {
-      const tr = el("tr", rowClass ? { class: rowClass(r) } : {});
-      for (const c of cols) {
-        const v = r[c.key];
-        tr.append(el("td", c.num ? { class: "num" } : {}, v === null || v === undefined ? "" : c.num && typeof v === "number" ? fmt.format(v) : String(v)));
-      }
-      return tr;
-    }));
-  };
-  const head = el("tr", {}, ...cols.map((c) => {
-    const th = el("th", { scope: "col", class: c.num ? "num" : "" }, el("button", { type: "button" }, c.label));
-    th.querySelector("button")!.addEventListener("click", () => {
-      asc = sortKey === c.key ? !asc : !c.num;
-      sortKey = c.key;
-      head.querySelectorAll("th").forEach((h) => h.removeAttribute("aria-sort"));
-      th.setAttribute("aria-sort", asc ? "ascending" : "descending");
-      render();
-    });
-    return th;
-  }));
-  render();
-  return el("div", { class: "table-wrap" }, el("table", {}, el("thead", {}, head), tbody));
 }
 
 function csvButton(name: string, rows: () => Row[], label = name): HTMLElement {
@@ -86,19 +35,22 @@ function toolbar(...kids: Node[]): HTMLElement {
   return el("div", { class: "toolbar" }, ...kids);
 }
 
+/** Item name coloured by rarity, then grade and ascension badges. */
+const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemName(String(r.name), r.rarity));
+const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
+
 // ---------------------------------------------------------------- sections
 function renderSummary(sv: Save): HTMLElement {
   const s = summary(sv);
-  const tile = (label: string, value: string) => el("div", { class: "tile" }, el("span", { class: "tile-label" }, label), el("span", { class: "tile-value" }, value));
   return el("div", { class: "tiles" },
-    tile("Gold", fmt.format(s.gold)),
-    tile("Inventory value", `${fmt.format(s.inventoryValue)} g`),
-    tile("Gold earned", fmt.format(s.totalGoldEarned)),
-    tile("Items crafted", fmt.format(s.totalCrafted)),
-    tile("Sales", fmt.format(s.totalSales)),
-    tile("Heroes", String(s.heroes)),
-    tile("Maps", `${s.maps} / ${s.mapSlots}`),
-    tile("Mode", `${s.mode} · v${s.version}`),
+    tile("Gold", fmt.format(s.gold), undefined, { icon: "🪙", tone: "t-gold" }),
+    tile("Inventory value", `${fmt.format(s.inventoryValue)} g`, "base sell value", { icon: "💰", tone: "t-orange" }),
+    tile("Gold earned", fmt.format(s.totalGoldEarned), undefined, { icon: "📈", tone: "t-green" }),
+    tile("Items crafted", fmt.format(s.totalCrafted), undefined, { icon: "🔨", tone: "t-blue" }),
+    tile("Sales", fmt.format(s.totalSales), undefined, { icon: "🛒", tone: "t-teal" }),
+    tile("Heroes", String(s.heroes), undefined, { icon: "🛡️", tone: "t-violet" }),
+    tile("Maps", `${s.maps} / ${s.mapSlots}`, "owned / slots", { icon: "🗺️", tone: "t-pink" }),
+    tile("Mode", String(s.mode), `game v${s.version}`, { icon: "⚙️", tone: "t-slate" }),
   );
 }
 
@@ -106,26 +58,37 @@ const STAT_LABELS: Record<string, string> = {
   maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit ×", def: "Def", mdef: "Mdef",
   eva: "Eva", speed: "Speed", maxActionPoints: "AP",
 };
+const STAT_ORDER = ["maxHP", "atk", "matk", "def", "mdef", "acc", "crit", "critMod", "maxActionPoints", "eva", "speed"];
+const SLOT_ICONS: Record<string, string> = { weapon: "⚔️", head: "🪖", body: "🥋", hands: "🧤", feet: "👢", trinket: "💍" };
+const STATUS_TONE: Record<string, string> = { idle: "t-green", "on a map": "t-violet", "on a quest": "t-blue" };
 
 function heroCard(v: HeroView): HTMLElement {
   const r = v.row;
+  const name = String(r.name);
   const stats = v.stats
-    ? el("dl", { class: "stats" }, ...HERO_STATS.filter((k) => k !== "speed" || v.stats![k]).flatMap((k) => {
-      const x = v.stats![k];
-      return [el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? x.toFixed(2) : fmt.format(x))];
-    }))
+    ? el("dl", { class: "stats" }, ...STAT_ORDER.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k]))
+      .map((k) => {
+        const x = v.stats![k];
+        return el("div", { class: k === "maxHP" ? "hp" : "" }, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
+      }))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
+  const rotation = el("div", { class: "chips" }, ...v.rotation.map((sk) => pill(sk, sk === "Basic" ? "skill basic" : "skill")));
   const gear = el("ul", { class: "gear" }, ...v.gear.map((g) =>
-    el("li", {}, el("span", { class: "muted" }, String(g.slot)), " ", String(g.name),
-      el("span", { class: "muted" }, ` · ${g.grade}${g.asc ? ` · asc ${g.asc}` : ""}`))));
-  return el("article", { class: "card hero" },
-    el("header", {}, el("h3", {}, String(r.name)),
-      el("p", { class: "muted" }, `${r.class} · level ${r.level} · asc ${r.asc} · ${r.status}`)),
+    el("li", { class: `rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${g.slot}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
+      el("span", { class: "slot-ico", "aria-label": String(g.slot) }, SLOT_ICONS[String(g.slot)] ?? "•"),
+      itemName(String(g.name), g.rarity),
+      el("span", { class: "meta" }, gradeBadge(String(g.grade)), ...(g.asc ? [pill(`asc ${g.asc}`, "plain")] : [])))));
+  return el("article", { class: `card hero cls-${v.cls}` },
+    el("header", { class: "hero-head" },
+      el("span", { class: "avatar", "aria-hidden": "true" }, name.slice(0, 1).toUpperCase()),
+      el("div", {}, el("h3", {}, name),
+        el("div", { class: "sub" }, pill(String(r.class)), pill(`lv ${r.level}`, "plain"), pill(`asc ${r.asc}`, "plain"),
+          pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
     stats,
-    el("p", { class: "rotation" }, el("strong", {}, "Rotation "), String(r.rotation)),
-    el("p", { class: "rotation" }, el("strong", {}, "Passive "), String(r.passive || "none")),
+    el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotation),
+    el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, pill(String(r.passive || "none"), "t-gold"))),
     gear,
-    el("p", { class: "muted small" }, `${fmt.format(Number(r.quests))} quests · ${r.deaths} deaths`),
+    el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`)),
   );
 }
 
@@ -138,8 +101,8 @@ function renderHeroes(views: HeroView[]): HTMLElement {
 }
 
 const ITEM_COLS: Column[] = [
-  { key: "name", label: "Item" }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
-  { key: "asc", label: "Asc", num: true }, { key: "grade", label: "Grade" }, { key: "amount", label: "Qty", num: true },
+  { key: "name", label: "Item", render: itemCell }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
+  { key: "asc", label: "Asc", num: true }, { key: "grade", label: "Grade", render: gradeCell }, { key: "amount", label: "Qty", num: true },
   { key: "unit_sell", label: "Unit value", num: true }, { key: "total_sell", label: "Total value", num: true },
 ];
 
@@ -171,8 +134,8 @@ function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
   if (!rows.length) return el("p", { class: "muted" }, "No maps in this save.");
   return el("div", {}, toolbar(csvButton("maps", () => rows)), table(rows, [
-    { key: "name", label: "Map" }, { key: "item_level", label: "Lvl", num: true }, { key: "asc", label: "Asc", num: true },
-    { key: "grade", label: "Grade" }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
+    { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, { key: "asc", label: "Asc", num: true },
+    { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
     { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true }, { key: "enchant_attempts", label: "Enchant attempts" },
   ]));
 }
@@ -180,8 +143,9 @@ function renderMaps(sv: Save): HTMLElement {
 function renderCrafters(sv: Save): HTMLElement {
   const rows = crafterRows(sv);
   return el("div", {}, toolbar(csvButton("crafters", () => rows)), table(rows, [
-    { key: "crafter", label: "Crafter" }, { key: "level", label: "Level", num: true }, { key: "asc", label: "Asc", num: true },
-    { key: "prestige_level", label: "Prestige level", num: true }, { key: "crafting", label: "Working on" },
+    { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) }, { key: "level", label: "Level", num: true }, { key: "asc", label: "Asc", num: true },
+    { key: "prestige_level", label: "Prestige level", num: true },
+    { key: "crafting", label: "Working on", render: (r) => (r.crafting ? pill(`🔨 ${r.crafting}`, "t-blue") : el("span", { class: "muted" }, "idle")) },
   ]));
 }
 

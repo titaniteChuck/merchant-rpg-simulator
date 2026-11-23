@@ -11,7 +11,7 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, type Cell, el, fmt, fmt1, pct, type Row, select, table, tile } from "./dom.ts";
+import { $, el, fmt, fmt1, pct, pill, rateTone, type Row, select, table, tile } from "./dom.ts";
 import { bindSaveInput } from "./save-file.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -150,11 +150,16 @@ function renderParty(): void {
         renderParty();
       });
       fill();
-      return el("div", { class: "slot" }, el("span", { class: "slot-name" }, `${row === "front" ? "Front" : "Back"} ${i + 1}`), s, details);
+      const idx = state.slots[key];
+      const raw = heroRaw(idx ?? null);
+      const label = el("span", { class: "slot-name" },
+        ...(raw ? [el("span", { class: "avatar", "aria-hidden": "true" }, String(raw.name).slice(0, 1).toUpperCase())] : []),
+        `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(className(raw.class))] : []));
+      return el("div", { class: raw ? `slot filled cls-${raw.class}` : "slot empty" }, label, s, details);
     });
     return el("div", { class: "party-row" },
-      el("h3", {}, row === "front" ? "Front row" : "Back row",
-        el("span", { class: "muted small" }, row === "front" ? " · enemies hit the front row while anyone stands in it" : " · safe until the front row falls")),
+      el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
+        el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
       el("div", { class: "slots" }, ...cells));
   });
   $("#party").replaceChildren(...rows);
@@ -168,7 +173,7 @@ function renderTarget(): void {
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
     const rare = el("input", { type: "checkbox", id: "rare" }) as HTMLInputElement;
     const amount = select({ id: "amount", "aria-label": "Number of enemies" }, [["1", "1 enemy"], ["2", "2 enemies"], ["3", "3 enemies"], ["4", "4 enemies"]]);
-    const info = el("p", { class: "muted small" });
+    const info = el("div", { class: "enemy" });
     const update = () => {
       const d = G.questData[q.value];
       const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined;
@@ -176,8 +181,13 @@ function renderTarget(): void {
       if (!hasRare) rare.checked = false;
       const r = rare.checked;
       const v = (k: string) => fmt.format(d[r ? `${k}B` : k] ?? 0);
-      info.textContent = `${r ? d.nameB : d.name}: HP ${v("enemyHp")} · Atk ${v("enemyAtk")} · Matk ${v("enemyMatk")} · Def ${v("enemyDef")} · Mdef ${v("enemyMdef")} · Eva ${v("enemyEva")}` +
-        `${d.questType === 6 ? " · attacks first" : ""} · rotation ${seq<string>((r ? d.attackListB : d.attackList) ?? {}).join(" / ")}`;
+      const stat = (label: string, k: string) => el("span", { class: "nowrap" }, el("span", { class: "muted" }, `${label} `), v(k));
+      info.replaceChildren(
+        el("div", { class: "toolbar" }, el("strong", {}, `👹 ${r ? d.nameB : d.name}`), ...(r ? [pill("rare", "t-pink")] : []),
+          ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []), pill(`level ${d.levelReq ?? "?"}`, "plain")),
+        el("p", { class: "small", style: "margin: 0 0 8px" }, ...[stat("HP", "enemyHp"), stat("Atk", "enemyAtk"), stat("Matk", "enemyMatk"),
+          stat("Def", "enemyDef"), stat("Mdef", "enemyMdef"), stat("Eva", "enemyEva")].flatMap((p, k) => (k ? [" · ", p] : [p]))),
+        el("div", { class: "chips" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => pill(sk, sk === "Basic" ? "skill basic" : "skill t-pink"))));
     };
     q.addEventListener("change", update);
     rare.addEventListener("change", update);
@@ -275,18 +285,23 @@ function run(): void {
 }
 
 // ---------------------------------------------------------------- results
+/** Average grade (1..5) as the nearest letter. */
+const gradeOf = (g: number) => GRADES[Math.min(4, Math.max(0, Math.round(g) - 1))];
+
 function heroTable(heroes: Record<string, HeroEval>, unit: string): HTMLElement {
   const order = ["front1", "front2", "front3", "back1", "back2", "back3"];
   const rows: Row[] = order.filter((k) => heroes[k]).map((k) => {
     const h = heroes[k];
     const top = Object.entries(h.skillDmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
       .map(([sk, v]) => `${sk} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
-    return { slot: slotLabel(k), name: h.name, dmg: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
+    const raw = heroRaw(state.slots[`${k.replace(/\d$/, "")}${Number(k.slice(-1)) - 1}`] ?? null);
+    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
   });
   return table(rows, [
-    { key: "slot", label: "Slot" }, { key: "name", label: "Hero" },
+    { key: "slot", label: "Slot" },
+    { key: "name", label: "Hero", render: (r) => el("span", { class: `nowrap cls-${r.cls}` }, pill(String(r.name))) },
     { key: "dmg", label: `Damage / ${unit}`, num: true }, { key: "taken", label: "Taken", num: true },
-    { key: "heal", label: "Healing", num: true }, { key: "death_rate", label: "Dies", num: true, show: (v: Cell) => pct(Number(v)) },
+    { key: "heal", label: "Healing", num: true }, { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
     { key: "skills", label: "Damage by skill (uses)" },
   ]);
 }
@@ -294,11 +309,11 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string): HTMLElement 
 function questResults(ev: FightEval, ms: number): HTMLElement[] {
   return [
     el("div", { class: "tiles" },
-      tile("Win rate", pct(ev.win)),
-      tile("Turns", fmt1.format(ev.turns), ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won"),
-      tile("Grade when won", ev.win ? fmt1.format(ev.grade) : "–", "1 = D … 5 = S"),
-      tile("Enemy HP removed", pct(ev.enemy_dmg)),
-      tile("Party HP left", pct(ev.hp_left)),
+      tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
+      tile("Turns", fmt1.format(ev.turns), ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", { icon: "⏱️", tone: "t-blue" }),
+      tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
+      tile("Enemy HP removed", pct(ev.enemy_dmg), undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
+      tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
     heroTable(ev.heroes, "fight"),
     el("p", { class: "muted small" }, `${ev.n} fights in ${fmt.format(ms)} ms, seeds 1–${ev.n} (same as the command-line tool).`),
@@ -311,16 +326,16 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
   const charges = ev.charges_used.map(([id, v]) => `${G.itemData.consumable?.[id]?.name ?? id}: ${fmt1.format(v)}`).join(", ");
   return [
     el("div", { class: "tiles" },
-      tile("Win rate", pct(ev.win)),
-      tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms`),
-      tile("Grade when won", ev.win ? fmt1.format(ev.grade) : "–", "1 = D … 5 = S"),
-      tile("Time", `${fmt1.format(ev.time_h)} h`),
-      tile("Loot value", `${fmt.format(ev.loot_value)} g`, "base sell value per run"),
-      tile("Party HP left", pct(ev.hp_left)),
+      tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
+      tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
+      tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
+      tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" }),
+      tile("Loot value", `${fmt.format(ev.loot_value)} g`, "base sell value per run", { icon: "💰", tone: "t-orange" }),
+      tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
-    el("p", {}, el("strong", {}, "Essence per run: "), ess),
-    ...(fails ? [el("p", {}, el("strong", {}, "Lost at: "), fails)] : []),
-    ...(charges ? [el("p", {}, el("strong", {}, "Scroll charges used per run: "), charges)] : []),
+    el("p", { class: "result-note" }, el("strong", {}, "✨ Essence per run: "), ess),
+    ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
+    ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
     ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
     ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
     heroTable(ev.heroes, "run"),
