@@ -133,7 +133,9 @@ function renderParty(): void {
         details.replaceChildren();
         if (idx === null || idx === undefined) return;
         const stats = api.heroStats(api.newHero(heroRaw(idx)));
-        details.append(el("p", { class: "muted small" }, `HP ${fmt.format(stats.maxHP)} · Atk ${fmt.format(stats.atk)} · Matk ${fmt.format(stats.matk)} · Def ${fmt.format(stats.def)} · Mdef ${fmt.format(stats.mdef)}`));
+        const stat = (label: string, v: number) => el("span", { class: "nowrap" }, `${label} ${fmt.format(v)}`);
+        const parts = [stat("HP", stats.maxHP), stat("Atk", stats.atk), stat("Matk", stats.matk), stat("Def", stats.def), stat("Mdef", stats.mdef)];
+        details.append(el("p", { class: "muted small" }, ...parts.flatMap((p, k) => (k ? [" · ", p] : [p]))));
         const edit = el("details", {}, el("summary", { class: "small" }, "Rotation and passive"));
         edit.addEventListener("toggle", () => {
           if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));

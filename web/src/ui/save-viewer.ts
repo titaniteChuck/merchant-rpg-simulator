@@ -70,8 +70,9 @@ function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string): HTML
   return el("div", { class: "table-wrap" }, el("table", {}, el("thead", {}, head), tbody));
 }
 
-function csvButton(name: string, rows: () => Row[]): HTMLElement {
-  const b = el("button", { type: "button", class: "secondary" }, "Download CSV");
+function csvButton(name: string, rows: () => Row[], label = name): HTMLElement {
+  const b = el("button", { type: "button", class: "secondary" }, `${label[0].toUpperCase()}${label.slice(1)} CSV`);
+  b.title = `Download ${name}.csv`;
   b.addEventListener("click", () => {
     const url = URL.createObjectURL(new Blob([toCsv(rows())], { type: "text/csv" }));
     const a = el("a", { href: url, download: `${name}.csv` });
@@ -132,7 +133,7 @@ function renderHeroes(views: HeroView[]): HTMLElement {
   return el("div", {},
     toolbar(el("p", { class: "muted small" }, "Combat stats are computed with the game's rules from your gear, level, passive and enchants."),
       csvButton("heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
-      csvButton("hero_gear", () => gearRows(views))),
+      csvButton("hero_gear", () => gearRows(views), "gear")),
     el("div", { class: "cards" }, ...views.map(heroCard)));
 }
 
