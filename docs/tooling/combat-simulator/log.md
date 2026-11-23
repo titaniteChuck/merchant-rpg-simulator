@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Class balance on equal gear** (E3): `classes.ts` with `standardHero` (catalog gear policies best/fit/none, default or searched rotation) and `classMatrix` (class × quest rows, pure, progress and cancel); tests in `classes.test.ts`.
 - **Healing enemies**: fights report the enemy's lowest HP and total damage taken (`enemy_dmg_peak`, `enemy_dmg_total`); the score uses the lowest point, so lost fights vs Archon no longer read 0 %. Gear search now restores empty slots too.
 - **Search API**: skills, gear, party, solo, maps and scrolls searches split into pure functions with typed results, progress and cancel (`SearchControl`), for the battle page's worker; the `cmd*` reports are built on them, results unchanged.
 - **Python removed**: `combat.py`, `sim/engine.py`, `sim/harness.lua` deleted; the searches live in `combat.ts` (library); the battle page runs fights and map runs. No command line.

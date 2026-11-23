@@ -20,6 +20,7 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [Commands](#commands)
 - [Search API](#search-api)
 - [Search methods](#search-methods)
+- [Class balance on equal gear](#class-balance-on-equal-gear)
 - [Validation](#validation)
 - [Limits](#limits)
 - [From Python to TypeScript](#from-python-to-typescript)
@@ -121,6 +122,43 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
     `--asc`, `--crafter-level`, with modifier odds forced to 0 (plain item).
 - `party`: greedy add (hero × slot) while it helps, then swaps and moves until no improvement.
 
+## Class balance on equal gear
+
+`web/src/tools/classes.ts` compares classes, not the player's heroes: every class is built the same way and fights
+the same quests alone on the same seeds. Browser-safe (no console, no `node:*`), for the class balance page (U4).
+
+```ts
+standardHero(sim, classId, level, prestige, gearPolicy = "best", { itemGrade, itemAsc, crafterLevel, rotation, passive }): Hero
+classMatrix(sim, { classes, quests, level, prestige, gearPolicy, skills, searchQuest, searchN, n, seed0, rare,
+  onProgress, shouldStop }): ClassMatrixRow[]
+searchSkills(sim, hero, quest, { n, seed0, top, rare, shouldStop }): { rotation, passive, ev }
+summarizeByClass(rows, threshold = 0.9): ClassSummary[]
+```
+
+- **Hero**: a raw hero record (class, level, prestige, no gear) through `Sim.hero`, as save heroes are built; the
+  game's new-hero path (starting gear) is not supported by the engine. Level is capped per prestige
+  (`maxHeroLevel`: 50, 50, 60), so level 60 needs prestige 3.
+- **Gear candidates**: catalog equipment of the slot with itemLevel ≤ hero level, not `locked`, with a stat formula
+  (drops the "30+ Items" placeholders); crafted plain (no prefix/suffix) at grade 5, asc 0, crafter level 60 by default.
+- **Gear policies**:
+
+| Policy | Rule |
+|---|---|
+| `best` | Same items for every class: per slot, highest itemLevel, then highest catalog `value`, then lowest id. Class-blind (at level 60 a Mage gets Gungnir, an atk axe). |
+| `fit` | Per slot, weapon first: the item giving the most offense (`atk` if the class's atk growth ≥ matk growth, `matk` if matk ≥ atk, both for hybrids) × expected crit multiplier `1 + min(crit, 100)/100 × (critMod − 1)`; ties by max HP, def + mdef, then the `best` rule. |
+| `none` | No gear. |
+
+- **Skills** (`skills`): `"default"` = the game's default for the level (`defaultAttackList` is all Basic for every
+  class, first passive from level 10); `"search"` = `searchSkills` (every skill multiset within the AP budget under
+  each passive, then every ordering of the 3 best), on `searchQuest` (default the toughest quest of the list,
+  `"each"` = a new search per quest); or an explicit `{ rotation, passive }`.
+- **Rows** (one per class × quest): win rate, mean turns (and of won fights), grade, damage dealt / taken / healing
+  per fight, death rate, enemy HP removed, HP left, plus the rotation, passive and gear used.
+- `onProgress(done, total)` after every cell and every rotation search; `shouldStop()` returns the rows done so far.
+- Caveats: solo fights only (no party roles: a healer or tank counts only for what it does alone); the `default`
+  rotation hides skills, so compare classes with `search`; a rotation searched on one quest is not the best on
+  another; `fit` is a stat proxy, not a fight-tested gear search.
+
 ## Validation
 
 - Computed max HP equals saved HP for the 7 heroes at full health; the 10 wounded ones are all below it.
@@ -135,7 +173,8 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   them crashes at grade ≥ 3 (see [maps](../../game-economy/maps/maps.md#level-70-maps)).
 - `gear` and `skills` optimise one hero at a time; a full joint search would be much bigger.
 - Hero campaign buffs are ignored (`campaignID` forced to -1); potion boosts removed before each fight.
-- Results depend on your heroes' gear: the class table compares your heroes, not classes on equal gear.
+- `solo` results depend on your heroes' gear: its class table compares your heroes; use
+  [class balance on equal gear](#class-balance-on-equal-gear) for classes.
 
 ## From Python to TypeScript
 
@@ -161,4 +200,5 @@ The first version (2026-11-23) ran the game's decompiled Lua through `lupa` from
 ## Code
 
 - `web/src/tools/combat.ts`, `engine.ts`; engine in `web/src/sim/`; page: `web/src/ui/battle*.ts`.
-- Tests: `web/test/tools.test.ts`, `web/test/search.test.ts`; Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.
+- `web/src/tools/classes.ts` (equal-gear class balance).
+- Tests: `web/test/tools.test.ts`, `web/test/search.test.ts`, `web/test/classes.test.ts` (catalog data only, runs in CI); Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.
