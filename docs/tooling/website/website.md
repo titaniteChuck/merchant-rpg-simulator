@@ -272,6 +272,8 @@ the wiki section nav ("Class balance", after Classes) and the home page, not the
 
 ## Shared page parts
 
+- Page width: content up to 1280 px (was 1040), 16 px side padding; phones unchanged. Page titles (h1) are solid
+  text: the former gradient text (background-clip: text) vanished on repaint in desktop Chrome / Edge.
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Wiki (short labels so it stays on one line at
   1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
   coin on the site gradient, no game art), linked from every page.
