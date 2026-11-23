@@ -9,7 +9,7 @@ import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, itemLabel, mapRows, type Row, summary, toCsv,
+  crafterRows, gearRows, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -166,6 +166,13 @@ function renderMaps(sv: Save): HTMLElement {
   return el("div", {}, toolbar(csvButton("maps", () => rows)), table(rows, [
     { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, ascCol,
     { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
+    { key: "essence", label: "Essence / run", render: (r) => {
+      // Linked essence names; the row's text form goes to the CSV.
+      const it = sv.mapInventory[Number(r.slot) - 1];
+      const ess = it ? mapEssenceOf(it) : [];
+      return ess.length ? el("span", { class: "nowrap" }, ...ess.flatMap(([id, amt], k) => [...(k ? [", "] : []), `${fmt.format(amt)} × `, itemLink("material", id)]))
+        : el("span", { class: "muted" }, "—");
+    } },
     { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true }, { key: "enchant_attempts", label: "Enchant attempts" },
   ]));
 }

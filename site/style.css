@@ -322,7 +322,7 @@ section > h2:first-child { margin-top: 36px; }
 .gh { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--fg); font-weight: 650; font-size: 0.9rem;
   padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
 .gh:hover { border-color: var(--accent); color: var(--accent); }
-.card-wiki { --c: #14b8a6; }
+.card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; }
 
 /* ------------------------------------------------------------------ saved save */
 .drop.compact { padding: 10px 16px; flex-direction: row; justify-content: center; gap: 10px; }

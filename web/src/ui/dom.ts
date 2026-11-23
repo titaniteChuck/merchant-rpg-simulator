@@ -24,7 +24,7 @@ export interface TileOptions {
   bar?: number;
 }
 
-export function tile(label: string, value: string, hint?: string, opts: TileOptions = {}): HTMLElement {
+export function tile(label: string, value: string | Node, hint?: string, opts: TileOptions = {}): HTMLElement {
   return el("div", { class: `tile ${opts.tone ?? ""}`.trim() },
     ...(opts.icon ? [el("span", { class: "tile-icon", "aria-hidden": "true" }, opts.icon)] : []),
     el("span", { class: "tile-label" }, label), el("span", { class: "tile-value" }, value),

@@ -147,7 +147,8 @@ function buildOrbSelects(r: Result): void {
       const key = `${row.map_id}@${row.map_asc}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      s.append(el("option", { value: key }, `${row.map}${Number(row.map_asc) ? " (asc 1)" : ""}`));
+      // Options can't be outlined; an ascended map needs a word to tell it from the plain one.
+      s.append(el("option", { value: key }, `${row.map}${Number(row.map_asc) ? " · ascension 1" : ""}`));
     }
     s.addEventListener("change", () => {
       if (s.value) state.orbChoice.set(o.id, s.value);
@@ -205,7 +206,7 @@ function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HT
     change(orb, () => (f.orb = orb.value));
     kids.push(orb);
   } else {
-    const asc = el("select", { "aria-label": "Ascension" }, ...[["all", "Any asc"], ["0", "Asc 0"], ["1", "Asc 1"], ["2", "Asc 2"]]
+    const asc = el("select", { "aria-label": "Ascension" }, ...[["all", "Any ascension"], ["0", "No ascension"], ["1", "Ascension 1"], ["2", "Ascension 2"]]
       .map(([v, l]) => el("option", v === f.asc ? { value: v, selected: "" } : { value: v }, l))) as HTMLSelectElement;
     change(asc, () => (f.asc = asc.value));
     const lvl = (v: number, label: string, set: (x: number) => void) => {
@@ -277,8 +278,7 @@ function orbsPanel(r: Result): HTMLElement[] {
       el("td", {}, itemLink("material", o.id, o.name)),
       el("td", {}, REGION[o.region] ?? "?"),
       el("td", { class: "num" }, o.cost === null ? "—" : `${fmt1.format(o.cost)} g`),
-      el("td", {}, o.mapId === null ? "—" : el("span", { class: "nowrap" }, itemLink("map", o.mapId),
-        ...(o.mapAsc ? [" ", el("span", { class: "pill plain" }, "asc 1")] : []),
+      el("td", {}, o.mapId === null ? "—" : el("span", { class: "nowrap" }, itemLink("map", o.mapId, undefined, undefined, o.mapAsc),
         ...(o.label && o.label !== "as crafted" ? [el("span", { class: "muted small" }, ` · ${o.label}`)] : []))),
       el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun)))))));
   const f = state.filters;
@@ -286,7 +286,7 @@ function orbsPanel(r: Result): HTMLElement[] {
     .filter((x) => !f.q.trim() || `${x.map} ${x.essence}`.toLowerCase().includes(f.q.trim().toLowerCase()));
   const tiers = [...new Set(r.orbs.map((o) => o.tier))].sort();
   return [
-    el("p", { class: "muted small" }, "Ascending an item uses orbs (essence) matching its level. Map runs drop them: plain maps drop the asc-1 orbs, ascended maps the asc-2 orbs. An orb is worth what it costs to farm, not its few gold of sell price."),
+    el("p", { class: "muted small" }, "Ascending an item uses orbs (essence) matching its level. Map runs drop them: plain maps drop the ascension-1 orbs, ascended maps (silver outline) the ascension-2 orbs. An orb is worth what it costs to farm, not its few gold of sell price."),
     ...tiers.flatMap((t) => [el("h3", { class: "pf-h3" }, `Orbs for ascension ${t}`), best(t)]),
     el("h3", { class: "pf-h3" }, "Every map that drops orbs"),
     filterBar({ orbs: r.orbs }), countLine(rows.length, "map and orb pairs"), tableFor("Orbs", rows, essenceColumns()),
@@ -299,10 +299,11 @@ const TAB_LABELS: Record<string, string> = { Items: "💰 What to make", Enchant
 function summaryTiles(r: Result): HTMLElement {
   const top = r.items.reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
   const topAsc0 = r.items.filter((x) => x.asc === 0).reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
-  const mk = (x: Row | null) => (x ? `${x.name}${Number(x.asc) ? ` (asc ${x.asc})` : ""}` : "—");
+  // The item, outlined for its ascension (silver 1, gold 2).
+  const mk = (x: Row | null): Node | string => (x ? itemLink(String(x.type ?? "equipment"), Number(x.id), String(x.name), x.rarity, x.asc) : "—");
   return el("div", { class: "tiles" },
     tile("Most profit", mk(top), top ? `${fmt.format(Number(top.best_profit))} g · ${STRATEGY[String(top.best_strategy)] ?? ""}` : undefined, { icon: "🏆", tone: "t-gold" }),
-    tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${fmt.format(Number(topAsc0.best_profit))} g at asc 0` : undefined, { icon: "🔨", tone: "t-blue" }),
+    tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${fmt.format(Number(topAsc0.best_profit))} g, no ascension` : undefined, { icon: "🔨", tone: "t-blue" }),
     tile("Items priced", fmt.format(r.items.length), "item × ascension level", { icon: "📦", tone: "t-teal" }),
     tile("Cheapest orb", r.orbs.length ? `${fmt1.format(Math.min(...r.orbs.map((o) => o.cost ?? Infinity)))} g` : "—",
       r.orbs.length ? r.orbs.reduce((a, b) => ((b.cost ?? Infinity) < (a.cost ?? Infinity) ? b : a)).name : undefined, { icon: "🔮", tone: "t-violet" }));

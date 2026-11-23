@@ -3,7 +3,7 @@
  * and a sortable table (dom.ts `table`) that keeps its sort when the rows are filtered and shows only the
  * first rows until asked for all.
  */
-import { type Column, el, fmt, fmt1, GRADE_LETTERS, gradeBadge, type Row, table } from "./dom.ts";
+import { ascSwatch, type Column, el, fmt, fmt1, GRADE_LETTERS, gradeBadge, type Row, table } from "./dom.ts";
 import type { Row as ProfitRow } from "./profit-worker.ts";
 import { tip } from "./tooltip.ts";
 import { itemLink } from "./wiki-data.ts";
@@ -39,15 +39,16 @@ export const STRATEGY: Record<string, string> = {
 /** "craft (Woodworker) at asc 2" and friends, in words. */
 export function howText(how: string): string {
   return how.replace(/^craft \((.+?)\)( at asc \d)?$/, "Craft ($1)")
-    .replace(/^ascend asc(\d) item \(\+(\d+)x (.+)\)$/, "Ascend the asc $1 item ($2 × $3)")
+    .replace(/^ascend asc(\d) item \(\+(\d+)x (.+)\)$/, "Ascend the ascension-$1 item ($2 × $3)")
     .replace(/^quest (.+) \((.+)g, (.+)\/run\)$/, "Quest: $1 ($2 g, $3 per run)")
     .replace(/^map loot (.+) \(valued at sell price\)$/, "Loot of $1")
-    .replace(/\basc(\d)\b/g, "asc $1");
+    .replace(/\basc(\d)\b/g, "ascension $1");
 }
 
-const itemCell = (r: Row) => el("span", { class: "nowrap" }, itemLink(String(r.type ?? "equipment"), Number(r.id), String(r.name), r.rarity),
+// Ascension is the name's outline (silver 1, gold 2), as on the other pages.
+const itemCell = (r: Row) => el("span", { class: "nowrap" }, itemLink(String(r.type ?? "equipment"), Number(r.id), String(r.name), r.rarity, r.asc),
   ...(Number(r.owned) > 0 ? [el("span", { class: "pf-owned", title: `You have ${r.owned}` }, `✓ ${fmt.format(Number(r.owned))}`)] : []));
-const ascCell = (r: Row) => (Number(r.asc) > 0 ? el("span", { class: "pill plain" }, `asc ${r.asc}`) : el("span", { class: "muted" }, "0"));
+const ascCell = (r: Row) => ascSwatch(r.asc);
 
 /** What to make and sell, ranked. */
 export function itemColumns(withOwned: boolean): InfoColumn[] {
@@ -108,9 +109,8 @@ export function enchantColumns(): InfoColumn[] {
 export function essenceColumns(): InfoColumn[] {
   return [
     { key: "essence", label: "Orb", render: (r) => itemLink("material", Number(r.essence_id), String(r.essence)) },
-    { key: "map", label: "Map", render: (r) => el("span", { class: "nowrap" }, itemLink("map", Number(r.map_id), String(r.map)),
-      ...(Number(r.map_asc) > 0 ? [" ", el("span", { class: "pill plain" }, `asc ${r.map_asc}`)] : [])),
-      tip: "The map run that drops the orb. Ascended (asc 1) maps drop the asc-2 orbs." },
+    { key: "map", label: "Map", render: (r) => el("span", { class: "nowrap" }, itemLink("map", Number(r.map_id), String(r.map), undefined, r.map_asc)),
+      tip: "The map run that drops the orb. Ascended maps (silver outline) drop the ascension-2 orbs." },
     { key: "enchant", label: "Map enchant", show: (v) => (v === "as crafted" ? "As crafted" : String(v ?? "")),
       tip: "The map as it comes out of the crafter, or enchanted first (a higher suffix gives more orbs but costs gold and runes)." },
     { key: "essence_per_run", label: "Orbs per run", num: true, show: (v) => (isNum(v) ? fmt1.format(v) : "—"),

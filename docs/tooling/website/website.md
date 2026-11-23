@@ -17,6 +17,7 @@ timestamp: 2026-11-23
 - [Battle simulator](#battle-simulator)
 - [Wiki](#wiki)
 - [Profit page](#profit-page)
+- [Farming planner](#farming-planner)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -57,7 +58,7 @@ flowchart LR
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
   CSV download per table.
-- Not shown yet: essence per map run (`profit.ts` runs in the browser now, see [Profit page](#profit-page)).
+- Maps: essence per run from the profit model (`mapEssence`, with the map's grade, ascension, prefix and suffix).
 
 ## Battle simulator
 
@@ -125,9 +126,23 @@ flowchart LR
   base maps Tuvale, Yarsol, … Frentir) leaves the orb unpriced (the solver relaxes from "unknown"), so items that
   need it drop out. The page warns when it happens.
 
+## Farming planner
+
+`site/farming.html` + `web/src/ui/farming.ts` (page) + `web/src/ui/farming-worker.ts` (web worker).
+
+- Party: the one picked on the battle page (same browser storage, edited rotations included), editable here; without
+  one, the six highest-level heroes.
+- Sources: quests (preselected around the heroes' level, rare variants optional), owned maps, catalog maps at
+  ascension 0/1 (grade S), up to 3 scrolls on every map run.
+- `farmingReport` (`web/src/tools/farming.ts`) simulates each source with the party (common seeds) and prices it with
+  the profit `Solver` (grade 3), solved once per worker (~3 s) and reused.
+- Ranked by value per hour (loot sell value minus the run's cost, plus essence at its production cost); headline
+  "best use of your heroes' time", or a warning when every source costs more than it earns. Tests:
+  `web/test/farming-worker.test.ts`.
+
 ## Shared page parts
 
-- Top bar on every page: Save viewer, Battle simulator, Wiki, Profit (on the profit page so far), and the GitHub link (right).
+- Top bar on every page: Save viewer, Battle simulator, Profit, Farming, Wiki, and the GitHub link (right).
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Bar: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser).

@@ -9,6 +9,8 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { itemName, rarity, sellValue } from "../tools/engine.ts";
+import { type Game, gameFromData } from "../tools/gamedata.ts";
+import { mapEssence } from "../tools/profit.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -125,13 +127,27 @@ export function inventoryRows(sv: Save): Row[] {
   return rows;
 }
 
-/** Owned maps (map_rows without the essence column, which needs the profit model). */
+let game: Game | null = null;
+/**
+ * Essence one run of an owned map gives: [essence id, amount], from the profit model (its grade, ascension, prefix
+ * and suffix), as the former savegame.py map_rows did.
+ */
+export function mapEssenceOf(it: Any): [number, number][] {
+  if (!G.itemData.map?.[it.id]) return [];
+  game ??= gameFromData();
+  const grade = Number.isInteger(it.grade) ? it.grade : 3;
+  const ess = mapEssence(game, it.id, it.prestigeLevel || 0, grade, [[1.0, it.prefix || 0, Math.max(it.suffix || 0, 0)]]);
+  return [...ess].map(([key, amt]) => [Number(key.split("|")[1]), amt]);
+}
+
+/** Owned maps (map_rows), with the essence one run gives. */
 export function mapRows(sv: Save): Row[] {
   return sv.mapInventory.map((it: Any, i: number) => {
     const data = G.itemData.map?.[it.id] ?? {};
     const bosses = seq<number>(data.bossList ?? {}).map((b) => G.questData[b]?.name).filter(Boolean);
     return {
       slot: i + 1, ...itemRow(it),
+      essence: mapEssenceOf(it).map(([id, amt]) => `${amt} ${itemName("material", id)}`).join(", "),
       boss: bosses.join(", "), enemies: data.baseEnemyAmount ?? "", enemy_mod: data.enemyMod ?? "",
       base_time_min: Math.round(((data.baseMapTime ?? 0) / 60) * 10) / 10,
       enchant_attempts: (it.enchantAttempt ?? [0, 0, 0]).join("/"), seed: it.seed ?? "",

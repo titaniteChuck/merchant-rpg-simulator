@@ -39,7 +39,7 @@ test("worker: plain, cloneable tables and orbs", async () => {
 
 test("route text and sorting", () => {
   assert.equal(howText("craft (Woodworker) at asc 2"), "Craft (Woodworker)");
-  assert.equal(howText("ascend asc0 item (+20x Forest Essence)"), "Ascend the asc 0 item (20 × Forest Essence)");
+  assert.equal(howText("ascend asc0 item (+20x Forest Essence)"), "Ascend the ascension-0 item (20 × Forest Essence)");
   assert.equal(howText("map loot Tuvale Map (valued at sell price)"), "Loot of Tuvale Map");
   const rows = [{ v: 2 }, { v: null }, { v: 5 }, { v: -1 }];
   assert.deepEqual(sortRows(rows, { key: "v", desc: true }).map((r) => r.v), [5, 2, -1, null]);
