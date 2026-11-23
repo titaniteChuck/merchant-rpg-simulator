@@ -4,6 +4,7 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
+import { bindSaveInput } from "./save-file.ts";
 import {
   crafterRows, gearRows, HERO_STATS, type HeroView, heroViews, inventoryRows, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
@@ -230,20 +231,7 @@ async function openFile(file: File): Promise<void> {
 }
 
 function init(): void {
-  const input = $<HTMLInputElement>("#file");
-  input.addEventListener("change", () => input.files?.[0] && openFile(input.files[0]));
-  const drop = $("#drop");
-  drop.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    drop.classList.add("over");
-  });
-  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-  drop.addEventListener("drop", (e) => {
-    e.preventDefault();
-    drop.classList.remove("over");
-    const f = e.dataTransfer?.files?.[0];
-    if (f) openFile(f);
-  });
+  bindSaveInput({ input: $<HTMLInputElement>("#file"), drop: $("#drop"), onFile: openFile, onError: showError });
   loadData().catch((e) => showError(String(e)));
 }
 
