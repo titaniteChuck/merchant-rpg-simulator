@@ -1,7 +1,8 @@
 /**
- * Battle simulator page (site/battle.html), U23 order: step 1 picks a mode (MODES: simulate, or one of the searches)
- * and shows its options and Run button right there; step 2 holds the party (six slots, back row | front row) on the
- * left and the opponent card (a quest enemy or a map run) on the right, then the 5-turn plan; the results come last.
+ * Battle simulator page (site/battle.html), U26 order: step 1 picks a mode (MODES: simulate, or one of the searches)
+ * and shows its options and Run button right there; step 2 is the Results (progress, then the outcome), right under
+ * the Run button; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest
+ * enemy or a map run) on the right, then the 5-turn plan. The searches fill step 3 with what they found.
  * Runs go to a web worker with the game's rules (TypeScript engine).
  */
 import * as api from "../sim/api.ts";
@@ -27,7 +28,7 @@ const GRADES = ["D", "C", "B", "A", "S"];
 
 type Opp = "quest" | "map";
 /**
- * The modes of step 1. `party`: step 2 asks for the party; `opp`: the opponents the mode works on (the first is the
+ * The modes of step 1. `party`: step 3 asks for the party; `opp`: the opponents the mode works on (the first is the
  * default); `search`: the search panel of battle-search.ts (none = the plain simulation). A new mode is one row here
  * and, for a search, one panel in battle-search.ts.
  */
@@ -470,6 +471,25 @@ function setMode(key: string): void {
 }
 
 // ---------------------------------------------------------------- run
+/**
+ * A run (Simulate or a search) started: bring the Results (step 2, right under the Run button) into view. On a wide
+ * screen they usually already are, and nothing moves; on a phone, or when the heading is off screen, one smooth scroll
+ * puts it at the top. Only here, at the start: progress updates and the result never scroll, so a user who scrolls
+ * away stays where they went.
+ */
+function revealResults(): void {
+  const box = document.querySelector<HTMLElement>("#results-box");
+  if (!box) return;
+  const top = box.getBoundingClientRect().top;
+  const narrow = matchMedia("(max-width: 760px)").matches;
+  // Wide: in view when the heading and the progress bar under it are on screen. Narrow: near the top, so the
+  // results that replace the progress have the screen.
+  const inView = top >= 0 && top <= (narrow ? innerHeight * 0.3 : innerHeight - 160);
+  if (inView) return;
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  box.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+}
+
 /** The six slots as the worker takes them (raw save heroes, edited rotations), and who stands where. */
 function partyOf() {
   const sv = state.sv!;
@@ -486,7 +506,7 @@ function partyOf() {
   return { front, back, skills, members };
 }
 
-/** The opponent chosen in step 2. */
+/** The opponent chosen in step 3. */
 function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } } {
   const sv = state.sv!;
   if (oppKind() === "quest") {
@@ -533,6 +553,7 @@ function run(): void {
   });
   btn.disabled = true;
   out.replaceChildren(el("div", { class: "toolbar" }, el("p", { class: "muted" }, `Simulating ${req.n} ${req.quest ? "fights" : "map runs"}…`), cancel));
+  revealResults();
   worker.onmessage = (e: MessageEvent<BattleResponse>) => {
     stop();
     const r = e.data;
@@ -673,6 +694,7 @@ function init(): void {
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
     },
+    onStart: revealResults,
   }, $("#search-panel"), $("#search-results"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));

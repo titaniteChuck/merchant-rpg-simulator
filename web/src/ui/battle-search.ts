@@ -33,7 +33,7 @@ export interface SearchContext {
   gameMode(): string;
   /** Heroes in the six slots and their edited rotations, as the worker takes them. */
   party(): { front: (Any | null)[]; back: (Any | null)[]; skills: { front: (SkillChoice | null)[]; back: (SkillChoice | null)[] }; members: PartyMember[] };
-  /** The opponent chosen in step 2. */
+  /** The opponent chosen in step 3 (party and opponent). */
   target(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } };
   /** Give a hero (save index) a rotation and passive in the party editor. */
   applyRotation(idx: number, rotation: string[], passive: string): void;
@@ -41,10 +41,12 @@ export interface SearchContext {
   applyParty(front: (number | null)[], back: (number | null)[]): void;
   /** Edited rotations by save hero id (heroes outside the party too), for the searches over all heroes. */
   poolSkills(): Record<number, SkillChoice>;
-  /** Set the map run's scrolls in step 2. */
+  /** Set the map run's scrolls in step 3. */
   applyScrolls(ids: number[]): void;
   /** Save hero ids of the locked slots (Best party / Optimise everything keep them). */
   locks(): number[];
+  /** A search started (its progress is in the results): the page may bring the results into view. */
+  onStart?(): void;
 }
 
 export type SearchKey = "skills" | "gear" | "party" | "scrolls" | "optimise" | "consumables";
@@ -88,7 +90,7 @@ const evLine = (ev: FightEval | MapEval) => (isMapEval(ev) ? mapLine(ev) : fight
 
 /**
  * The search panels; show(key) puts one in `mount` (step 1, under the mode cards) and its progress and results in
- * `results` (the page's results, under the 5-turn plan); refresh() rebuilds the panel after the party or the opponent
+ * `results` (the page's Results, step 2, right under step 1); refresh() rebuilds the panel after the party or the opponent
  * changed, keeping the results (and a running search) where they are.
  */
 export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTMLElement): { show(key: SearchKey | null): void; refresh(): void } {
@@ -133,6 +135,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       (prog.firstElementChild as HTMLElement).style.width = `${Math.min(100, (100 * used) / budgetMs)}%`;
     }, 500) : 0;
     out.replaceChildren(el("div", { class: "search-progress" }, el("div", { class: "toolbar" }, stage, clock, cancel), prog));
+    ctx.onStart?.();
     w.onmessage = (e: MessageEvent<SearchResponse>) => {
       const m = e.data;
       if (m.type === "progress") {
@@ -170,9 +173,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     const t = ctx.target();
     const needQuest = (key === "skills" || key === "gear") && !t.quest;
     const needMap = key === "scrolls" && !t.map;
-    if (needQuest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in the opponent card (step 2).");
-    if (needMap) return el("p", { class: "muted" }, "This search optimises map runs: choose 🗺️ Map run in the opponent card (step 2).");
-    if (key !== "party" && key !== "optimise" && !ctx.party().members.length) return el("p", { class: "muted" }, "Put at least one hero in the party (step 2).");
+    if (needQuest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in the opponent card (step 3).");
+    if (needMap) return el("p", { class: "muted" }, "This search optimises map runs: choose 🗺️ Map run in the opponent card (step 3).");
+    if (key !== "party" && key !== "optimise" && !ctx.party().members.length) return el("p", { class: "muted" }, "Put at least one hero in the party (step 3).");
     const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
     let form: HTMLElement[] = [];
     let start: () => void = () => {};
@@ -257,7 +260,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       const excl = excludePicker(sv);
       form = [...form, excl.node];
       intro += " Every hero of the save is a candidate, except the ones you leave out; locked slots (🔒) keep their hero. "
-        + "The result fills the six slots (step 2). This can take a few minutes.";
+        + "The result fills the six slots (step 3). This can take a few minutes.";
       start = () => {
         const undo = snapshot();
         const locks = ctx.locks();
@@ -266,7 +269,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
           if (r.search !== "party") return [];
           const p = r.result;
           ctx.applyParty(p.party.front, p.party.back);
-          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the party slots above"), evLine(p.ev)), undo),
+          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the party slots below"), evLine(p.ev)), undo),
             el("p", { class: "muted small" }, `${p.added.length} heroes added, ${p.improvements} improvement${p.improvements === 1 ? "" : "s"} by swapping or moving.`)];
         });
       };
@@ -359,8 +362,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         c.checked = on;
         return { c, node: el("label", { class: "check" }, c, ` ${label}`) };
       };
-      // Party step off: the optimiser keeps the party of step 2 (it may still reorder it). On: that party is the one to beat.
-      const sParty = step("party (off: keep the party of step 2)"), sSkills = step("rotations"), sGear = step("gear (items you own)"), sScrolls = step("scrolls");
+      // Party step off: the optimiser keeps the party of step 3 (it may still reorder it). On: that party is the one to beat.
+      const sParty = step("party (off: keep the party of step 3)"), sSkills = step("rotations"), sGear = step("gear (items you own)"), sScrolls = step("scrolls");
       const excl = excludePicker(sv);
       form = [field("time", budget), field("heroes", size), el("span", { class: "muted small" }, "Tune:"), sParty.node, sSkills.node, sGear.node,
         ...(isMap ? [sScrolls.node] : []), excl.node];
@@ -370,7 +373,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         const startParty = { front: p.front.map((h) => h?.id ?? null), back: p.back.map((h) => h?.id ?? null) };
         const placed = [...startParty.front, ...startParty.back].filter((x): x is number => x !== null);
         if (!sParty.c.checked && !placed.length) {
-          out.replaceChildren(el("p", { class: "error", role: "alert" }, "With the party step off, put the party in step 2 first (the optimiser keeps it)."));
+          out.replaceChildren(el("p", { class: "error", role: "alert" }, "With the party step off, put the party in step 3 first (the optimiser keeps it)."));
           return;
         }
         const undo = snapshot();
@@ -477,7 +480,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
     for (const [id, s] of Object.entries(res.config.skills)) ctx.applyRotation(idx(Number(id)), s.rotation, s.passive);
     if (res.config.scrolls) ctx.applyScrolls(res.config.scrolls.map((x) => x.id));
-    const use = el("p", { class: "small" }, "✓ Party and rotations are in the slots above. ", undo);
+    const use = el("p", { class: "small" }, "✓ Party and rotations are in the slots below. ", undo);
     // "Why this rotation": the schedule notes of the optimised party against the quest's enemy timeline.
     const q = ctx.target().quest;
     const where = new Map<number, { row: "front" | "back"; i: number }>();
@@ -540,7 +543,7 @@ function stepName(step: string): string {
   return k === "party" ? "Party" : k === "skills" ? `Rotation of ${who}` : k === "gear" ? `Gear of ${who}` : k === "scrolls" ? "Scrolls" : step;
 }
 
-/** Back on the left, front on the right (the enemy is further right), as in step 2. */
+/** Back on the left, front on the right (the enemy is further right), as in step 3. */
 function partyLayout(p: { front: (number | null)[]; back: (number | null)[] }, name: (id: number | null) => string): HTMLElement {
   return el("div", { class: "party-result" }, ...(["back", "front"] as const).map((row) => el("div", {},
     el("span", { class: "muted small" }, row === "front" ? "🛡️ Front" : "🏹 Back"),

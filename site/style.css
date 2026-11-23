@@ -1137,3 +1137,16 @@ a.ref-link { color: color-mix(in srgb, var(--accent) var(--ink), var(--fg)); }
   .ref-vars dt { white-space: normal; }
 }
 /* end wiki reference pages */
+
+/* battle v3.1 + numbers */
+/* U26. Battle page: Results (step 2) sit right under the Run button; a run brings them into view once (battle.ts). */
+#results-box { scroll-margin-top: 12px; }
+/* Numbers are centred in their cells, site-wide: the table() helper's num columns and their headers (dom.ts), and the
+   hand-built tables that mark numeric cells with .num (profit, levelling, wiki drop tables, "Good against"). */
+th.num, td.num, .loot-table td.num, .loot-table th.num { text-align: center; }
+th.num button { text-align: center; }
+/* Row numbers of the ability rows (save viewer, wiki class pages, battle slots), and the class-balance matrix headers
+   over its centred win rates. */
+.ability-rows .n, table.slot-rows td.n { text-align: center; padding-left: 4px; padding-right: 4px; }
+.cb-matrix th.cb-q { text-align: center; }
+/* end battle v3.1 + numbers */

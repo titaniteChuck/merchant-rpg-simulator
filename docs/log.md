@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-23
+- **Website**: Battle page order (U26): Results (progress, then the outcome) moved to step 2, right under the Run button; party and opponent are step 3 with the 5-turn plan below; a run scrolls the Results into view once on phones. Numbers in tables centred site-wide (`num` columns of the table helper and `.num` cells).
 - **Website**: Wiki reference pages (U25): "Stats" and "Battle", one anchored section per topic (formulas, variables, worked examples, game source lines), checked against the decompiled game and the port; link helpers `statLink` / `battleLink`.
 - **Website**: Wiki (U21, part 2): skill "Good against" as a table with a ✓ on the enemy turns it answers (reasons in the tooltips); wiki list pages lose their title and intro, the descriptions moved to the wiki home cards.
 - **Website**: Wiki v4 (U21): full-width section banners on wiki detail pages; enemy drops as tables (every win and each loot roll, "Nothing" row, exact chances per battle grade from lootService); map Skills column counts the real rotation ("Basic attack only" where the game data has no skill).

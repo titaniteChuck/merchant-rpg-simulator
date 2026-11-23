@@ -106,6 +106,7 @@ export function pill(text: string, cls = ""): HTMLElement {
 export interface Column {
   key: string;
   label: string;
+  /** A column of numbers: its cells and header get class "num" (centred, tabular digits; style.css), and it sorts high to low first. */
   num?: boolean;
   /** Display text; default: formatted value. */
   show?: (v: Cell, r: Row) => string;
@@ -135,7 +136,7 @@ export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string
     }));
   };
   const head = el("tr", {}, ...cols.map((c) => {
-    const th = el("th", { scope: "col", class: c.num ? "num" : "" }, el("button", { type: "button" }, c.label));
+    const th = el("th", { scope: "col", ...(c.num ? { class: "num" } : {}) }, el("button", { type: "button" }, c.label));
     th.querySelector("button")!.addEventListener("click", () => {
       asc = sortKey === c.key ? !asc : !c.num;
       sortKey = c.key;

@@ -103,17 +103,23 @@ flowchart LR
 
 `site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
 
-- Page order (U23): (1) mode, its options and its Run button; (2) party and opponent, then the 5-turn plan; then
-  Results. No page title or lead paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
+- Page order (U26, was U23): (1) mode, its options and its Run button; (2) Results, right under the Run button
+  (`#results-box`: progress bar, then the outcome); (3) party and opponent, then the 5-turn plan. The party and
+  opponent block is always the setup being edited: the searches fill it with what they found. When a run starts
+  (▶ Simulate, or a search through `SearchContext.onStart`), `revealResults` in `battle.ts` brings the Results into
+  view: on a wide screen they are usually already on screen and nothing moves; on a phone (760 px and less), or when
+  the heading is off screen, one smooth scroll puts it at the top (instant with reduced motion). Only at the start:
+  progress updates and the result never scroll, so a user who scrolls away stays there. No page title or lead
+  paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
 - Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Best potion / enchant (U9), Optimise everything (`MODES` in
   `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
   is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
   `battle-mode`). Under 560px the modes are two compact columns (hint in the title). Under the mode cards, one box
   (`.run-box`, U23; was a separate step 3) holds the chosen mode's options and its Run button: Runs and ▶ Simulate, or
-  the search's panel and 🔎 Search. The output goes to the Results section at the bottom (`#results` for Simulate,
+  the search's panel and 🔎 Search. The output goes to the Results section, step 2 (`#results` for Simulate,
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
   opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
-- Step 2 (U15, reworked in U23), the same arrangement in every mode: the six hero slots on the left (back row 1-3 |
+- Step 3, party and opponent (U15, reworked in U23; step 2 until U26), the same arrangement in every mode: the six hero slots on the left (back row 1-3 |
   front row 1-3), the opponent card on the right (stacked below 960px, party first), then the 5-turn plan across the
   full width. Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
@@ -188,7 +194,7 @@ flowchart LR
     cast turn, wrapping from T5 to T1 (Soul Barrier cast on T4 covers T5 and T1). Tooltips: duration, stats, cleanse /
     dispel, and the rules (durations count in the owner's own actions; the enemy always follows its rotation and hits
     the front row, split evenly, unless the skill says otherwise).
-  - 5-turn plan (under the party and opponent block since U23, full width, every mode, quest opponent): one row per actor in the real action order
+  - 5-turn plan (under the party and opponent block since U23, step 3, full width, every mode, quest opponent): one row per actor in the real action order
     (back 1, front 1, back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), each hero's
     slot k under turn k, with `scoreSchedule`'s notes per cell (✓ helps, ⚠ hurts: "into Soul Barrier", "cleanses
     Alternate Reality", "heals after enemy damage") and the score per turn; stats from `scheduleContext`.
@@ -436,6 +442,14 @@ link ("Balance", U18) and a home card; not part of the wiki (it depends on hero 
   selected tab in the Tab order), for the save viewer's tabs (wired with U17); the save menu moves with Up / Down and closes with Escape;
   mode cards and switches are radio groups; sortable table headers are buttons; every focusable element (links
   included) gets the accent focus ring. Colours never carry a value alone: win rates and heat cells print the number.
+- Numbers in tables are centred (U26): the `table()` helper of `dom.ts` marks a `num` column's cells and header with
+  class `num`, and `th.num, td.num` are `text-align: center` (block "battle v3.1 + numbers" at the end of `style.css`).
+  That covers the save viewer, Profit, Farming, Levelling, Class balance and the battle results, plus the hand-built
+  tables that already mark numbers with `.num` (profit's best sources, levelling's prestige table, the wiki drop tables
+  and the "Good against" rank). Also centred from CSS: the row numbers of the ability rows (save viewer, wiki class
+  pages, battle slots) and the class-balance matrix headers; the battle stat strips, the "Good against" T1–T5 marks
+  and the class-balance cells already were. Not tables, so unchanged: the wiki loot lists (`.loot-pct`), overview
+  values and tiles.
 - Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
   less it also checks that the top bar, its links, the wiki chips and the tab rows are one line high (U20). Without
   `saves/snapshot/` it uses the example save for its "with save" runs.

@@ -37,15 +37,22 @@
             <div class="toolbar">
               <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
               <button id="run" type="button" class="primary">▶ Simulate</button>
-              <span class="muted small">Same seeds every time, so changes you make are compared fairly. Results appear under the 5-turn plan.</span>
+              <span class="muted small">Same seeds every time, so changes you make are compared fairly. Results appear right below.</span>
             </div>
           </div>
           <div id="search-panel" hidden></div>
         </div>
       </section>
 
+      <section id="results-box" class="b3-results">
+        <h2 id="results-title"><span class="step">2</span> Results</h2>
+        <p id="results-empty" class="muted small">Run the mode chosen above (▶ Simulate or 🔎 Search): its progress and results appear here.</p>
+        <section id="results" aria-live="polite"></section>
+        <div id="search-results" aria-live="polite"></div>
+      </section>
+
       <section>
-        <h2><span class="step">2</span> <span id="setup-title">Party and opponent</span></h2>
+        <h2><span class="step">3</span> <span id="setup-title">Party and opponent</span></h2>
         <div id="setup-grid" class="setup-grid b3-grid">
           <div id="party-col" class="party-col">
             <h3 class="col-title">👥 Party</h3>
@@ -61,13 +68,6 @@
           </div>
         </div>
         <div id="plan" class="b3-plan" aria-live="polite"></div>
-      </section>
-
-      <section class="b3-results">
-        <h2 id="results-title">Results</h2>
-        <p id="results-empty" class="muted small">Run the mode chosen above (▶ Simulate or 🔎 Search): its results appear here.</p>
-        <section id="results" aria-live="polite"></section>
-        <div id="search-results" aria-live="polite"></div>
       </section>
     </div>
   </main>
