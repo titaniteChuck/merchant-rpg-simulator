@@ -13,6 +13,7 @@ timestamp: 2026-11-23
 
 - [Public repo rules](#public-repo-rules)
 - [Deployment](#deployment)
+- [Save viewer](#save-viewer)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
@@ -32,17 +33,32 @@ flowchart LR
   A[site/] --> D[_site/]
   B[inventory/inventory.json] -->|data/| D
   C[tools/*.py] -->|py/| D
+  W[web/src/ui/*.ts] -->|esbuild| D
   D -->|.github/workflows/pages.yml| E[GitHub Pages]
 ```
 
-- Runs on push to `main` touching `site/`, `tools/`, `inventory/` or the workflow, or by hand.
+- Runs on push to `main` touching `site/`, `tools/`, `inventory/`, `web/` or the workflow, or by hand.
+- `web/scripts/assemble-site.sh [out]` builds the same `_site/` locally (esbuild bundles `web/src/ui/*.ts` into `js/`).
+  Preview: `python3 -m http.server -d _site 8000`.
 - Repo setting needed once: Settings > Pages > Source = GitHub Actions.
+
+## Save viewer
+
+`site/save.html` + `web/src/ui/save-viewer.ts`. The save is read in the browser, never uploaded.
+
+- Decoding: `web/src/tools/save.ts` (port of `savegame.py` parsing).
+- Tables: `web/src/ui/save-tables.ts`, same columns as `savegame.py --export`; checked equal to the Python CSVs on a real
+  save (inventory 167, maps 5, heroes 17, gear 102 rows).
+- Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`).
+- Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
+  CSV download per table.
+- Not shown yet: essence per map run (needs `profit.ts`).
 
 ## What can run in the browser
 
 | Tool | Browser? | Why |
 |---|---|---|
-| Save decoding (`savegame.py`) | Yes | Standard library only; run through Pyodide or port to JS. File stays local. |
+| Save decoding (`savegame.py`) | Yes | Ported to `web/src/tools/save.ts`; used by `save.html`. File stays local. |
 | Item names, recipes, sell values | Yes | `data/inventory.json`. |
 | Profit calculator (`profit.py`) | Needs work | `gamedata.load_game()` reads `decompiled/`; needs a loader from `inventory.json`. |
 | Combat engine (fights, map runs) | Yes | Ported to TypeScript in `web/src/sim/` (see below). |
@@ -101,6 +117,6 @@ flowchart LR
 
 ## Roadmap
 
-1. Save viewer: drop a save file, show heroes, gear, inventory, maps.
+1. Save viewer: done (`save.html`).
 2. Profit tables from `inventory.json` (pre-computed or in Pyodide).
 3. Battle simulation and gear/party optimisation pages on top of `web/src/sim` + `web/src/tools`.

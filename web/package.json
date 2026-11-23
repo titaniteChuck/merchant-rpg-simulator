@@ -8,10 +8,12 @@
     "difftest": "node test/difftest.ts",
     "combat": "node src/tools/cli.ts",
     "difftest:maps": "node test/difftest-maps.ts",
-    "difftest:items": "node test/difftest-items.ts"
+    "difftest:items": "node test/difftest-items.ts",
+    "site": "scripts/assemble-site.sh"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "@types/node": "^22.9.0"
+    "@types/node": "^22.9.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
   }
 }

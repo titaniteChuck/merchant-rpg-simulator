@@ -3,7 +3,7 @@ name: Deploy website
 on:
   push:
     branches: [main]
-    paths: ["site/**", "tools/**", "inventory/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "tools/**", "inventory/**", "web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -21,14 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      # Static pages, game data, Python tools and the bundled TypeScript pages.
       - name: Assemble site
-        run: |
-          mkdir -p _site/data _site/py
-          cp -r site/. _site/
-          # Game data exported by tools/export_inventory.py, read by the pages.
-          cp inventory/inventory.json inventory/gamedata.json _site/data/
-          # Python tools, so pages can run them in the browser (Pyodide).
-          cp tools/*.py _site/py/
+        run: web/scripts/assemble-site.sh _site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

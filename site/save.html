@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Save Viewer · Merchant RPG Simulator</title>
+  <meta name="description" content="Read your Merchant save in the browser: heroes and their combat stats, gear, inventory value, maps and crafters.">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/save-viewer.js"></script>
+</head>
+<body>
+  <nav class="nav"><a href="./">Merchant RPG Simulator</a> <span aria-hidden="true">›</span> Save viewer</nav>
+  <header>
+    <h1>Save viewer</h1>
+    <p class="lead">Open your save to see your heroes with their real combat stats, their gear, your inventory value, maps and crafters.</p>
+  </header>
+
+  <main>
+    <label id="drop" class="drop">
+      <input id="file" type="file" accept=".txt,application/json,text/plain">
+      <span class="drop-title">Drop your save file here, or click to choose it</span>
+      <span class="muted small">The file is read by your browser. It is never uploaded.</span>
+    </label>
+
+    <details class="help">
+      <summary>Where is my save file?</summary>
+      <ul>
+        <li><strong>Windows:</strong> <code>%APPDATA%\Retora\Merchant\Documents</code> (paste it in the file dialog's address bar).</li>
+        <li><strong>Linux / Steam Deck (Proton):</strong> <code>&lt;Steam library&gt;/steamapps/compatdata/346750/pfx/drive_c/users/steamuser/AppData/Roaming/Retora/Merchant/Documents</code></li>
+        <li>Slot 1 is <code>PlayerData.txt</code>, slots 2 to 5 are <code>Slot2Data.txt</code> … <code>Slot5Data.txt</code>. Backups (<code>…Backup1.txt</code>) work too.</li>
+      </ul>
+    </details>
+
+    <section id="result" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    <p>Fan project, not affiliated with the developers of Merchant. No game files are hosted here.</p>
+  </footer>
+</body>
+</html>

@@ -81,8 +81,10 @@ export class Equipment {
     this.name = data.name;
     this.itemLevel = data.itemLevel;
     this.prestigeLevel = params.prestigeLevel ?? 0;
+    this.cost = data.cost; // default.itemCost
     this.rarity = data.rarity;
     this.grade = params.grade;
+    this.runTime = params.runTime ?? data.runTime;
     // Equipment:initialize
     const isNew = params.isNew ?? false;
     this.itemSlot = params.itemSlot ?? data.itemSlot;
@@ -115,8 +117,18 @@ export class Equipment {
     const bs = bonusStat(this.id, this.grade, this.prestigeLevel, cl - this.itemLevel);
     for (const k of Object.keys(bs)) this[k] = bs[k];
     this.name = data.name;
+    this.rarity = data.rarity; // default.rarity
+    this.cost = data.cost; // default.itemCost
+    this.runTime = data.runTime;
     if (this.prefix && this.prefix !== 0) this.applyPrefix(true);
     if (this.suffix && this.suffix !== 0) this.applySuffix(true);
+  }
+
+  /** End of Item:applyPrefix / applySuffix: each modifier raises rarity and scales cost and run time. */
+  private bumpForModifier(sell: number): void {
+    this.rarity = this.rarity < 7 ? Math.min(this.rarity + 1, 6) : Math.min(this.rarity + 1, 8);
+    this.cost = Math.floor(this.cost * (1 + sell));
+    this.runTime = Math.floor(this.runTime * (1 + sell));
   }
 
   determinePrefix(charLevel: number): void {
@@ -144,17 +156,21 @@ export class Equipment {
   applyPrefix(isNew: boolean): void {
     const p = G.prefixList[this.prefix];
     if (isNew) for (const k of Object.keys(p.stats)) this[k] = this[k] !== undefined ? this[k] + p.stats[k] : p.stats[k];
+    this.bumpForModifier(p.sell);
     this.name = `${p.name} ${this.name}`;
   }
 
   applySuffix(isNew: boolean): void {
     const s = G.suffixList[this.suffix];
     if (isNew) for (const k of Object.keys(s.stats)) if (this[k] !== undefined) this[k] = Math.ceil(this[k] * (1 + s.stats[k]));
+    this.bumpForModifier(s.sell);
     this.name = `${this.name} ${s.name}`;
   }
 
   /** Item:loadStats: stats as saved. */
   loadStats(params: Any): void {
+    const data = G.itemData.equipment[this.id];
+    this.rarity = data.rarity; // default.rarity
     for (const k of bonusStatNames) if (params[k] !== undefined && params[k] !== 0) this[k] = params[k];
     if (this.itemSlot === 1) {
       this.atk = params.atk ?? itemStat.atk(this.itemLevel, this.subType, false, this.grade);
@@ -167,8 +183,8 @@ export class Equipment {
     }
     this.prefix = params.prefix ?? undefined;
     this.suffix = params.suffix ?? undefined;
-    if (this.prefix && this.prefix !== 0) this.name = `${G.prefixList[this.prefix].name} ${this.name}`;
-    if (this.suffix && this.suffix !== 0) this.name = `${this.name} ${G.suffixList[this.suffix].name}`;
+    if (this.prefix && this.prefix !== 0) this.applyPrefix(false);
+    if (this.suffix && this.suffix !== 0) this.applySuffix(false);
   }
 }
 
