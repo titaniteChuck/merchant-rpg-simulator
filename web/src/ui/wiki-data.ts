@@ -7,6 +7,7 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { ascLevel, ascText, el, fmt, withAsc } from "./dom.ts";
 import { tip } from "./tooltip.ts";
+import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -40,8 +41,12 @@ const STAT_NAMES: Record<string, string> = {
   defBns: "Def", mdefBns: "Mdef",
 };
 
-/** "+25% HP", "+12 Crit", "+1 Acc per level", "+35% crit damage". */
-export function statText(key: string, v: number): string {
+/**
+ * "+25% HP", "+12 Crit", "+1 Acc per level", "+35% crit damage". An equipment bonus stat is a range { 1: min, 2: max }
+ * (data.EquipmentData bonusStat), not a number: it reads "+20–25 Str" (U19: it used to print "+NaN Str").
+ */
+export function statText(key: string, v: number | unknown): string {
+  if (typeof v !== "number") return bonusPair(v) ? bonusText(key, v) : "";
   const sign = v < 0 ? "−" : "+";
   const a = Math.abs(v);
   if (key.endsWith("Pct")) return `${sign}${fmt.format(a * 100)}% ${STAT_NAMES[key.slice(0, -3)] ?? key.slice(0, -3)}`;
@@ -50,15 +55,15 @@ export function statText(key: string, v: number): string {
   if (key === "expMod" || key === "lckMod") return `${sign}${fmt.format(a)}${key === "expMod" ? "%" : ""} ${STAT_NAMES[key]}`;
   return `${sign}${fmt.format(a)} ${STAT_NAMES[key] ?? key}`;
 }
-const statsText = (stats: Any) => Object.entries<number>(stats ?? {}).map(([k, v]) => statText(k, v)).join(", ");
+const statsText = (stats: Any) => Object.entries<number>(stats ?? {}).map(([k, v]) => statText(k, v)).filter(Boolean).join(", ");
 
 // ---------------------------------------------------------------- lookups
 export const item = (type: string, id: number | string): Any => G.itemData?.[type]?.[id];
 export const itemTypeLabel: Record<string, string> = { equipment: "Equipment", consumable: "Consumable", material: "Material", map: "Map" };
 
-/** [id, entry] of an item table, in id order. */
+/** [id, entry] of an item table, in id order; the game's unused placeholder rows left out (isPlaceholder). */
 export function items(type: string): [number, Any][] {
-  return Object.entries<Any>(G.itemData?.[type] ?? {}).filter(([, v]) => v?.name).map(([k, v]) => [Number(k), v] as [number, Any])
+  return Object.entries<Any>(G.itemData?.[type] ?? {}).filter(([, v]) => v?.name && !isPlaceholder(type, v)).map(([k, v]) => [Number(k), v] as [number, Any])
     .sort((a, b) => a[0] - b[0]);
 }
 

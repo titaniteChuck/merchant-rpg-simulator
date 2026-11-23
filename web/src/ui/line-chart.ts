@@ -12,7 +12,7 @@ const NS = "http://www.w3.org/2000/svg";
 
 export interface LineSeries {
   label: string;
-  /** y for each x of the chart */
+  /** y for each x of the chart; a shorter array ends the line early (e.g. a level cap) */
   values: number[];
   /** CSS class for the line (dash / weight) and its swatch */
   cls: string;
@@ -31,6 +31,12 @@ export interface LineChartOptions {
   note?: string;
   /** x index shown before any hover; default: the last */
   start?: number;
+  /** points to ring on a line, with a label (e.g. "ascension 1 unlocks") */
+  marks?: { series: number; i: number; label: string }[];
+  /** text under the plot (e.g. the formula) */
+  caption?: string;
+  /** a click (or Enter) picks the x index; with pin(), the crosshair goes back there when the pointer leaves */
+  onPick?: (i: number) => void;
 }
 
 export interface LineChart {
@@ -39,6 +45,8 @@ export interface LineChart {
   show(i: number): void;
   /** called with the x index when the reader moves the crosshair here */
   onMove?: (i: number) => void;
+  /** pin x index `i`: a solid line, the crosshair's resting place */
+  pin(i: number): void;
 }
 
 const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
@@ -68,7 +76,7 @@ export function lineChart(series: LineSeries[], opts: LineChartOptions): LineCha
   const py = (y: number) => T + ph - (y / yMax) * ph;
 
   const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "line-chart", role: "img", tabindex: 0 });
-  const summary = series.map((s) => `${s.label} ${show(s.values[0])} at ${opts.xName.toLowerCase()} ${x0} to ${show(s.values[s.values.length - 1])} at ${x1}`);
+  const summary = series.map((s) => `${s.label} ${show(s.values[0])} at ${opts.xName.toLowerCase()} ${x0} to ${show(s.values[s.values.length - 1])} at ${xs[s.values.length - 1] ?? x1}`);
   root.setAttribute("aria-label", `${opts.title}: ${summary.join("; ")}. Arrow keys move along the ${opts.xName.toLowerCase()}s.`);
 
   // Recessive frame: gridlines at 0, half and the top; x ticks.
@@ -89,7 +97,19 @@ export function lineChart(series: LineSeries[], opts: LineChartOptions): LineCha
     root.append(svg("polyline", { class: `lc-line ${s.cls}`, points: s.values.map((v, i) => `${px(xs[i])},${py(v)}`).join(" ") }));
   }
 
-  // Crosshair and one dot per series, moved by show().
+  for (const m of opts.marks ?? []) {
+    const v = series[m.series]?.values[m.i];
+    if (v === undefined) continue;
+    const ring = svg("circle", { class: `lc-mark ${series[m.series].cls}`, r: 5, cx: px(xs[m.i]), cy: py(v) });
+    const t = svg("title", {});
+    t.textContent = m.label;
+    ring.append(t);
+    root.append(ring);
+  }
+
+  // Pinned x, crosshair and one dot per series, moved by show().
+  const pinLine = svg("line", { class: "lc-pin", y1: T, y2: T + ph, x1: 0, x2: 0, visibility: "hidden" });
+  root.append(pinLine);
   const cross = svg("line", { class: "lc-cross", y1: T, y2: T + ph, x1: 0, x2: 0 });
   const dots = series.map((s) => svg("circle", { class: `lc-dot ${s.cls}`, r: 3.5, cx: 0, cy: 0 }));
   root.append(cross, ...dots);
@@ -112,14 +132,25 @@ export function lineChart(series: LineSeries[], opts: LineChartOptions): LineCha
       cross.setAttribute("x1", String(x));
       cross.setAttribute("x2", String(x));
       series.forEach((s, k) => {
+        const v = s.values[i];
+        dots[k].setAttribute("visibility", v === undefined ? "hidden" : "visible");
         dots[k].setAttribute("cx", String(x));
-        dots[k].setAttribute("cy", String(py(s.values[i])));
-        vals[k].querySelector("b")!.textContent = show(s.values[i]);
+        if (v !== undefined) dots[k].setAttribute("cy", String(py(v)));
+        vals[k].querySelector("b")!.textContent = v === undefined ? "–" : show(v);
       });
       at.textContent = `${opts.xName} ${xs[i]}`;
     },
+    pin(i: number) {
+      pinned = Math.max(0, Math.min(xs.length - 1, i));
+      pinLine.setAttribute("x1", String(px(xs[pinned])));
+      pinLine.setAttribute("x2", String(px(xs[pinned])));
+      pinLine.setAttribute("visibility", "visible");
+      chart.show(pinned);
+    },
   };
+  let pinned = -1;
   chart.el.append(root);
+  if (opts.caption) chart.el.append(el("p", { class: "lc-caption muted" }, opts.caption));
 
   const pick = (e: PointerEvent) => {
     const r = root.getBoundingClientRect();
@@ -135,11 +166,21 @@ export function lineChart(series: LineSeries[], opts: LineChartOptions): LineCha
   };
   root.addEventListener("pointermove", (e) => move(pick(e)));
   root.addEventListener("pointerdown", (e) => move(pick(e)));
+  if (opts.onPick) root.addEventListener("click", (e) => opts.onPick!(pick(e)));
+  // back to the pinned x when the pointer leaves (the other charts follow through onMove)
+  root.addEventListener("pointerleave", () => {
+    if (pinned >= 0) move(pinned);
+  });
   // Keyboard readers hear the readout of the chart they are moving in, not of the charts following it.
   root.addEventListener("focus", () => readout.setAttribute("aria-live", "polite"));
   root.addEventListener("blur", () => readout.removeAttribute("aria-live"));
   root.addEventListener("keydown", (e) => {
     const step = e.shiftKey ? 10 : 1;
+    if (opts.onPick && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      opts.onPick(cur);
+      return;
+    }
     const to = e.key === "ArrowLeft" ? cur - step : e.key === "ArrowRight" ? cur + step : e.key === "Home" ? 0 : e.key === "End" ? xs.length - 1 : null;
     if (to === null) return;
     e.preventDefault();

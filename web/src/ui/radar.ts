@@ -28,7 +28,16 @@ function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string,
   return e;
 }
 
-export function radar(axes: RadarAxis[], opts: { title: string; size?: number } ): HTMLElement {
+/** An extra shape on the same axes (e.g. the other ascensions), drawn under the main one, no labels. */
+export interface RadarLayer {
+  /** one value per axis, on the axes' own max */
+  values: number[];
+  /** CSS class of the polygon (colour) */
+  cls: string;
+  label: string;
+}
+
+export function radar(axes: RadarAxis[], opts: { title: string; size?: number; layers?: RadarLayer[]; shapeClass?: string } ): HTMLElement {
   const size = opts.size ?? 280;
   const pad = 54; // room for the labels outside the rim
   const R = size / 2 - pad;
@@ -51,12 +60,21 @@ export function radar(axes: RadarAxis[], opts: { title: string; size?: number } 
     root.append(svg("line", { class: "radar-spoke", x1: c, y1: c, x2: x, y2: y }));
   });
 
+  for (const l of opts.layers ?? []) {
+    const f = (v: number, a: RadarAxis) => (a.max > 0 ? Math.max(0, Math.min(1, v / a.max)) : 0);
+    const poly = svg("polygon", { class: `radar-layer ${l.cls}`, points: axes.map((a, i) => pt(i, f(l.values[i] ?? 0, a)).join(",")).join(" ") });
+    const t = svg("title", {});
+    t.textContent = l.label;
+    poly.append(t);
+    root.append(poly);
+  }
+
   // The hero's shape.
-  root.append(svg("polygon", { class: "radar-shape", points: axes.map((a, i) => pt(i, frac(a)).join(",")).join(" ") }));
+  root.append(svg("polygon", { class: `radar-shape ${opts.shapeClass ?? ""}`.trim(), points: axes.map((a, i) => pt(i, frac(a)).join(",")).join(" ") }));
 
   axes.forEach((a, i) => {
     const [x, y] = pt(i, frac(a));
-    root.append(svg("circle", { class: "radar-dot", cx: x, cy: y, r: 4 }));
+    root.append(svg("circle", { class: `radar-dot ${opts.shapeClass ?? ""}`.trim(), cx: x, cy: y, r: 4 }));
     // Axis label + value outside the rim.
     const [lx, ly] = pt(i, 1);
     const cos = Math.cos(angle(i)), sin = Math.sin(angle(i));

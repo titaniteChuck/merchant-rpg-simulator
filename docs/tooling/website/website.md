@@ -193,13 +193,47 @@ flowchart LR
   21, 30, 42, 77; the game hides enemy stats for them) and "MissNo" placeholders (39–41, 58–60, 75, 76; the game skips
   them too). Used by `enemyIds`, `enemiesWith`/`enemyNamesWith`, `enemyMapRoles`/`enemyMaps`. `test/wiki-data.test.ts`
   checks it still equals "questType 1 or nickname MissNo" in the data.
-- Class page (U6a): a "Stats" row with the radar (`radar.ts`, level 60, ascension 0/1/2 switch, rim = best class at
-  the same level and ascension) beside the growth curves (`web/src/ui/line-chart.ts`, inline SVG, no library): one
-  small chart per stat, stat = base + growth[prestige] × level for levels 1-60, one line per ascension (dotted 0,
-  dashed 1, solid 2, in the class colour), a readout of the values at the crosshair, hover or arrow keys move all
-  crosshairs together. Stacked under 760px. Passives come before skills, both in the same table (#, name, AP badge
-  for skills, effect); the AP badge shows only the number ("N action points" in its title and label); the whole row
-  opens the page (click handler + hover style; the name stays the real link for keyboard and middle-click).
+- Class page (U6a, reworked in U19, `web/src/ui/wiki-classes.ts`): stat cards at the top (HP, Atk, Matk, Acc, Crit, Def,
+  Mdef) for the selected level and ascension; above the charts an ascension switch (0/1/2) and a level slider
+  (1..the tier's max). Clicking a growth chart (or Enter on it) picks that level for every chart, the cards and the
+  radar; hovering reads values and the crosshair returns to the picked level. URL `#/class/ID/LEVEL/ASC` (kept in step
+  with `history.replaceState`). Radar: the three ascensions on one chart at the selected level (each capped at its
+  tier's max), the selected one filled; rim = best class and ascension at that level. Growth curves (`line-chart.ts`,
+  inline SVG): one chart per stat, Crit left out of the curves and radar (on request; Rogue, Berserker and Assassin do
+  grow it), formula as a caption under each chart. Colours: ascension 0 the site accent, 1 silver, 2 gold (`--v3-asc*`
+  tokens built on the outline tokens), plus dotted / dashed / solid lines. Level caps from the game: max level of a
+  tier = `#heroLevelRequirement[tier]` (50, 50, 60); a ring marks where the next ascension unlocks:
+  `canHeroPrestige` reads `heroPrestigeLevelRequirement[prestigeLevel + 1]`, so level 40 of ascension 0 and level 50 of
+  ascension 1 (entry 1 is never read). Passives come before skills, both in the same table (#, name, AP badge, effect);
+  the whole row opens the page.
+- Equipment (U19, `web/src/ui/wiki-items.ts`): `isPlaceholder` drops the game's unused rows from every list and the
+  search (equipment with itemSlot 0 or subType "None": "Region 5 Item", "Extra Item", "Event Item", "New Item",
+  "Break", "10+ Items", the second "Grok's Trinket", headers like "Bison"…; materials and consumables with an empty
+  subType). No crafter, recipe, image or stat formula, and nothing references them. Columns: Slot, Kind, Level,
+  Rarity, Bonus stats, Made by (crafter or "drop"), Sell value. No class restriction exists in the game (any hero
+  wears any item of the slot from the item's level: `scene.HeroEquipOverlay`); items have no region field.
+- Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
+  Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
+  "Stats by grade" table (with an ascension 0/1/2 switch) shows base stats and each bonus range per grade from
+  `default.getStatRange` (grade spread × `ascStat` multiplier, crafter level 60 raising the minimum).
+- Rarity: the game has no rarity names (TextData only has the word "Rarity"; "Common … Legendary!" in
+  `scene.SpinGame` names the prize-wheel slices), so a "Rarity N" chip in the game's own colour (`UI.rarityColor`:
+  1 white, 2 #80ff80, 3 #50a0ff, 4 #ff00ff, 5-6 #ffff00, 7-8 #ff0000, 10 = 3, 11 = 4) with dark text and a thin outline
+  (readable in both themes). Item links keep the contrast-tuned `--rar-*` text colours; 10 and 11 now map to 3 and 4.
+- Crafting chain (U19, `web/src/ui/recipe-chain.ts`): on item and map pages, a horizontal diagram of boxes and arrows
+  (HTML + CSS borders, scrolls sideways in its frame on a phone): craftable ingredients on the left, the item on the
+  right; raw materials stay in the recipe list. Each box: linked name, gold cost, own craft time (`runTime`), total
+  (own + amount × each craftable ingredient's total, one after the other), crafter and level needed. Rules
+  (`obj.Craft`, `obj.Crafter`): time = floor(runTime × craftGradeSpeed[grade]) × amount × craftTimeMod (standard:
+  1.1, 1, 0.9, 0.8, 0.75 for D..S); the crafter level only changes the start grade, not the time; cost = `cost` × amount.
+- Skill pages (U19, `web/src/ui/wiki-skills.ts`): "Good against" for hero skills, from `inventory/timelines.json`
+  (enemy timelines, skill tags and effect windows of `schedule.ts`), deterministic rules, no fight simulation: cleanse
+  vs removable debuffs / damage over time / stuns on the heroes; dispel vs the enemy's removable buffs, shields,
+  reflects; taunt vs heavy single or row hits (more when they reach the back row); shields, the reflect song and
+  Def / Mdef buffs vs heavy hits of their kind; party heals vs hits on everyone and damage over time; Atk cuts vs heavy
+  hitters; Def / Mdef / Eva cuts and Acc buffs vs the matching enemy buffs; true, magic or physical damage where the
+  enemy's filters let that kind through; no direct damage as a safe action during reflect windows. Ranked by score,
+  top 10 then "Show all", each enemy linked with a one-line reason.
 
 ## Profit page
 

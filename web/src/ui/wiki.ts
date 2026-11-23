@@ -3,7 +3,7 @@
  *   #/                          search + categories
  *   #/skills  #/skill/NAME      #/passives  #/passive/NAME
  *   #/items/TYPE  #/item/TYPE/ID   (equipment, consumable, material)
- *   #/maps    #/map/ID          #/classes   #/class/ID
+ *   #/maps    #/map/ID          #/classes   #/class/ID[/LEVEL/ASC]
  *   #/enemies #/enemy/ID        (ID = quest id; the rare variant shares the page)
  */
 import { loadTimelineData } from "./timeline.ts";
@@ -11,10 +11,12 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, ascText, type Column, el, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
-import { group, lineChart } from "./line-chart.ts";
-import { radar, type RadarAxis } from "./radar.ts";
+import { $, type Column, el, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
+import { classStats } from "./wiki-classes.ts";
+import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
+import { goodAgainst } from "./wiki-skills.ts";
 import { enemyBody, enemyListColumns, enemyListRows, enemyTable } from "./wiki-enemies.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
@@ -47,7 +49,6 @@ const CATEGORIES: [string, string, string, () => number][] = [
 ];
 
 // ---------------------------------------------------------------- building blocks
-const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const crumbs = (...parts: (string | [string, string])[]) => el("p", { class: "crumbs small" },
   ...[["Wiki", "#/"] as [string, string], ...parts].flatMap((p, i) => [
     ...(i ? [el("span", { "aria-hidden": "true" }, " › ")] : []),
@@ -138,13 +139,41 @@ function skillsPage(): HTMLElement {
   ], (r) => `${r.name} ${r.effect} ${r.classes} ${r.enemyNames}`);
 }
 
+const GOOD_SHOWN = 10;
+
+/** Hero skills: the enemies whose timeline makes this skill worth taking (wiki-skills.ts), top 10 then "Show all". */
+function goodAgainstSection(name: string): HTMLElement | null {
+  const list = goodAgainst(name);
+  const intro = el("p", { class: "muted small" }, "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): "
+    + "debuffs it can cleanse, buffs it can dispel, heavy hits it can block or draw, hits on everyone it can heal, filters its damage gets through.");
+  if (!list.length) return section("Good against", intro, none(G.abilityData?.[name] && classesWith("skill", name).length
+    ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill."));
+  const ul = el("ol", { class: "good-list" });
+  const fill = (n: number) => ul.replaceChildren(...list.slice(0, n).map((m) => el("li", {},
+    el("span", { class: "good-name" }, enemyLink({ id: m.quest, name: m.name, rare: m.rare }), m.rare ? pill("rare", "t-pink") : ""),
+    el("span", { class: "good-why" }, m.reason))));
+  fill(GOOD_SHOWN);
+  const kids: (Node | string)[] = [intro, ul];
+  if (list.length > GOOD_SHOWN) {
+    const more = el("button", { type: "button", class: "show-all" }, `Show all ${list.length}`);
+    more.addEventListener("click", () => {
+      fill(list.length);
+      more.remove();
+    });
+    kids.push(more);
+  }
+  return section(`Good against (${list.length})`, ...kids);
+}
+
 function skillPage(name: string): HTMLElement {
   if (!G.abilityData?.[name]) return notFound(`skill “${name}”`);
   const users = classesWith("skill", name);
   const enemies = enemiesWith(name);
+  const good = users.length ? goodAgainstSection(name) : null;
   return el("div", {}, crumbs(["Skills", "#/skills"], name), el("h1", {}, "⚡ ", name),
     el("p", { class: "lead" }, skillDesc(name) || "No description in the game data."),
     facts([["AP cost", skillAp(name)], ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
+    ...(good ? [good] : []),
     section(`Enemies with this skill (${enemies.length})`, enemies.length
       ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, enemyLink(e), e.rare ? pill("rare", "t-pink") : "",
         el("span", { class: "muted small" }, ` level ${quest(e.id)?.levelReq ?? "?"}`))))
@@ -173,22 +202,30 @@ const crafterName = (id: number) => (G as Any).crafterData?.[id]?.name ?? (id ? 
 
 function itemsPage(type: string): HTMLElement {
   if (!["equipment", "consumable", "material"].includes(type)) return notFound(`item type “${type}”`);
+  const eq = type === "equipment";
   const rows: Row[] = items(type).map(([id, it]) => ({
-    id, name: it.name, kind: type === "equipment" ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
-    level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0), summary: type === "equipment" ? it.subType ?? "" : itemText(type, id),
+    id, name: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
+    level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
+    made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
+    summary: eq ? it.subType ?? "" : itemText(type, id),
   }));
   const cols: Column[] = [
     { key: "name", label: "Item", render: (r) => itemLink(type, Number(r.id)) },
-    { key: "kind", label: type === "equipment" ? "Slot" : "Type" },
-    ...(type === "equipment" ? [{ key: "sub", label: "Kind" }] : []),
-    { key: "level", label: "Level", num: true }, { key: "value", label: "Sell value", num: true },
-    ...(type !== "equipment" ? [{ key: "summary", label: "Description" }] : []),
+    { key: "kind", label: eq ? "Slot" : "Type" },
+    ...(eq ? [{ key: "sub", label: "Kind" }] : []),
+    { key: "level", label: "Level", num: true },
+    { key: "rarity", label: "Rarity", num: true, render: (r) => rarityChip(r.rarity) },
+    ...(eq ? [{ key: "bonus", label: "Bonus stats", render: (r: Row) => el("span", { class: "bonus-cell" }, String(r.bonus || "–")) },
+      { key: "made", label: "Made by" }] : []),
+    { key: "value", label: "Sell value", num: true },
+    ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
   const intro: Record<string, string> = {
-    equipment: "Weapons, armour and trinkets. Sell value is the base customer price of a plain item (no modifiers, ascension 0).",
+    equipment: "Weapons, armour and trinkets. Any class can wear any item of its slot once the hero reaches the item's level. "
+      + "Bonus stats are the item's own range (before grade and ascension). Sell value is the base customer price of a plain item (no modifiers, ascension 0).",
     consumable: "Potions, boosts, enchants and map scrolls.", material: "Crafting materials, essences and boss trophies, with where they drop.",
   };
-  return listPage(itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, intro[type], rows, cols, (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary}`);
+  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, intro[type], rows, cols, (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made}`);
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -218,24 +255,48 @@ function usedInList(type: string, id: number): HTMLElement {
 
 const EQUIP_STATS = ["atk", "matk", "acc", "crit", "def", "mdef"];
 
-/** Base stats of a freshly crafted plain item at each grade (crafter level 60, ascension 0). */
-function gradeTable(id: number): HTMLElement {
+/** Base and bonus stats of a freshly crafted plain item at each grade (crafter level 60), for one ascension. */
+function gradeRows(id: number, asc: number): HTMLElement {
+  const it = item("equipment", id);
+  const bonusKeys = Object.keys(it?.bonusStat ?? {});
+  const diff = Math.max(0, 60 - (it?.itemLevel ?? 0));
   const rows: Row[] = [];
   for (let g = 1; g <= 5; g++) {
+    const r: Row = { grade: GRADES[g - 1] };
     try {
-      const made: Any = api.makeItem(id, g, 0, 60, 1);
-      const r: Row = { grade: GRADES[g - 1] };
+      const made: Any = api.makeItem(id, g, asc, 60, 1);
       for (const k of EQUIP_STATS) if (typeof made[k] === "number" && made[k]) r[k] = made[k];
-      rows.push(r);
     } catch {
-      return none("The game has no stat formula for this item type.");
+      // no stat formula for this subtype: bonus stats only
     }
+    for (const k of bonusKeys) {
+      const b = bonusRange(k, it.bonusStat[k], g, asc, diff);
+      if (b) r[`b_${k}`] = b.lo === b.hi ? `${b.lo}${b.pct ? "%" : ""}` : `${b.lo}–${b.hi}${b.pct ? "%" : ""}`;
+    }
+    rows.push(r);
   }
   const keys = EQUIP_STATS.filter((k) => rows.some((r) => r[k] !== undefined));
-  if (!keys.length) return none("No base combat stats (trinkets carry bonus stats only).");
-  return el("div", {}, table(rows, [{ key: "grade", label: "Grade", render: (r) => gradeBadge(String(r.grade)) },
-    ...keys.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), num: true }))]),
-  el("p", { class: "muted small" }, "Freshly crafted by a level-60 crafter, ascension 0, no prefix or suffix."));
+  if (!keys.length && !bonusKeys.length) return none("No stats.");
+  return table(rows, [{ key: "grade", label: "Grade", render: (r) => gradeBadge(String(r.grade)) },
+    ...keys.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), num: true })),
+    ...bonusKeys.map((k) => ({ key: `b_${k}`, label: `${bonusLabel(k).replace(/^./, (x) => x.toUpperCase())} (bonus)` }))]);
+}
+
+function gradeTable(id: number): HTMLElement {
+  const holder = el("div");
+  const radios = [0, 1, 2].map((a) => {
+    const input = el("input", { type: "radio", name: "item-asc", value: String(a) }) as HTMLInputElement;
+    input.checked = a === 0;
+    input.addEventListener("change", () => holder.replaceChildren(gradeRows(id, a)));
+    return el("label", { class: `asc-opt tier-${a}`, title: `Ascension ${a}` }, input, String(a));
+  });
+  holder.replaceChildren(gradeRows(id, 0));
+  return el("div", { class: "cls-v3" },
+    el("fieldset", { class: "cls-asc item-asc" }, el("legend", { class: "muted small" }, "Ascension"), el("div", { class: "mode-switch" }, ...radios)),
+    holder,
+    el("p", { class: "muted small" }, "Freshly crafted by a level-60 crafter, no prefix or suffix. Bonus stats roll in the range shown "
+      + "(the item's range × the grade's spread, × the ascension multiplier; a crafter above the item's level raises the minimum). "
+      + "Trinkets carry bonus stats only."));
 }
 
 function itemPage(type: string, id: number): HTMLElement {
@@ -249,14 +310,14 @@ function itemPage(type: string, id: number): HTMLElement {
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
     facts([
       ["Type", type === "equipment" ? `${SLOT_NAMES[it.itemSlot] ?? ""} · ${it.subType ?? ""}` : it.subType ?? itemTypeLabel[type]],
-      ["Level", it.itemLevel], ["Rarity", it.rarity], ["Tier", it.tier],
+      ["Level", it.itemLevel], ["Rarity", rarityChip(it.rarity)], ["Made by", it.crafterID ? `${crafterName(it.crafterID)} (level ${it.itemLevel ?? 0})` : undefined],
       ["Sell value", [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
         : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => type !== "material" || a === 0).map((a) => {
           const v = safeSell(type, id, a);
           // ascension shown as the value's outline (silver 1, gold 2), not as text
           return withAsc(el("span", { class: "nowrap" }, `${fmt.format(v ?? 0)} g`), a);
         }))],
-      ["Bonus stats", Object.keys(it.bonusStat ?? {}).length ? Object.entries<number>(it.bonusStat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
+      ["Bonus stats", type === "equipment" && bonusLines(it).length ? bonusLines(it).join(", ") : undefined],
       ["Effect", type === "consumable" && Object.keys(it.stat ?? {}).length ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
     ]),
   ];
@@ -268,6 +329,8 @@ function itemPage(type: string, id: number): HTMLElement {
         el("span", { class: "muted small" }, ` · ${s.detail}`))))
       : none("Not dropped by quests or maps (crafted, bought or event only).")));
   }
+  const chain = recipeChain(type, id);
+  if (chain) kids.push(section("Crafting chain", chain));
   kids.push(section("Recipe", recipeList(type, id)), section("Used in", usedInList(type, id)));
   return el("div", {}, ...kids);
 }
@@ -299,12 +362,13 @@ function mapPage(id: number): HTMLElement {
   const bosses = seq<number>(m.bossList ?? {});
   return el("div", {}, crumbs(["Maps", "#/maps"], m.name), el("h1", {}, itemLink("map", id)),
     ...(itemText("map", id) ? [el("p", { class: "lead" }, itemText("map", id))] : []),
-    facts([["Level", m.itemLevel], ["Rarity", m.rarity], ["Rooms", m.baseEnemyAmount], ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
+    facts([["Level", m.itemLevel], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount], ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
       ["Enemy modifier", `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined], ["Essence per run", el("span", {}, ...essenceOf(m))],
       ["Sell value", safeSell("map", id, 0) !== null ? `${fmt.format(safeSell("map", id, 0)!)} g` : undefined]]),
     section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")),
     section("Room enemies", enemyTable(mapEnemies(m), mod)),
     el("p", { class: "muted small" }, `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`),
+    ...(recipeChain("map", id) ? [section("Crafting chain", recipeChain("map", id)!)] : []),
     section("Recipe", recipeList("map", id)));
 }
 
@@ -324,66 +388,6 @@ function enemyPage(id: number): HTMLElement {
 }
 
 // ---------------------------------------------------------------- classes
-/** [growth key, base key, label]: a class's stat at a level is base + growth[prestigeLevel] × level. */
-const GROWTH: [string, string, string][] = [["hpPlv", "hp", "HP"], ["atkPlv", "atk", "Atk"], ["matkPlv", "matk", "Matk"], ["accPlv", "acc", "Acc"],
-  ["defPlv", "def", "Def"], ["mdefPlv", "mdef", "Mdef"], ["critPlv", "crit", "Crit"]];
-const MAX_LEVEL = 60;
-const LEVELS = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1);
-
-/** The class's own stat (no gear, passive or attribute points), as Hero.determineStats adds it. */
-const statAt = (c: Any, [plv, base]: [string, string, string], prestige: number, level: number): number =>
-  (c[base] ?? 0) + (c[plv]?.[prestige] ?? 0) * level;
-/** Prestige levels (1 = ascension 0) the class's growth table has. */
-const tiersOf = (c: Any): number[] => [1, 2, 3].filter((p) => GROWTH.some(([k]) => typeof c[k]?.[p] === "number"));
-
-/** Radar of the class at level 60 for one ascension; each rim is the best class at the same level and ascension. */
-function classRadar(id: number, prestige: number): HTMLElement {
-  const c = G.heroList[id];
-  const axes: RadarAxis[] = GROWTH.map((g) => {
-    let max = 0, best = "";
-    for (const [, o] of classes()) {
-      const v = statAt(o, g, prestige, MAX_LEVEL);
-      if (v > max) [max, best] = [v, o.name];
-    }
-    const value = statAt(c, g, prestige, MAX_LEVEL);
-    return { label: g[2], value, max, best, display: dec.format(value) };
-  });
-  const fig = radar(axes, { title: `${c.name} at level ${MAX_LEVEL}, ${ascText(prestige - 1)}` });
-  fig.append(el("figcaption", { class: "muted small" }, `Level ${MAX_LEVEL}, ${ascText(prestige - 1)}, no gear or passive. Rim = best class.`));
-  return fig;
-}
-
-function statsBlock(id: number): HTMLElement {
-  const c = G.heroList[id];
-  const tiers = tiersOf(c);
-  // Radar with an ascension switch.
-  const holder = el("div", { class: "cls-radar-fig" });
-  const radios = tiers.map((p) => {
-    const input = el("input", { type: "radio", name: "cls-asc", value: String(p) }) as HTMLInputElement;
-    input.checked = p === tiers[0];
-    input.addEventListener("change", () => holder.replaceChildren(classRadar(id, p)));
-    return el("label", { title: ascText(p - 1)[0].toUpperCase() + ascText(p - 1).slice(1) }, input, String(p - 1));
-  });
-  holder.replaceChildren(classRadar(id, tiers[0] ?? 1));
-  const radarCol = el("div", { class: "cls-radar" },
-    ...(tiers.length > 1 ? [el("fieldset", { class: "cls-asc" }, el("legend", { class: "muted small" }, "Ascension"), el("div", { class: "mode-switch" }, ...radios))] : []),
-    holder);
-  // One small chart per stat, one line per ascension, crosshairs in step.
-  const charts = GROWTH.map((g) => lineChart(tiers.map((p) => ({
-    label: tiers.length > 1 ? `asc ${p - 1}` : "", values: LEVELS.map((lv) => statAt(c, g, p, lv)), cls: `tier-${p - 1}`,
-  })), {
-    title: g[2], x: LEVELS, xName: "Level", xTicks: [1, 20, 40, MAX_LEVEL],
-    note: `${dec.format(c[g[1]] ?? 0)} + ${tiers.map((p) => dec.format(c[g[0]]?.[p] ?? 0)).join(" / ")} per level`,
-  }));
-  group(charts);
-  const legend = tiers.length > 1
-    ? el("p", { class: "lc-legend muted small" }, "Ascension: ", ...tiers.flatMap((p) => [el("span", { class: "lc-key" },
-      el("i", { class: `lc-swatch tier-${p - 1}`, "aria-hidden": "true" }), ` ${p - 1}`)]), el("span", {}, " · hover or use the arrow keys to read a level"))
-    : el("p", { class: "lc-legend muted small" }, "Hover or use the arrow keys to read a level.");
-  return el("div", { class: "cls-stats" }, radarCol,
-    el("div", { class: "cls-growth" }, el("h3", {}, "Growth per level"), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el))));
-}
-
 /** Whole row opens the row's link; the name stays a real link (keyboard, middle-click, screen readers). */
 function clickableRow(tr: HTMLTableRowElement, link: HTMLElement): void {
   if (!(link instanceof HTMLAnchorElement)) return; // "Basic" and unknown passives have no page
@@ -426,15 +430,18 @@ function classesPage(): HTMLElement {
   ]);
 }
 
-function classPage(id: number): HTMLElement {
+/** Class page; `#/class/ID/LEVEL/ASC` opens it on a level and ascension (the picker keeps the URL in step). */
+function classPage(id: number, level?: string, asc?: string): HTMLElement {
   const c = G.heroList?.[id];
   if (!c) return notFound(`class #${id}`);
   const skills = seq<string>(c.skillList ?? {});
   const passives = seq<string>(c.passiveList ?? {});
+  const start = { level: level ? Number(level) : undefined, asc: asc ? Number(asc) : undefined };
+  const { cards, block } = classStats(id, start, (s) => history.replaceState(null, "", `#/class/${id}/${s.level}/${s.asc}`));
   return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], c.name), el("h1", {}, classLink(id)),
     ...(classText(id) ? [el("p", { class: "lead" }, classText(id))] : []),
-    facts([["Base HP", c.hp], ["Atk", c.atk], ["Matk", c.matk], ["Acc", c.acc], ["Crit", c.crit], ["Def", c.def], ["Mdef", c.mdef]]),
-    section("Stats", statsBlock(id)),
+    cards,
+    section("Stats", block),
     section(`Passives (${passives.length}, pick one from level 10)`, passives.length ? abilityTable("passive", passives) : none("No passive.")),
     section(`Skills (${skills.length}, in unlock order)`, abilityTable("skill", skills)));
 }
@@ -460,7 +467,7 @@ function route(): HTMLElement {
     case "enemies": return enemiesPage();
     case "enemy": return enemyPage(Number(b));
     case "classes": return classesPage();
-    case "class": return classPage(Number(b));
+    case "class": return classPage(Number(b), c, parts[3]);
     default: return notFound(`page “${parts.join("/")}”`);
   }
 }
