@@ -70,10 +70,23 @@ flowchart LR
 
 `site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
 
-- Party: six slots (front/back × 3) filled from the save's heroes; per hero, an optional rotation and passive editor
-  with the AP budget (`api.skillInfo`). Over budget, the game falls back to the default rotation: shown as a warning.
-- Opponent: a quest enemy (rare variant, quest amount = enemy HP ×1 to ×5, up to `maxQuestAmount` of the party) or a map run (owned map from the save, or any catalog map
-  with ascension 0/1 and grade, up to 3 scrolls).
+- Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Optimise everything (`MODES` in
+  `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
+  is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
+  `battle-mode`). Under 560px the modes are two compact columns (hint in the title).
+- Step 2: the party in two columns, back row left and front row right (the enemy stands further right), three slots
+  each, filled from the save's heroes; per hero a radar and an optional rotation and passive editor with the AP budget
+  (`api.skillInfo`). Over budget, the game falls back to the default rotation: shown as a warning. The opponent card is
+  on the right (stacked under the party below 960px; alone when the mode picks the party):
+  - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
+    strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
+    placeholders are not offered (`isEnemy`).
+  - Quest size ×1 to ×max: one enemy with N× HP, N× loot and N× quest time, max = `maxQuestAmount` of the party
+    (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything run at ×1, since
+    the cap depends on the party they choose.
+  - Map run: owned map from the save (prefix, suffix, grade, ascension outline) or any catalog map with ascension 0/1
+    and grade; card with level, grade, rooms, time, enemy power ×, boss links, modifiers, and up to 3 scrolls (hidden in
+    Best scrolls).
 - The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n (common random numbers:
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
   map 22, 20 runs).
@@ -81,14 +94,21 @@ flowchart LR
   where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
 - Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (Node-only scripts such as the data exporter)
   are external.
-- Step 3 has tabs: Simulate, and four searches on the search API of `web/src/tools/combat.ts`
+- Step 3 runs the mode: Simulate, or one search of the search API of `web/src/tools/combat.ts`
   (`web/src/ui/battle-search.ts`, run in the worker by `runSearch`):
   - Best rotation (quest): `searchSkills` for a party hero; ranked rotation + passive cards, "Use this rotation" applies
     it in the party editor.
   - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
     ascension (`catalogGearCandidates`); now vs best, and the item per slot.
-  - Best party (quest or map): `searchParty` over all the save's heroes; "Use this party" fills the slots.
+  - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
+    ticked in "Leave heroes out"; "Use this party" fills the slots.
   - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
+  - Optimise everything (quest or map): `optimiseFight` (`web/src/tools/optimise.ts`) over all heroes but the left-out
+    ones, time budget 2 / 5 / 10 min (bar = time used), optional rotation, gear (owned items) and scroll steps; the party
+    step always runs (the optimiser starts from no party). Result: "Best party alone" (`firstPartyEv`) vs "Optimised",
+    the party (back, front), each member's rotation and passive, gear to equip (the page can't change the save),
+    scrolls, and the step trace (hero ids shown as names, score gain, time). "Use this setup" fills the party, the
+    rotations and the map's scrolls. When the budget runs out, the best setup so far is shown.
   - Progress per stage (throttled to ~10 updates per second), fight counts editable (smaller = faster). The searches
     are synchronous in the worker, so Cancel terminates it. Results show the enemy's lowest HP point (`enemy_dmg_peak`)
     when the enemy heals back; the Simulate results do too.
@@ -115,7 +135,7 @@ flowchart LR
   rotation (`attackList[(turn-1) % 5 + 1]`, skill links and effects) and drops (`rewardX1/2` fixed per win, `rewardX3/4`
   loot tables via `parcelRoll`: share of one roll at base odds, "nothing" share, items incl. equipment), and the maps
   (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
-  enemy multiplier and the ascension-1 one (×2, silver outline). The nav link is added by `wiki.ts` after Maps.
+  enemy multiplier and the ascension-1 one (×2, silver outline). Nav link "Enemies" after Maps, static in `wiki.html`.
 - Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
   "Where it drops" (now also for equipment), home search. Gathering quests and placeholders stay plain text.
 - Not enemies: `NON_ENEMY_QUEST_IDS` in `wiki-data.ts`, a static, commented list: gathering quests (questType 1: 1, 11,

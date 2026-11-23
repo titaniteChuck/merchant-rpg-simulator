@@ -1,7 +1,7 @@
 /**
- * Battle simulator page (site/battle.html): put heroes from a save into the six
- * party slots, pick a quest enemy or a map, and simulate many fights or map runs
- * in a web worker with the game's rules (TypeScript engine).
+ * Battle simulator page (site/battle.html). Step 1 picks a mode (MODES: simulate, or one of the searches), which
+ * decides what step 2 asks for: the party (back row left, front row right) and/or the opponent card on the right
+ * (a quest enemy or a map run). Step 3 runs it in a web worker with the game's rules (TypeScript engine).
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -13,17 +13,37 @@ import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
-import { initSearchTabs, type PartyMember } from "./battle-search.ts";
+import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { initSaveSource } from "./save-source.ts";
-import { itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
+import { enemyLink, href, isEnemy, itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
+import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
 const GRADES = ["D", "C", "B", "A", "S"];
+
+type Opp = "quest" | "map";
+/**
+ * The modes of step 1. `party`: step 2 asks for the party; `opp`: the opponents the mode works on (the first is the
+ * default); `search`: the search panel of battle-search.ts (none = the plain simulation). A new mode is one row here
+ * and, for a search, one panel in battle-search.ts.
+ */
+interface Mode { key: "simulate" | SearchKey; icon: string; label: string; hint: string; party: boolean; opp: Opp[] }
+const MODES: Mode[] = [
+  { key: "simulate", icon: "▶", label: "Simulate", hint: "Your party against an enemy or a map run, hundreds of times.", party: true, opp: ["quest", "map"] },
+  { key: "skills", icon: "🧠", label: "Best rotation", hint: "The best skills, order and passive for one hero of your party.", party: true, opp: ["quest"] },
+  { key: "gear", icon: "🛡️", label: "Best gear", hint: "The best item in each slot for one hero, from what you own or the catalog.", party: true, opp: ["quest"] },
+  { key: "party", icon: "👥", label: "Best party", hint: "Which heroes, in which row, from all your heroes. Only the opponent is needed.", party: false, opp: ["quest", "map"] },
+  { key: "scrolls", icon: "📜", label: "Best scrolls", hint: "The best 0 to 3 scrolls for your party on a map.", party: true, opp: ["map"] },
+  { key: "optimise", icon: "✨", label: "Optimise everything", hint: "Party, rotations, gear and scrolls tuned together within a time budget.", party: false, opp: ["quest", "map"] },
+];
+const modeOf = (key: string) => MODES.find((m) => m.key === key) ?? MODES[0];
+const MODE_KEY = "battle-mode";
 const SLOTS = [["front", 0], ["front", 1], ["front", 2], ["back", 0], ["back", 1], ["back", 2]] as const;
 
 interface State {
+  mode: Mode;
   sv: Save | null;
   /** file name of the save, to remember the party per save */
   saveName: string;
@@ -31,7 +51,7 @@ interface State {
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
   worker: Worker | null;
 }
-const state: State = { sv: null, saveName: "", slots: {}, skills: {}, worker: null };
+const state: State = { mode: MODES[0], sv: null, saveName: "", slots: {}, skills: {}, worker: null };
 
 // The party and edited rotations, remembered per save in this browser (convenience only).
 const partyKey = () => `battle-party:${state.saveName}`;
@@ -85,7 +105,8 @@ const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"
 function questOptions(): [string, [string, string][]][] {
   const byTier = new Map<string, [number, string, string][]>();
   for (const [id, q] of Object.entries<Any>(G.questData)) {
-    if (!q.enemyHp || !q.attackList || !q.name) continue;
+    // Gathering quests and placeholders are not fights (wiki-data NON_ENEMY_QUEST_IDS).
+    if (!q.enemyHp || !q.attackList || !q.name || !isEnemy(Number(id))) continue;
     const lvl = q.levelReq ?? 0;
     const tier = `Level ${Math.floor(lvl / 10) * 10}–${Math.floor(lvl / 10) * 10 + 9}`;
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${q.nameB}` : "";
@@ -163,82 +184,101 @@ function skillEditor(i: number): HTMLElement {
 function renderParty(): void {
   const sv = state.sv!;
   const options: [string, string][] = [["", "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
-  const rows = (["front", "back"] as const).map((row) => {
-    const cells = [0, 1, 2].map((i) => {
-      const key = slotKey(row, i);
-      const s = select({ "aria-label": `${row} row slot ${i + 1}` }, options);
-      s.value = state.slots[key] === null || state.slots[key] === undefined ? "" : String(state.slots[key]);
-      const details = el("div", { class: "slot-details" });
-      const fill = () => {
-        const idx = state.slots[key];
-        details.replaceChildren();
-        if (idx === null || idx === undefined) return;
-        const stats = api.heroStats(api.newHero(heroRaw(idx)));
-        const axes: RadarAxis[] = RADAR.map(([k, label]) => ({ label, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
-        details.append(radar(axes, { title: `${heroRaw(idx).name}'s combat stats`, size: 220 }));
-        const edit = el("details", {}, el("summary", { class: "small" }, "Rotation and passive"));
-        edit.addEventListener("toggle", () => {
-          if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
-        }, { once: false });
-        details.append(edit);
-      };
-      s.addEventListener("change", () => {
-        const v = s.value === "" ? null : Number(s.value);
-        // A hero can stand in one slot only: clear it elsewhere.
-        if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) state.slots[k] = null;
-        state.slots[key] = v;
-        persistParty();
-        renderParty();
+  const slot = (row: "front" | "back", i: number) => {
+    const key = slotKey(row, i);
+    const s = select({ "aria-label": `${row} row slot ${i + 1}` }, options);
+    s.value = state.slots[key] === null || state.slots[key] === undefined ? "" : String(state.slots[key]);
+    const details = el("div", { class: "slot-details" });
+    const idx = state.slots[key];
+    const raw = heroRaw(idx ?? null);
+    if (idx !== null && idx !== undefined && raw) {
+      const stats = api.heroStats(api.newHero(raw));
+      const axes: RadarAxis[] = RADAR.map(([k, label]) => ({ label, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
+      details.append(radar(axes, { title: `${raw.name}'s combat stats`, size: 200 }));
+      const edit = el("details", {}, el("summary", { class: "small" }, "Rotation and passive"));
+      edit.addEventListener("toggle", () => {
+        if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
       });
-      fill();
-      const idx = state.slots[key];
-      const raw = heroRaw(idx ?? null);
-      const label = el("span", { class: "slot-name" },
-        ...(raw ? [withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))] : []),
-        `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(className(raw.class))] : []));
-      return el("div", { class: raw ? `slot filled cls-${raw.class}` : "slot empty" }, label, s, details);
+      details.append(edit);
+    }
+    s.addEventListener("change", () => {
+      const v = s.value === "" ? null : Number(s.value);
+      // A hero can stand in one slot only: clear it elsewhere.
+      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) state.slots[k] = null;
+      state.slots[key] = v;
+      persistParty();
+      renderParty();
     });
-    return el("div", { class: "party-row" },
-      el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
-        el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
-      el("div", { class: "slots" }, ...cells));
-  });
-  $("#party").replaceChildren(...rows);
+    const label = el("span", { class: "slot-name" },
+      ...(raw ? [withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))] : []),
+      `${row === "front" ? "Front" : "Back"} ${i + 1}`, ...(raw ? [pill(className(raw.class))] : []));
+    return el("div", { class: raw ? `slot filled cls-${raw.class}` : "slot empty" }, label, s, details);
+  };
+  // Back row on the left, front row on the right: the enemy stands further right (step 2's opponent card).
+  const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
+    el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
+      el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
+    el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
+  $("#party").replaceChildren(el("div", { class: "party-cols" }, ...cols));
   syncAmount();
   search?.refresh();
 }
 
 // ---------------------------------------------------------------- target
-let search: { refresh(): void } | null = null;
+let search: { show(key: SearchKey | null): void; refresh(): void } | null = null;
+const oppKind = (): Opp => ($<HTMLInputElement>("input[name=opp]:checked")?.value ?? "quest") as Opp;
+
+/** Largest base stat among the enemies of the same kind (quest, boss, party boss …) and level band (0-9, 10-19 …),
+ * rare variants included: the enemy radar's rims, so the shape compares an enemy with its peers. */
+const enemyBest = new Map<string, Record<string, number>>();
+function enemyRims(d: Any): Record<string, number> {
+  const band = Math.floor((d.levelReq ?? 0) / 10), key = `${d.questType}:${band}`;
+  if (enemyBest.has(key)) return enemyBest.get(key)!;
+  const rims: Record<string, number> = {};
+  for (const [id, q] of Object.entries<Any>(G.questData)) {
+    if (!q.enemyHp || !q.attackList || !isEnemy(Number(id)) || q.questType !== d.questType || Math.floor((q.levelReq ?? 0) / 10) !== band) continue;
+    for (const [k] of ENEMY_STATS) rims[k] = Math.max(rims[k] ?? 0, q[k] ?? 0, q[`${k}B`] ?? 0);
+  }
+  enemyBest.set(key, rims);
+  return rims;
+}
 
 function renderTarget(): void {
   queueMicrotask(() => search?.refresh());
-  const mode = ($<HTMLInputElement>("input[name=mode]:checked")?.value ?? "quest") as "quest" | "map";
   const box = $("#target");
-  if (mode === "quest") {
+  if (oppKind() === "quest") {
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
     const rare = el("input", { type: "checkbox", id: "rare" }) as HTMLInputElement;
-    const amount = select({ id: "amount", "aria-label": "Quest size (enemy HP ×N)" }, [["1", "enemy HP ×1"]]);
-    const info = el("div", { class: "enemy" });
+    const amount = select({ id: "amount", "aria-label": "Quest size" }, [["1", "×1"]]);
+    const sizeNote = el("p", { id: "amount-note", class: "muted small" });
+    const card = el("article", { class: "opp-card" });
     const update = () => {
       const d = G.questData[q.value];
       const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined;
       rare.disabled = !hasRare;
       if (!hasRare) rare.checked = false;
       syncAmount();
-      const r = rare.checked;
-      const v = (k: string) => fmt.format(d[r ? `${k}B` : k] ?? 0);
-      const stat = (label: string, k: string) => el("span", { class: "nowrap" }, el("span", { class: "muted" }, `${label} `), v(k));
-      info.replaceChildren(
-        el("div", { class: "toolbar" }, el("strong", {}, `👹 ${r ? d.nameB : d.name}`), ...(r ? [pill("rare", "t-pink")] : []),
-          ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []), pill(`level ${d.levelReq ?? "?"}`, "plain")),
-        el("p", { class: "small", style: "margin: 0 0 8px" }, ...[stat("HP", "enemyHp"), stat("Atk", "enemyAtk"), stat("Matk", "enemyMatk"),
-          stat("Def", "enemyDef"), stat("Mdef", "enemyMdef"), stat("Eva", "enemyEva")].flatMap((p, k) => (k ? [" · ", p] : [p]))),
-        el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk)))));
+      const r = rare.checked, sfx = r ? "B" : "";
+      const rims = enemyRims(d);
+      const axes: RadarAxis[] = ENEMY_STATS.map(([k, label]) => ({ label, value: d[`${k}${sfx}`] ?? 0, max: rims[k] ?? 0 }));
+      card.className = `opp-card${r ? " rare" : ""}`;
+      card.replaceChildren(
+        el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
+          el("div", {}, el("h3", {}, enemyLink({ id: Number(q.value), rare: r })),
+            el("div", { class: "pills" }, pill(`level ${d.levelReq ?? "?"}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
+              ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
+        radar(axes, { title: `${r ? d.nameB : d.name}'s stats`, size: 240 }),
+        el("p", { class: "muted small" }, `Rims: the strongest ${(d.title || "quest").toLowerCase()} enemy of level ${Math.floor((d.levelReq ?? 0) / 10) * 10}–${Math.floor((d.levelReq ?? 0) / 10) * 10 + 9}.`),
+        el("h4", {}, "Skills"),
+        el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk)))),
+        el("p", { class: "small" }, el("a", { href: href.enemy(Number(q.value)) }, "Enemy page in the wiki →")));
     };
     q.addEventListener("change", update);
     rare.addEventListener("change", update);
-    box.replaceChildren(el("div", { class: "toolbar" }, q, el("label", { class: "check" }, rare, " Rare variant"), amount), info);
+    amount.addEventListener("change", syncAmount);
+    box.replaceChildren(el("div", { class: "opp-controls" }, q,
+      el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
+        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount)), sizeNote), card);
     update();
     $<HTMLInputElement>("#runs").value = "200";
   } else {
@@ -249,48 +289,111 @@ function renderTarget(): void {
     const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id])
       .map((id): [string, string] => [String(id), G.itemData.consumable[id].name])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
-    const chosen = el("p", { class: "chosen-map", "aria-live": "polite" });
+    const card = el("article", { class: "opp-card map" });
     const sync = () => {
       const own = m.value.startsWith("own:");
-      asc.disabled = own;
-      grade.disabled = own;
-      // The chosen map, outlined for its ascension (select options can't carry the outline).
-      if (own) {
-        const it: Any = state.sv?.mapInventory[Number(m.value.slice(4))];
-        const pre = it?.prefix ? G.prefixList[it.prefix]?.name : "", suf = it?.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
-        const name = [pre, G.itemData.map?.[it?.id]?.name ?? `map ${it?.id}`, suf].filter(Boolean).join(" ");
-        chosen.replaceChildren(el("span", { class: "muted small" }, "Your map:"), itemLink("map", Number(it?.id), name, undefined, it?.prestigeLevel),
-          gradeBadge(GRADES[(it?.grade ?? 3) - 1] ?? String(it?.grade)));
-      } else {
-        const id = Number(m.value.slice(4));
-        chosen.replaceChildren(el("span", { class: "muted small" }, "Map:"), itemLink("map", id, undefined, undefined, Number(asc.value)),
-          gradeBadge(GRADES[Number(grade.value) - 1]));
-      }
+      asc.hidden = grade.hidden = own;
+      const it: Any = own ? state.sv?.mapInventory[Number(m.value.slice(4))] : null;
+      const id = own ? Number(it?.id) : Number(m.value.slice(4));
+      const d: Any = G.itemData.map?.[id] ?? {};
+      const a = own ? it?.prestigeLevel : Number(asc.value), g = own ? (it?.grade ?? 3) : Number(grade.value);
+      const pre = own && it?.prefix ? G.prefixList[it.prefix]?.name : "", suf = own && it?.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
+      const name = [pre, d.name ?? `map ${id}`, suf].filter(Boolean).join(" ");
+      const bosses = seq<number>(d.bossList ?? {});
+      const fact = (k: string, v: Node | string) => [el("dt", {}, k), el("dd", {}, v)];
+      card.replaceChildren(
+        el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "🗺️"),
+          el("div", {}, el("h3", {}, itemLink("map", id, name, undefined, a)),
+            el("div", { class: "pills" }, pill(`level ${d.itemLevel ?? "?"}`, "plain"), gradeBadge(GRADES[g - 1] ?? String(g)),
+              ...(own ? [pill("yours", "t-green")] : [])))),
+        el("dl", { class: "facts" },
+          ...fact("Rooms", String(d.baseEnemyAmount ?? "?")),
+          ...fact("Time", d.baseMapTime ? `${fmt.format(d.baseMapTime / 60)} min` : "?"),
+          ...fact("Enemy power", `×${d.enemyMod ?? 1}`),
+          ...fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
+            ? el("span", {}, ...bosses.flatMap((b, k) => [...(k ? [", "] : []), enemyLink({ id: b })])) : "none"),
+          ...(pre || suf ? fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · ")) : [])),
+        el("div", { class: "opp-scrolls" },
+          el("h4", {}, "Scrolls"), ...scrolls),
+        el("p", { class: "muted small" }, "Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
+          + "Base rooms and time, before the map's modifiers."));
+      if (state.mode.key === "scrolls") card.querySelector(".opp-scrolls")?.setAttribute("hidden", "");
+      else card.querySelector(".opp-scrolls")?.removeAttribute("hidden");
     };
     m.addEventListener("change", sync);
     asc.addEventListener("change", sync);
     grade.addEventListener("change", sync);
+    box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
     sync();
-    box.replaceChildren(el("div", { class: "toolbar" }, m, asc, grade), chosen,
-      el("div", { class: "toolbar" }, el("span", { class: "muted small" }, "Scrolls"), ...scrolls),
-      el("p", { class: "muted small" }, "Each run uses a new map layout (rooms, enemies, rare spawns, boss). Hero HP carries over between rooms."));
     $<HTMLInputElement>("#runs").value = "50";
   }
 }
 
 /**
- * The quest size choices the game offers this party: enemy HP ×1 up to maxQuestAmount (from the highest hero
- * prestige; a rare quest is always ×1). Keeps the current choice when it is still allowed.
+ * The quest sizes the game offers (questService.getCurrentAndMaxAmount): ×1 up to maxQuestAmount, from the highest
+ * hero prestige of the party; a rare quest is always ×1. The modes that pick the party themselves run at ×1, since
+ * the cap depends on who ends up in it. Keeps the current choice when it is still allowed.
  */
 function syncAmount(): void {
   const amount = document.querySelector<HTMLSelectElement>("#amount");
+  const note = document.querySelector<HTMLElement>("#amount-note");
   if (!amount || !state.sv) return;
   const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
-  const max = maxQuestAmount(partyOf().members.map((m) => m.raw), rare, state.sv.raw.gameMode || "Standard");
+  const max = state.mode.party ? maxQuestAmount(partyOf().members.map((m) => m.raw), rare, state.sv.raw.gameMode || "Standard") : 1;
   const was = Number(amount.value) || 1;
-  amount.replaceChildren(...Array.from({ length: max }, (_, k) => el("option", { value: String(k + 1) }, `enemy HP ×${k + 1}`)));
+  amount.replaceChildren(...Array.from({ length: max }, (_, k) => el("option", { value: String(k + 1) }, `×${k + 1}`)));
   amount.value = String(Math.min(was, max));
-  amount.title = rare ? "A rare quest is always ×1." : `Quest size: one enemy with ×N HP and ×N loot. Up to ×${max} for this party (highest hero prestige × 2 − 1).`;
+  amount.disabled = max === 1;
+  const n = Number(amount.value);
+  if (note) {
+    note.textContent = rare ? "Quest size: a rare quest is always ×1."
+      : !state.mode.party ? "Quest size ×1: the size cap depends on the party, which this mode chooses."
+      : `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}. `
+        + `Up to ×${max} for this party (highest hero ascension: prestige × 2 − 1).`;
+  }
+}
+
+// ---------------------------------------------------------------- modes
+function renderModes(): void {
+  const box = $("#modes");
+  box.replaceChildren(...MODES.map((m) => {
+    const r = el("input", { type: "radio", name: "what", value: m.key }) as HTMLInputElement;
+    r.checked = m.key === state.mode.key;
+    r.addEventListener("change", () => setMode(m.key));
+    return el("label", { class: "mode-card", title: m.hint }, r, el("span", { class: "mode-ico", "aria-hidden": "true" }, m.icon),
+      el("span", { class: "mode-text" }, el("strong", {}, m.label), el("span", { class: "muted small" }, m.hint)));
+  }));
+}
+
+/** Show the inputs the mode needs: party or not, the opponents it works on, and its run panel. */
+function setMode(key: string): void {
+  state.mode = modeOf(key);
+  try {
+    localStorage.setItem(MODE_KEY, state.mode.key);
+  } catch { /* not remembered */ }
+  const m = state.mode;
+  $("#party-col").hidden = !m.party;
+  $("#setup-grid").classList.toggle("no-party", !m.party);
+  $("#setup-title").textContent = m.party ? "Party and opponent" : "Opponent";
+  $("#run-title").textContent = m.label;
+  let kindChanged = false;
+  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => {
+    const ok = m.opp.includes(r.value as Opp);
+    (r.closest("label") as HTMLElement).hidden = !ok;
+    if (!ok && r.checked) {
+      r.checked = false;
+      kindChanged = true;
+    }
+  });
+  if (kindChanged) $<HTMLInputElement>(`input[name=opp][value=${m.opp[0]}]`).checked = true;
+  $("#opp-switch").hidden = m.opp.length < 2;
+  const sim = m.key === "simulate";
+  document.querySelector<HTMLElement>(".simulate")!.hidden = !sim;
+  $("#results").hidden = !sim;
+  if (state.sv) {
+    renderTarget(); // the opponent card depends on the mode (quest size cap, scrolls)
+    search?.show(sim ? null : m.key as SearchKey);
+  }
 }
 
 // ---------------------------------------------------------------- run
@@ -313,7 +416,7 @@ function partyOf() {
 /** The opponent chosen in step 2. */
 function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } } {
   const sv = state.sv!;
-  if ($<HTMLInputElement>("input[name=mode]:checked").value === "quest") {
+  if (oppKind() === "quest") {
     return { quest: { id: Number($<HTMLSelectElement>("#quest").value), rare: $<HTMLInputElement>("#rare").checked, amount: Number($<HTMLSelectElement>("#amount").value) } };
   }
   const v = $<HTMLSelectElement>("#map").value;
@@ -452,10 +555,14 @@ async function loadSave(text: string, name: string): Promise<void> {
   $("#setup").hidden = false;
   $("#results").replaceChildren();
   renderParty();
-  renderTarget();
+  setMode(state.mode.key);
 }
 
 function init(): void {
+  try {
+    state.mode = modeOf(localStorage.getItem(MODE_KEY) ?? "simulate");
+  } catch { /* default mode */ }
+  renderModes();
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
     onForget: () => {
@@ -465,8 +572,8 @@ function init(): void {
     },
   });
   loadWikiText();
-  document.querySelectorAll<HTMLInputElement>("input[name=mode]").forEach((r) => r.addEventListener("change", renderTarget));
-  search = initSearchTabs({
+  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => r.addEventListener("change", renderTarget));
+  search = initSearch({
     save: () => state.sv!,
     gameMode: () => state.sv?.raw.gameMode || "Standard",
     party: partyOf,
@@ -484,7 +591,11 @@ function init(): void {
       persistParty();
       renderParty();
     },
-  }, { tabs: $("#sim-tabs"), simulate: [document.querySelector<HTMLElement>(".simulate")!, $("#results")], panel: $("#search-panel") });
+    poolSkills: () => Object.fromEntries(Object.entries(state.skills).map(([i, s]) => [state.sv!.raw.hero[Number(i)].id, s])),
+    applyScrolls: (ids) => {
+      document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
+    },
+  }, $("#search-panel"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
 }

@@ -10,7 +10,7 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, ascLegend, ascText, type Column, el, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { $, ascText, type Column, el, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
 import { group, lineChart } from "./line-chart.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { tip } from "./tooltip.ts";
@@ -257,7 +257,6 @@ function itemPage(type: string, id: number): HTMLElement {
       ["Effect", type === "consumable" && Object.keys(it.stat ?? {}).length ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
     ]),
   ];
-  if (type !== "material" && safeSell(type, id, 1) !== null) kids.push(ascLegend());
   if (type === "equipment") kids.push(section("Stats by grade", gradeTable(id)));
   const src = type === "material" || type === "equipment" ? dropSources(id, type) : [];
   if (type === "material" || src.length) {
@@ -483,17 +482,6 @@ async function render(): Promise<void> {
   }
 }
 
-/** The Enemies entry of the section nav, after Maps (wiki.html lists the static sections). */
-function addEnemiesNav(): void {
-  const nav = document.querySelector(".wiki-nav");
-  if (!nav || nav.querySelector('a[href="#/enemies"]')) return;
-  const link = el("a", { href: "#/enemies" }, "Enemies");
-  const maps = nav.querySelector('a[href="#/maps"]');
-  if (maps) maps.after(link);
-  else nav.append(link);
-}
-
-addEnemiesNav();
 window.addEventListener("hashchange", render);
 render();
 export { href };

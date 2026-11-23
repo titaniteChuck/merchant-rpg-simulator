@@ -16,7 +16,7 @@
   </div>
   <header>
     <h1>Battle simulator</h1>
-    <p class="lead">Put your heroes in the party, pick an enemy or a map, and simulate hundreds of fights with the game's combat rules.</p>
+    <p class="lead">Choose what to do, set up the party and the opponent, and simulate hundreds of fights or let the page search for the best rotation, gear, party or scrolls.</p>
   </header>
 
   <main>
@@ -30,24 +30,29 @@
 
     <div id="setup" hidden>
       <section>
-        <h2><span class="step">1</span> Party</h2>
-        <div id="party"></div>
+        <h2><span class="step">1</span> What do you want to do?</h2>
+        <div id="modes" class="mode-cards" role="radiogroup" aria-label="What to do"></div>
       </section>
 
       <section>
-        <h2><span class="step">2</span> Opponent</h2>
-        <div class="toolbar">
-          <div class="mode-switch" role="radiogroup" aria-label="What to simulate">
-            <label><input type="radio" name="mode" value="quest" checked> ⚔️ Quest enemy</label>
-            <label><input type="radio" name="mode" value="map"> 🗺️ Map run</label>
+        <h2><span class="step">2</span> <span id="setup-title">Party and opponent</span></h2>
+        <div id="setup-grid" class="setup-grid">
+          <div id="party-col" class="party-col">
+            <div id="party"></div>
+          </div>
+          <div id="opp-col" class="opp-col">
+            <h3 class="col-title">👹 Opponent</h3>
+            <div class="mode-switch" id="opp-switch" role="radiogroup" aria-label="Opponent">
+              <label><input type="radio" name="opp" value="quest" checked> ⚔️ Quest enemy</label>
+              <label><input type="radio" name="opp" value="map"> 🗺️ Map run</label>
+            </div>
+            <div id="target"></div>
           </div>
         </div>
-        <div id="target"></div>
       </section>
 
       <section>
-        <h2><span class="step">3</span> Simulate or search</h2>
-        <div id="sim-tabs"></div>
+        <h2><span class="step">3</span> <span id="run-title">Simulate</span></h2>
         <div class="simulate">
           <div class="toolbar">
             <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>

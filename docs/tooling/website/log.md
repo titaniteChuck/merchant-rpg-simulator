@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Battle page rework (U8): mode first (simulate, best rotation / gear / party / scrolls, optimise everything with a time budget), party in back/front columns, opponent card on the right (enemy radar and skills, map card), quest size ×1 to ×5; static Enemies link in the wiki nav; ascension legend removed from wiki item pages.
 - **Update**: Wiki enemy pages (U6c): Enemies list and one page per enemy (stats normal/rare, rotation, drops, maps with multiplier); enemy names link there everywhere; gathering quests and placeholders excluded via the static `NON_ENEMY_QUEST_IDS`.
 - **Update**: Save viewer heroes as a sortable table with a page per hero (`#hero=<id>`); crafters show their level per ascension (`getEffectiveLevelForItem`); the loaded save moves to one top-bar button (Reload, Choose another file, Forget); battle quest size capped at the party's max (enemy HP ×1 to ×5).
 - **Update**: Farming planner (`farming.html`, `farming-worker.ts`): quests and map runs simulated with the party, ranked by value per hour; Profit and Farming in every top bar; essence per run in the save viewer's maps table; ascension outlines on the profit page.

@@ -8,6 +8,7 @@ import {
   catalogGearCandidates, evaluate, evaluateMap, type FightEval, type GearSearch, type MapEval, ownedGearCandidates,
   type PartySearch, type ScrollLoadout, searchGear, searchParty, searchScrolls, searchSkills, type SkillSearch,
 } from "../tools/combat.ts";
+import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
 import type { Save } from "../tools/save.ts";
 import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 
@@ -41,8 +42,11 @@ export type SearchRequest = {
   | { search: "skills"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; nQuick: number; nFinal: number; top: number }
   | { search: "gear"; hero: { row: "front" | "back"; i: number }; quest: { id: number; rare: boolean; amount: number }; n: number; passes: number;
     pool: "owned" | "catalog"; save?: Save; itemGrade?: number; asc?: number }
-  | { search: "party"; pool: Any[]; quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] };
-    size: number; nQuick: number; nFinal: number }
+  | { search: "party"; pool: Any[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
+    map?: { spec: MapSpec; scrolls: Scroll[] }; size: number; nQuick: number; nFinal: number }
+  | { search: "optimise"; pool: Any[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
+    map?: { spec: MapSpec; scrolls: Scroll[] }; save: Save; size: number; timeBudgetMs: number;
+    steps: { party?: boolean; skills?: boolean; gear?: boolean; scrolls?: boolean } }
   | { search: "scrolls"; map: { spec: MapSpec }; pool: number[]; scrollAsc: number; nQuick: number; nFinal: number; top: number }
 );
 
@@ -52,6 +56,7 @@ export type SearchResponse =
   | { type: "done"; search: "gear"; result: GearSearch; ms: number }
   | { type: "done"; search: "party"; result: PartySearch; ms: number }
   | { type: "done"; search: "scrolls"; result: { ranked: ScrollLoadout[]; priceError?: string }; ms: number }
+  | { type: "done"; search: "optimise"; result: OptimiseResult; ms: number }
   | { type: "error"; error: string };
 
 export type BattleResponse =
@@ -126,6 +131,13 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
     };
     const ms = () => performance.now() - t0;
     const quest = (q: { id: number; rare: boolean; amount: number }) => ({ quest: q.id, rare: q.rare, amount: q.amount });
+    /** All candidate heroes by id, with the rotations edited on the page. */
+    const poolOf = (raws: Any[], skills?: Record<number, SkillChoice>) => new Map<number, Any>(raws.map((raw) => {
+      const h = sim.hero(raw);
+      const s = skills?.[raw.id];
+      if (s) sim.setSkills(h, s.attackList, s.passive);
+      return [raw.id, h];
+    }));
     switch (req.search) {
       case "skills": {
         const hero = (req.hero.row === "front" ? front : back)[req.hero.i];
@@ -143,10 +155,16 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
         return post({ type: "done", search: "gear", result, ms: ms() });
       }
       case "party": {
-        const pool = new Map<number, Any>(req.pool.map((raw) => [raw.id, sim.hero(raw)]));
+        const pool = poolOf(req.pool, req.poolSkills);
         const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
         const result = searchParty(sim, pool, target, { size: req.size, nQuick: req.nQuick, nFinal: req.nFinal }, ctl);
         return post({ type: "done", search: "party", result, ms: ms() });
+      }
+      case "optimise": {
+        const pool = poolOf(req.pool, req.poolSkills);
+        const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
+        const result = optimiseFight(sim, pool, target, { save: req.save, size: req.size, timeBudgetMs: req.timeBudgetMs, steps: req.steps }, ctl);
+        return post({ type: "done", search: "optimise", result, ms: ms() });
       }
       case "scrolls": {
         const result = searchScrolls(sim, req.map.spec, front, back,
