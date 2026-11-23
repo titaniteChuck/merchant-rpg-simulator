@@ -13,3 +13,4 @@
 - [ascension](./ascension/index.md) - Ascension levels, essence tiers, craft vs. upgrade.
 - [maps](./maps/index.md) - Crafted, consumed dungeons that produce essence and loot.
 - [selling](./selling/index.md) - Sell value formulas and customer modifiers.
+- [expansions](./expansions/index.md) - Frozen and Scribe: what each paid expansion gates and how the site infers ownership.
