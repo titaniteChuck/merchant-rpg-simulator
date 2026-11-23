@@ -28,3 +28,4 @@
 - **Update**: E13, E14a done; E14b and U11 in progress.
 - **Update**: U11 done; U4 committing; U13 quality pass started.
 - **Update**: User batch: U14 titles bug + width, U15 battle layout v2, U16 colour theme, U17 save viewer v3; Profit/Farming/Levelling frozen.
+- **Update**: E14b committing; E15 started.

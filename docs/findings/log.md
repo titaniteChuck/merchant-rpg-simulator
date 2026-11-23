@@ -18,3 +18,4 @@
 - **Update**: Potions and enchants (E10).
 - **Update**: Levelling and prestige (E12).
 - **Update**: Party order and rotation timing results (E14a).
+- **Update**: Lost-fight scoring and timing pre-filter (E14b).

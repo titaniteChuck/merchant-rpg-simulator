@@ -199,6 +199,11 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
 - Party order, row swaps and rotation timing (E14a): Odin 33.5% → 35.1% HP removed (Mage rotation one turn later
   alone: score 791 → 918), Archon 6.3% → ~10%. No fight flipped to a win. Enemy rotations are fixed 5-turn cycles
   that heroes can't interrupt (E13), so timing cleanses, heals and big hits against them is the lever.
+- Lost fights are now scored by the enemy's lowest HP and total damage, with surviving longer a small plus (E14b).
+  With that, Archon's best Mage rotation uses **Silence**, which removes Unleashed Power: the party survives 15
+  turns instead of 10. The old score ranked it last. Still no win.
+- The timing pre-filter (E14b) simulates 10–19× fewer rotations on won fights and ~2.5× fewer on lost ones, with
+  the same win rates and equal or slightly better results.
 
 ### Equal gear
 

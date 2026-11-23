@@ -60,8 +60,8 @@ Rules:
 | E12 | **Levelling and prestige economics**: XP per hour per quest/map for a party (simulated grade, time), hours to take a hero 1 → 60, cost and payoff of prestiging (tier stats, ×N quest size, enchant slots), with progress/cancel. | Done (7345aa9) |
 | E13 | **Schedule base** (user: must): targeting and effect-duration rules from the game code; effect tags for every skill (probe-verified); enemy 5-turn timelines as committed data + `tools/schedule.ts`; a counter-schedule heuristic validated against simulated rankings. | Done (1570ca8) |
 | E14a | **Order and timing steps in `optimiseFight`**: 36 within-row orders, front/back swaps, per-hero rotation phase shifts (1–4 slots), each kept only if it gains. | Done (c808fa0) |
-| E14b | **Schedule pre-filter**: rank candidate rotations with the E13 heuristic and simulate only the top ones in `searchSkills` / `optimiseFight`, so party-wide rotation search fits the time budget. | In progress (engine session; also seed mixing and lost-fight scoring) |
-| E15 | **Offline warm start**: best rotation per class × enemy × tier generated locally (E8 class matrix), committed as data; searches start from it. | After E14b |
+| E14b | **Schedule pre-filter**: rank candidate rotations with the E13 heuristic and simulate only the top ones in `searchSkills` / `optimiseFight`, so party-wide rotation search fits the time budget. | Done, committing (release agent) |
+| E15 | **Offline warm start**: best rotation per class × enemy × tier generated locally (E8 class matrix), committed as data; searches start from it. | In progress (engine session) |
 
 ## UI lane
 
