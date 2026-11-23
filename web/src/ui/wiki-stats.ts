@@ -1,7 +1,7 @@
 /**
  * Wiki page "Stats" (#/stats, #/stats/<topic>, U25): how every number in the game is calculated, one section per
- * topic (wiki-ref.ts STAT_TOPICS). Every formula was read in the decompiled game (the `src` lines, checked by
- * test/wiki-ref.test.ts) and matches the port in web/src/sim. Worked examples that use game data read it from G.
+ * topic (wiki-ref.ts STAT_TOPICS). Every formula was read in the decompiled game (the references in
+ * test/wiki-ref.test.ts `SOURCES`, not shown on the page) and matches the port in web/src/sim. Worked examples that use game data read it from G.
  */
 import { G } from "../sim/data.ts";
 import {
@@ -73,7 +73,7 @@ const heroExample = (): string => {
 export const STATS_SECTIONS: RefSection<StatTopic>[] = [
   {
     id: "hero-stats",
-    html: () => `<p>A hero's stats are rebuilt from zero every time something changes (<code>Hero:determineStats</code>), in this order:</p>
+    html: () => `<p>A hero's stats are rebuilt from zero every time something changes, in this order:</p>
 <ol class="ref-steps">
 <li>The class growth of the hero's <b>tier</b> is read (tier = prestige level 1–3, shown on this site as ascension 0–2).</li>
 <li><b>Permanent enchants</b> are added. Luck, XP, AP, crit damage and the % stats are reset just after, so enchants on those have no effect.</li>
@@ -88,7 +88,7 @@ export const STATS_SECTIONS: RefSection<StatTopic>[] = [
 </ol>
 ${formula(`${v("stat")} = (${v("base")} + ${v("growth")}<sub>tier</sub> × ${v("L")} + ${v("gear")} + ${v("enchants")} + ${v("potion")} + ${v("passive")} + ${v("str")} × ${v("strMod")}<sub>tier</sub>) × (1 + ${v("pct")})`)}
 ${vars([
-  [v("base"), "the class's base stat (data.HeroData)"],
+  [v("base"), "the class's base stat"],
   [`${v("growth")}<sub>tier</sub>`, "the class's growth per level for the tier (hpPlv, atkPlv…); per-level enchants add to it"],
   [v("L"), "hero level (max 50 / 50 / 60 at tier 1 / 2 / 3)"],
   [`${v("str")} × ${v("strMod")}`, "atk only (int × intMod for matk, dex × dexMod for acc)"],
@@ -102,11 +102,6 @@ ${note(`Flat bonuses are all added before the % stats, so a % passive also multi
 <li><b>Enchant</b> (consumable used on a hero): permanent, flat or per level (Plv: +0.1 growth = +6 atk at level 60). At most 8 + 4 × (tier − 1) per hero; ascending the hero removes them.</li>
 <li><b>Ascended</b> potions and enchants multiply their stats: ×2 / ×3 (asc 1 / 2) for atk, matk, acc, def, mdef, HP, str, int, dex, Plv and atk/matk/acc %; ×1.25 / ×1.5 for speed and crit; ×1.5 / ×2 for XP; ×1.75 / ×2.5 for luck. Rounded to whole numbers (Plv to 0.1, % to 0.01).</li>
 </ul>`,
-    src: [["obj.Hero.lua", 178, "function Hero:determineStats"], ["obj.Hero.lua", 209, "#self.enchantList"], ["obj.Hero.lua", 217, "self.lckMod = heroData.lckMod"],
-      ["obj.Hero.lua", 283, "item.itemLevel > self.level"], ["obj.Hero.lua", 243, "self.str * self.strMod"], ["obj.Hero.lua", 254, "heroData.atk + self.atkPlv * self.level"],
-      ["obj.Hero.lua", 270, "calculatePercentStats"], ["obj.combat.statsService.lua", 20, "pctMinValue"], ["obj.Hero.lua", 401, "function Hero:applyBoost"],
-      ["obj.combat.Campaign.lua", 127, "hero:reduceBoost()"], ["data.Default.lua", 1182, "heroBoostLevelReq"], ["obj.Hero.lua", 450, "8 + (self.prestigeLevel - 1) * 4"],
-      ["data.Default.lua", 273, "local potionStat"]],
   },
   {
     id: "max-hp",
@@ -122,8 +117,6 @@ ${vars([
 <li><b>Enemy</b> max HP = round(questData HP × map multiplier × game-mode multiplier) × ${sl("quest-size", "quest size N")}.</li>
 </ul>
 ${example(`Tier-1 Warrior, level 50, Juggernaut, +300 HP of gear: (100 + 10 × 50 + 300) × 1.25 = <b>1,125</b>.`)}`,
-    src: [["obj.Hero.lua", 260, "heroData.hp + self.hpPlv * self.level"], ["obj.Hero.lua", 264, "if self.maxHP < 1 then"], ["obj.Hero.lua", 346, "self.hp = self.maxHP"],
-      ["obj.Quest.lua", 220, "math.min(hero.questHP, hero.hp)"], ["data.Default.lua", 1203, "heroReviveCost"], ["obj.Enemy.lua", 77, "self.maxHP * self.amount"]],
   },
   {
     id: "damage",
@@ -137,8 +130,6 @@ ${vars([
 ])}
 <p>Order: the target's "on damage" effects scale the parts (Evade, Block…), then the ${sl("hit-chance", "hit roll")}, the ${sl("crit", "crit roll")}, the reduction, and last the target's "damage received" effects (shields absorb, Mana Shield…), and the total is rounded again.</p>
 ${example(`A Slash from a hero with 500 atk: ${v("P")} = 800. Against def 60: ${v("R")} = 100 / 160 = 0.625 → <b>500</b> damage; a crit (×2) → <b>1,000</b>.`)}`,
-    src: [["obj.Combatant.lua", 120, "if params.dmg then"], ["obj.Combatant.lua", 388, "attack.atk * currentCombatantMod"], ["obj.Combatant.lua", 397, "\"OnDamage\""],
-      ["obj.Combatant.lua", 459, "math.round(defReduction * attack.atk * dmgMod)"], ["obj.Combatant.lua", 461, "isLuck and dmgMod or 1"], ["obj.Combatant.lua", 466, "\"DamageReceived\""]],
   },
   {
     id: "defence",
@@ -150,8 +141,6 @@ ${vars([
 ${tbl(["def", "0", "50", "100", "200", "300", "900"], [["damage taken", ...[0, 50, 100, 200, 300, 900].map((d) => `${luaRound(reduction(d) * 100, 1)} %`)]])}
 <p>Each 100 def is worth +100 % HP against physical hits: effective HP = HP × (1 + def / 100).</p>
 ${note(`Penetration set as a skill parameter (Pulverize "defPen 45" and the like) has no effect: the attack keeps the lower of the skill's value and the attacker's own penetration, which is always 0. Only Magic Missile II's after-effect (mdef penetration 60 on the caster's next attack) applies.`)}`,
-    src: [["obj.combat.statsService.lua", 41, "function service.calculateReduction"], ["obj.combat.statsService.lua", 43, "def * 0.01 * (100 - penetration)"],
-      ["obj.Combatant.lua", 104, "defPen = self.defPen or 0"], ["obj.Combatant.lua", 112, "if value < attackParams[key] then"], ["data.AbilityFunc.lua", 324, "attack.mdefPen = 60"]],
   },
   {
     id: "hit-chance",
@@ -164,8 +153,6 @@ ${tbl(["eva / acc", "1", "1.5", "2", "3", "5"], [["hit chance", ...[1, 1.5, 2, 3
 <li>Enemies have 100 acc; heroes have 0 evasion, so enemy attacks always hit heroes. Dodges come from effects (Elusion 50 %, Evade): ${bl("buffs-debuffs")}.</li>
 </ul>
 ${example(`A hero with 150 acc against an enemy with 300 eva: round(30,000 / 450) = <b>${hitChance(150, 300)} %</b>.`)}`,
-    src: [["obj.Combatant.lua", 421, "math.round(200 * attack.acc / (attack.acc + self.eva))"], ["obj.Combatant.lua", 424, "if 100 < hitChance then"],
-      ["obj.Combatant.lua", 428, "hitChance >= math.random(1, 100)"], ["obj.Hero.lua", 60, "self.eva = 0"], ["obj.Enemy.lua", 78, "self.acc = 100"]],
   },
   {
     id: "crit",
@@ -182,8 +169,6 @@ ${vars([
 <li>Enemies have crit 0 and no luck: they never crit nor land lucky hits (unless an effect gives them crit).</li>
 </ul>
 ${example(`crit 25, luck 10: rolls 1–25 crit (<b>25 %</b>), 26–41 lucky (<b>16 %</b>), 42–100 normal (59 %).`)}`,
-    src: [["obj.Combatant.lua", 435, "math.random(1, 100)"], ["obj.Combatant.lua", 439, "critChance <= attack.crit and notTrueAttack"],
-      ["obj.Combatant.lua", 451, "1.6 * attack.luck"], ["obj.Combatant.lua", 453, "dmgMod = 1.35"], ["obj.Hero.lua", 220, "self.critMod = 2"], ["obj.Enemy.lua", 79, "self.crit = 0"]],
   },
   {
     id: "ap",
@@ -195,8 +180,6 @@ ${tbl(["level", "≤ 11", "12", "20", "25", "30", "≥ 40"], [["AP", ...[11, 12,
 <li>Skills unlocked: none before level 10, then the first min(⌊(${v("L")} − 5) / 5⌋, n − 1) of the class list, all of them past level 50.</li>
 </ul>
 ${example(`Level 25: 5 + ⌊15 / 2⌋ = <b>${maxAp(25)}</b> AP; with Wisdom, <b>${maxAp(25, 2)}</b>.`)}`,
-    src: [["data.Default.lua", 1192, "function default.heroMaxActionPoints"], ["data.Default.lua", 1188, "heroStartingAP = 5"], ["obj.Hero.lua", 313, "apSpent > self.maxActionPoints"],
-      ["data.Default.lua", 1129, "math.floor((hero.level - diff) / diff)"]],
   },
   {
     id: "luck",
@@ -211,10 +194,6 @@ ${tbl(["Luck affects", "How"], [
   ["Gold, XP, crafting, selling", "nothing"],
 ])}
 ${example(`3 heroes with 10 luck each = 30 party luck: a fixed reward roll of 18 (1.8 items) becomes round(48 / 10) = <b>5</b>; a parcel whose nothing-weight is 100 at grade B drops to <b>70</b>.`)}`,
-    src: [["obj.Hero.lua", 217, "self.lckMod = heroData.lckMod"], ["obj.combat.Battle.lua", 148, "function Battle:getSumOfStat"], ["obj.Combatant.lua", 451, "1.6 * attack.luck"],
-      ["obj.combat.lootService.lua", 30, "questParams.partyLuck) / 10), 0, 5)"], ["obj.combat.lootService.lua", 56, "- questParams.partyLuck, 1)"],
-      ["data.Default.lua", 855, "math.min(luck * 4, 200) / 100"], ["data.Default.lua", 757, "(1 + partyLuck / 100)"], ["obj.Map.lua", 190, "self.mapStats.lckMod * 0.1"],
-      ["obj.Hero.lua", 325, "self.expMod / 100"]],
   },
   {
     id: "grade",
@@ -236,10 +215,6 @@ ${tbl(gradeHead, [
 <li>Items and crafts have their own grade, with other tables: ${sl("item-stats")}, ${sl("craft")}.</li>
 </ul>
 ${example(`Party of level 30 on a level-30 region-3 type-3 quest won in 10 turns: round(1.3 + 45 / 45, 2) = 2.3, + (8 + 9 − 10) / 4 = 1.75 → 4.05 → grade <b>${battleGrade(30, 3, 30, 3, 10)} (A)</b>.`)}`,
-    src: [["obj.combat.questService.lua", 171, "round(1.3 + (averageLvl + questInfo.region * 5) / (questInfo.levelReq + questInfo.region * 5), 2)"],
-      ["obj.combat.questService.lua", 172, "clamp(grade, 1, 4.5)"], ["obj.combat.questService.lua", 183, "(8 + questInfo.region * 3 - turns) / 4"],
-      ["obj.combat.questService.lua", 194, "clamp(round(grade), 1, 5)"], ["data.Default.lua", 815, "gradeBonus = {"], ["data.Default.lua", 823, "gradeParcelBonus = {"],
-      ["data.Default.lua", 830, "gradeTime = {"], ["obj.combat.Campaign.lua", 244, "math.floor(grade / #combats)"]],
   },
   {
     id: "time",
@@ -252,9 +227,6 @@ ${vars([
 <p><b>Map runs</b>, per room: fight = round((5 × actions + 5 × turns) × gradeTime<sub>g</sub> × (1 − speed')), walk = round(baseTime / rooms × (1 − speed')), with speed' = party speed + the map's speed (Speed scroll +20), capped 75 %.</p>
 <p>The Quick game mode multiplies quest time by 0.25.</p>
 ${example(`A 300 s quest, ×1, won at grade A in 4 turns with 20 actions, party speed 30: (100 + 20 + 300 × 0.9) × 0.7 = <b>273 s</b>.`)}`,
-    src: [["obj.Quest.lua", 153, "questData[self.questID].time * self.enemyAmount * gradeTime[self.grade]"], ["obj.Quest.lua", 160, "math.min(questBonusSpeed, 0.75)"],
-      ["obj.combat.questService.lua", 218, "getBattleTime(battle) * gradeTime[grade]"], ["obj.combat.Campaign.lua", 51, "self.mapBaseTime / #self.combats"],
-      ["data.GameModsData.lua", 12, "default.timePerTurn = 5"]],
   },
   {
     id: "quest-size",
@@ -267,12 +239,8 @@ ${tbl(["×N multiplies", "How"], [
   ["Fixed rewards", "quantity (after the 0–5 cap) × N"],
   ["Parcels", "each entry's weight × N (the nothing-weight stays), material amounts rolled N times or × N; an equipment drop stays 1. Still one roll per parcel."],
 ])}
-${unsure(`Which hero's tier sets the cap in a party: the game calls <code>default.enemyAmount(hero)</code> with one hero; the screen that picks it was not traced.`)}
+${unsure(`Which hero's tier sets the cap in a party: the game computes the cap from one hero; the screen that picks it was not traced.`)}
 ${example(`×3 on a 2,000 HP enemy: one 6,000 HP fight, 3 × the gold, 3 × the fixed rewards, and each parcel entry 3 times as likely against the same nothing-weight.`)}`,
-    src: [["data.Default.lua", 861, "hero.prestigeLevel * 2 - 1"], ["data.GameModsData.lua", 73, "hero.prestigeLevel * 3 + 1"], ["obj.combat.questService.lua", 25, "currentQuestType[questId] == 2"], ["obj.Enemy.lua", 77, "self.maxHP * self.amount"],
-      ["obj.GameClass.lua", 327, "currentQuestArray[newQuestNumber].gold * amount"], ["obj.Quest.lua", 210, "math.round(self.exp / self.battle.heroCount) * self.enemyAmount"],
-      ["obj.combat.lootService.lua", 32, "quantity * questParams.enemyAmount"], ["obj.combat.lootService.lua", 58, "parcel.itemList[n].odds * questParams.enemyAmount"],
-      ["obj.combat.lootService.lua", 87, "itemFromList.amount[1] * questParams.enemyAmount"]],
   },
   {
     id: "xp",
@@ -284,22 +252,20 @@ ${vars([
 <ul>
 <li>Only heroes alive at the end of a won quest get XP; a hero at its tier's max level (50 / 50 / 60) gets none.</li>
 <li><b>Map rooms</b>: each won room gives round(exp × map modifier × 0.2 / heroes) to each hero alive.</li>
-<li>Levels need <code>heroLevelRequirement[tier][level + 1]</code> XP; leftover XP carries over; a level-up refills HP (also in a map).</li>
+<li>Each level needs the XP of the tier's level table; leftover XP carries over; a level-up refills HP (also in a map).</li>
 </ul>
 ${example(`A 900 XP quest ×3 with 6 heroes: round(900 / 6) × 3 = 450 each; a Bard gets ⌊450 × 1.1⌋ = <b>495</b>.`)}`,
-    src: [["obj.Quest.lua", 210, "math.round(self.exp / self.battle.heroCount)"], ["obj.Hero.lua", 325, "(1 + self.expMod / 100) * default.questXpMod"],
-      ["obj.Quest.lua", 221, "hero.hp > 0"], ["obj.combat.Campaign.lua", 170, "self.mapStats._mod * 0.2 / battle.heroCount"], ["obj.Hero.lua", 338, "levelReq[self.level + 1]"]],
   },
   {
     id: "item-stats",
-    html: () => `<p><b>Base stats</b> (weapon atk / matk / acc, armour def / mdef) come from the item's sub-type (data.FormulaData):</p>
+    html: () => `<p><b>Base stats</b> (weapon atk / matk / acc, armour def / mdef) come from the item's sub-type (sword, staff, helmet…):</p>
 ${formula(`${v("f")} = ${v("base")} + ${v("L")}' × ${v("perLevel")}, &nbsp; ${v("L")}' = item level + 0 / 40 / 80 (ascension 0 / 1 / 2), &nbsp; stat ∈ [⌈${v("f")} × gMin⌉, ⌈${v("f")} × gMax⌉]`)}
 ${tbl(gradeHead, [["gMin", ...GRADE_MIN], ["gMax", ...GRADE_MAX]])}
 <ul>
 <li>The stat is a random whole number in that range. A crafter above the item's level (${v("d")} levels) raises the low end by (gMax − gMin) × 4 % per level, so from 25 levels up it always rolls the top.</li>
 <li>Weapon crit is flat (Dagger 5, most weapons 1). Talismans have no base stats.</li>
 </ul>
-<p><b>Bonus stats</b>: each equipment has ranges [${v("a")}, ${v("b")}] (data.EquipmentData).</p>
+<p><b>Bonus stats</b>: each equipment has ranges [${v("a")}, ${v("b")}].</p>
 <ul>
 <li>Flat bonuses: [${v("a")} × gMin, ${v("b")} × gMax]. <b>% bonuses</b> (−1 &lt; ${v("a")} &lt; 1): [${v("a")}, ${v("b")}] whatever the grade.</li>
 <li>× the ascension multiplier: Str, Int, Dex, atk, matk, HP ×1.75 / ×2.5; acc, def, mdef ×1.5 / ×2; crit ×1.1 / ×1.2; luck, XP, % stats, crit damage ×1.25 / ×1.5; AP and speed ×1.</li>
@@ -307,10 +273,6 @@ ${tbl(gradeHead, [["gMin", ...GRADE_MIN], ["gMax", ...GRADE_MAX]])}
 </ul>
 <p><b>Modifiers</b>: a prefix adds its stats; a suffix multiplies the stats it names by (1 + value), rounded up. Each modifier raises the rarity one step (up to 6, or up to 8 from 7) and its cost and craft time by (1 + its sell value). Odds: ${sl("craft")}, ${sl("enchant")}.</p>
 ${example(`A Sword (18 + 1 per level) of level 20 at grade B: ${v("f")} = 38 → atk <b>${baseStatRange(18, 1, 20, 3).join("–")}</b>; at grade S <b>${baseStatRange(18, 1, 20, 5).join("–")}</b>; ascended once (level 60 for stats), grade B: <b>${baseStatRange(18, 1, 20, 3, 1).join("–")}</b>.`)}`,
-    src: [["data.Default.lua", 199, "local function baseStatFunc"], ["data.Default.lua", 205, "0.04 * charLevelDiff"], ["data.Default.lua", 213, "math.ceil((baseValue + level * plvlValue) * minGrade)"],
-      ["obj.Item.lua", 96, "default.prestigeLevelBonus[self.prestigeLevel]"], ["data.Default.lua", 557, "prestigeLevelBonus = {40, 80}"], ["data.GameModsData.lua", 22, "default.gradeMin"],
-      ["data.Default.lua", 316, "function default.getStatRange"], ["data.Default.lua", 335, "statMax * 0.92"], ["data.Default.lua", 250, "local ascStat"],
-      ["obj.Item.lua", 197, "math.ceil(self[key] * (1 + value))"], ["obj.Item.lua", 184, "math.min(self.rarity + 1, 6)"], ["obj.Item.lua", 188, "1 + prefixList[self.prefix].sell"]],
   },
   {
     id: "sell",
@@ -325,8 +287,6 @@ ${tbl(["rarity", "1", "2", "3", "4", "5", "6", "7", "8"], [["× value", ...RARIT
 <li>A customer pays base × (1 + 2 × preference / 100) × (1 + (haggle position − 3) / 10), position 1–5.</li>
 </ul>
 ${example(`Value 1,000, rarity 4, ascended once, with one modifier (rarity 5): 1,000 × 2 × 2 = <b>4,000</b>.`)}`,
-    src: [["obj.Item.lua", 245, "math.round(self.value * rarityMod[self.rarity][1])"], ["obj.Item.lua", 243, "round((self.sell[1] + self.sell[2]) / 2) * amount"],
-      ["data.Default.lua", 113, "return value * (prestige * 2)"], ["data.Default.lua", 801, "rarityMod[1] = {1, 1.2}"], ["obj.Customer.lua", 318, "(1 + (location - 3) / 10)"]],
   },
   {
     id: "craft",
@@ -343,10 +303,6 @@ ${tbl(gradeHead, [["craftSpeed", ...CRAFT_SPEED]])}
 <li>Ascending an existing item takes item level × 60 s.</li>
 </ul>
 ${example(`A level-60 crafter on a level-40 item with grade-3 ingredients: ${v("start")} = clamp(6, 1, 4.5) = 4.5 → ${v("g")} = round(7.75 / 2) = 4 (A): time × 0.8.`)}`,
-    src: [["obj.Crafter.lua", 99, "params.cost * numberOfCraftItems"], ["obj.Craft.lua", 82, "default.craftGradeSpeed[self.grade]) * self.amount"], ["obj.Craft.lua", 69, "#self.matGradeLevel * 0.25"],
-      ["obj.Craft.lua", 76, "round((self.grade + matGradeAverage) / 2)"], ["data.Default.lua", 129, "round(1 + (craftLevel - itemLevel) / 4, 2), 1, 4.5"],
-      ["obj.Crafter.lua", 117, "item.prestigeLevel == self.ascLevel"], ["data.GameModsData.lua", 36, "default.craftGradeSpeed"], ["obj.Item.lua", 85, "if self.grade > 2 then"],
-      ["data.Default.lua", 1577, "local gradeBonus = grade * 2 - 4"], ["data.Default.lua", 1567, "(effectiveLevel - itemLevel) * 2, 40"], ["data.Default.lua", 618, "params.itemLevel * 60"]],
   },
   {
     id: "essence",
@@ -357,8 +313,6 @@ ${vars([
 ])}
 <p>Which essence: region = min(⌊(${v("L")} − 1) / 10⌋ + 1, 6): Forest, Water, Earth, Necro, Fire, Glacial essence for ascension 1; Nature, Tidal, Mountain, Death, Inferno, Arctic for ascension 2. The essence count doesn't depend on the item's value. Ascended items also pay round(rarityMod × (2 + 10${v("φ")})) essence per ${sl("enchant", "Enchanter attempt")}.</p>
 ${example(`A level-25 rarity-3 equipment: ${v("φ")} = 0.4 → round(1.5 × 40) = <b>${ascendEssence(25, 3, "equipment")}</b> to craft it ascended; <b>${ascendEssence(25, 3, "equipment", true)}</b> to upgrade a plain one, <b>${ascendEssence(25, 3, "equipment", true, 1)}</b> with a prefix (its rarity is then 4: <b>${ascendEssence(25, 4, "equipment", true, 1)}</b>).`)}`,
-    src: [["data.Default.lua", 574, "function default.prestigeItemMaterial"], ["data.Default.lua", 580, "math.modf((level - 1) / 10)"], ["data.Default.lua", 587, "20 + levelDiff * 50"],
-      ["data.Default.lua", 590, "round(rarityMod[item.rarity][1] * prestigeAmount)"], ["data.Default.lua", 593, "local mod = 4"], ["data.Default.lua", 610, "2 + levelDiff * 10"]],
   },
   {
     id: "enchant",
@@ -375,10 +329,6 @@ ${tbl(["Action", "Gold", "Success odds", "Break"], [
 </ul>
 ${note(`An item that never had a suffix compares against level 0 for its first suffix try (the code sets its suffix to 0 then).`)}
 ${example(`Level-60 Enchanter, level-40 grade-3 item without prefix: prefix odds = 2 × 20 + 6 = 46 → <b>45 %</b> per try, 1,600 gold + 1 rune the first time.`)}`,
-    src: [["data.Default.lua", 1696, "local goldCost = item.itemLevel * 40"], ["data.Default.lua", 1717, "clamp(round(combinedOdds), 10, 80)"], ["data.Default.lua", 1715, "item.enchantAttempt[2] * 4, 0, 40"],
-      ["data.Default.lua", 1751, "effectiveLevel + 10 + 2 * attempts + gradeBonus"], ["data.Default.lua", 1759, "(effectiveLevel - newSuffixLevel) * 2, 10, 95"], ["data.Default.lua", 1760, "math.min(attempts * 4, 100)"],
-      ["data.Default.lua", 1669, "item.itemLevel * 20 + item.enchantAttempt[1] * 20"], ["data.Default.lua", 1678, "item.enchantAttempt[1] * 0.4"], ["data.Default.lua", 1644, "local fibo"],
-      ["obj.Enchant.lua", 57, "prefixOdds > math.random(1, 100)"], ["obj.Enchant.lua", 73, "breakChance > math.random(1, 100)"], ["data.Default.lua", 1764, "function default.enchantTime"]],
   },
   {
     id: "map-essence",
@@ -397,15 +347,10 @@ ${formula(`HP × 1.5${v("m")}, &nbsp; atk, matk × ${v("m")}, &nbsp; def, mdef, 
 </ul>
 ${note(`The table has −0.2 for grade 1, but the code tests "grade &lt; 3" first, so grades 1–3 all add 0.`)}
 ${example(`${v("M")} = 3: ${v("m")} = 1 → HP ×1.5, atk ×1, def ×1. ${v("M")} = 5: ${v("m")} = 2 → HP ×3, atk ×2, def ×1.25.`)}`,
-    src: [["data.Default.lua", 757, "math.round(gradeBonus[grade] * essenceRewards[i + essenceTypes] * mapStats.essenceBase * (1 + partyLuck / 100))"],
-      ["obj.Map.lua", 105, "self.mapStats.essenceBase * (1 + sAmount)"], ["obj.Map.lua", 118, "self.mapStats.essenceBase * (1 + sAmount)"], ["obj.combat.Campaign.lua", 210, "if self.isFinished and self.isWin then"],
-      ["data.Default.lua", 644, "local mapPrestigeMod = {2, 3}"], ["data.Default.lua", 670, "elseif map.grade < 3 then"], ["data.Default.lua", 677, "mod * (1 + sAmount)"],
-      ["data.Default.lua", 686, "function default.statModFromMap"], ["obj.Enemy.lua", 73, "statValue = statValue * mapStats[k]"], ["data.Default.lua", 621, "function default.mapRoomQuantity"],
-      ["obj.Map.lua", 170, "treasurePerRoomPerGradeChance"], ["obj.Map.lua", 93, "math.ceil(self.levelReq / 10)"]],
   },
 ];
 
 export function statsPage(topic?: string): HTMLElement {
-  return refPage("stats", "Stats", "🧮", "How every number in the game is calculated, read from the game's code. Other pages link here instead of repeating the formulas.",
+  return refPage("stats", "Stats",
     STAT_TOPICS, STATS_SECTIONS, topic);
 }

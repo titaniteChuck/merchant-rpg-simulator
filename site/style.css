@@ -1277,3 +1277,59 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .xp-hidden-page .toolbar { margin: 8px 0 0; }
 .xp-hidden-page .xp-badge { margin-left: 0; }
 /* end expansions */
+
+/* wiki reference v2 */
+/* U31: Stats and Battle (wiki-ref.ts refPage): no visible title or intro (visually-hidden h1, like the other wiki
+   tabs); a sticky side panel of topics (.ref-side) beside the sections, the one being read marked aria-current;
+   below 760 px a compact sticky "Topics" dropdown (.ref-topics) replaces it. No source notes on the page any more. */
+.ref-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; }
+.ref-main { min-width: 0; }
+.ref-main > .ref-section:first-of-type h2.wiki-banner { margin-top: 0; }
+.ref-side { position: sticky; top: 12px; max-height: calc(100vh - 24px); display: flex; flex-direction: column; min-width: 0; }
+.ref-side-h { margin: 0 0 6px; padding-left: 12px; font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ref-side-list, .ref-topics-list { list-style: none; margin: 0; padding: 0; }
+.ref-side-list { position: relative; overflow-y: auto; overscroll-behavior: contain; border-left: 2px solid var(--border); scrollbar-width: thin; }
+.ref-side-list a, .ref-topics-list a {
+  display: block; padding: 5px 10px; text-decoration: none; font-size: 0.9rem; font-weight: 600; line-height: 1.3;
+  color: var(--muted); border-radius: 0 8px 8px 0;
+}
+.ref-side-list a { margin-left: -2px; border-left: 3px solid transparent; }
+.ref-side-list a:hover, .ref-topics-list a:hover { color: var(--fg); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.ref-side-list a[aria-current], .ref-topics-list a[aria-current] {
+  color: var(--fg); background: color-mix(in srgb, var(--accent) 16%, transparent); border-left-color: var(--trim);
+}
+.ref-side-list a:focus-visible, .ref-topics-list a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ref-topics { display: none; }
+.ref-page .ref-section { scroll-margin-top: 12px; }
+/* Battle: the two kinds of battle, side by side */
+.ref-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 4px 0 10px; }
+.ref-kind { padding: 12px 16px; border-radius: 10px; background: var(--card); border: 1px solid var(--border); border-top: 4px solid var(--trim); min-width: 0; }
+.ref-body .ref-kind h3 { margin: 0 0 6px; font-size: 1.02rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ref-kind ul { margin: 6px 0; }
+.ref-kind-tag { font-size: 0.7rem; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; padding: 1px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--fg); }
+.ref-kind-more { margin: 8px 0 0; font-size: 0.9rem; }
+@media (max-width: 760px) {
+  .ref-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .ref-side { display: none; }
+  .ref-topics { display: block; position: sticky; top: 0; z-index: 20; margin: 0 0 12px; }
+  .ref-topics > summary {
+    display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px; cursor: pointer; list-style: none;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); font-size: 0.9rem;
+  }
+  .ref-topics > summary::-webkit-details-marker { display: none; }
+  .ref-topics > summary::after { content: "▾"; margin-left: auto; color: var(--muted); transition: transform .15s; }
+  .ref-topics[open] > summary::after { transform: rotate(180deg); }
+  .ref-topics > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ref-topics-label { font-size: 0.72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); flex: none; }
+  .ref-topics-cur { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ref-topics > nav {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); max-height: min(60vh, 420px); overflow-y: auto; overscroll-behavior: contain;
+    padding: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-hover);
+  }
+  .ref-topics-list a { border-radius: 8px; padding: 8px 10px; }
+  .ref-topics-list a[aria-current] { box-shadow: inset 3px 0 0 var(--trim); }
+  .ref-page .ref-section { scroll-margin-top: 60px; }
+  .ref-kinds { grid-template-columns: minmax(0, 1fr); }
+}
+/* end wiki reference v2 */

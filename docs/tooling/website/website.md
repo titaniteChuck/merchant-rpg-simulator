@@ -325,21 +325,36 @@ flowchart LR
   - One section per topic with a stable anchor, `#/stats/<topic>` and `#/battle/<topic>`; the page scrolls to it. The
     anchors are the keys of `STAT_TOPICS` and `BATTLE_TOPICS` in `web/src/ui/wiki-ref.ts`: hero-stats, max-hp, damage,
     defence, hit-chance, crit, ap, luck, grade, time, quest-size, xp, item-stats, sell, craft, essence, enchant,
-    map-essence; setup, turn-order, rotation, targeting, attack, effects, buffs-debuffs, heals, revives, death,
+    map-essence; quests-and-maps, setup, turn-order, rotation, targeting, attack, effects, buffs-debuffs, heals, revives, death,
     battle-end, map-runs, quest-size.
   - Each section: formulas in readable math (HTML, `<sub>`/`<sup>`, fractions as `.frac`, no library), the variables,
-    a worked example, notes ("Unconfirmed" where the code doesn't settle it), and a discreet source line with the
-    `file:line` of the decompiled game.
+    a worked example and notes ("Unconfirmed" where the code doesn't settle it). Since U31 the pages cite **no game
+    code** (no `file:line` notes or tooltips, no Lua names): the decompiled-source references behind each section are
+    the `SOURCES` table of `web/test/wiki-ref.test.ts` (key `page/topic` → `[file, line, expected text]`), checked
+    there and never shipped to the site. Update a line there when a section's rule moves.
+  - Layout (U31, `refPage` in `wiki-ref.ts`): like the other wiki tabs, no visible title or intro (crumbs and a
+    visually-hidden h1). A sticky side panel (`.ref-side`, 220 px, left) lists the topics beside the sections and marks
+    the one being read (`aria-current="location"`, an IntersectionObserver over the sections, the band from 72 px
+    to 40 % of the viewport; one observer per page, the previous one disconnected). Below 760 px the panel is hidden and a compact
+    sticky "Topics" dropdown (`<details class="ref-topics">`, showing the current topic) sits at the top instead; it
+    closes on a pick, Escape or a click outside. Topic links scroll in place and `history.pushState` the
+    `#/PAGE/TOPIC` hash (no re-render); a shared link or Back goes through the wiki router as before.
+  - Battle starts with **Two kinds of battle** (`#/battle/quests-and-maps`): quests on the regional map (one enemy, from
+    the region's gathering bush to its bosses, quest size ×1 / ×3 / ×5 by hero tier) and maps (Scribe expansion: a run
+    of rooms to clear, HP carried over, random Treasure Bushes dropping stones, scrolls, the exit HP rule), linking
+    to `quest-size` and `map-runs`.
   - Linking from other pages: `statLink(topic, label?)` and `battleLink(topic, label?)` in `wiki-ref.ts` (an `a.wl`
     with the topic's one-line formula as its tooltip); `sl()` / `bl()` give the same link as an HTML string.
   - `test/wiki-ref.test.ts`: one section per topic, every cross-link resolves, the worked-example formulas match the
-    port (reduction, AP, grade, essence, item stat ranges), and every source line contains the expected code (when
-    `decompiled/` is there; skipped in CI).
+    port (reduction, AP, grade, essence, item stat ranges), no section body cites code (`.lua`, `obj.X`, `file:line`),
+    every section has `SOURCES` entries, and every one contains the expected code (when `decompiled/` is there;
+    skipped in CI).
   - Findings written up there: skill-parameter penetration (Pulverize "defPen 45"…) never applies (the attack keeps
     the lower of the skill's and the attacker's own, which is 0); a potion charge is used per map room, not per map;
     map grade 1 adds 0 to the enemy modifier (not −0.2); heroes have 0 evasion, so enemy hits always land; luck also
     raises map essence (× (1 + luck / 100)).
-  - CSS: the `wiki reference pages` block at the end of `site/style.css`.
+  - CSS: the `wiki reference pages` block of `site/style.css` (U25; its `.ref-toc` and `.ref-src` rules are unused
+    since U31), then the `wiki reference v2` block at the end (side panel, Topics dropdown, `.ref-kinds` cards).
 - Timeline cards (U24, `timeline.ts`): enemy pages have no Rotation section any more; each turn card of the timeline
   strip holds the skill's effect (`skillDesc`) under its name, and the whole card opens the skill page (the skill name
   stays the one real link; CSS stretches its click area over the card, `.tl-cell.tl-link`, with a hover and a focus

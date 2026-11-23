@@ -1,7 +1,7 @@
 /**
  * Wiki page "Battle" (#/battle, #/battle/<topic>, U25): how a fight runs, one section per topic (wiki-ref.ts
  * BATTLE_TOPICS), with links to the Stats page wherever a formula is involved. Read from the decompiled game (the
- * `src` lines, checked by test/wiki-ref.test.ts); the port in web/src/sim does the same (400/400 Lua-parity map runs).
+ * references in test/wiki-ref.test.ts `SOURCES`, not shown on the page); the port in web/src/sim does the same (400/400 Lua-parity map runs).
  */
 import { BATTLE_TOPICS, type BattleTopic, bl, example, formula, note, refPage, type RefSection, sl, tbl, unsure, v } from "./wiki-ref.ts";
 
@@ -20,6 +20,32 @@ const chips = (names: string[]) => `<ol class="ref-order">${names.map((n) => `<l
 
 export const BATTLE_SECTIONS: RefSection<BattleTopic>[] = [
   {
+    id: "quests-and-maps",
+    html: () => `<div class="ref-kinds">
+<div class="ref-kind">
+<h3>⚔️ Quests, on the regional map</h3>
+<ul>
+<li>One <b>single enemy</b> per quest, from the region's first bush (its gathering quest) up to its bosses, fought one at a time by the quest's party (up to 6 heroes).</li>
+<li><b>Quest size ×${v("N")}</b>: up to ×1, ×3 or ×5 by hero tier (1, 2, 3). Still one enemy, with ${v("N")} × its HP, and ${v("N")} × the loot and the time: ${bl("quest-size", "quest size")}.</li>
+<li>Win or lose in one fight; the heroes keep the lower of their battle HP and their HP before the quest.</li>
+<li>Bushes (gathering quests) drop mainly <b>leaves</b>, the ingredients of potions.</li>
+</ul>
+</div>
+<div class="ref-kind">
+<h3>🗺️ Maps <span class="ref-kind-tag">Scribe expansion</span></h3>
+<ul>
+<li>A <b>run of rooms</b>, one enemy per room, the last one the boss. The party must clear <b>every</b> room for the run to succeed (and pay its essence).</li>
+<li><b>HP carries over</b> from room to room: no refill between fights.</li>
+<li>Random <b>Treasure Bushes</b> can appear as extra rooms (more likely at a high map grade); they drop special materials such as <b>stones</b>.</li>
+<li><b>Scrolls</b> taken into the run (used up when it starts) act between rooms or for the whole run: healing, revive, escape, swap, Str / Int / Dex and speed.</li>
+<li><b>Exit HP rule</b>: each hero leaves with the lower of its HP at the end of the run and its HP on entering.</li>
+</ul>
+<p class="ref-kind-more">Details: ${bl("map-runs", "map runs")}, ${sl("map-essence", "map essence and enemy strength")}.</p>
+</div>
+</div>
+<p>Inside both, a fight follows the same rules: the sections below.</p>`,
+  },
+  {
     id: "setup",
     html: () => `<p>A quest is one fight between a party of up to 6 heroes and <b>one</b> enemy. A map is a series of such fights (${bl("map-runs", "map runs")}).</p>
 ${placesFigure}
@@ -28,8 +54,6 @@ ${placesFigure}
 <li>At setup each hero's effects are cleared and its stats rebuilt (${sl("hero-stats")}).</li>
 <li>The enemy: the quest's HP, atk, matk, def, mdef and eva (the rare variant's when rare), × the map's multipliers in a map (${sl("map-essence")}), max HP × ${sl("quest-size", "N")}; acc 100, crit 0, crit damage 2. It starts at full HP.</li>
 </ul>`,
-    src: [["obj.combat.Battle.lua", 46, "self:setupHero(self.backRow[n], n * 2 - 1)"], ["obj.combat.Battle.lua", 62, "if 0 < currentHp then"], ["obj.combat.Battle.lua", 63, "hero:resetStats()"],
-      ["obj.Enemy.lua", 75, "math.round(statValue * default.enemyMods[k])"], ["obj.Enemy.lua", 78, "self.acc = 100"]],
   },
   {
     id: "turn-order",
@@ -42,8 +66,6 @@ ${chips(["Enemy (first attack)", "B1", "F1", "B2", "F2", "B3", "F3"])}
 <li>The fight's end is only checked after the whole turn, so heroes after the killing blow still act (${bl("battle-end")}).</li>
 <li>An action counts even when a stun skips it; the number of actions sets part of the ${sl("time", "quest time")}.</li>
 </ul>`,
-    src: [["obj.combat.Battle.lua", 129, "function Battle:determineTurnOrder"], ["obj.combat.enemiesService.lua", 11, "return enemyType == 6"],
-      ["obj.combat.Battle.lua", 109, "self.turnOrder[actionNum].questHP > 0"], ["obj.combat.Battle.lua", 112, "self.actions = self.actions + 1"]],
   },
   {
     id: "rotation",
@@ -53,10 +75,8 @@ ${tbl(["turn", "1", "2", "3", "4", "5", "6", "7", "…"], [["slot played", 1, 2,
 <ul>
 <li>Hero slot <i>k</i> always meets enemy slot <i>k</i>: a fight is a 5-turn timetable, which is why a skill's place in the rotation matters (the skill pages' "Good against" tables use it).</li>
 <li>A dead or stunned combatant doesn't shift anyone's slots. Every fight (each map room too) starts again at slot 1.</li>
-<li>A hero's 5 skills must fit its ${sl("ap", "action points")}. The enemy plays its <code>attackList</code> (<code>attackListB</code> when rare).</li>
+<li>A hero's 5 skills must fit its ${sl("ap", "action points")}. The enemy plays its own 5-skill list (the rare variant has its own).</li>
 </ul>`,
-    src: [["obj.combat.Battle.lua", 110, "determineAction((self.turns - 1) % 5 + 1)"], ["obj.Combatant.lua", 24, "local actionName = self.attackList[turnNumber]"],
-      ["obj.Enemy.lua", 25, "default.enemyAttackList(self.questID, isRare)"]],
   },
   {
     id: "targeting",
@@ -75,9 +95,6 @@ ${tbl(["Pattern", "Who is hit"], [
 <li>Not random, not by threat: the split and the patterns only look at who is alive.</li>
 <li>Heals: Lesser Heal heals the front hero of the caster's row (a front-row caster, or one whose front hero is dead, heals itself); Greater Heal and party effects reach every living hero. A party effect with an unknown pattern reaches everyone.</li>
 </ul>`,
-    src: [["obj.Enemy.lua", 99, "function Enemy:getDamageRatio"], ["obj.Party.lua", 208, "function Party:getFirstRowRatio"], ["obj.Combatant.lua", 147, "damRatio == \"mid\""],
-      ["obj.Combatant.lua", 156, "damRatio == \"midline\""], ["obj.Party.lua", 11, "function Party:getHeroByStat"], ["data.AbilityFunc.lua", 2032, "getHeroByStat(\"questHP\", false)"],
-      ["data.AbilityFunc.lua", 487, "function abilityFunc:Taunt"], ["data.AbilityFunc.lua", 847, "local frontID = (self.partyLocation + 1) / 2"], ["obj.Party.lua", 71, "unknown string for damage ratio"]],
   },
   {
     id: "attack",
@@ -90,8 +107,6 @@ ${tbl(["Pattern", "Who is hit"], [
 <li>${sl("defence", "Defence reduction")} 100 / (100 + def) on the physical part, the same with mdef on the magical part; true damage ignores both (${sl("damage", "damage formula")}).</li>
 <li>The target's "damage received" effects (Mana Shield absorbs magic damage, Song of Defense…), then HP goes down; at 0 or less the target dies (${bl("death")}).</li>
 </ol>`,
-    src: [["obj.Combatant.lua", 376, "function Combatant:receiveAttack"], ["obj.Combatant.lua", 397, "\"OnDamage\""], ["obj.Combatant.lua", 421, "math.round(200 * attack.acc"],
-      ["obj.Combatant.lua", 457, "calculateReduction(self.def, attack.defPen)"], ["obj.Combatant.lua", 466, "\"DamageReceived\""], ["obj.Combatant.lua", 489, "if 0 >= self.questHP then"]],
   },
   {
     id: "effects",
@@ -118,9 +133,6 @@ ${tbl(["Trigger", "What it does", "Ends"], [
 <li>Effects without turns end at their first use; a dead combatant loses all its effects.</li>
 </ul>
 ${example(`Soul Barrier (turns 2, on the enemy, enemy acting last, cast on turn <i>k</i>) reflects every hero action of turns <i>k</i> + 1 and <i>k</i> + 2. A hero's 1-turn debuff on the enemy weakens the enemy's action of the same turn and still counts for the heroes acting before it on turn <i>k</i> + 1.`)}`,
-    src: [["obj.Combatant.lua", 27, "0 >= self.effectList[n].turns"], ["obj.Combatant.lua", 35, "self:determineStats(true)"], ["obj.Combatant.lua", 61, "currentEffect.trigger == \"OnTurn\""],
-      ["obj.Combatant.lua", 212, "atk = \"atkPct\""], ["obj.Combatant.lua", 262, "elseif params.reversible then"], ["obj.Combatant.lua", 265, "elseif params.stacks then"],
-      ["obj.Combatant.lua", 282, "self.effectList[effectID].trigger = \"OnTurn\""], ["obj.Party.lua", 83, "moreOptions.adjustTurns"], ["obj.Combatant.lua", 492, "self.effectList[n].remove = true"]],
   },
   {
     id: "buffs-debuffs",
@@ -137,9 +149,6 @@ ${example(`Soul Barrier (turns 2, on the enemy, enemy acting last, cast on turn 
 <li><b>Shields</b>: shield skills heal above max HP (overload, ${bl("heals")}); Mana Shield absorbs magic damage up to 60 % of the caster's matk; Block / Shield take a physical / magical hit at 22 %; Elusion makes hits 50 % to land.</li>
 </ul>
 ${note(`What each skill does turn by turn (buff, debuff, shield, reflect windows) is measured for every skill by the engine's skill probe and shown on the skill and enemy pages.`)}`,
-    src: [["obj.Combatant.lua", 308, "function Combatant:removeAllEffects"], ["obj.Combatant.lua", 319, "effect.cannotDispell"], ["data.AbilityFunc.lua", 836, "self.party:removeAllEffects(true, true)"],
-      ["data.AbilityFunc.lua", 840, "target:removeAllEffects(false, true)"], ["data.AbilityFunc.lua", 844, "target:removeAllEffects(nil, true)"], ["data.AbilityFunc.lua", 1616, "function abilityFunc:Pulverize"],
-      ["data.AbilityFunc.lua", 2254, "return \"Basic\""], ["data.AbilityFunc.lua", 2451, "cannotDispell = true"], ["data.AbilityFunc.lua", 538, "stats = {atk = 0.22}"], ["data.AbilityFunc.lua", 1446, "attack.hitChance = 50"]],
   },
   {
     id: "heals",
@@ -151,9 +160,6 @@ ${note(`What each skill does turn by turn (buff, debuff, shield, reflect windows
 <li>Out of battle, potions heal up to max HP. Overheal is trimmed after each map room (${bl("map-runs")}).</li>
 </ul>
 ${example(`A hero at 984 / 1,100 HP healed for 150: <b>1,100</b>. A later heal while it is at 1,250 from a shield: <b>nothing</b>.`)}`,
-    src: [["obj.Combatant.lua", 337, "function Combatant:receiveHeal"], ["obj.Combatant.lua", 338, "if self.isDead and not revive then"], ["obj.Combatant.lua", 359, "if self.questHP > self.maxHP then"],
-      ["obj.Combatant.lua", 364, "math.min(self.questHP, self.maxHP)"], ["obj.Combatant.lua", 369, "self.questHP = self.questHP + totalHeal"], ["data.AbilityFunc.lua", 1150, "self.def * 1, false, true"],
-      ["data.AbilityFunc.lua", 848, "0.3 * (self.matk + self.acc) + 2 * self.level"], ["data.AbilityFunc.lua", 856, "0.11 * (self.matk + self.acc) + self.level"]],
   },
   {
     id: "revives",
@@ -162,8 +168,6 @@ ${example(`A hero at 984 / 1,100 HP healed for 150: <b>1,100</b>. A later heal w
 <li><b>Revive scrolls</b> (maps only, after a won room): the first dead hero (same order) comes back with <b>full</b> max HP. Revive: 1 charge; Revive +1: 3 charges.</li>
 <li>After a quest or map, a dead hero stays dead until revived for level × 10 gold (× tier from tier 2): ${sl("max-hp")}.</li>
 </ul>`,
-    src: [["data.AbilityFunc.lua", 819, "hero.isDead and hero.reviveCooldown == 0"], ["data.AbilityFunc.lua", 820, "hero:receiveHeal(0.5, true, false, true)"], ["obj.Combatant.lua", 356, "self.reviveCooldown = 2"],
-      ["obj.Combatant.lua", 21, "math.max(0, self.reviveCooldown - 1)"], ["data.ScrollsData.lua", 41, "target.questHP = target.maxHP"], ["data.ScrollsData.lua", 84, "charges = 3"]],
   },
   {
     id: "death",
@@ -173,7 +177,6 @@ ${example(`A hero at 984 / 1,100 HP healed for 150: <b>1,100</b>. A later heal w
 <li>A lost quest kills the whole party; so does a lost map room (unless an Escape scroll ended the run first).</li>
 <li><b>Cooldowns</b>: skills have none. The 5-slot ${bl("rotation")} is the only timing; the one cooldown in the game is the revive one (${bl("revives")}).</li>
 </ul>`,
-    src: [["obj.Combatant.lua", 489, "if 0 >= self.questHP then"], ["obj.Party.lua", 161, "0 < hero.questHP"], ["obj.Quest.lua", 226, "not isWin then"], ["obj.combat.Campaign.lua", 71, "not (self.isWin or self.isEscape)"]],
   },
   {
     id: "battle-end",
@@ -183,8 +186,6 @@ ${example(`A hero at 984 / 1,100 HP healed for 150: <b>1,100</b>. A later heal w
 <li>Quest end: each hero keeps round(min(battle HP, HP before)), XP for the living, one potion charge used.</li>
 <li>The loot (${sl("luck", "luck")}, ${sl("quest-size", "×N")}) and the quest time (${sl("time")}) follow from the grade.</li>
 </ul>`,
-    src: [["obj.combat.Battle.lua", 86, "if self:areHeroesFainted() then"], ["obj.combat.Battle.lua", 91, "if 0 >= self.enemy.questHP then"], ["obj.combat.Battle.lua", 95, "if self.turns >= 200 then"],
-      ["obj.combat.questService.lua", 157, "if battle.hasWon == false then"]],
   },
   {
     id: "map-runs",
@@ -203,19 +204,14 @@ ${formula(`HP<sub>after map</sub> = round(min(HP<sub>end of run</sub>, HP<sub>en
 </ul>
 ${unsure(`Fleeing: the code we have has no way to leave a run other than the Escape scroll.`)}
 ${example(`A hero enters at 900 / 1,200 HP, drops to 400, is healed to 1,150 and ends the run at 1,000: it leaves with <b>900</b>.`)}`,
-    src: [["obj.combat.GameCampaigns.lua", 39, "campaign.backRow[i].questHP = campaign.backRow[i].hp"], ["obj.combat.Campaign.lua", 156, "useQuestHp = true"],
-      ["obj.combat.Battle.lua", 27, "currentHp = hero.questHP"], ["obj.combat.Campaign.lua", 119, "math.ceil(math.min(hero.questHP, hero.maxHP))"], ["obj.combat.Campaign.lua", 200, "checkEscape(self)"],
-      ["data.ScrollsData.lua", 13, "dead / total >= scrollData.deadPart"], ["data.ScrollsData.lua", 37, "math.min(oldHp + stats.hp, target.maxHP)"], ["obj.combat.Campaign.lua", 70, "math.min(hero.questHP, hero.hp)"],
-      ["obj.combat.GameCampaigns.lua", 59, "putIntoPlayerInventory"], ["obj.Hero.lua", 238, "campaign.battleBuff"]],
   },
   {
     id: "quest-size",
     html: () => `<p>A quest run ×${v("N")} is still <b>one</b> fight against <b>one</b> enemy with ${v("N")} × its max HP; its attacks, defences and rotation are unchanged. It takes more turns, which lowers the ${sl("grade")}; gold, time, XP and loot are multiplied: ${sl("quest-size")}.</p>`,
-    src: [["obj.Enemy.lua", 77, "self.maxHP = self.maxHP * self.amount"], ["obj.combat.questService.lua", 183, "(8 + questInfo.region * 3 - turns) / 4"]],
   },
 ];
 
 export function battlePage(topic?: string): HTMLElement {
-  return refPage("battle", "Battle", "🗡️", "How a fight runs, step by step, read from the game's code. The formulas themselves are on the Stats page.",
+  return refPage("battle", "Battle",
     BATTLE_TOPICS, BATTLE_SECTIONS, topic);
 }

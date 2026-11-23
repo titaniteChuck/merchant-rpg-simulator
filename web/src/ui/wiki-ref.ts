@@ -8,7 +8,8 @@
  *
  * The topic ids below are the anchors: keep them stable (other pages and bookmarks use them). The sections themselves
  * are in wiki-stats.ts and wiki-battle.ts; this file has the catalogs, the link helpers and the blocks both pages use
- * (formula, variables, example, source note). Section bodies are trusted static HTML strings (no user input).
+ * (formula, variables, example, note). Section bodies are trusted static HTML strings (no user input). The pages cite
+ * no game code: the decompiled-source references behind each section live in test/wiki-ref.test.ts (`SOURCES`).
  */
 import { el } from "./dom.ts";
 
@@ -38,6 +39,7 @@ export type StatTopic = keyof typeof STAT_TOPICS;
 
 /** Battle page topics: anchor → [title, one-line summary]. */
 export const BATTLE_TOPICS = {
+  "quests-and-maps": ["Two kinds of battle", "quests: one enemy, ×1 / ×3 / ×5; maps (Scribe): a run of rooms to clear, HP carried over"],
   "setup": ["Setup and rows", "up to 6 heroes: back row = places 1, 3, 5; front row = 2, 4, 6; one enemy"],
   "turn-order": ["Turn order", "B1, F1, B2, F2, B3, F3, then the enemy (the enemy first on first-attack quests)"],
   "rotation": ["The 5-slot rotation", "everyone plays slot ((turn − 1) mod 5) + 1: hero slot k meets enemy slot k"],
@@ -99,46 +101,119 @@ export const tbl = (head: string[], rows: (string | number)[][]): string =>
 export const v = (name: string): string => `<var>${name}</var>`;
 
 // ---------------------------------------------------------------- sections and pages
-/** Where a rule is in the game's decompiled Lua: [file, line, text expected on that line] (checked by the tests). */
-export type Src = [file: string, line: number, needle: string];
-
+/**
+ * A section of a reference page. The game-code references behind each rule (decompiled file and line) are not part of
+ * it: they are in test/wiki-ref.test.ts (`SOURCES`), checked against the decompiled game, and never shown on the site.
+ */
 export interface RefSection<T extends string = string> {
   id: T;
   /** Body: trusted static HTML (built at render time, after the game data is loaded). */
   html: () => string;
-  src: Src[];
 }
 
 const sectionId = (page: string, topic: string) => `${page}-${topic}`;
 
-/** The source note under a section: "Source: obj.Hero.lua:178 · …" (file:line in the decompiled game). */
-function sourceNote(src: Src[]): HTMLElement {
-  const p = el("p", { class: "ref-src small muted" }, "Source (decompiled game): ");
-  src.forEach(([file, line], i) => p.append(...(i ? [" · "] : []), el("code", { title: `${file}, line ${line}` }, `${file}:${line}`)));
-  return p;
-}
+/** The page on screen: its scroll spy and its Topics dropdown (a new page replaces them). */
+let spy: IntersectionObserver | undefined;
+let openDrop: HTMLDetailsElement | undefined;
+let docListener = false;
 
 /**
- * A reference page: crumbs, title, lead, table of contents, then one <section id="PAGE-TOPIC"> per topic. When `topic`
- * is given (#/stats/luck) the page scrolls to it once rendered (the wiki's router scrolls to the top first).
+ * A reference page, laid out like the other wiki tabs: crumbs and a visually-hidden h1 (no visible title or intro).
+ * Then a sticky side panel listing the topics, beside one <section id="PAGE-TOPIC"> per topic; the panel marks the
+ * section being read (IntersectionObserver). Below 760 px the panel is hidden and a compact sticky "Topics" dropdown
+ * sits at the top instead. CSS: the `wiki reference v2` block of site/style.css.
+ *
+ * A topic link scrolls in place and pushes #/PAGE/TOPIC with history.pushState (no re-render); a shared link or Back
+ * goes through the wiki's router, and the page scrolls to `topic` once rendered.
  */
-export function refPage(page: "stats" | "battle", title: string, icon: string, lead: string,
+export function refPage(page: "stats" | "battle", title: string,
   topics: Record<string, readonly [string, string]>, sections: RefSection[], topic?: string): HTMLElement {
-  const toc = el("nav", { class: "ref-toc", "aria-label": `${title}: topics` },
-    el("ol", {}, ...sections.map((s) => el("li", {}, el("a", { href: `#/${page}/${s.id}` }, topics[s.id][0])))));
+  const href = (id: string) => `#/${page}/${id}`;
+  const list = (cls: string) => el("ol", { class: cls }, ...sections.map((s) =>
+    el("li", {}, el("a", { href: href(s.id), "data-topic": s.id, title: topics[s.id][1] }, topics[s.id][0]))));
+
+  const sideList = list("ref-side-list");
+  const side = el("nav", { class: "ref-side", "aria-label": `${title}: topics` }, el("p", { class: "ref-side-h" }, "Topics"), sideList);
+  const current = el("span", { class: "ref-topics-cur" });
+  const summary = el("summary", {}, el("span", { class: "ref-topics-label" }, "Topics"), current);
+  const drop = el("details", { class: "ref-topics" }, summary, el("nav", { "aria-label": `${title}: topics` }, list("ref-topics-list")));
+  openDrop = drop;
+
   const body = sections.map((s) => {
-    const sec = el("section", { class: "wiki-section ref-section", id: sectionId(page, s.id), "aria-labelledby": `${sectionId(page, s.id)}-h` });
-    const h2 = el("h2", { class: "wiki-banner", id: `${sectionId(page, s.id)}-h` }, topics[s.id][0],
-      el("a", { class: "ref-anchor", href: `#/${page}/${s.id}`, "aria-label": `Link to “${topics[s.id][0]}”`, title: "Link to this section" }, "#"));
+    const sid = sectionId(page, s.id);
+    const sec = el("section", { class: "wiki-section ref-section", id: sid, "aria-labelledby": `${sid}-h`, "data-topic": s.id });
+    const h2 = el("h2", { class: "wiki-banner", id: `${sid}-h` }, topics[s.id][0],
+      el("a", { class: "ref-anchor", href: href(s.id), "data-topic": s.id, "aria-label": `Link to “${topics[s.id][0]}”`, title: "Link to this section" }, "#"));
     const content = el("div", { class: "ref-body" });
     content.innerHTML = s.html();
-    sec.append(h2, content, sourceNote(s.src));
+    sec.append(h2, content);
     return sec;
   });
+
+  const links = [...side.querySelectorAll<HTMLAnchorElement>("a"), ...drop.querySelectorAll<HTMLAnchorElement>("nav a")];
+  const setActive = (id: string) => {
+    for (const a of links) {
+      if (a.dataset.topic === id) a.setAttribute("aria-current", "location");
+      else a.removeAttribute("aria-current");
+    }
+    current.textContent = topics[id]?.[0] ?? "";
+    // keep the marked topic visible when the panel itself scrolls (this never scrolls the page)
+    const on = sideList.querySelector<HTMLElement>(`a[data-topic="${id}"]`);
+    if (on && sideList.scrollHeight > sideList.clientHeight + 1) {
+      const top = on.offsetTop, bottom = top + on.offsetHeight;
+      if (top < sideList.scrollTop) sideList.scrollTop = top - 8;
+      else if (bottom > sideList.scrollTop + sideList.clientHeight) sideList.scrollTop = bottom - sideList.clientHeight + 8;
+    }
+  };
+  setActive(topic && topics[topic] ? topic : sections[0].id);
+
+  const root = el("div", { class: `ref-page ref-${page}` },
+    el("p", { class: "crumbs small" }, el("a", { href: "#/" }, "Wiki"), el("span", { "aria-hidden": "true" }, " › "), el("span", {}, title)),
+    el("h1", { class: "sr-only" }, title),
+    el("div", { class: "ref-layout" }, side, el("div", { class: "ref-main" }, drop, ...body)));
+
+  root.addEventListener("click", (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>("a[data-topic]");
+    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    const id = a.dataset.topic!;
+    if (location.hash !== href(id)) history.pushState(null, "", href(id));
+    drop.open = false;
+    document.getElementById(sectionId(page, id))?.scrollIntoView({ block: "start" });
+    setActive(id);
+  });
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && drop.open) { drop.open = false; summary.focus(); }
+  });
+  if (!docListener) {
+    // one listener for the whole session: a click outside the open dropdown closes it
+    docListener = true;
+    document.addEventListener("click", (e) => {
+      if (openDrop?.open && !openDrop.contains(e.target as Node)) openDrop.open = false;
+    });
+  }
+
+  // scroll spy: the first section crossing the band from 72 px (below the phone's sticky Topics bar and the sections'
+  // scroll margin) to 40 % of the viewport is the one being read
+  spy?.disconnect();
+  spy = undefined;
+  if (typeof IntersectionObserver !== "undefined") {
+    const visible = new Set<string>();
+    spy = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        const id = (en.target as HTMLElement).dataset.topic!;
+        if (en.isIntersecting) visible.add(id);
+        else visible.delete(id);
+      }
+      const first = sections.find((s) => visible.has(s.id));
+      if (first) setActive(first.id);
+    }, { rootMargin: "-72px 0px -60% 0px" });
+    for (const sec of body) spy.observe(sec);
+  }
+
   if (topic && topics[topic]) {
     requestAnimationFrame(() => document.getElementById(sectionId(page, topic))?.scrollIntoView({ block: "start" }));
   }
-  return el("div", { class: `ref-page ref-${page}` },
-    el("p", { class: "crumbs small" }, el("a", { href: "#/" }, "Wiki"), el("span", { "aria-hidden": "true" }, " › "), el("span", {}, title)),
-    el("h1", {}, `${icon} ${title}`), el("p", { class: "lead" }, lead), toc, ...body);
+  return root;
 }
