@@ -11,3 +11,7 @@
 - **Update**: Only the Roadmap session commits and pushes; U5 (ascension outlines, silver/gold) added.
 - **Update**: E2, U0 done; E3 merging; U1 agent; E7, E8 added; release agent does verify/commit/push/CI.
 - **Update**: E3 merged; E7, U5 to release; E8, U2 in progress.
+- **Update**: E7, U5 done; E8 committing; E9, E10 added.
+- **Update**: U1 built, merging; E11 added.
+- **Update**: E8, U1, U2 done; U3 and E9 in progress.
+- **Update**: U6a (wiki review, agent) and U6b (save viewer review, UI session) added from the user's review.
