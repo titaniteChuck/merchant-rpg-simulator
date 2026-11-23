@@ -10,8 +10,9 @@ generator, must give the same trace as the game's own code. So the port is
 `web/test/fixtures/{fights,maps,items}.json` were recorded from the game's own code
 (`tools/sim/fixtures.py`, running `harness.lua` in Lua 5.1 with the shared LCG) and are frozen:
 final set of 2026-11-23, 3000 fights, 400 map runs, 1949 item rolls, all matching.
-They embed the player's heroes, so they stay local (git-ignored). Any change to `web/src/sim/`
-must keep `npm run difftest`, `difftest:maps` and `difftest:items` at 100 %.
+They embed the player's heroes, so they stay local (git-ignored). `npm test` runs all three
+comparisons when the fixtures are present (`test/lua-parity.test.ts`) and fails on any difference;
+without them (CI) those three tests are skipped. Any change to `web/src/sim/` must keep them at 100 %.
 
 ## Module map
 
