@@ -6,10 +6,10 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
     "difftest": "node test/difftest.ts",
-    "combat": "node src/tools/cli.ts",
     "difftest:maps": "node test/difftest-maps.ts",
     "difftest:items": "node test/difftest-items.ts",
-    "site": "scripts/assemble-site.sh"
+    "site": "scripts/assemble-site.sh",
+    "export:gamedata": "node src/tools/export-gamedata.ts"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

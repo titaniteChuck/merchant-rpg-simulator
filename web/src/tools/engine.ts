@@ -1,6 +1,6 @@
 /**
  * Front-end to the TypeScript combat engine (web/src/sim/api.ts), port of
- * tools/sim/engine.py. Every call into the engine goes through here, so the
+ * the former tools/sim/engine.py. Every call into the engine goes through here, so the
  * runners in combat.ts do not depend on the engine's exact signatures.
  *
  *   loadGameData(json)            // inventory/gamedata.json
@@ -134,7 +134,7 @@ export class Sim {
   }
 }
 
-// ---------------------------------------------------------------- economy (tools/gamedata.py)
+// ---------------------------------------------------------------- economy (as the former tools/gamedata.py)
 const STACKABLE = new Set(["material", "consumable"]);
 
 export function itemName(itype: string, iid: number): string {

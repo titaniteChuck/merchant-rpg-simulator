@@ -4,8 +4,6 @@
 /decompiled/
 *.lu
 *.lua
-# Our own Lua harness is the only Lua file we publish.
-!/tools/sim/harness.lua
 
 # --- Personal data ------------------------------------------------------------
 # Save snapshots and anything parsed from them.
@@ -15,16 +13,10 @@
 /reports/
 
 # --- Third-party binaries (see README for how to get them) --------------------
-/tools/_vendor/
 /tools/unluac.jar
 *.jar
 
-# --- Python / editors / OS ----------------------------------------------------
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
+# --- Editors / OS -------------------------------------------------------------
 .idea/
 .vscode/
 .DS_Store

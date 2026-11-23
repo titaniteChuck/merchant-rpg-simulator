@@ -1,6 +1,6 @@
 /**
  * Merchant combat simulator: parties, skills and gear against quest enemies.
- * TypeScript port of tools/combat.py, running on the TypeScript engine (web/src/sim).
+ * TypeScript port of the former tools/combat.py (removed 2026-11-23), running on the TypeScript engine (web/src/sim).
  *
  * Every command takes the Sim, a Roster (heroes from the save) and its options,
  * writes its report through `io.out` (stdout in the CLI, the page in the browser),
@@ -411,7 +411,7 @@ export function cmdSolo(sim: Sim, roster: Roster,
   o: { heroes?: string; quests?: string; n?: number; rare?: boolean; threshold?: number }, io: IO = consoleIO) {
   const n = o.n ?? 100, threshold = o.threshold ?? 90;
   const hids = roster.ids(o.heroes ?? "all");
-  // Quest ids are not filtered by hero ids (tools/combat.py did, through Roster.ids).
+  // Quest ids are not filtered by hero ids (the former combat.py did, through Roster.ids).
   // With --rare, quests without a rare variant are skipped (the game code fails on them).
   const quests = (o.quests ? parseIds(o.quests, (q) => q in G.questData)
     : Object.keys(G.questData).map(Number).sort((a, b) => a - b))
@@ -725,8 +725,7 @@ export function cmdScrolls(sim: Sim, roster: Roster,
     };
     rec(0, []);
   }
-  // Python priced scrolls with the profit solver (tools/profit.py), not ported: pass `prices` to show costs.
-  // crafted cost of each scroll (profit solver at grade 3), as tools/combat.py; pricing is a convenience
+  // crafted cost of each scroll (profit solver at grade 3); pricing is a convenience
   let price: Record<number, number> = o.prices ?? {};
   if (!o.prices) {
     try {

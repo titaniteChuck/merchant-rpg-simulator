@@ -1,6 +1,6 @@
 /**
  * Enchanter model: expected cost of adding a prefix or suffix to an item you own.
- * Port of tools/enchant.py; the game rules are documented there and in
+ * Port of the former tools/enchant.py; the game rules are documented here and in
  * docs/tooling/profit-calculator.
  *
  * - Every attempt pays gold + a gem (prefix) or rune (suffix) by item-level band,

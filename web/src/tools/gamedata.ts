@@ -1,5 +1,5 @@
 /**
- * The Merchant game data in the shape tools/gamedata.py gives it (port of its Game class),
+ * The Merchant game data in the shape the former tools/gamedata.py gave it (port of its Game class),
  * built from inventory/gamedata.json (loaded with loadGameData, web/src/sim/data.ts).
  *
  *   const g = gameFromData()          // after loadGameData(json)

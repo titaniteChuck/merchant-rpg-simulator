@@ -17,7 +17,7 @@ timestamp: 2026-11-23
 - [Encoding](#encoding)
 - [Compact items](#compact-items)
 - [Usage](#usage)
-- [Exported tables](#exported-tables)
+- [Exported tables (former command line)](#exported-tables-former-command-line)
 
 ## Rule: never touch the game files
 
@@ -77,21 +77,15 @@ Solar2D `system.DocumentsDirectory`, company `Retora`, app `Merchant`, Steam app
 
 ## Usage
 
-```bash
-python3 tools/savegame.py --list                 # OS, candidate folders, slots found
-python3 tools/savegame.py                        # slot 1: summary, crafters, heroes, maps, inventory
-python3 tools/savegame.py --show maps --show inventory   # only some sections (summary crafters heroes gear maps inventory)
-python3 tools/savegame.py --export               # also write saves/*.csv (see below)
-python3 tools/savegame.py --slot PlayerDataBackup2 --json /tmp/save.json
-python3 tools/profit.py --from-save              # crafter/Enchanter levels from the save + 'owned' column
-```
+The save viewer page (`site/save.html`) reads the file in the browser; nothing is uploaded. "Click to choose" reopens
+in the save folder after the first pick (Chrome, Edge). In code, `web/src/tools/save.ts` `loadSaveText()` parses a
+save's text into `{raw, inventory, mapInventory, sales, heroes, crafters}`; `owned()` counts items per (item, asc).
 
-- In Python: `load_save()` returns a `Save` object (`raw`, `inventory`, `map_inventory`, `sales`, `heroes`, `crafters`, `info`, `owned()`).
-- `profit.py --from-save` sets `--crafter-level` to the lowest level among crafters 1-6 and
-  `--enchanter-level` to crafter 7's level, unless those flags are given.
-  The `owned` column counts inventory, maps, sale slots and hero gear per (item, asc).
+The former command line (`savegame.py`, then `savegame-cli.ts`) also found the save folder on disk (Windows, WSL,
+macOS, Steam/Proton), copied it to `saves/snapshot/` and printed a report; it was removed with the move to a
+website-only project.
 
-## Exported tables
+## Exported tables (former command line)
 
 `--export [DIR]` (default `saves/`; refuses the game folder):
 

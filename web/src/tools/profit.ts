@@ -1,16 +1,11 @@
 /**
  * Merchant profitability calculator: sell value vs. full production cost.
- * Port of tools/profit.py (the cost model is documented there and in
- * docs/tooling/profit-calculator). Runs in the browser and in Node:
+ * Port of the former tools/profit.py (removed 2026-11-23; the cost model is documented in
+ * docs/tooling/profit-calculator). Browser-safe library (the battle page prices scrolls with it):
  *
  *   loadGameData(json)
  *   const s = new Solver(gameFromData(), { grade: 3 }).solve()
  *   const rows = buildRows(s, ["equipment", "consumable", "map"])
- *
- * Command line (from web/), same options as the Python script:
- *
- *   node src/tools/profit.ts [--grade 3] [--luck 0] [--alloc value|full] [--essence-from ESSENCE=MAP[@ASC] ...]
- *                            [--hero-hour-cost 0] [--top 25] [--type equipment] [--save FILE]
  *
  * Because maps need essences and give essences, costs are solved by repeated relaxation until they stop changing.
  */
@@ -740,13 +735,13 @@ export function parseEssenceFrom(values: string[] | undefined, g: Game): Map<num
   return out;
 }
 
-/** Sort as profit.py does: by `key` descending, "" last, ties in table order. */
+/** Sort as the former profit.py did: by `key` descending, "" last, ties in table order. */
 export function sortRows(rows: Row[], key: string): Row[] {
   const v = (r: Row) => (r[key] === "" || r[key] === undefined ? -INF : Number(r[key]));  // PyFloat -> valueOf
   return rows.sort((a, b) => v(b) - v(a) || 0);
 }
 
-// ------------------------------------------------------------------ command line
+// ------------------------------------------------------------------ CSV
 /** CSV as csv.DictWriter writes it (numbers in JS notation: 35 where Python may write 35.0). */
 export function toCsv(rows: Row[]): string {
   if (!rows.length) return "";
@@ -778,7 +773,7 @@ export interface ProfitOptions extends SolverOptions {
   labels?: { luck?: string; heroHourCost?: string };
 }
 
-/** Everything `python3 tools/profit.py` computes and prints, without touching files. */
+/** Every table of the profit model plus the summary lines, without touching files. */
 export function profitReport(g: Game, o: ProfitOptions = {}): ProfitReport {
   const grade = o.grade ?? 3, alloc = o.alloc ?? "value", sort = o.sort ?? "best_profit", top = o.top ?? 25;
   const s = new Solver(g, { ...o, grade, alloc, essenceFrom: o.essenceFrom ?? parseEssenceFrom(o.essenceFromSpecs, g) }).solve();
@@ -810,78 +805,4 @@ export function profitReport(g: Game, o: ProfitOptions = {}): ProfitReport {
       `${pfs(r["best_margin%"]).padStart(10)}  ${String(r.best_strategy).padEnd(18)} ${r.how}`);
   }
   return { tag, rows, essence: buildEssenceRows(s), ascendModded: buildAscendModdedRows(s), enchant: buildEnchantRows(s), solver: s, lines };
-}
-
-/** str() of a Python float. */
-const pyFloat = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
-
-async function main(argv: string[]): Promise<void> {
-  const { readFileSync, mkdirSync, writeFileSync } = await import("node:fs");
-  const { dirname, join, resolve } = await import("node:path");
-  const { fileURLToPath } = await import("node:url");
-  const { parseArgs } = await import("node:util");
-  const { loadGameData } = await import("../sim/data.ts");
-  const { gameFromData } = await import("./gamedata.ts");
-  const { loadSaveText, owned: ownedOf } = await import("./save.ts");
-  const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-  const { values: v } = parseArgs({
-    args: argv,
-    options: {
-      grade: { type: "string", default: "3" }, luck: { type: "string" }, alloc: { type: "string", default: "value" },
-      "essence-from": { type: "string", multiple: true }, "hero-hour-cost": { type: "string" },
-      type: { type: "string", multiple: true }, "crafter-level": { type: "string" }, "enchanter-level": { type: "string" },
-      "no-map-enchant": { type: "boolean" }, "map-suffix-max": { type: "string" }, "no-map-mods": { type: "boolean" },
-      sort: { type: "string", default: "best_profit" }, top: { type: "string", default: "25" },
-      out: { type: "string", default: join(ROOT, "reports") }, save: { type: "string" },
-      gamedata: { type: "string", default: join(ROOT, "inventory/gamedata.json") },
-    },
-  });
-  const num = (x: string | undefined, name: string) => {
-    if (x === undefined) return undefined;
-    const n = Number(x);
-    if (Number.isNaN(n)) throw new Error(`--${name}: not a number: ${x}`);
-    return n;
-  };
-  const grade = num(v.grade, "grade")!;
-  if (![1, 2, 3, 4, 5].includes(grade)) throw new Error("--grade: 1-5");
-  if (v.alloc !== "value" && v.alloc !== "full") throw new Error("--alloc: value or full");
-  loadGameData(JSON.parse(readFileSync(v.gamedata!, "utf8")));
-  const g = gameFromData();
-  let crafterLevel = num(v["crafter-level"], "crafter-level");
-  let enchanterLevel = num(v["enchanter-level"], "enchanter-level");
-  let owned: Owned | null = null;
-  if (v.save) {
-    const sv = loadSaveText(readFileSync(v.save, "utf8"));
-    owned = ownedOf(sv);
-    const base = [...sv.crafters].filter(([cid, c]) => cid <= 6 && c.level).map(([, c]) => c.level as number);
-    if (crafterLevel === undefined && base.length) crafterLevel = Math.min(...base);
-    if (enchanterLevel === undefined) enchanterLevel = sv.crafters.get(7)?.level ?? 0;
-    console.log(`save: ${v.save}, crafter levels ` + [...sv.crafters].sort((a, b) => a[0] - b[0])
-      .map(([cid, c]) => `${g.crafters.get(cid)?.name ?? cid} ${c.level}/asc${c.prestigeLevel ?? 0}`).join(", "));
-  }
-  const report = profitReport(g, {
-    grade, luck: num(v.luck, "luck"), alloc: v.alloc,
-    // argparse: the int default prints "0", a value given on the command line is a float ("0.0").
-    labels: { luck: v.luck === undefined ? "0" : pyFloat(num(v.luck, "luck")!),
-      heroHourCost: v["hero-hour-cost"] === undefined ? "0" : pyFloat(num(v["hero-hour-cost"], "hero-hour-cost")!) }, heroHourCost: num(v["hero-hour-cost"], "hero-hour-cost"),
-    essenceFromSpecs: v["essence-from"], crafterLevel: crafterLevel ?? 60, mapMods: !v["no-map-mods"],
-    enchanterLevel: enchanterLevel ?? 60, mapEnchant: !v["no-map-enchant"], mapSuffixMax: num(v["map-suffix-max"], "map-suffix-max") ?? null,
-    types: v.type, sort: v.sort, top: num(v.top, "top"), owned,
-  });
-  mkdirSync(v.out!, { recursive: true });
-  const t = report.tag;
-  for (const [name, rows] of [[`profit_${t}.csv`, report.rows], [`essence_sources_${t}.csv`, report.essence],
-    [`ascend_modded_${t}.csv`, report.ascendModded], [`enchant_${t}.csv`, report.enchant]] as const) {
-    writeFileSync(join(v.out!, name), toCsv(rows));
-  }
-  for (const line of report.lines) console.log(line);
-  console.log(`\nFull tables in ${v.out}: profit_${t}.csv, enchant_${t}.csv, essence_sources_${t}.csv, ascend_modded_${t}.csv`);
-}
-
-// Run as a script (node src/tools/profit.ts); importing the module (browser, tests) does nothing.
-if (typeof process !== "undefined" && /[\\/]profit\.ts$/.test(process.argv?.[1] ?? "")) {
-  main(process.argv.slice(2)).catch((e) => {
-    console.error(`error: ${(e as Error).message}`);
-    process.exit(1);
-  });
 }

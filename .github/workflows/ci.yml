@@ -22,13 +22,3 @@ jobs:
       - run: npx tsc --noEmit
       # Unit tests only: the differential test needs the game files and stays local.
       - run: node --test test/*.test.ts
-
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - name: Byte-compile the tools
-        run: python -m py_compile tools/*.py tools/sim/*.py

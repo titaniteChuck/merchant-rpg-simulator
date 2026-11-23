@@ -4,4 +4,4 @@
 
 ## Main concepts
 
-- [save-loader](./save-loader.md) - Where the game keeps its saves, how they are encoded, and how savegame.py reads them.
+- [save-loader](./save-loader.md) - Where the game keeps its saves, how they are encoded, and how the website reads them.

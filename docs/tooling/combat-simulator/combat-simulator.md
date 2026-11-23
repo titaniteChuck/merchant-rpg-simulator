@@ -1,7 +1,7 @@
 ---
 type: Tool
 title: Combat simulator
-description: tools/combat.py runs the game's own decompiled combat code to simulate fights and search skills, gear and parties.
+description: The combat tools (web/src/tools, on the TypeScript port of the game's combat code) simulate fights and search skills, gear and parties.
 timestamp: 2026-11-23
 ---
 
@@ -9,7 +9,8 @@ timestamp: 2026-11-23
 
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Combat simulator
 
-Exact fights: no port, the game's own Lua runs. Heroes come from your save (`tools/savegame.py`).
+Exact fights: the engine (`web/src/sim/`) is a port of the game's combat Lua, checked roll by roll against the game's own
+output. Heroes come from the save opened on the battle page (`save.ts`).
 Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/heroes/heroes.md).
 
 ## Table of contents
@@ -20,25 +21,25 @@ Rules being simulated: [combat](../../combat/combat.md), [heroes](../../combat/h
 - [Search methods](#search-methods)
 - [Validation](#validation)
 - [Limits](#limits)
-- [TypeScript port](#typescript-port)
+- [From Python to TypeScript](#from-python-to-typescript)
 - [Code](#code)
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  S[save file] --> P[savegame.py]
-  P --> E[sim/engine.py]
-  D[decompiled/*.lua] --> H[sim/harness.lua]
-  H --> E
-  E --> C[combat.py]
-  C --> R[reports/solo.csv, console]
+  S[save file] --> P[save.ts]
+  G[inventory/gamedata.json] --> A[sim/api.ts]
+  P --> E[tools/engine.ts]
+  A --> E
+  E --> C[tools/combat.ts]
+  C --> W[battle page]
 ```
 
-- `lupa` (vendored in `tools/_vendor`) embeds Lua 5.1. `harness.lua` loads `MiddleClass`, `Utilities`, the data files
-  and `Item`, `Equipment`, `Combatant`, `Hero`, `Party`, `Enemy`, `Battle` from `decompiled/`.
-- Engine APIs (`display`, `system`, analytics…) are auto-stubs; combat logs are disabled; `print` is silenced.
-- Corona extras added: `math.round` = `floor(x + 0.5)`, `table.indexOf`, `table.copy`.
+- `web/src/sim/` ports the game's `Item`, `Equipment`, `Combatant`, `Hero`, `Party`, `Enemy`, `Battle`, `Map`,
+  `Campaign` and the skill functions; data tables come from `inventory/gamedata.json`. Porting rules: `web/src/sim/PORTING.md`.
+- Random numbers come from the LCG the reference recordings used, so a seed gives the same fight as in the game code.
+- Corona extras kept: `math.round` = `floor(x + 0.5)`; combat logs and `print` are dropped.
 - Game mode defaults applied as on load (`default.setMode`, save's `gameMode`).
 - Heroes are built with `Hero:new` from the raw save entry, gear from its compact item strings.
 - Per-skill damage: damage dealt during a combatant's own action is credited to the skill in that rotation slot.
@@ -46,17 +47,24 @@ flowchart LR
 
 ### Map runs
 
-- `sim.mapRun` builds the game's `Campaign` from a `Map` (save compact string, or id + asc + grade + prefix +
+- `api.mapRun` builds the game's `Campaign` from a `Map` (save compact string, or id + asc + grade + prefix +
   suffix) the way `GameCampaigns:addNew` does: heroes start at full HP, `campaignID` set so scroll buffs apply.
 - `runCombat()` until finished: rooms in order, HP carried over, loot per won room, essence at the end.
 - The seed fixes the layout (rooms, enemies, rares, boss) and the fights; each run uses a new seed.
 - Per-run hero damage/taken from the change in lifetime totals (`addToTotals`), healing via a hook; hero
   level, XP and totals restored after each run.
 - Progress score = rooms cleared + share of the last enemy's HP removed, so "almost beat the boss" ranks higher.
+- Scrolls are passed as `Game:startMap` builds them (`{id, amount = 1, chargesUsed = 0, prestigeLevel}`); the game's
+  `ScrollsComponent` applies buffs (via the hero's `campaignID`), map stats, post-battle effects and escape.
+  Skill sets swapped by the Swap scroll are restored after each run.
+- `Map:determineSeedBasedStats` ends with `math.randomseed(os.time())`; `api.mapRun` re-seeds after building the
+  map, so a seed gives the same run every time.
 
 ## Commands
 
-Run with `--save saves/snapshot/PlayerData.txt` (or `--save-dir` / `--slot`).
+`web/src/tools/combat.ts` functions. The battle page runs `evaluate` (quest fights) and `evaluateMap` (map runs, with
+scrolls); the searches below are library functions not yet on a page (`cmdSkills`, `cmdGear`, `cmdParty`, …), kept from
+the former command line.
 
 | Command | What it answers |
 |---|---|
@@ -70,6 +78,8 @@ Run with `--save saves/snapshot/PlayerData.txt` (or `--save-dir` / `--slot`).
 | `map --map ID\|inv:N [--asc 1] --front --back` | Full map runs: win %, progress, grade, time, loot and essence per run, where it fails |
 | `party --map ID` | Best party for a map run |
 | `maps --front --back` | Every map (asc 0 and 1) with one party → `reports/maps_survey.csv` (essence/h, loot/h) |
+| `map … --scrolls 61,63,69@1` | Map runs with up to 3 scrolls (`ID@ASC` for ascended); charges used and escapes reported |
+| `scrolls --map ID --front --back` | Best loadout of up to 3 scrolls (all 286 combinations), with each scroll's crafted cost |
 
 Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per evaluation).
 
@@ -94,7 +104,6 @@ Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per eva
 
 ## Limits
 
-- Map runs: no scrolls passed yet (the game's scroll code is loaded, the CLI has no option for them).
 - Loot value counts everything at sell price, including essence; time is the game's map time (battles + walking).
 - Level-70 maps (ids 27–32) are skipped by `maps` unless `--include-70`: crafters cap at 60, and generating
   them crashes at grade ≥ 3 (see [maps](../../game-economy/maps/maps.md#level-70-maps)).
@@ -102,41 +111,28 @@ Options: `--rare` (rare variant), `--amount` (enemy count), `-n` (fights per eva
 - Hero campaign buffs are ignored (`campaignID` forced to -1); potion boosts removed before each fight.
 - Results depend on your heroes' gear: the class table compares your heroes, not classes on equal gear.
 
-## TypeScript port
+## From Python to TypeScript
 
-Runners and optimisers ported to `web/src/tools/` for the GitHub Pages site, on the TypeScript engine (`web/src/sim/`).
+The first version (2026-11-23) ran the game's decompiled Lua through `lupa` from Python (`tools/combat.py`,
+`tools/sim/harness.lua`). It was ported to `web/src/tools/` and deleted the same day.
 
-```mermaid
-flowchart LR
-  save[PlayerData.txt text] --> s[save.ts] --> c[combat.ts]
-  gd[inventory/gamedata.json] --> e[engine.ts] --> api[sim/api.ts]
-  c --> e
-  c --> cli[cli.ts / page]
-```
-
-| Python | TypeScript |
+| Former Python | TypeScript |
 |---|---|
 | `tools/combat.py` (evaluate, optimisers, commands) | `web/src/tools/combat.ts` |
-| `tools/sim/engine.py` (`Sim`) | `web/src/tools/engine.ts` |
-| `tools/gamedata.py` `sell_value`, `rarity` | `web/src/tools/engine.ts` |
-| `tools/savegame.py` decoding, `parse_item`, `parse_save` | `web/src/tools/save.ts` |
-| `combat.py` argparse `main` | `web/src/tools/cli.ts` (`npm run combat -- fight --quest 80 ...`) |
+| `tools/sim/engine.py` (`Sim`), `harness.lua` | `web/src/tools/engine.ts` over `web/src/sim/api.ts` |
+| `tools/savegame.py` (decoding) | `web/src/tools/save.ts` |
 
-- Commands write lines through an `io` callback and return their data; CSV rows come back to the caller (CLI writes `reports/`).
-- Browser-safe: no `fs` outside `cli.ts`; the save is passed as text.
-- Not ported: locating/snapshotting the save folder (stays in `savegame.py`); `fixtures.py` (needs the Lua game code by design).
-  Scroll prices come from the ported profit solver (`profit.ts`).
-- Parity, both sides on the shared LCG (`Sim(use_lcg=True)`), same seeds: identical output (screen and CSV) for
+- Before deletion, both sides ran on the shared LCG with the same seeds and gave identical output (screen and CSV) for
   `roster`, `fight`, `damage`, `solo`, `skills`, `gear` (owned and catalog), `party`, `map`, `maps`, `scrolls`, `party --map`.
-  - Only difference: skills that dealt 0 damage (buffs, heals) are listed in another order; Python follows Lua's table order.
-  - Python number formatting kept: ties to even (`{:.0f}` of 3066.5 is 3066), `100.0` for float CSV columns.
-- Fixed in the port, still present in `combat.py`:
-  - `solo --quests 1-60` filtered quest ranges by hero ids (empty matrix, crash).
-  - `party` options (`--heroes`, `--size`, `--n-quick`, `--n-final`) were registered on `maps`: `party` always crashed.
-  - `--rare` on a quest without a rare variant: refused up front (the game code crashes; the TS engine fights a NaN enemy).
-    `solo --rare` skips those quests.
+  The only difference was the order of skills that dealt 0 damage (Python followed Lua's table order).
+- Python number formatting is kept: ties to even (`{:.0f}` of 3066.5 is 3066), `100.0` for float CSV columns.
+- Bugs of `combat.py` fixed in the port: `solo --quests 1-60` filtered quest ranges by hero ids; `party` options were
+  registered on `maps`, so `party` always crashed; `--rare` on a quest without a rare variant is refused up front
+  (`solo --rare` skips those quests).
+- Commands write lines through an `io` callback and return their data, so a page can run them. The TypeScript command
+  line (`cli.ts`) was dropped with the move to a website-only project.
 
 ## Code
 
-- `tools/combat.py`, `tools/sim/engine.py`, `tools/sim/harness.lua`, `tools/savegame.py` (parallel session).
-- `web/src/tools/` (TypeScript port), tests in `web/test/tools.test.ts`.
+- `web/src/tools/combat.ts`, `engine.ts`; engine in `web/src/sim/`; page: `web/src/ui/battle*.ts`.
+- Tests: `web/test/tools.test.ts`; Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.

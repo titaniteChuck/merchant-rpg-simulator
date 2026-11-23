@@ -1,2 +1,0 @@
-# Only the combat simulator needs a third-party package.
-lupa==2.2

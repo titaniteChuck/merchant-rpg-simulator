@@ -18,17 +18,19 @@ timestamp: 2026-11-23
 
 ## Parser
 
-`tools/luadata.py`:
+`web/src/tools/luadata.ts`:
 
 - Tokenizes Lua 5.1 and evaluates assignments whose right side is a literal: numbers, strings,
   booleans, tables, simple arithmetic, names already defined.
 - Skips functions, control flow and calls, and records each skip in `Env.skipped`.
 - File-level `local` tables are kept in `Env.file_locals` (needed for `prestigeItemID`).
-- `to_py()` turns tables keyed 1..n into lists.
+- `toPy()` turns tables keyed 1..n into lists. Values keep Python's int/float distinction and dict key order,
+  so the exports are byte-identical to the former Python tools.
 
 ## Game model
 
-`tools/gamedata.py`, `load_game()`:
+The former `gamedata.py` `load_game()` (removed); the website uses `web/src/tools/gamedata.ts`, built from
+`inventory/gamedata.json`:
 
 - `items[type][id]`, `quests`, `parcels`, `crafters`, `heroes` (classes), prefixes, suffixes, grade tables.
 - Helpers: `recipe()`, `sell_value()`, `essence_for_ascension()`, `prestiged_essence()`.
@@ -36,7 +38,9 @@ timestamp: 2026-11-23
 
 ## Output files
 
-`python3 tools/export_inventory.py` writes `inventory/`:
+`npm run export:gamedata` (`export-gamedata.ts`) writes `inventory/gamedata.json`, the Lua-shaped tables the engine
+and the pages read. The other files below come from the former inventory exporter (removed 2026-11-23); they are kept
+frozen as reference tables and are not used by the site:
 
 | File | Rows |
 |---|---|

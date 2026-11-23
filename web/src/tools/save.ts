@@ -1,7 +1,7 @@
 /**
  * Merchant save files: decoding and compact item strings (port of the parsing
- * half of tools/savegame.py; locating and snapshotting the game folder stays in
- * Python). Works in the browser and in Node: give it the text of PlayerData.txt.
+ * half of the former tools/savegame.py). Works in the browser and in Node; finding and
+ * copying the save on disk is in savefiles.ts (Node). Give it the text of PlayerData.txt.
  *
  *   const sv = loadSaveText(text)
  *   sv.raw.hero[0], sv.inventory[0].itemSlot, sv.mapInventory[1].compact

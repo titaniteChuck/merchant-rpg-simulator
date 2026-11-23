@@ -12,17 +12,17 @@ Website: https://titanitechuck.github.io/merchant-rpg-simulator/ (work in progre
 
 | Path | Content |
 |---|---|
-| `tools/` | Python tools (data parser, profit calculator, save loader, combat simulator). See [tools/README.md](tools/README.md). |
-| `tools/sim/` | Headless harness that runs the game's combat code in Lua 5.1 (our code; the game code is loaded from your copy). |
-| `inventory/` | Game data tables exported by `tools/export_inventory.py` (JSON + CSV), used by the website. |
+| `web/` | TypeScript for the website: the combat engine (`src/sim/`, a port of the game's combat rules), libraries (`src/tools/`: save decoding, combat searches, profit model, game-data export) and page scripts (`src/ui/`). |
+| `tools/` | [Development reference](tools/README.md); the decompiler `unluac.jar` (local only). |
+| `inventory/` | `gamedata.json`, the game data the website loads (`npm run export:gamedata`); `inventory.json` and CSVs are frozen reference tables. |
 | `docs/` | Knowledge base: game rules, tooling design, balancing findings. Start at [docs/index.md](docs/index.md). |
 | `site/` | Static website published with GitHub Pages ([.github/workflows/pages.yml](.github/workflows/pages.yml)). |
 
-Local-only folders, ignored by git: `merchant/` (game build), `decompiled/`, `saves/`, `reports/`, `tools/_vendor/`, `tools/unluac.jar`.
+Local-only folders, ignored by git: `merchant/` (game build), `decompiled/`, `saves/`, `reports/`, `tools/unluac.jar`, `web/test/fixtures/`.
 
 ## Setup
 
-Requirements: Python 3.10+, Java 11+ (decompiler only).
+Requirements: Node 24+ (`cd web && npm ci`), Java 11+ (decompiler only).
 
 1. Copy the game's compiled Lua files (`*.lu`, from the game install) into `merchant/`.
 2. Download [unluac](https://sourceforge.net/projects/unluac/) as `tools/unluac.jar`, then decompile:
@@ -30,23 +30,24 @@ Requirements: Python 3.10+, Java 11+ (decompiler only).
    mkdir -p decompiled
    for f in merchant/*.lu; do java -jar tools/unluac.jar "$f" > "decompiled/$(basename "$f" .lu).lua"; done
    ```
-3. Combat simulator only: `python3 -m pip install -r requirements.txt` (or `--target tools/_vendor`).
 
 ## Usage
 
+Everything is on the website: open your save in the save viewer, simulate fights and map runs in the battle simulator.
+To run it locally:
+
 ```bash
-python3 tools/export_inventory.py     # game data -> inventory/
-python3 tools/profit.py               # profit tables -> reports/
-python3 tools/savegame.py             # find and summarise your save
-python3 tools/combat.py --save saves/snapshot/PlayerData.txt roster
+cd web
+npm run site && npx --yes serve ../_site    # build and preview the site
+npm test                                    # unit tests + engine parity with the game's Lua (local fixtures)
 ```
 
-Full command reference: [tools/README.md](tools/README.md).
+Development reference: [tools/README.md](tools/README.md).
 
 ## Website
 
-`site/` is deployed to GitHub Pages on every push to `main`. The workflow adds `inventory/inventory.json`
-(as `data/`) and the Python tools (as `py/`) so pages can run them in the browser.
+`site/` is deployed to GitHub Pages on every push to `main`. The workflow adds `inventory/gamedata.json`
+(as `data/`) and the TypeScript pages bundled from `web/src/ui/` (as `js/`).
 Design and roadmap: [docs/tooling/website/website.md](docs/tooling/website/website.md).
 
 ## License
