@@ -326,7 +326,7 @@ section > h2:first-child { margin-top: 36px; }
 .gh { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--fg); font-weight: 650; font-size: 0.9rem;
   padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); }
 .gh:hover { border-color: var(--accent); color: var(--accent); }
-.card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; } .card-levelling { --c: #0ea5e9; }
+.card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; } .card-levelling { --c: #0ea5e9; } .card-balance { --c: #a855f7; }
 
 /* ------------------------------------------------------------------ saved save */
 /* Once a save is loaded: a small button in the top bar (save-source.ts) replaces the drop zone. */
@@ -696,4 +696,20 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .pickers { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .chip-check.lock:has(input:checked) { text-decoration: none; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .search-card .tl-why { border-top: 1px dashed var(--border); padding-top: 6px; }
+
+/* ------------------------------------------------------------------ class balance page (U4) */
+:root { --heat: #14b8a6; }
+@media (prefers-color-scheme: dark) { :root { --heat: #0f766e; } }
+.cb-ref { grid-column: span 2; }
+@media (max-width: 560px) { .cb-ref { grid-column: auto; } }
+.cb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cb-matrix th.cb-q { white-space: nowrap; font-size: 0.78rem; text-transform: none; letter-spacing: 0; }
+.cb-matrix tbody th { white-space: nowrap; text-align: left; }
+.cb-cell { position: relative; text-align: center; min-width: 64px; padding: 6px 6px 9px; font-variant-numeric: tabular-nums; cursor: help; }
+.cb-cell strong { display: block; font-size: 0.88rem; }
+.cb-cell .small { color: inherit; opacity: .75; }
+.cb-rot { display: inline-block; min-width: 200px; max-width: 300px; white-space: normal; font-size: 0.82rem; }
+.cb-bar { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.cb-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--fg); opacity: .55; }
+.cb-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 

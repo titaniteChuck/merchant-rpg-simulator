@@ -19,6 +19,7 @@ timestamp: 2026-11-23
 - [Profit page](#profit-page)
 - [Farming planner](#farming-planner)
 - [Levelling page](#levelling-page)
+- [Class balance page](#class-balance-page)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -239,10 +240,30 @@ flowchart LR
   enchants lost, hours and runs to level back to max (the relevel plan is in a fold-out).
 - Progress per level band; Cancel terminates the worker.
 
+## Class balance page
+
+`site/class-balance.html` + `web/src/ui/class-balance.ts` (page) + `web/src/ui/class-balance-worker.ts` (web
+worker), on `classMatrix` / `summarizeByClass` of `web/src/tools/classes.ts` (E3, U4). No save needed. Linked from
+the wiki section nav ("Class balance", after Classes) and the home page, not the top bar (it stays on one line).
+
+- Options: level, ascension (level capped at 50 / 50 / 60), quests by level band (1-10, 11-20 …, enemies only;
+  "Party quests and bosses" on by default, off = solo quests only), gear (`best` same catalog items for all, `fit`
+  fitted to the class, `none`), rotation (searched, or the game default: all Basic), the quest the rotation is
+  searched on (Auto, Each quest, or one quest), and "Heavier run" (100 fights per cell and a wider search instead of
+  30, ~30 s by default).
+- Auto reference quest: a quick pre-pass (default rotations, 10 fights per cell) finds the quests at least one class
+  wins; the rotation is searched on the toughest of them (enemy HP × (atk + matk)), else on the least tough quest.
+- Results: per class (best mean win first): mean win, quests won ≥ 90 %, enemy HP removed at its lowest point
+  (averaged), damage dealt and taken per fight, the rotation and passive used. Matrix class × quest: win %
+  (single-hue heat, number printed), turns, and a bar for the enemy HP removed at its lowest; tooltip with turns when
+  won, HP left, death rate, damage dealt / taken / healed. Classes link to their wiki page, quests to the enemy page
+  (with its 5-turn timeline).
+- Progress per cell and rotation search; Cancel terminates the worker.
+
 ## Shared page parts
 
 - Top bar on every page: Save, Battle, Profit, Farming, Levelling, Wiki (short labels so it stays on one line at
-  1280px), and the GitHub link (right). Home page: one card per page.
+  1280px), and the GitHub link (right). Home page: one card per page (class balance included).
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the

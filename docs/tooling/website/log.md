@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-23
+- **Update**: Class balance page (`class-balance.html`, U4): every class on equal gear against a level band of quests, per-class summary and class × quest matrix (win, turns, lowest enemy HP), rotation searched on the toughest quest a class can win; linked from the wiki nav and the home page.
 - **Update**: Enemy timelines (U11): 5-turn strip with effect windows on the battle opponent card and wiki enemy pages, the party's 5-turn plan with schedule notes under the battle party, notes in Best rotation and Optimise results; Optimise keeps the step-2 party when its party step is off, lock chips for Best party and Optimise, quest size above ×1 for both.
 - **Update**: Levelling page (`levelling.html`, U12): best XP quest per level band with hours, runs and revive gold (gathering quests labelled), and the next ascension's gains against gold, lost enchants and relevel hours; Levelling in every top bar and on the home page; top bar labels shortened to Save and Battle.
 - **Update**: Battle page "Best potion / enchant" mode (U9, `rankConsumables`): ranked potions or one more enchant for a hero, free enchant slots shown first, crafted cost and gain per 1,000 g; ascension legend helper removed.
