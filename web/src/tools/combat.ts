@@ -15,7 +15,8 @@ import { gameFromData, pyRound } from "./gamedata.ts";
 import { Solver } from "./profit.ts";
 import { itemName, type Hero, type MapSpec, type Row, type Scroll, sellValue, Sim } from "./engine.ts";
 import type { Save } from "./save.ts";
-import { enemyTimeline, hasTimelines, type PartyMember, scheduleContext, scoreSchedule, type ScoreWeights } from "./schedule.ts";
+import { hasWarmStart, warmStart } from "./warmstart.ts";
+import { DAMAGE_ONLY, enemyTimeline, hasTimelines, type PartyMember, scheduleContext, scoreSchedule, type ScoreWeights } from "./schedule.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -685,6 +686,8 @@ export interface SkillSearch<E extends FightEval | MapEval = FightEval> {
    * `orderings` is the number simulated and `prefiltered` the number of AP-legal orderings it ranked.
    */
   counts: { combos: number; orderings: number; final: number; prefiltered?: number };
+  /** The warm-start rotation tried (warmstart.ts); `adapted` when skills had to become Basic to fit the hero. */
+  warm?: { rotation: string[]; passive: string; adapted?: boolean };
 }
 
 /** Options of searchSkills (and optimiseFight's skill steps). */
@@ -699,15 +702,17 @@ export interface SkillSearchOptions {
    * Default 15 (x4 when the current rotation wins under 50 %: the score ranks lost fights poorly); 0 or false = off.
    */
   prefilter?: number | false;
+  /**
+   * Warm start (quests, warmstart.json loaded): the table's rotation for the hero's class, tier and this enemy is
+   * always simulated and kept as a finalist (when the hero has its skills and AP). Default true.
+   */
+  warmStart?: boolean;
 }
-
-const DAMAGE_ONLY: Partial<ScoreWeights> = {
-  reflect: 0, counter: 0, cleanse: 0, wastedCleanse: 0, defence: 0, heal: 0, idleHeal: 0, dispel: 0,
-};
 
 /**
  * The schedule pre-filter: every ordering of every multiset in `combos`, ranked by the counter-schedule score and by
- * damage only (same code, utility weights 0); returns the union of both top-k lists plus `keep` (when legal).
+ * damage only (same code, utility weights 0); returns, for both rankings, the top k orderings and the best ordering of
+ * the top k skill sets, plus `keep` (when legal).
  * Null when the quest has no timeline.
  */
 export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: QuestTarget, combos: string[][], k: number,
@@ -727,8 +732,19 @@ export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: 
       if (!seen.has(key)) (seen.add(key), all.push(p));
     }
   }
-  const rank = (w: Partial<ScoreWeights>) => all.map((p) => [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const)
-    .sort((a, b) => b[0] - a[0]).slice(0, k).map(([, p]) => p);
+  // the top k orderings, plus the best ordering of each of the top k skill sets: many orderings of one set tie, and
+  // without the second list the top k can be a single set
+  const rank = (w: Partial<ScoreWeights>) => {
+    const scored = all.map((p) => [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const)
+      .sort((a, b) => b[0] - a[0]);
+    const bySet = new Map<string, string[]>();
+    for (const [, p] of scored) {
+      const set = [...p].sort().join("|");
+      if (!bySet.has(set)) bySet.set(set, p);
+      if (bySet.size >= k) break;
+    }
+    return [...scored.slice(0, k).map(([, p]) => p), ...bySet.values()];
+  };
   const picked = new Map<string, string[]>();
   for (const p of [...rank({}), ...rank(DAMAGE_ONLY)]) picked.set(p.join("|"), p);
   if (keep && seen.has(keep.join("|"))) picked.set(keep.join("|"), keep);
@@ -821,6 +837,28 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
         }
       }
     }
+    // warm start: the offline table's rotation for this class, tier and enemy (if the hero can play it)
+    let warm: { rotation: string[]; passive: string; adapted?: boolean } | undefined;
+    if (o.warmStart !== false && !("map" in t) && hasWarmStart()) {
+      const w = warmStart(h.class, h.prestigeLevel ?? 1, t.quest, t.rare ?? false);
+      if (w) {
+        // the table's standard hero may have other skills unlocked or another AP budget: locked skills become Basic,
+        // then the most expensive skill becomes Basic until the hero affords the rotation (with its passive or the
+        // table's)
+        const rot = w.rotation.map((x) => (x === "Basic" || names.includes(x) ? x : "Basic"));
+        const fits = () => (apply(rot, w.passive) ? w.passive : apply(rot, current[1]) ? current[1] : null);
+        let passive = fits();
+        while (passive === null && rot.some((x) => x !== "Basic")) {
+          const i = rot.reduce((best, x, k) => (x !== "Basic" && (best < 0 || costs[names.indexOf(x)] > costs[names.indexOf(rot[best])]) ? k : best), -1);
+          rot[i] = "Basic";
+          passive = fits();
+        }
+        if (passive !== null) {
+          warm = { rotation: rot, passive, ...(rot.join() !== w.rotation.join() ? { adapted: true } : {}) };
+          if (!cands.some((c) => c.join() === rot.join())) cands = [...cands, rot];
+        }
+      }
+    }
     st.stage("orderings", cands.length);
     const scored2: [number, string[]][] = cands.map((perm) => {
       apply(perm, passiveFor(perm));
@@ -831,6 +869,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     // result is never worse than what the hero plays (quick scores are noisy when fights differ by little).
     const finalists = scored2.slice(0, top);
     if (!finalists.some(([, r]) => r.join() === current[0].join()) && apply(current[0], current[1])) finalists.push([base.score, current[0]]);
+    if (warm && !finalists.some(([, r]) => r.join() === warm!.rotation.join())) finalists.push([-Infinity, warm.rotation]);
     const pairs = finalists.flatMap(([, perm]) => passives.filter((p) => apOf(perm) <= (budget.get(p) ?? 0)).map((p) => [perm, p] as const));
     st.stage("final", pairs.length);
     const ranked: RotationResult<FightEval | MapEval>[] = [];
@@ -843,6 +882,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
       current: { rotation: current[0], passive: current[1], ev: base }, ranked, maxAP: info.maxAP,
       unlocked: skills.map((x) => ({ name: x.name, ap: x.ap })),
       counts: { combos: combos.length, orderings: cands.length, final: ranked.length, ...(pre ? { prefiltered: pre.total } : {}) },
+      ...(warm ? { warm } : {}),
     };
   } finally {
     sim.setSkills(h, current[0], current[1]); // leave the hero as in the save

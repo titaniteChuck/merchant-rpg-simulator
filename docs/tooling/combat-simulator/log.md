@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Warm start, scorer v2 (E15)**: [warm-start](./warm-start.md) table (3,807 entries) tried by `searchSkills`; schedule score with real heal sizes, enemy hits priced per hero (mix, def/mdef cuts, split shared), HP race; pre-filter adds the best ordering of the top skill sets.
 - **Pre-filter, seeds, lost-fight score (E14b)**: `searchSkills` and `optimiseFight` rank rotations with the schedule score and simulate the top ones; fight seeds go through `fightSeed` (no more first roll of 1); lost fights rank by lowest enemy HP, total damage and survival (no turn penalty); the current rotation is always a skill-search finalist; E14a's gear workaround dropped.
 - **Party order and rotation timing (E14a)**: `optimiseFight` adds order within rows (36 layouts), front-back swaps and rotation phase shifts, each on the same seeds and in the trace with readable step names; `startParty`, `lock` and quest amounts above the prestige limit (skipped, not fatal); the gear step restores a rotation reset by an AP-lowering candidate. Odin 33.5 → 35.1 % lowest HP, Archon 6.3 → 9.9 %.
 - **Schedule (E13)**: new [schedule](./schedule.md) page: skill probe, `inventory/timelines.json`, `schedule.ts` lookups and counter-schedule score with validation; `searchParty` takes `lock` and skips parties that can't take the quest amount; `searchGear` keeps the hero's rotation and passive.

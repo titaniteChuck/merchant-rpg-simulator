@@ -20,6 +20,7 @@ Simulated exactly by the [combat simulator](../tooling/combat-simulator/combat-s
 - [Effects](#effects)
   - [Effect timing](#effect-timing)
   - [Schedule](#schedule)
+- [HP, heals and revives](#hp-heals-and-revives)
 - [Enemy](#enemy)
 - [Grade](#grade)
 - [Code](#code)
@@ -118,6 +119,46 @@ Findings from the probe:
   (hero) returns 40 %. Reflect (Pumpking) and Retaliation are counters: the enemy still takes full damage. Reflect
   halves `matk` after the damage is already computed, so it reduces nothing.
 - Elusion (Fenrir) is a 50 % dodge; Block / Shield cut physical / magical damage to 22 %.
+
+## HP, heals and revives
+
+In the game code we have (`gameVersion` 3.18, `obj.GameClass.lua:6`), inside a map heals can bring a hero back up to
+its **max HP**, not just to the HP it had when the map or the battle started. There is no battle-start snapshot
+anywhere in the code.
+
+**No per-battle cap in 3.18.** The Lua map-run recordings (the frozen fixtures, runs without heal or revive scrolls)
+show a hero going above its room-start HP in 293 of 906 rooms. For example, run 1 (seed 733367392, map 24): a hero
+starts the room at 984 HP and is at 1,036 after a Lesser Heal on turn 3. The game's author had described a per-battle
+cap; the decision (2026-11-23) is to follow the 3.18 code, so the engine has none. But a hero never **leaves** a map (or a quest) with more HP than it entered with.
+
+1. **Map start:** `questHP = hp`, the hero's current HP, which can be below max (`obj.combat.GameCampaigns.lua:39`, `:42`).
+2. **Each room:** the battle runs with `useQuestHp = true` (`obj.combat.Campaign.lua:156`) and starts from the carried
+   `questHP` (`obj.combat.Battle.lua:57`, `:65`). HP carries from room to room.
+3. **Heals in battle** (`Combatant:receiveHeal`, `obj.Combatant.lua:337`): add, then cap at `maxHP` (`:362`–`:364`).
+   There is no cap at the HP the battle started with.
+   - A hero already above max gets nothing (`:359`).
+   - "Overload" heals skip the cap (the `if not overload` branch, `:352`), so they can go above max. Aqua Shield II's self-heal is one.
+4. **Revive:**
+   - The Revive skill gives back 50 % of max HP, then the hero can't be revived again for 2 actions (`obj.Combatant.lua:353`–`:356`, `isPercent` 0.5).
+   - Revive scrolls (62, 68) give back full max HP (`data.ScrollsData.lua:41`).
+5. **After a room won:** `questHP = ceil(min(questHP, maxHP))` (`obj.combat.Campaign.lua:119`). This only trims
+   overheal. A level-up during the map refills to max (`:123`).
+6. **Healing scrolls** (61, 69; after a battle): `questHP = min(questHP + hp, maxHP)` (`data.ScrollsData.lua:37`).
+7. **Map end:** `hp = round(min(questHP, hp))` (`obj.combat.Campaign.lua:70`), where `hp` is the HP on entering.
+   Quests do the same (`obj.Quest.lua:220`). This is why life lost in a map is not retrieved: HP healed back inside
+   the map counts for the fights, but the hero keeps the lower of its entry HP and its end HP.
+8. **Outside maps:** `Hero:heal` caps at max HP (`obj.Hero.lua:434`).
+
+The port does the same, and this is the game's own behaviour, not just matching code:
+
+- `receiveHeal`: `web/src/sim/combatant.ts`;
+- rooms: `web/src/sim/campaign.ts:383`;
+- `resetHero`: `web/src/sim/campaign.ts:316`;
+- scrolls: `web/src/sim/campaign.ts:198`–`:201`;
+- 400/400 Lua-parity map runs.
+
+The tools start every simulated fight and map run at full HP (`web/src/sim/api.ts`, `fight` and `mapRun`). A hero
+that is injured in the save is simulated as healed.
 
 ## Enemy
 

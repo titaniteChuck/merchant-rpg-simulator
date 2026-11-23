@@ -15,7 +15,7 @@ import {
 } from "./combat.ts";
 import type { Hero, Row, Scroll, Sim } from "./engine.ts";
 import type { Save } from "./save.ts";
-import { enemyTimeline, hasTimelines, scheduleContext, scoreSchedule } from "./schedule.ts";
+import { DAMAGE_ONLY, enemyTimeline, hasTimelines, scheduleContext, scoreSchedule, type ScoreWeights } from "./schedule.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -466,11 +466,10 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
             const q = t as QuestTarget, tl = enemyTimeline(q.quest, q.rare ?? false);
             const [front, back] = rows();
             const ctx = scheduleContext(q.quest, front, back, { rare: q.rare, amount: q.amount });
-            const by = (w: Record<string, number>) => [...shifts].sort((a, b) =>
+            const by = (w: Partial<ScoreWeights>) => [...shifts].sort((a, b) =>
               scoreSchedule(scheduleParty(sim, front, back, h, b.r), tl, w, ctx).total -
               scoreSchedule(scheduleParty(sim, front, back, h, a.r), tl, w, ctx).total);
-            const dmgOnly = { reflect: 0, counter: 0, cleanse: 0, wastedCleanse: 0, defence: 0, heal: 0, idleHeal: 0, dispel: 0 };
-            const keep = new Set([...by({}).slice(0, 2), by(dmgOnly)[0]]);
+            const keep = new Set([...by({}).slice(0, 2), by(DAMAGE_ONLY)[0]]);
             shifts = shifts.filter((x) => keep.has(x));
           } catch {
             // no timeline for this quest: every shift

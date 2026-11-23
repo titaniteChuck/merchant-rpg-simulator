@@ -138,8 +138,9 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   worse than what the hero plays.
   - Schedule pre-filter (default for quests once `loadTimelines` ran; `prefilter: k`, default 15, `false` = off).
     Every ordering of every AP-legal multiset is ranked twice, by the counter-schedule score and by damage only
-    ([schedule](./schedule.md)). Only the union of both top-k lists plus the current rotation is simulated, then
-    the usual finalists × passives. Map runs and quests without a timeline use the full search.
+    ([schedule](./schedule.md)). Only the top-k orderings and the best ordering of the top-k skill sets from both
+    rankings, the current rotation and the [warm start](./warm-start.md) rotation are simulated, then the usual
+    finalists × passives. Map runs and quests without a timeline use the full search.
 - `gear`: coordinate descent, slot by slot, repeated `--passes` times.
   - `owned`: inventory, sale slots and gear worn by other heroes.
   - `catalog`: every equipment item within `--level-window` levels, built by the game at `--item-grade`,

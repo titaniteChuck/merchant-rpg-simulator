@@ -100,3 +100,26 @@ test("searchSkills with the schedule pre-filter: ranks every ordering, simulates
   const full = searchSkills(sim, h, [h], [], { quest: 3 }, { nQuick: 2, nFinal: 3, top: 2, prefilter: false });
   assert.equal(full.counts.prefiltered, undefined);
 });
+
+test("schedule score with stats: HP race, real heal sizes, split damage shared by the heroes there", () => {
+  const mk = (cls: number, id: number) => sim.hero({
+    id, heroID: id, name: `T${id}`, class: cls, level: 40, exp: 0, prestigeLevel: 1, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  });
+  const warrior = mk(1, 1), cleric = mk(5, 2);
+  const ctx = scheduleContext(50, [warrior], [cleric]);
+  const tl = enemyTimeline(50);
+  const party = (rot: string[]) => [{ location: 2, rotation: ["Basic", "Basic", "Basic", "Basic", "Basic"] }, { location: 1, rotation: rot }];
+  const s = scoreSchedule(party(["Basic", "Basic", "Basic", "Basic", "Basic"]), tl, {}, ctx);
+  assert.ok(s.race && s.race.dealt > 0 && Number.isFinite(s.race.killCycles));
+  // Basic is split over the front row: alone there, the warrior takes all of it (probe: a third each of 3)
+  const front = s.race.heroes.find((x) => x.location === 2)!, back = s.race.heroes.find((x) => x.location === 1)!;
+  assert.ok(front.incoming > 0 && back.incoming > 0 && front.healed === 0);
+  const healed = scoreSchedule(party(["Basic", "Basic", "Greater Heal", "Basic", "Basic"]), tl, {}, ctx);
+  const gh = skillProfile("Greater Heal")!.healScaling!;
+  const amount = gh.matk! * ctx.heroes[1].stats.matk + gh.acc! * ctx.heroes[1].stats.acc + gh.level! * 40;
+  const got = healed.race!.heroes.find((x) => x.location === 2)!.healed;
+  assert.ok(got > 0 && got <= (100 * amount) / ctx.heroes[2].maxHP + 1e-9, "a heal gives back at most its real size");
+  // the healed front hero dies later (the kill may get slower: the heal costs a damage action)
+  assert.ok(healed.race!.heroes.find((x) => x.location === 2)!.deathCycles > front.deathCycles);
+});

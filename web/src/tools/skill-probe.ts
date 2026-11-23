@@ -64,6 +64,8 @@ export interface SkillProfile {
   power: number;
   /** Hero skills: raw damage (all hits) per point of each caster stat; Basic is { atk: 1, matk: 1 }. */
   scaling?: Partial<Record<(typeof SCALE_STATS)[number], number>>;
+  /** Hero skills: direct heal per hero healed, as a linear function of the caster (stats, level, constant). */
+  healScaling?: Partial<Record<(typeof SCALE_STATS)[number] | "level" | "const", number>>;
   /** Hero skills: extra damage on a crit, as a share of the enemy's current HP (Berserk Smash: 0.03). */
   critHpPct?: number;
   /** Share of the raw damage that is physical (atk), magical (matk) and true (dmg). */
@@ -469,6 +471,31 @@ export function probeHeroSkill(sim: Sim, name: string): SkillProfile {
     // power for a hero with every stat equal (its Basic = atk + matk); with real stats, schedule.ts recomputes it
     p.power = Math.round((100 * r0) / 2000) / 100;
   }
+  // direct heals (not revives, not heal-over-time ticks) per hero healed, the same way, plus level and a constant
+  const healed = (stats: Record<string, number>) => {
+    randomseed(1);
+    const c = heroSkillCast(sim, name, "cast", stats);
+    const hs = c.rec.events.filter((e) => e.kind === "heal" && e.actor === c.caster && !e.data.revive && !e.data.tick &&
+      c.heroes.includes(e.target));
+    const n = new Set(hs.map((e) => e.target)).size;
+    return n ? hs.reduce((a, e) => a + e.data.amount, 0) / n : 0;
+  };
+  const hbase = { ...base, level: 60 };
+  const h0 = healed(hbase);
+  if (h0 > 0) {
+    const hsc: SkillProfile["healScaling"] = {};
+    let rest = h0;
+    for (const k of [...SCALE_STATS, "level"] as const) {
+      const step = k === "level" ? 10 : 100;
+      const d = (healed({ ...hbase, [k]: hbase[k] + step }) - h0) / step;
+      if (Math.abs(d) > 1e-6) {
+        hsc[k] = Math.round(d * 1000) / 1000;
+        rest -= d * hbase[k];
+      }
+    }
+    if (Math.abs(rest) > 1e-3) hsc.const = Math.round(rest * 100) / 100;
+    p.healScaling = hsc;
+  }
   return p;
 }
 
@@ -520,7 +547,7 @@ export interface TimelinesData {
   timelines: Record<string, EnemyTimeline>;
 }
 
-export const TIMELINES_VERSION = 3;
+export const TIMELINES_VERSION = 4;
 
 export const timelineKey = (quest: number, rare = false) => `${quest}${rare ? "B" : ""}`;
 

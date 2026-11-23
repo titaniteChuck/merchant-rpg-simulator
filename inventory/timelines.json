@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 4,
  "heroSkills": {
   "Ambush": {
    "name": "Ambush",
@@ -352,6 +352,9 @@
    "scaling": {
     "atk": 1.4,
     "matk": 1.4
+   },
+   "healScaling": {
+    "matk": 0.2
    }
   },
   "Enrage": {
@@ -595,7 +598,12 @@
     "heal-party"
    ],
    "power": 0,
-   "effects": []
+   "effects": [],
+   "healScaling": {
+    "matk": 0.11,
+    "acc": 0.11,
+    "level": 1
+   }
   },
   "Holy Blessing": {
    "name": "Holy Blessing",
@@ -728,7 +736,12 @@
     "heal-ally"
    ],
    "power": 0,
-   "effects": []
+   "effects": [],
+   "healScaling": {
+    "matk": 0.3,
+    "acc": 0.3,
+    "level": 2
+   }
   },
   "Light's Grace": {
    "name": "Light's Grace",
@@ -1769,6 +1782,11 @@
    "scaling": {
     "atk": 1.5,
     "matk": 1.5
+   },
+   "healScaling": {
+    "atk": 0.099,
+    "matk": 0.099,
+    "const": 1.26
    }
   },
   "Unholy Slash II": {
@@ -1788,6 +1806,11 @@
    "scaling": {
     "atk": 2.2,
     "matk": 2.2
+   },
+   "healScaling": {
+    "atk": 0.21,
+    "matk": 0.21,
+    "const": -1
    }
   },
   "Vicious Strike": {

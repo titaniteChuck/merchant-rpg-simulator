@@ -72,16 +72,29 @@ probe's windows. For each hero action it counts:
   credited directly. A cleanse with nothing to remove loses points.
 - **Dispel:** the enemy buffs it removes.
 - **Defence:** shields and def buffs active when the enemy hits, × the enemy's power on that turn.
-- **Heals:** what the party lost since the last heal, up to 25 % HP per hero.
+- **Heals:** what the party lost since the last heal. A heal gives back at most its real size, from the probe's `healScaling` on the caster (Greater Heal = 0.11 × (matk + acc) + level per hero); without stats, at most 25 % HP per hero.
 - **Stuns:** a stunned action scores 0.
 
 With `ctx`, damage is in % of the enemy's HP and protection is in % of a hero's HP. Both use the real stats and
 defences, so the two sides weigh the same. Without it, both are in Basic-attack units. `notes` explains every
 non-trivial term, for example "into Soul Barrier", "cleanses Terrify II" or "nothing to cleanse".
 
+With `ctx`, enemy hits are priced for each hero:
+
+- each skill's own physical / magical / true mix against that hero's def / mdef;
+- the enemy's def / mdef cuts on the hero at that moment (Terrify II: mdef −50 %);
+- split attacks (Basic) shared by the heroes actually in the row. The probe's full party took a third each; a lone front hero takes it all;
+- a row attack on an empty row falls on the other row.
+
+**HP race** (`race`, with `ctx`): over the scored cycle, the enemy HP dealt (cycles to kill it) and, per hero, the HP
+taken and healed (cycles until it falls). The score adds 20 × min(first death / kill, 2). Healing that can't keep
+up, or too little damage, loses the race however well it is timed.
+
+On Demon Mage ×5 (Warrior + Cleric), the estimate is 47 % of the Warrior's HP per cycle, against 50 % measured.
+
 Limits:
 
-- No randomness, no HP tracking, no deaths.
+- No randomness and no deaths: a revive is only valued as a heal. That is why the full search's Demon Mage ×5 Cleric (Basic, Revive, Basic, Greater Heal, Basic) ranks 403rd of 2,667.
 - Party buffs use the probe's caster windows (back 1).
 - Effects that end at first use are consumed at the first matching action.
 - Taunt and amplify are rough.
@@ -97,18 +110,19 @@ Real save, one hero's rotation varied at a time:
 | Fight | Party | Hero varied | Schedule | Damage only |
 |---|---|---|---|---|
 | Archon | full (lost) | Mage | 0.21 | 0.12 |
-| Archon | full (lost) | Paladin | 0.22 | 0.30 |
-| Odin | full (lost) | Warrior | 0.57 | 0.60 |
-| Odin | full (lost) | Paladin | 0.16 | 0.32 |
-| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.71 | 0.70 |
+| Archon | full (lost) | Paladin | 0.23 | 0.35 |
+| Odin | full (lost) | Warrior | 0.58 | 0.60 |
+| Odin | full (lost) | Paladin | 0.14 | 0.32 |
+| Gnoll Khan ×5 | Warrior + Cleric | Cleric | 0.67 | 0.70 |
 | Gnoll Khan ×5 | Warrior + Cleric | Warrior | 0.96 | 0.98 |
-| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.46 | −0.45 |
-| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.81 | 0.86 |
+| Demon Mage ×5 | Warrior + Cleric | Cleric | 0.79 | −0.45 |
+| Demon Mage ×5 | Warrior + Cleric | Warrior | 0.77 | 0.86 |
 
 Measured with E14b's simulated score (lost fights ranked by lowest enemy HP, total damage and survival; mixed fight
-seeds) and the crit-aware schedule score:
+seeds) and E15's schedule score (crits, real heal sizes, enemy hits priced per hero, HP race). The healer on Demon
+Mage went from 0.46 to 0.79 with the HP race:
 
-- **Fights the party wins:** the score ranks rotations well (0.46–0.96). It is the only one of the two that gets
+- **Fights the party wins:** the score ranks rotations well (0.67–0.96). It is the only one of the two that gets
   the healer right on Demon Mage.
 - **Fights the party loses (Archon, Odin):** it is weaker (0.16–0.57). The differences there are small (tenths of a
   percent of enemy HP), so noise dominates.
@@ -119,8 +133,11 @@ seeds) and the crit-aware schedule score:
 
 `searchSkills` (and the skill and phase steps of `optimiseFight`) use the score as a pre-filter, through the
 `prefilter` option: default 15, `false` = off. Every ordering of every AP-legal skill multiset is ranked by the
-schedule score and by damage only. The union of both top-15 lists plus the current rotation is simulated at
-`nQuick`, then the usual finalists × passives at `nFinal`.
+schedule score and by damage only. From each ranking, two lists are simulated at `nQuick`, plus the current rotation and
+the warm-start rotation ([warm start](./warm-start.md)); then the usual finalists × passives at `nFinal`:
+
+- the top 15 orderings;
+- the best ordering of each of the top 15 skill sets. Many orderings of one set tie, so without this the top 15 can cover a single set.
 
 Real save, `searchSkills` with nQuick 30, nFinal 150, top 8. The best rotation of each search is re-scored on 300
 other fights, so luck in the search's own fights doesn't count. On fights the current rotation wins under 50 %,
