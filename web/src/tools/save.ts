@@ -29,6 +29,20 @@ export function baseDecode(text: string): Uint8Array {
   return out;
 }
 
+const TO_GAME = new Map([...STD_B64].map((c, i) => [c, GAME_B64[i]]));
+
+/** Utilities.baseEncode: plain base64 written in the game's alphabet, "=" padding kept (baseDecode ignores it). */
+export function baseEncode(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return [...btoa(bin)].map((c) => TO_GAME.get(c) ?? c).join("");
+}
+
+/** What the game writes to PlayerData.txt (GameObject:encodeSaveFile): the JSON, UTF-8, baseEncode. */
+export function encodeSaveText(raw: Any): string {
+  return baseEncode(new TextEncoder().encode(JSON.stringify(raw)));
+}
+
 /** GameObject:decodeSaveFile. PC saves are always encoded; mobile ones may be raw JSON. */
 export function decodeSaveText(text: string): Any {
   if (text.includes("{")) return JSON.parse(text);
