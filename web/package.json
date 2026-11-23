@@ -12,7 +12,8 @@
     "site": "scripts/assemble-site.sh",
     "export:gamedata": "node src/tools/export-gamedata.ts",
     "export:timelines": "node src/tools/export-timelines.ts",
-    "export:warmstart": "node src/tools/export-warmstart.ts"
+    "export:warmstart": "node src/tools/export-warmstart.ts",
+    "export:i18n": "node src/tools/export-i18n.ts"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

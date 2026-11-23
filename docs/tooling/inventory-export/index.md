@@ -4,4 +4,4 @@
 
 ## Main concepts
 
-- [inventory-export](./inventory-export.md) - Lua data parser, game model, and the inventory/ files.
+- [inventory-export](./inventory-export.md) - Lua data parser, game model, the inventory/ files and the game translations (inventory/i18n).

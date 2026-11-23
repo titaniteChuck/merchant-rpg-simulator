@@ -1,7 +1,7 @@
 ---
 type: Tool
 title: Inventory export
-description: Parses data.*.lua into a Python game model and writes inventory/ as JSON and CSV.
+description: Parses data.*.lua and writes inventory/ (game data, wiki text, frozen CSVs) and the game translations (inventory/i18n).
 timestamp: 2026-11-23
 ---
 
@@ -14,6 +14,7 @@ timestamp: 2026-11-23
 - [Parser](#parser)
 - [Game model](#game-model)
 - [Output files](#output-files)
+- [Translations](#translations)
 - [Verification](#verification)
 
 ## Parser
@@ -52,6 +53,35 @@ frozen as reference tables and are not used by the site:
 | `quests.csv` | Launch gold, time, enemy stats, drops, rare drops |
 | `parcels.csv` | One row per loot-table entry with grade-3 chance |
 | `crafters.csv`, `classes.csv` | Crafters and the 9 hero classes |
+
+## Translations
+
+`npm run export:i18n` (`web/src/tools/export-i18n.ts`, E19) writes `inventory/i18n/<lc>.json` and `index.json`,
+committed like `wikidata.json` (game text, no assets).
+
+- Source: the local game install, `Resources/Localization/<LC>/TextData-<LC>.json` (`--src`, default the Steam path
+  under `/mnt/c`). Languages: EN FR DE ES BR RU IT PL. CN, JP, KO ship only `Flag.png`; `EScom` is ignored.
+- Game lookup (`obj.common.localizationService`): `getItemText(key, id, type)` for `Equipment`, `Materials`,
+  `Consumables`, `Maps` by item id (missing id → `itemData` English name); `getTextByKey(table, index, key)` for
+  `Quests`, `Heroes`, `Prefixes` by id, `skills` by English skill name (abilities and passives), `crafterNames` by
+  English crafter name. `regionText` is a JSON array: region r is element r − 1. Suffixes have no table.
+- Kept: names and descriptions only. UI, tutorial, menu, combat log, orders, game modes and stat labels are dropped.
+- Cleaning: BOM dropped, `\ddd` byte escapes decoded as UTF-8 (none in the current files), NFC, trimmed.
+  `desc1` + `desc2` joined by one space (as the wiki's `itemText`). Empty values left out.
+- Format (`{lang, items:{equipment|material|consumable|map:{id:{n,d}}}, skills:{englishName:{n,d}},
+  quests:{id:{n,nb,t,tb}}, classes:{id:{n,d}}, prefixes:{id:{n}}, crafters:{crafterId:{n}}, regions:{1-6:{n}}}`):
+  `n` name, `d` description, `nb` rare name, `t`/`tb` title (normal/rare). Placeholders such as `{hp}` are kept.
+- `index.json`: per language `code`, `game` code, `name` (game's `knownLanguages`), `native` (the game has none;
+  set in the exporter), `bcp47`, `file`, `coverage` (% of English fields present), `translated` (% that differ
+  from English) and `missing` fields. All 8 languages are 100% covered; anything missing falls back to English.
+- Sizes: 69 KB (en) to 105 KB (ru) per language, index 5 KB.
+- Runtime: `web/src/tools/i18n.ts` (pure, browser-safe): `loadLanguage(json)`, `setLanguage(code)`,
+  `currentLanguage()`, `tr(kind, id, field = "n")` → string or `undefined` (caller keeps its English). Not wired
+  into the UI yet.
+- Findings: placeholder items and quests (77 equipment, 12 materials, 8 consumables, quests 39–41, 58–60, 75, 76) have
+  no text. 6 English skill texts differ from `abilityData.desc` (Absorb Atk/Matk, Demon Slash, Disharmony, Siphon
+  Soul, Sunder); the game shows the TextData one. Quest nicknames and titles are often left in English (FR 71%
+  translated), stat labels are translated in Russian only.
 
 ## Verification
 

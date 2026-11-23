@@ -1,0 +1,277 @@
+{
+ "source": "Merchant game install: Resources/Localization/<LC>/TextData-<LC>.json",
+ "fallback": "en",
+ "fields": {
+  "n": "name",
+  "d": "description",
+  "nb": "rare name",
+  "t": "title",
+  "tb": "rare title"
+ },
+ "languages": [
+  {
+   "code": "en",
+   "game": "EN",
+   "name": "English",
+   "native": "English",
+   "bcp47": "en",
+   "file": "en.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 0,
+    "items.material": 0,
+    "items.consumable": 0,
+    "items.map": 0,
+    "skills": 0,
+    "quests": 0,
+    "classes": 0,
+    "prefixes": 0,
+    "crafters": 0,
+    "regions": 0
+   },
+   "missing": []
+  },
+  {
+   "code": "fr",
+   "game": "FR",
+   "name": "French",
+   "native": "Français",
+   "bcp47": "fr",
+   "file": "fr.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 97.7,
+    "items.material": 99.6,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 97.9,
+    "quests": 70.7,
+    "classes": 77.8,
+    "prefixes": 95.3,
+    "crafters": 87.5,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "de",
+   "game": "DE",
+   "name": "German",
+   "native": "Deutsch",
+   "bcp47": "de",
+   "file": "de.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 96.2,
+    "items.material": 98.1,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 99.1,
+    "quests": 73.3,
+    "classes": 88.9,
+    "prefixes": 95.3,
+    "crafters": 87.5,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "es",
+   "game": "ES",
+   "name": "Spanish",
+   "native": "Español",
+   "bcp47": "es",
+   "file": "es.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 98,
+    "items.material": 99.8,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 99.6,
+    "quests": 77.2,
+    "classes": 94.4,
+    "prefixes": 95.3,
+    "crafters": 100,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "br",
+   "game": "BR",
+   "name": "Brazilian Portuguese",
+   "native": "Português (Brasil)",
+   "bcp47": "pt-BR",
+   "file": "br.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 98,
+    "items.material": 99.8,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 99.6,
+    "quests": 77.6,
+    "classes": 94.4,
+    "prefixes": 95.3,
+    "crafters": 100,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "ru",
+   "game": "RU",
+   "name": "Russian",
+   "native": "Русский",
+   "bcp47": "ru",
+   "file": "ru.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "it",
+   "game": "IT",
+   "name": "Italian",
+   "native": "Italiano",
+   "bcp47": "it",
+   "file": "it.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 98,
+    "items.material": 99.6,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 99.6,
+    "quests": 77.6,
+    "classes": 94.4,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "missing": []
+  },
+  {
+   "code": "pl",
+   "game": "PL",
+   "name": "Polish",
+   "native": "Polski",
+   "bcp47": "pl",
+   "file": "pl.json",
+   "coverage": {
+    "items.equipment": 100,
+    "items.material": 100,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 100,
+    "quests": 100,
+    "classes": 100,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "translated": {
+    "items.equipment": 98.2,
+    "items.material": 99.4,
+    "items.consumable": 100,
+    "items.map": 100,
+    "skills": 99.4,
+    "quests": 78,
+    "classes": 88.9,
+    "prefixes": 100,
+    "crafters": 100,
+    "regions": 100
+   },
+   "missing": []
+  }
+ ]
+}
