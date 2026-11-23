@@ -33,3 +33,4 @@
 - **Update**: U20 phone navs + example save; U19 chains limited to equipment. The user approved publishing an anonymised copy of their save as the example dataset.
 - **Update**: U14–U16, U18, U19 done; U20 partly done (the UI session went offline; its work was verified and committed by the release agent).
 - **Update**: User batch: U21 wiki enemy/map fixes, U22 hero page v2, U23 battle v3 + page headers; map HP carry-over question sent to the engine.
+- **Update**: U20, U22 done; U23 started (agent); U21 extended (good-against table, wiki headers). Rarity names: none in the game (only the prize wheel's texts).
