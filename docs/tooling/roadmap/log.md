@@ -40,3 +40,5 @@
 - **Update**: E18 expansions (investigation started) and U28 expansion-aware site queued (user).
 - **Update**: E18 investigation done (two expansions, Frozen and Scribe; ownership in UserInfo.usr); user chose inference + manual toggles, and hiding both expansions' content by default.
 - **Update**: E19 translation export (agent) and U29 language picker queued (user: translate game names, site UI stays English).
+- **Update**: E18, E19, U24, U25, U26 done; U28 started (agent); U30 wiki cross-links queued.
+- **Update**: U27 spoiler guard; U31 started; U32 plan shows enemy effects on heroes (user).
