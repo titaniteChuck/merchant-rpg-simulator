@@ -418,3 +418,18 @@ a.wl.asc { border-bottom: 0; }
 .asc-swatch { width: 18px; height: 18px; padding: 0; vertical-align: middle; border-radius: 6px; }
 .chosen-map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 0.92rem; }
 .asc-legend { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* ------------------------------------------------------------------ battle page: search tabs */
+#sim-tabs .tabs { margin-bottom: 14px; flex-wrap: wrap; }
+.search-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.search-form { margin: 10px 0 0; }
+.search-out { margin-top: 14px; }
+.search-progress { display: flex; flex-direction: column; gap: 8px; }
+.search-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 12px; }
+.search-card { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.search-card header { display: flex; flex-direction: column; gap: 2px; }
+.ev-line { font-size: 0.86rem; color: var(--muted); }
+.ev-line strong { color: color-mix(in srgb, var(--c, var(--fg)) var(--ink), var(--fg)); }
+.party-result { display: grid; gap: 6px; }
+.party-result > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.party-result .muted { min-width: 60px; }

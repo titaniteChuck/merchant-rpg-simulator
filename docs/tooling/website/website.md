@@ -73,7 +73,18 @@ flowchart LR
   where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
 - Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (Node-only scripts such as the data exporter)
   are external.
-- Not yet: skill, gear and party search (`cmdSkills`, `cmdGear`, `cmdParty` exist in `web/src/tools/combat.ts`).
+- Step 3 has tabs: Simulate, and four searches on the search API of `web/src/tools/combat.ts`
+  (`web/src/ui/battle-search.ts`, run in the worker by `runSearch`):
+  - Best rotation (quest): `searchSkills` for a party hero; ranked rotation + passive cards, "Use this rotation" applies
+    it in the party editor.
+  - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
+    ascension (`catalogGearCandidates`); now vs best, and the item per slot.
+  - Best party (quest or map): `searchParty` over all the save's heroes; "Use this party" fills the slots.
+  - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
+  - Progress per stage (throttled to ~10 updates per second), fight counts editable (smaller = faster). The searches
+    are synchronous in the worker, so Cancel terminates it. Results show the enemy's lowest HP point (`enemy_dmg_peak`)
+    when the enemy heals back; the Simulate results do too.
+  - Tests: `web/test/battle-search.test.ts` (made-up heroes, runs in CI).
 
 ## Wiki
 

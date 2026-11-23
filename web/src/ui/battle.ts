@@ -8,11 +8,12 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { SCROLL_IDS } from "../tools/combat.ts";
 import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
-import type { MapSpec } from "../tools/engine.ts";
+import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, el, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
+import { initSearchTabs, type PartyMember } from "./battle-search.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, skillLink } from "./wiki-data.ts";
 
@@ -203,10 +204,14 @@ function renderParty(): void {
       el("div", { class: "slots" }, ...cells));
   });
   $("#party").replaceChildren(...rows);
+  search?.refresh();
 }
 
 // ---------------------------------------------------------------- target
+let search: { refresh(): void } | null = null;
+
 function renderTarget(): void {
+  queueMicrotask(() => search?.refresh());
   const mode = ($<HTMLInputElement>("input[name=mode]:checked")?.value ?? "quest") as "quest" | "map";
   const box = $("#target");
   if (mode === "quest") {
@@ -272,32 +277,42 @@ function renderTarget(): void {
 }
 
 // ---------------------------------------------------------------- run
-function request(): BattleRequest {
+/** The six slots as the worker takes them (raw save heroes, edited rotations), and who stands where. */
+function partyOf() {
   const sv = state.sv!;
   const front: (Any | null)[] = [null, null, null], back: (Any | null)[] = [null, null, null];
   const skills = { front: [null, null, null] as (SkillChoice | null)[], back: [null, null, null] as (SkillChoice | null)[] };
-  let count = 0;
+  const members: PartyMember[] = [];
   for (const [row, i] of SLOTS) {
     const idx = state.slots[slotKey(row, i)];
     if (idx === null || idx === undefined) continue;
     (row === "front" ? front : back)[i] = sv.raw.hero[idx];
     (row === "front" ? skills.front : skills.back)[i] = state.skills[idx] ?? null;
-    count++;
+    members.push({ row, i, idx, raw: sv.raw.hero[idx] });
   }
-  if (!count) throw new Error("Put at least one hero in the party.");
-  const n = Math.max(1, Math.min(5000, Math.trunc(Number($<HTMLInputElement>("#runs").value) || 0)));
-  const req: BattleRequest = { gameMode: sv.raw.gameMode || "Standard", front, back, skills, n };
+  return { front, back, skills, members };
+}
+
+/** The opponent chosen in step 2. */
+function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } } {
+  const sv = state.sv!;
   if ($<HTMLInputElement>("input[name=mode]:checked").value === "quest") {
-    req.quest = { id: Number($<HTMLSelectElement>("#quest").value), rare: $<HTMLInputElement>("#rare").checked, amount: Number($<HTMLSelectElement>("#amount").value) };
-  } else {
-    const v = $<HTMLSelectElement>("#map").value;
-    const spec: MapSpec = v.startsWith("own:") ? sv.raw.mapInventory.filter((c: unknown) => typeof c === "string")[Number(v.slice(4))]
-      : { id: Number(v.slice(4)), prestigeLevel: Number($<HTMLSelectElement>("#map-asc").value), grade: Number($<HTMLSelectElement>("#map-grade").value) };
-    const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value).filter(Boolean)
-      .map((id) => ({ id: Number(id), prestigeLevel: 0 }));
-    req.map = { spec, scrolls };
+    return { quest: { id: Number($<HTMLSelectElement>("#quest").value), rare: $<HTMLInputElement>("#rare").checked, amount: Number($<HTMLSelectElement>("#amount").value) } };
   }
-  return req;
+  const v = $<HTMLSelectElement>("#map").value;
+  const spec: MapSpec = v.startsWith("own:") ? sv.raw.mapInventory.filter((c: unknown) => typeof c === "string")[Number(v.slice(4))]
+    : { id: Number(v.slice(4)), prestigeLevel: Number($<HTMLSelectElement>("#map-asc").value), grade: Number($<HTMLSelectElement>("#map-grade").value) };
+  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value).filter(Boolean)
+    .map((id) => ({ id: Number(id), prestigeLevel: 0 }));
+  return { map: { spec, scrolls } };
+}
+
+function request(): BattleRequest {
+  const sv = state.sv!;
+  const { front, back, skills, members } = partyOf();
+  if (!members.length) throw new Error("Put at least one hero in the party.");
+  const n = Math.max(1, Math.min(5000, Math.trunc(Number($<HTMLInputElement>("#runs").value) || 0)));
+  return { gameMode: sv.raw.gameMode || "Standard", front, back, skills, n, ...targetOf() };
 }
 
 function run(): void {
@@ -367,7 +382,8 @@ function questResults(ev: FightEval, ms: number): HTMLElement[] {
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
       tile("Turns", fmt1.format(ev.turns), ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", { icon: "⏱️", tone: "t-blue" }),
       tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
-      tile("Enemy HP removed", pct(ev.enemy_dmg), undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
+      tile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
+        ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
     heroTable(ev.heroes, "fight"),
@@ -433,6 +449,25 @@ function init(): void {
   });
   loadWikiText();
   document.querySelectorAll<HTMLInputElement>("input[name=mode]").forEach((r) => r.addEventListener("change", renderTarget));
+  search = initSearchTabs({
+    save: () => state.sv!,
+    gameMode: () => state.sv?.raw.gameMode || "Standard",
+    party: partyOf,
+    target: targetOf,
+    applyRotation: (idx, rotation, passive) => {
+      state.skills[idx] = { attackList: rotation, passive };
+      persistParty();
+      renderParty();
+    },
+    applyParty: (front, back) => {
+      const index = (id: number | null) => (id === null ? null : state.sv!.raw.hero.findIndex((h: Any) => h.id === id));
+      state.slots = {};
+      front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
+      back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
+      persistParty();
+      renderParty();
+    },
+  }, { tabs: $("#sim-tabs"), simulate: [document.querySelector<HTMLElement>(".simulate")!, $("#results")], panel: $("#search-panel") });
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
 }
