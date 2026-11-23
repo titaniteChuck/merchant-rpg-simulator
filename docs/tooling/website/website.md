@@ -251,7 +251,17 @@ flowchart LR
   Def / Mdef buffs vs heavy hits of their kind; party heals vs hits on everyone and damage over time; Atk cuts vs heavy
   hitters; Def / Mdef / Eva cuts and Acc buffs vs the matching enemy buffs; true, magic or physical damage where the
   enemy's filters let that kind through; no direct damage as a safe action during reflect windows. Ranked by score,
-  top 10 then "Show all", each enemy linked with a one-line reason.
+  top 10 then "Show all", each enemy linked with a one-line reason. U21: shown as a table (rank, enemy, T1–T5 for
+  the enemy's 5 turns): each reason of `reasons()` carries the enemy turns it is about (cleanse / dispel: the windows
+  of the main effect it names; taunt, shields, single heals, Atk cuts: the heavy hit's turn; party heals: the
+  party-wide hits, else the damage over time; Def / Mdef / Eva cuts and damage through filters: the buff's window),
+  and a ✓ marks those turns, with the reasons in the cell's tooltip (`title` and `aria-label`, focusable). An "All"
+  column appears only when a reason has no turn (none of the current rules). `turnMarks()` in `wiki-skills.ts`.
+- List pages (U21): no visible title or intro paragraph at the top of a wiki tab (Skills, Passives, Equipment,
+  Consumables, Materials, Maps, Enemies, Classes, and the home): crumbs, filter, table. The h1 stays, visually hidden
+  (`.sr-only`), for screen readers. Each section's description moved to the wiki home, one line on its card
+  (`CATEGORIES` in `wiki.ts`: route, icon, label, count, description). Detail pages keep their name heading and the
+  banner sections.
 - Section banners (U21, `.wiki-banner` in the `wiki v4` block of `site/style.css`): every detail-page section title
   (enemy, item, map, class, skill; the `section()` helper of `wiki.ts`) is a full-width dark-brown bar with a gold bottom
   border and white text, the same in both themes (`--wiki-banner-bg`). `.wiki-banner.sub` is the smaller in-card

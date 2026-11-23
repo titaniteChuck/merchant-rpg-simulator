@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-23
+- **Website**: Wiki (U21, part 2): skill "Good against" as a table with a ✓ on the enemy turns it answers (reasons in the tooltips); wiki list pages lose their title and intro, the descriptions moved to the wiki home cards.
 - **Website**: Wiki v4 (U21): full-width section banners on wiki detail pages; enemy drops as tables (every win and each loot roll, "Nothing" row, exact chances per battle grade from lootService); map Skills column counts the real rotation ("Basic attack only" where the game data has no skill).
 - **Website**: Save viewer hero page (U22): passive before rotation, both as the wiki's clickable ability rows with AP badges; rotation AP budget ("18 / 20 AP used", remaining, over-budget warning) from the engine rule; gear in two columns via the reusable `gearGrid` helper.
 - **Website**: Wiki crafting chains (U19 follow-up): equipment boxes only; crafted materials (ingots…) hidden but counted in the totals.

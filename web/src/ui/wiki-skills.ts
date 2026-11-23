@@ -27,7 +27,12 @@ export interface Matchup {
   score: number;
   /** one line: the strongest reason first */
   reason: string;
+  /** Every reason (score order) with the enemy turns (1–5) it is about; [] = the whole fight, no one turn. */
+  reasons: Reason[];
 }
+
+/** [score, text, enemy turns 1–5 the reason is about ([] = the whole fight)]. */
+export type Reason = [number, string, number[]];
 
 interface Hit { slot: number; name: string; power: number; tags: string[]; hits: number[]; magic: number }
 interface Fx { slot: number; e: EffectInfo; turns: number[] }
@@ -115,9 +120,10 @@ const statSum = (s: Record<string, number> | undefined, keys: string[], sign: 1 
   keys.reduce((a, k) => a + Math.max(0, sign * (s?.[k] ?? 0)), 0);
 
 /** The reasons (score, text) a hero skill is good against one enemy timeline. */
-export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] {
+export function reasons(p: SkillProfile, tl: EnemyTimeline): Reason[] {
   const { hits, onHeroes, onEnemy } = readTimeline(tl);
-  const out: [number, string][] = [];
+  const out: Reason[] = [];
+  const turnsOf = (xs: Fx[]) => [...new Set(xs.flatMap((x) => x.turns))].sort((a, b) => a - b);
   const tags = p.tags;
   const fx = p.effects;
   const mix = p.mix ?? { physical: 0, magical: 0, true: 0 };
@@ -131,7 +137,7 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
     if (on.length) {
       const score = on.reduce((a, x) => a + severity(x.e) * Math.max(1, x.turns.length) / 2, 0);
       const top = byName([...on].sort((a, b) => severity(b.e) * b.turns.length - severity(a.e) * a.turns.length));
-      out.push([score, `${self ? "clears" : "cleanses"} ${top.slice(0, 2).map((x) => describe(x.e)).join(" and ")}${self ? " off the caster" : ""}, on ${turnsText(top[0].turns)}`]);
+      out.push([score, `${self ? "clears" : "cleanses"} ${top.slice(0, 2).map((x) => describe(x.e)).join(" and ")}${self ? " off the caster" : ""}, on ${turnsText(top[0].turns)}`, turnsOf([top[0]])]);
     }
   }
   // dispel: the enemy's removable self-buffs, shields and reflects
@@ -140,14 +146,14 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
     if (on.length) {
       const score = on.reduce((a, x) => a + buffWeight(x.e) * Math.max(1, x.turns.length) / 2 * (x.e.until === "permanent" ? 1.5 : 1), 0);
       const top = byName([...on].sort((a, b) => buffWeight(b.e) * b.turns.length - buffWeight(a.e) * a.turns.length));
-      out.push([score, `dispels ${top.slice(0, 2).map((x) => describe(x.e)).join(" and ")}${top[0].e.until === "permanent" ? "" : `, on ${turnsText(top[0].turns)}`}`]);
+      out.push([score, `dispels ${top.slice(0, 2).map((x) => describe(x.e)).join(" and ")}${top[0].e.until === "permanent" ? "" : `, on ${turnsText(top[0].turns)}`}`, turnsOf([top[0]])]);
     }
   }
   // taunt: pull a heavy single / row hit onto the taunter (most useful when it would reach the back row)
   if (tags.includes("taunt") && big) {
     const back = heavy.filter((h) => h.hits.some((l) => l % 2 === 1) && !h.tags.includes("damage-aoe"));
     const t = strongest(back.length ? back : heavy.filter((h) => !h.tags.includes("damage-aoe")), (h) => h.power);
-    if (t) out.push([t.power * (back.includes(t) ? 1.5 : 1), `draws ${hitWords(t)} onto the taunter${back.includes(t) ? ", away from the back row" : ""}`]);
+    if (t) out.push([t.power * (back.includes(t) ? 1.5 : 1), `draws ${hitWords(t)} onto the taunter${back.includes(t) ? ", away from the back row" : ""}`, [t.slot]]);
   }
   // shields, the reflect song and Def / Mdef buffs on the heroes: heavy hits of the kind they stop
   const defBuff = fx.filter((e) => e.on !== "enemy" && (statSum(e.stats, ["def"], 1) > 0 || statSum(e.stats, ["mdef"], 1) > 0));
@@ -159,7 +165,7 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
     const t = strongest(heavy.filter((h) => fit(h) > 0.4), (h) => h.power * fit(h));
     if (t) {
       const what = tags.includes("reflect") ? "sends back part of" : tags.includes("shield") ? "absorbs" : magOnly ? "softens the magic of" : physOnly ? "softens the physical hit of" : "softens";
-      out.push([t.power * fit(t), `${what} ${hitWords(t)}`]);
+      out.push([t.power * fit(t), `${what} ${hitWords(t)}`, [t.slot]]);
     }
   }
   // heals
@@ -170,19 +176,20 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
     if (score >= 0.5) {
       const t = strongest(aoe, (h) => h.power);
       out.push([score, [t ? `${t.name} hits everyone (×${t.power.toFixed(1)}, turn ${t.slot})${aoe.length > 1 ? ` and ${aoe.length - 1} more party-wide hit${aoe.length > 2 ? "s" : ""}` : ""}` : "",
-        dots.length ? `${dots[0].e.name} burns the party over time` : ""].filter(Boolean).join("; ")]);
+        dots.length ? `${dots[0].e.name} burns the party over time` : ""].filter(Boolean).join("; "),
+        aoe.length ? [...new Set(aoe.map((h) => h.slot))].sort((a, b) => a - b) : turnsOf(dots)]);
     }
   } else if ((tags.includes("heal-ally") || tags.includes("heal-self") || tags.includes("revive")) && big) {
     const per = hits.reduce((a, h) => a + h.power, 0);
     const self = tags.includes("heal-self") && !tags.includes("heal-ally");
     out.push([(tags.includes("revive") ? big.power : per / 2) * (self ? 0.6 : 1),
-      tags.includes("revive") ? `${hitWords(big)} can drop a hero` : `${self ? "the caster recovers from" : "patches up the hero hit by"} ${hitWords(big)}`]);
+      tags.includes("revive") ? `${hitWords(big)} can drop a hero` : `${self ? "the caster recovers from" : "patches up the hero hit by"} ${hitWords(big)}`, [big.slot]]);
   }
   // Atk cuts on the enemy against heavy hitters
   const atkCut = fx.find((e) => e.on === "enemy" && statSum(e.stats, ["atk", "matk"], -1) > 0);
   if (atkCut && big) {
     const cut = statSum(atkCut.stats, ["atk", "matk"], -1);
-    out.push([big.power * Math.min(1, cut) * 1.5, `cuts ${effectStats(atkCut.stats)} before ${hitWords(big)}`]);
+    out.push([big.power * Math.min(1, cut) * 1.5, `cuts ${effectStats(atkCut.stats)} before ${hitWords(big)}`, [big.slot]]);
   }
   // Def / Mdef cuts against the enemy's Def / Mdef buffs; Eva cut / Acc buffs against Eva buffs
   for (const [stat, label] of [["def", "Def"], ["mdef", "Mdef"], ["eva", "Eva"]] as const) {
@@ -192,7 +199,7 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
     // an immunity (Obsidian Shield: +10000 % Def) is not worth cutting
     const buffs = onEnemy.filter((x) => (x.e.stats?.[stat] ?? 0) > 0 && (x.e.stats?.[stat] ?? 0) < 50);
     const t = strongest(buffs, (x) => (x.e.stats?.[stat] ?? 0) * x.turns.length);
-    if (t) out.push([Math.min(2, t.e.stats![stat]) * Math.max(1, t.turns.length) / 2 + 0.5, `${stat === "eva" && !fx.some((e) => e.on === "enemy" && (e.stats?.eva ?? 0) < 0) ? "more Acc against" : `cuts ${label} under`} ${describe(t.e)}`]);
+    if (t) out.push([Math.min(2, t.e.stats![stat]) * Math.max(1, t.turns.length) / 2 + 0.5, `${stat === "eva" && !fx.some((e) => e.on === "enemy" && (e.stats?.eva ?? 0) < 0) ? "more Acc against" : `cuts ${label} under`} ${describe(t.e)}`, turnsOf([t])]);
   }
   // damage through the enemy's filters
   if (p.power > 0) {
@@ -215,18 +222,32 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): [number, string][] 
       if (gain < 0.3) continue;
       const kind = tr >= 0.5 ? "true damage" : mg >= 0.5 ? "magic damage" : "physical damage";
       const verb = e.kind === "reflect" || e.kind === "counter" ? "is not reflected by" : "goes through";
-      out.push([gain * span / 2 * p.power, `${kind} ${verb} ${describe(e)}, ${turnsText(x.turns)}`]);
+      out.push([gain * span / 2 * p.power, `${kind} ${verb} ${describe(e)}, ${turnsText(x.turns)}`, turnsOf([x])]);
     }
   } else if (!tags.includes("cleanse") && !tags.includes("dispel") && !tags.includes("taunt")) {
     // no direct damage: a safe action while the enemy reflects or shields itself
     const walls = onEnemy.filter((x) => x.e.kind === "reflect" || x.e.kind === "counter");
     const t = strongest(walls, (x) => x.turns.length);
-    if (t) out.push([0.4 * Math.max(1, t.turns.length), `no direct damage: a safe action during ${describe(t.e)}, ${turnsText(t.turns)}`]);
+    if (t) out.push([0.4 * Math.max(1, t.turns.length), `no direct damage: a safe action during ${describe(t.e)}, ${turnsText(t.turns)}`, turnsOf([t])]);
   }
   return out;
 }
 
 let cache: Map<string, Matchup[]> | null = null;
+
+/**
+ * Per enemy turn (1–5) the reasons that are about it, and the whole-fight ones ("all"), for the Good against table:
+ * a ✓ in the turn's cell, the reasons in its tooltip.
+ */
+export function turnMarks(m: Matchup): { turns: string[][]; all: string[] } {
+  const turns: string[][] = [[], [], [], [], []];
+  const all: string[] = [];
+  for (const [, text, ts] of m.reasons) {
+    if (!ts.length) all.push(text);
+    else for (const t of ts) turns[t - 1].push(text);
+  }
+  return { turns, all };
+}
 
 /** Enemies (normal and rare variants) a hero skill is good against, best first; [] for enemy-only skills. */
 export function goodAgainst(skill: string): Matchup[] {
@@ -256,7 +277,7 @@ export function goodAgainst(skill: string): Matchup[] {
       const key = `${tl.name}|${rare}|${rs[0][1]}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ quest: id, rare, name: tl.name, score: rs.reduce((a, [s]) => a + s, 0), reason: rs.slice(0, 2).map(([, t]) => t).join("; ") });
+      out.push({ quest: id, rare, name: tl.name, score: rs.reduce((a, [s]) => a + s, 0), reason: rs.slice(0, 2).map(([, t]) => t).join("; "), reasons: rs });
     }
   }
   out.sort((a, b) => b.score - a.score || a.quest - b.quest);

@@ -16,7 +16,7 @@ import { recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
-import { goodAgainst } from "./wiki-skills.ts";
+import { goodAgainst, turnMarks } from "./wiki-skills.ts";
 import { enemyBody, enemyListColumns, enemyListRows, enemyTable } from "./wiki-enemies.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
@@ -37,15 +37,24 @@ const ready = Promise.all([
   loadTimelineData().catch(() => {}),
 ]);
 
-const CATEGORIES: [string, string, string, () => number][] = [
-  ["#/skills", "⚡", "Skills", () => skillNames().length],
-  ["#/passives", "✨", "Passives", () => passiveNames().length],
-  ["#/items/equipment", "⚔️", "Equipment", () => items("equipment").length],
-  ["#/items/consumable", "🧪", "Consumables", () => items("consumable").length],
-  ["#/items/material", "🪨", "Materials", () => items("material").length],
-  ["#/maps", "🗺️", "Maps", () => items("map").length],
-  ["#/enemies", "👹", "Enemies", () => enemyIds().length],
-  ["#/classes", "🛡️", "Classes", () => classes().length],
+/**
+ * The wiki sections: [route, icon, label, count, description]. U21: the descriptions live on the wiki home (one line
+ * per section card); the list pages themselves start with their filter and table (no visible title or intro).
+ */
+const CATEGORIES: [string, string, string, () => number, string][] = [
+  ["#/skills", "⚡", "Skills", () => skillNames().length,
+    "Every skill with its action-point cost and effect. Hero skills are learnt by class; the rest are enemy skills."],
+  ["#/passives", "✨", "Passives", () => passiveNames().length, "A hero picks one passive from its class list (from level 10)."],
+  ["#/items/equipment", "⚔️", "Equipment", () => items("equipment").length,
+    "Weapons, armour and trinkets. Any class can wear any item of its slot once the hero reaches the item's level. "
+    + "Bonus stats are the item's own range (before grade and ascension); sell value is the base price of a plain item."],
+  ["#/items/consumable", "🧪", "Consumables", () => items("consumable").length, "Potions, boosts, enchants and map scrolls."],
+  ["#/items/material", "🪨", "Materials", () => items("material").length, "Crafting materials, essences and boss trophies, with where they drop."],
+  ["#/maps", "🗺️", "Maps", () => items("map").length,
+    "Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the map modifier."],
+  ["#/enemies", "👹", "Enemies", () => enemyIds().length,
+    "Every quest and map enemy with its base stats (before a map's multiplier). Gathering and placeholder quests are left out."],
+  ["#/classes", "🛡️", "Classes", () => classes().length, "The hero classes, their base stats, growth, skills and passives."],
 ];
 
 // ---------------------------------------------------------------- building blocks
@@ -68,8 +77,8 @@ function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInput
   return s;
 }
 
-/** A filterable table page. */
-function listPage(title: string, intro: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name)): HTMLElement {
+/** A filterable table page: crumbs, filter, table. The title is for screen readers only; the description is on the home. */
+function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name)): HTMLElement {
   const holder = el("div");
   const count = el("span", { class: "muted small" });
   const show = (q: string) => {
@@ -78,7 +87,7 @@ function listPage(title: string, intro: string, rows: Row[], cols: Column[], sea
     holder.replaceChildren(table(shown, cols));
   };
   show("");
-  return el("div", {}, crumbs(title), el("h1", {}, title), el("p", { class: "lead" }, intro),
+  return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
     el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count), holder);
 }
 
@@ -104,12 +113,11 @@ function home(): HTMLElement {
       : none("Nothing matches."));
   });
   search.classList.add("big-search");
-  return el("div", {}, el("h1", {}, "Wiki"),
-    el("p", { class: "lead" }, "Bare stats of everything in the game, read from the game's data: skills, passives, items, maps, enemies and classes."),
+  return el("div", {}, el("h1", { class: "sr-only" }, "Wiki: everything in the game, read from the game's data"),
     search, results,
-    el("ul", { class: "cards wiki-cats" }, ...CATEGORIES.map(([h, icon, label, n]) =>
+    el("ul", { class: "cards wiki-cats" }, ...CATEGORIES.map(([h, icon, label, n, about]) =>
       el("li", {}, el("span", { class: "icon", "aria-hidden": "true" }, icon), el("h3", {}, el("a", { href: h }, label)),
-        el("p", { class: "muted" }, `${fmt.format(n())} entries`)))));
+        el("p", { class: "wiki-cat-about" }, about), el("p", { class: "muted small wiki-cat-count" }, `${fmt.format(n())} entries`)))));
 }
 
 // ---------------------------------------------------------------- skills & passives
@@ -132,7 +140,7 @@ function skillsPage(): HTMLElement {
     // sorts by count; the cell shows the names
     enemies: enemyNamesWith(n).length, enemyNames: enemyNamesWith(n).map((e) => e.name).join(" "), effect: skillDesc(n),
   }));
-  return listPage("Skills", "Every skill with its action-point cost and effect. Hero skills are learnt by class; the rest are enemy skills.", rows, [
+  return listPage("Skills", rows, [
     { key: "name", label: "Skill", render: (r) => skillLink(String(r.name)) }, { key: "ap", label: "AP", num: true },
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(classesWith("skill", String(r.name)).map(([id]) => classLink(id)))) },
     { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.name)) }, { key: "effect", label: "Effect" },
@@ -145,15 +153,30 @@ const GOOD_SHOWN = 10;
 function goodAgainstSection(name: string): HTMLElement | null {
   const list = goodAgainst(name);
   const intro = el("p", { class: "muted small" }, "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): "
-    + "debuffs it can cleanse, buffs it can dispel, heavy hits it can block or draw, hits on everyone it can heal, filters its damage gets through.");
+    + "debuffs it can cleanse, buffs it can dispel, heavy hits it can block or draw, hits on everyone it can heal, filters its damage gets through. "
+    + "✓ marks the enemy turns where it helps; hover or focus a ✓ for why.");
   if (!list.length) return section("Good against", intro, none(G.abilityData?.[name] && classesWith("skill", name).length
     ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill."));
-  const ul = el("ol", { class: "good-list" });
-  const fill = (n: number) => ul.replaceChildren(...list.slice(0, n).map((m) => el("li", {},
-    el("span", { class: "good-name" }, enemyLink({ id: m.quest, name: m.name, rare: m.rare }), m.rare ? pill("rare", "t-pink") : ""),
-    el("span", { class: "good-why" }, m.reason))));
+  // U21: a table, one row per enemy (ranked), a ✓ on the enemy turns the skill answers; the reasons are the cell's
+  // tooltip. "All" holds the reasons tied to no single turn (only when some enemy has one).
+  const marks = list.map(turnMarks);
+  const withAll = marks.some((m) => m.all.length);
+  const mark = (why: string[], turn: string) => why.length
+    ? el("td", { class: "good-mark", title: why.join("\n"), "aria-label": `${turn}: ${why.join("; ")}`, tabindex: "0" }, "✓")
+    : el("td", { class: "good-mark empty" });
+  const tbody = el("tbody");
+  const fill = (n: number) => tbody.replaceChildren(...list.slice(0, n).map((m, i) => el("tr", {},
+    el("td", { class: "num muted" }, String(i + 1)),
+    el("td", {}, el("span", { class: "good-name" }, enemyLink({ id: m.quest, name: m.name, rare: m.rare }), m.rare ? pill("rare", "t-pink") : "")),
+    ...marks[i].turns.map((why, t) => mark(why, `Turn ${t + 1}`)),
+    ...(withAll ? [mark(marks[i].all, "Whole fight")] : []))));
   fill(GOOD_SHOWN);
-  const kids: (Node | string)[] = [intro, ul];
+  const th = (t: string, title = "") => el("th", { scope: "col", class: "good-mark", ...(title ? { title } : {}) }, t);
+  const grid = el("div", { class: "table-wrap good-wrap" }, el("table", { class: "good-table" },
+    el("thead", {}, el("tr", {}, el("th", { scope: "col", class: "num" }, "#"), el("th", { scope: "col" }, "Enemy"),
+      ...[1, 2, 3, 4, 5].map((t) => th(`T${t}`, `Enemy turn ${t} (turn 6 is turn 1 again)`)),
+      ...(withAll ? [th("All", "Not tied to one turn: the whole fight")] : []))), tbody));
+  const kids: (Node | string)[] = [intro, grid];
   if (list.length > GOOD_SHOWN) {
     const more = el("button", { type: "button", class: "show-all" }, `Show all ${list.length}`);
     more.addEventListener("click", () => {
@@ -182,7 +205,7 @@ function skillPage(name: string): HTMLElement {
 
 function passivesPage(): HTMLElement {
   const rows: Row[] = passiveNames().map((n) => ({ name: n, bonus: passiveText(n), classes: classesWith("passive", n).map(([, c]) => c.name).join(", ") }));
-  return listPage("Passives", "A hero picks one passive from its class list (from level 10).", rows, [
+  return listPage("Passives", rows, [
     { key: "name", label: "Passive", render: (r) => passiveLink(String(r.name)) }, { key: "bonus", label: "Bonus" },
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(classesWith("passive", String(r.name)).map(([id]) => classLink(id)))) },
   ]);
@@ -220,12 +243,7 @@ function itemsPage(type: string): HTMLElement {
     { key: "value", label: "Sell value", num: true },
     ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
-  const intro: Record<string, string> = {
-    equipment: "Weapons, armour and trinkets. Any class can wear any item of its slot once the hero reaches the item's level. "
-      + "Bonus stats are the item's own range (before grade and ascension). Sell value is the base customer price of a plain item (no modifiers, ascension 0).",
-    consumable: "Potions, boosts, enchants and map scrolls.", material: "Crafting materials, essences and boss trophies, with where they drop.",
-  };
-  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, intro[type], rows, cols, (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made}`);
+  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols, (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made}`);
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -347,7 +365,7 @@ function mapsPage(): HTMLElement {
     id, name: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
     mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => quest(b)?.name).filter(Boolean).join(", "),
   }));
-  return listPage("Maps", "Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the map modifier.", rows, [
+  return listPage("Maps", rows, [
     { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) }, { key: "level", label: "Level", num: true },
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Minutes", num: true }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
@@ -373,8 +391,7 @@ function mapPage(id: number): HTMLElement {
 
 // ---------------------------------------------------------------- enemies
 function enemiesPage(): HTMLElement {
-  return listPage("Enemies", "Every quest and map enemy with its base stats (before a map's multiplier). Gathering quests and unused "
-    + "placeholder quests are not enemies and are left out.", enemyListRows(), enemyListColumns,
+  return listPage("Enemies", enemyListRows(), enemyListColumns,
   (r) => `${r.name} ${r.rareName} ${r.kind} ${r.skills}`);
 }
 
@@ -423,7 +440,7 @@ function abilityTable(kind: "skill" | "passive", names: string[]): HTMLElement {
 
 function classesPage(): HTMLElement {
   const rows: Row[] = classes().map(([id, c]) => ({ id, name: c.name, hp: c.hp, atk: c.atk, matk: c.matk, def: c.def, mdef: c.mdef, about: classText(id) }));
-  return listPage("Classes", "The hero classes, their base stats, growth, skills and passives.", rows, [
+  return listPage("Classes", rows, [
     { key: "name", label: "Class", render: (r) => classLink(Number(r.id)) }, { key: "hp", label: "HP", num: true }, { key: "atk", label: "Atk", num: true },
     { key: "matk", label: "Matk", num: true }, { key: "def", label: "Def", num: true }, { key: "mdef", label: "Mdef", num: true }, { key: "about", label: "About" },
   ]);

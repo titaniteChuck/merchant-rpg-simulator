@@ -10,8 +10,32 @@ import { Rng, setRng } from "../src/sim/lua.ts";
 import { mapEnemies, parcelRoll } from "../src/ui/wiki-data.ts";
 import { rotationSummary, skillSummaryText } from "../src/ui/wiki-enemies.ts";
 import { amountRange, fixedAmounts, lootTable, pctText, weightedOdds } from "../src/ui/wiki-loot.ts";
+import { goodAgainst, turnMarks } from "../src/ui/wiki-skills.ts";
+import { loadTimelines } from "../src/tools/schedule.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
+loadTimelines(JSON.parse(readFileSync(new URL("../../inventory/timelines.json", import.meta.url), "utf8")));
+
+test("good against table: each reason marks the enemy turns it is about", () => {
+  for (const skill of ["Silence", "Taunt", "Greater Heal", "Cleanse"]) {
+    for (const m of goodAgainst(skill)) {
+      const { turns, all } = turnMarks(m);
+      assert.equal(turns.length, 5);
+      // every reason lands in at least one cell (a turn or "All"), and the turns are 1–5
+      for (const [, text, ts] of m.reasons) {
+        assert.ok(ts.every((t) => t >= 1 && t <= 5), `${skill} ${m.name}: ${ts}`);
+        assert.ok(all.includes(text) || ts.some((t) => turns[t - 1].includes(text)));
+      }
+      assert.ok(turns.some((t) => t.length) || all.length, `${skill} ${m.name}: no mark`);
+    }
+  }
+  // Taunt draws one heavy hit: one turn, the hit's slot (Eternus: Death Touch on turn 3)
+  const eternus = goodAgainst("Taunt").find((m) => m.name === "Eternus")!;
+  assert.deepEqual(turnMarks(eternus).turns.map((t) => t.length > 0), [false, false, true, false, false]);
+  // Archon's Unleashed Power is in the tooltip of a Silence cell
+  const archon = goodAgainst("Silence").find((m) => m.name === "Archon")!;
+  assert.ok(turnMarks(archon).turns.some((t) => t.some((x) => x.includes("Unleashed Power"))));
+});
 
 test("map Skills column: each variant's own rotation, Basic counted last", () => {
   // Murlok Priest: Mind Blast, Basic ×4 (data.QuestData attackList)
