@@ -20,6 +20,7 @@ timestamp: 2026-11-23
   - [Loot](#loot)
 - [Prefix and suffix](#prefix-and-suffix)
 - [Enchanting a map](#enchanting-a-map)
+- [Scrolls](#scrolls)
 - [Level-70 maps](#level-70-maps)
 - [Code](#code)
 
@@ -68,6 +69,25 @@ timestamp: 2026-11-23
   From a plain map with a level-60 Enchanter: +1 ≈ 1.06 attempts, +5 ≈ 5.4, +16 ≈ 24 (≈ 26k gold + 103 runes on a level-1 map).
 - A higher suffix also multiplies enemy strength (`mapEnemyMod × (1 + stats.atk)`), so the map gets harder.
 
+## Scrolls
+
+Up to 3 scroll slots per map run (duplicates allowed), consumed at the start (`Game:startMap`).
+
+| Id | Scroll | Kind | Effect |
+|---|---|---|---|
+| 60 | Escape | escape | Ends the run (no essence) once ≥ 50% of the party is dead, after a won room |
+| 61 | Healing | post-battle | +500 HP to the first hero ≤ 25% HP |
+| 62 | Revive | post-battle | Full HP to a dead hero (1 charge) |
+| 63 / 64 / 65 | Str / Int / Dex | buff-stats | +8% atk / matk / acc for the whole party, whole run |
+| 66 | Swap | post-battle | Switches every hero to its other skill set before the boss |
+| 67 | Speed | map-stats | +20% map speed (shorter run) |
+| 68 | Revive +1 | post-battle | As Revive, 3 charges |
+| 69 | Healing +1 | post-battle | +500 HP to heroes ≤ 50% HP, 6 charges |
+
+- Post-battle and escape scrolls only act **between rooms**, after a won fight. Nothing helps inside the
+  fight that kills the party.
+- Ascended scrolls scale their stats (`consumablePrestigeStat`). Scroll 70 has behaviour (map-stats) but no item.
+
 ## Level-70 maps
 
 - Six maps are defined at `itemLevel = 70`: Hard Boss Rush (27), Weekly Boss Rush (28), the three Random maps
@@ -80,5 +100,6 @@ timestamp: 2026-11-23
 ## Code
 
 - `decompiled/obj.Map.lua`, `decompiled/obj.combat.Campaign.lua`, `decompiled/obj.Player.lua` (`useMap`).
+- Scrolls: `decompiled/obj.combat.ScrollsComponent.lua`, `decompiled/data.ScrollsData.lua`, `decompiled/obj.GameClass.lua` (`startMap`).
 - `decompiled/data.Default.lua`: `mapRoomQuantity`, `mapEssenceReward`, `mapEnemyMod`.
 - Data: `decompiled/data.MapData.lua`.

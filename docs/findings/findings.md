@@ -1,7 +1,7 @@
 ---
 type: Analysis
 title: Balancing findings
-description: Profitability results from profit.py at grade 3, value allocation, crafter and Enchanter level 60, modifiers and enchanting included.
+description: Profitability results from the profit model at grade 3, value allocation, crafter and Enchanter level 60, modifiers and enchanting included.
 timestamp: 2026-11-23
 tags: [balancing, ascension, essence, maps, modifiers]
 ---
@@ -10,7 +10,7 @@ tags: [balancing, ascension, essence, maps, modifiers]
 
 [Root](../index.md) > [Findings](./index.md) > Balancing findings
 
-Run: `python3 tools/profit.py` (grade 3, luck 0, `--alloc value`, crafter and Enchanter level 60, map modifiers on,
+Produced by the former `tools/profit.py`, now `profitReport` in `web/src/tools/profit.ts` (grade 3, luck 0, `--alloc value`, crafter and Enchanter level 60, map modifiers on,
 hero time free), 2026-11-23. Model and its limits: [profit calculator](../tooling/profit-calculator/profit-calculator.md).
 Rerun after any data change. The numbers are model output, not observed in play.
 
@@ -25,6 +25,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
 - [Top earners](#top-earners)
 - [Class balance](#class-balance)
 - [Map runs](#map-runs)
+  - [Scrolls](#scrolls)
 - [Open questions](#open-questions)
 
 ## Modifiers
@@ -128,7 +129,7 @@ Median expected margin (`ev_margin%`) per (type, asc), with money-losing count:
 
 ## Class balance
 
-First combat simulator results, **your roster with its current gear** (`tools/combat.py`, 2026-11-23).
+First combat simulator results, **your roster with its current gear** (former `tools/combat.py`, now `web/src/tools/combat.ts` and the battle page, 2026-11-23).
 Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
 
 - Solo vs all 104 quests (40 fights each, ≥ 90% wins = soloable):
@@ -157,17 +158,27 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
 
 ## Map runs
 
-`tools/combat.py maps` with front Guerrier, Paladin, Paladin and back Cleric, Mage, Berserker (20 runs per map),
+Former `tools/combat.py maps` (now `cmdMaps` in `web/src/tools/combat.ts`) with front Guerrier, Paladin, Paladin and back Cleric, Mage, Berserker (20 runs per map),
 2026-11-23. Full table: `reports/maps_survey.csv`.
 
-- 30 of 52 map × asc combinations are farmable (≥ 90% wins). Bosses that stop the party: Balor
+- 29 of 52 map × asc combinations are farmable (≥ 90% wins; 20 seeded runs each). Bosses that stop the party: Balor
   (Grimal-Frentir), Gnoll Khan (Gnoll Vendetta asc 1), Fatalis, Karthas, the Revenge and Archon maps.
 - **Won runs end at grade 5** (one at 4.6), not the grade 3 the profit calculator assumes: essence per run is
-  ×1.5. Use `profit.py --grade 5` for this party.
+  ×1.5. Use grade 5 in the profit model for this party (roadmap E2 feeds the simulated grade in).
 - Most essence per hour: Hard Tuvale 544 Forest/h (asc 1: 536 Nature/h), Goblin's Feast 479/h, Tuvale-Yarsol 310/h.
 - Asc-1 maps give ~3–4× the loot value per hour (Hard Tuvale asc 1: 14.4k g/h), mostly the higher-value asc-2 essence.
 - The tank dies in many won runs (Gnoll Vendetta +5: Guerrier 100% deaths, run still won).
 - Level-70 maps can't be crafted (see [maps](../game-economy/maps/maps.md#level-70-maps)).
+
+### Scrolls
+
+- **Speed Scroll** is the farming scroll: −20% run time (Goons of Evil asc 1: 3.24 → 2.59 h), so ~+25% essence/h.
+- Heal and revive scrolls only act between rooms. With the 6-hero party, damage happens in the fight that
+  decides the run, so they change nothing: Goons of Evil asc 1 stays at 60% wins with any of the 286 loadouts.
+- With a weaker party they decide the run: 3 heroes (Guerrier, Berserker, Cleric) on Hard Vulkrum go from
+  2.5% to 87.5% wins with Healing +1 (1.7 charges used per run), Revive +1, Revive.
+- Revive charges went unused: heroes only died in the fight that lost the run, never in a won room.
+- Str/Int/Dex (+8%) don't flip boss fights for this roster.
 
 ## Open questions
 

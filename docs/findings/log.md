@@ -3,6 +3,7 @@
 [Root](../index.md) > [Findings](./index.md) > Update Log
 
 ## 2026-11-23
+- **Scrolls**: Added scroll results (Speed for farming, heal/revive only matter for weaker parties).
 - **Map runs**: Added the maps survey results and the level-70 map note.
 - **Class balance**: Added first combat results (solo matrix, class table, gear and party examples).
 - **Map enchanting**: Added results; no change to the cheapest essence sources.
