@@ -24,8 +24,8 @@ The site is the only product ([website](../website/website.md)). Three Claude se
 
 | Session | Lane | Owns |
 |---|---|---|
-| Engine session [09e5f4] | Engine | `web/src/sim/`, `web/src/tools/`, `web/test/`, `docs/tooling/{combat-simulator,profit-calculator,website}/` |
-| UI session [dae1e8] | UI | `site/`, `web/src/ui/`, `web/scripts/` |
+| Engine session [09e5f4] | Engine | `web/src/sim/`, `web/src/tools/`, `web/test/`, `docs/tooling/{combat-simulator,profit-calculator}/` |
+| UI session [dae1e8] | UI | `site/`, `web/src/ui/`, `web/scripts/`, `docs/tooling/website/` |
 | Roadmap session [515001] | Roadmap operator | this page, `docs/findings/`, `docs/game-economy/`; dispatches tasks, merges agent branches |
 | Background agents (spawned by Roadmap) | One task each | a new file set per task, on a branch in their own worktree |
 | Release agent (spawned by Roadmap) | Verify, commit, push, CI | nothing; commits the exact paths a lane hands over |
@@ -55,8 +55,8 @@ Rules:
 | E7 | **Economy model gaps** (confirm each in `decompiled/` first): enchant before vs after ascending; Enchanter Reset to raise grade before a prefix; bonus modifier odds from modded ingredients. | Done (54b2646) |
 | E8 | **Class matrix on the E1 search**: `classMatrix` uses `searchSkills` from `combat.ts`, cheaper default (one search per class on a reference quest). | Done (527fc30) |
 | E9 | **Joint fight optimiser** (user's original ask): `optimiseFight` alternates party + rows, rotations/passives, owned gear (no item used twice) and scrolls until no gain; per-round trace; worker-safe. | Done (436dc34) |
-| E10 | **Potions and permanent hero enchants in combat**: which help most per class / fight (rules from `decompiled/` first). | Queued |
-| E11 | **Profit-model fixes from U1**: a forced essence source whose map needs that essence leaves it unpriced (cycle, solve as a fixed point or error); essence cost floored at 0 g at grade 5 (flag "free by-product" or allow negative). | In progress (engine session) |
+| E10 | **Potions and permanent hero enchants in combat**: which help most per class / fight (rules from `decompiled/` first). | In progress (engine session) |
+| E11 | **Profit-model fixes from U1**: a forced essence source whose map needs that essence leaves it unpriced (cycle, solve as a fixed point or error); essence cost floored at 0 g at grade 5 (flag "free by-product" or allow negative). | Done, committing (release agent) |
 
 ## UI lane
 
@@ -66,7 +66,7 @@ Rules:
 | U5 | **Ascension outlines** (user request): asc 1 = silver outline, asc 2 = gold, replacing the "asc N" text; one helper applied wherever an item/map with `prestigeLevel` is rendered (targets derived, not listed by hand); hero/crafter prestige checked separately. | U0 | Done (9f246d3) |
 | U6a | **Wiki review** (user): enemy names in the skills list; class page with the radar + growth curves side by side, compact white bold AP badge, passives before skills in the same table, whole row clickable with hover. | - | Done (38b841e) |
 | U6b | **Save viewer review** (user): hero overview as a sortable table + per-hero details page; no "×" in inventory grades; crafters: no name outline / Asc column, instead Level / Asc 1 level / Asc 2 level (`Crafter:getEffectiveLevelForItem`). After a save is imported, the drop zone and file status collapse into one discreet "change save" button at the top (once, in `save-source.ts`, on every page). | U3 | In progress (UI session) |
-| U6c | **Enemy wiki pages** (user): Enemies list + enemy page (stats normal/rare, skills, drops, maps); enemy names link there; quests such as "Forest Gathering" excluded by a static, commented enum `NON_ENEMY_QUEST_IDS`. | U6a | Agent, branch `u6c-enemy-pages` |
+| U6c | **Enemy wiki pages** (user): Enemies list + enemy page (stats normal/rare, skills, drops, maps); enemy names link there; quests such as "Forest Gathering" excluded by a static, commented enum `NON_ENEMY_QUEST_IDS`. | U6a | Built (fb3b682), merge after U6b |
 | U7 | **"Optimise this fight" on the battle page** on `optimiseFight` (E9): time budget 2 / 5 / 10 min, per-step trace (round, step, before → after, change), "Use this setup", comparison with the best party alone. | E9 | Folded into U8 (optimiser = one of the modes) |
 | U8 | **Battle page rework** (user): mode first (Simulate / Best rotation / Best gear / Best party / Best scrolls / Optimise everything) decides which inputs show (best party asks for the opponent only); party in two columns (Back n, Front n); opponent card on the right like the heroes, dedicated map card; quest size ×1…×5 = one enemy with HP ×N (cap prestige×2−1), not "N enemies". | U6b, E9 | Queued (UI session, after U6b) |
 | U1 | (Agent after U0 is pushed: new `site/profit.html` + `web/src/ui/profit.ts`, top bar from `wiki.html`, reuse `dom.ts`, `itemLink`, `initSaveSource`, one esbuild line in `assemble-site.sh`; the UI session does the save-viewer essence column and the nav links.) **Profit page** (`profit.html`) on `profitReport` (`web/src/tools/profit.ts`, already browser-safe): item ranking, enchant table, essence sources; options grade, luck, crafter/enchanter level, essence source. Plus the essence column in the save viewer's maps table. | - | Done (1bf8501); nav links, save-viewer essence column and asc pills follow with U3 |

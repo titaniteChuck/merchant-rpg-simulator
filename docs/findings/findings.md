@@ -21,6 +21,7 @@ Rerun after any data change. The numbers are model output, not observed in play.
   - [Order, Reset and modded ingredients](#order-reset-and-modded-ingredients)
 - [Map enchanting](#map-enchanting)
 - [Essence sources](#essence-sources)
+  - [Forced sources and free by-products](#forced-sources-and-free-by-products)
 - [Ascension margins](#ascension-margins)
 - [Losers](#losers)
 - [Top earners](#top-earners)
@@ -117,6 +118,19 @@ Cheapest source per essence (cost per unit, maps crafted with their modifier rol
 - Bridge maps (two regions, e.g. Yarsol-Aldur) win often: cheap, with good loot credit.
 - With `--alloc full` the winners shift (Forest goes to Hard Tuvale at 8.3).
 - Essence sells for ~5 g but costs 4–126 g to make: its sell price says nothing about its worth.
+
+### Forced sources and free by-products
+
+Profit model after E11 (2026-11-23).
+
+- Forcing an essence to come from a map that consumes it is now priced as a fixed point. Forest Essence from Hard
+  Tuvale: 5.65 g, from Tuvale-Yarsol 5.64 g, against 4.04 g from the cheapest source (Tuvale). Before, 196 of 2,203
+  rows dropped out.
+- Impossible cycles (a run yields no more than it consumes): Treant Revenge, Golem Revenge, Archon's Reality
+  (Glacial Essence), Vanquishers (Necro Essence: 500 in, 500 out).
+- **Free by-products**: at grade A, Tuvale Map pays for itself with its other loot (+32 g/run plus ~78 Forest/Nature
+  Essence); at grade S, Tuvale and Yarsol Maps make +148 to +198 g/run plus ~95 essence. None at grade B. Essence
+  cost is floored at 0 g, so these show as free rather than negative.
 
 ## Ascension margins
 
