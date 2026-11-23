@@ -115,7 +115,9 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   Example, the save's best six heroes vs Archon: 0.0% at the end, 0.5% at the lowest, ~1,700 of 200,000 HP per fight.
   `enemy_dmg` can be negative when an enemy shields itself above its max HP (Murlok Monarch).
 - `skills`: every skill multiset within AP (one order, quick), then all orderings of the best ones,
-  then each passive with more fights.
+  then each passive with more fights. AP budgets are per passive (Wisdom: +2 AP): multisets go up to the largest
+  budget and are scored with a passive that affords them; a rotation the game would replace with its default
+  (`Hero:calculateAPRemainder`) is never scored.
 - `gear`: coordinate descent, slot by slot, repeated `--passes` times.
   - `owned`: inventory, sale slots and gear worn by other heroes.
   - `catalog`: every equipment item within `--level-window` levels, built by the game at `--item-grade`,
@@ -129,9 +131,9 @@ the same quests alone on the same seeds. Browser-safe (no console, no `node:*`),
 
 ```ts
 standardHero(sim, classId, level, prestige, gearPolicy = "best", { itemGrade, itemAsc, crafterLevel, rotation, passive }): Hero
-classMatrix(sim, { classes, quests, level, prestige, gearPolicy, skills, searchQuest, searchN, n, seed0, rare,
-  onProgress, shouldStop }): ClassMatrixRow[]
-searchSkills(sim, hero, quest, { n, seed0, top, rare, shouldStop }): { rotation, passive, ev }
+classMatrix(sim, { classes, quests, level, prestige, gearPolicy, skills, searchQuest, searchN, searchNFinal, n, seed0,
+  rare, onProgress, shouldStop }): ClassMatrixRow[]
+searchSkills(sim, hero, quest, { n, nFinal, top, rare, shouldStop }): { rotation, passive, ev }   // combat.ts searchSkills, solo
 summarizeByClass(rows, threshold = 0.9): ClassSummary[]
 ```
 
@@ -149,11 +151,15 @@ summarizeByClass(rows, threshold = 0.9): ClassSummary[]
 | `none` | No gear. |
 
 - **Skills** (`skills`): `"default"` = the game's default for the level (`defaultAttackList` is all Basic for every
-  class, first passive from level 10); `"search"` = `searchSkills` (every skill multiset within the AP budget under
-  each passive, then every ordering of the 3 best), on `searchQuest` (default the toughest quest of the list,
-  `"each"` = a new search per quest); or an explicit `{ rotation, passive }`.
+  class, first passive from level 10); `"search"` = the combat.ts `searchSkills` (see [Search methods](#search-methods);
+  defaults 10 fights per candidate, 30 per finalist, top 3), once per class on `searchQuest` (default the toughest
+  quest of the list, `"each"` = a new search per quest); or an explicit `{ rotation, passive }`. All 9 classes at
+  level 60: about 30 s of searching in Node. On a quest no class can win alone the rotation is chosen for damage only
+  (lowest enemy HP), so prefer a reference quest the classes can win.
 - **Rows** (one per class × quest): win rate, mean turns (and of won fights), grade, damage dealt / taken / healing
-  per fight, death rate, enemy HP removed, HP left, plus the rotation, passive and gear used.
+  per fight, death rate, enemy HP removed at the end and at its lowest point (`enemyHpRemovedPeak`; the end value
+  goes negative when an enemy regenerates above max HP, e.g. Protector of the Forest), HP left, plus the rotation,
+  passive and gear used. `summarizeByClass` breaks win-rate ties on the lowest-point value.
 - `onProgress(done, total)` after every cell and every rotation search; `shouldStop()` returns the rows done so far.
 - Caveats: solo fights only (no party roles: a healer or tank counts only for what it does alone); the `default`
   rotation hides skills, so compare classes with `search`; a rotation searched on one quest is not the best on

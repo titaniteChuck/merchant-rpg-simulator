@@ -655,14 +655,31 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     st.tick();
     return e;
   };
+  // A passive can change the AP budget (Wisdom: +2). The game silently replaces an over-budget rotation with the
+  // default one (Hero:calculateAPRemainder), so a candidate only counts if it is really applied.
+  const budget = new Map<string, number>();
+  for (const p of new Set([current[1], ...passives])) {
+    sim.setSkills(h, ["Basic", "Basic", "Basic", "Basic", "Basic"], p);
+    budget.set(p, sim.skillInfo(h).maxAP);
+  }
+  sim.setSkills(h, current[0], current[1]);
+  const apOf = (rot: string[]) => sum(rot.map((x) => costs[names.indexOf(x)] ?? 0));
+  const apply = (rot: string[], p: string) => {
+    sim.setSkills(h, rot, p);
+    return sim.rotation(h).join() === rot.join() && h.passiveSelect === p;
+  };
+  // the passive a multiset is scored with in stages 1-2: the current one if it affords it, else the widest budget
+  const widest = [...budget].reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+  const passiveFor = (rot: string[]) => (apOf(rot) <= (budget.get(current[1]) ?? info.maxAP) ? current[1] : widest);
   try {
     st.stage("current", 1);
     const base = ev(nFinal);
-    // Stage 1: every multiset of skills within budget, in one canonical order, current passive.
-    const combos = [...rotations(names, costs, info.maxAP)];
+    // Stage 1: every multiset of skills within the largest budget, in one canonical order, scored with the
+    // current passive (or the widest-budget one when the current can't afford it).
+    const combos = [...rotations(names, costs, Math.max(...budget.values()))].filter((c) => apply(c, passiveFor(c)));
     st.stage("skill sets", combos.length);
     const scored: [number, string[]][] = combos.map((combo) => {
-      sim.setSkills(h, combo, current[1]);
+      apply(combo, passiveFor(combo));
       return [ev(nQuick).score, combo];
     });
     scored.sort(byScoreDesc);
@@ -677,19 +694,18 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     }
     st.stage("orderings", cands.length);
     const scored2: [number, string[]][] = cands.map((perm) => {
-      sim.setSkills(h, perm, current[1]);
+      apply(perm, passiveFor(perm));
       return [ev(nQuick).score, perm];
     });
     scored2.sort(byScoreDesc);
     // Stage 3: best orderings x every passive, with more fights.
     const finalists = scored2.slice(0, top);
-    st.stage("final", finalists.length * passives.length);
+    const pairs = finalists.flatMap(([, perm]) => passives.filter((p) => apOf(perm) <= (budget.get(p) ?? 0)).map((p) => [perm, p] as const));
+    st.stage("final", pairs.length);
     const ranked: RotationResult[] = [];
-    for (const [, perm] of finalists) {
-      for (const p of passives) {
-        sim.setSkills(h, perm, p);
-        ranked.push({ ev: ev(nFinal), rotation: perm, passive: p });
-      }
+    for (const [perm, p] of pairs) {
+      if (!apply(perm, p)) continue; // over budget for this passive: the game would play the default rotation
+      ranked.push({ ev: ev(nFinal), rotation: perm, passive: p });
     }
     ranked.sort((a, b) => b.ev.score - a.ev.score);
     return {

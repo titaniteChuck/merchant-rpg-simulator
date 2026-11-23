@@ -121,3 +121,23 @@ test("healing enemies: lowest HP reached and total damage are reported and score
   const plain = evaluate(sim, 1, [warrior()], [], 10);
   assert.equal(plain.enemy_dmg_peak, plain.enemy_dmg);
 });
+
+test("skills: every ranked rotation is really played with its passive (AP budget per passive, Wisdom +2)", async () => {
+  const { standardHero } = await import("../src/tools/classes.ts");
+  const mage = standardHero(sim, 3, 60, 3, "best");
+  const res = searchSkills(sim, mage, [mage], [], { quest: 60 }, { nQuick: 2, nFinal: 3, top: 2 });
+  assert.ok(res.ranked.length > 0);
+  for (const c of res.ranked) {
+    sim.setSkills(mage, c.rotation, c.passive);
+    assert.deepEqual(sim.rotation(mage), c.rotation, `${c.rotation.join("/")} with ${c.passive} must not fall back to the default`);
+    assert.equal(mage.passiveSelect, c.passive);
+  }
+});
+
+test("class matrix: enemy HP removed at its lowest point is reported next to the end value", async () => {
+  const { classMatrix } = await import("../src/tools/classes.ts");
+  // Protector of the Forest (95) regenerates above its max HP: the end value can be negative
+  const rows = classMatrix(sim, { classes: [3], quests: [95], n: 5 });
+  assert.ok(rows[0].enemyHpRemovedPeak >= rows[0].enemyHpRemoved);
+  assert.ok(rows[0].enemyHpRemovedPeak >= 0);
+});

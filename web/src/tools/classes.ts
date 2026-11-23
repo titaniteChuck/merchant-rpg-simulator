@@ -12,7 +12,7 @@
  */
 import { D } from "../sim/api.ts";
 import { G } from "../sim/data.ts";
-import { evaluate, type FightEval, rotations, uniquePermutations } from "./combat.ts";
+import { evaluate, type FightEval, SearchCancelled, searchSkills as searchRotation } from "./combat.ts";
 import type { Hero, Sim } from "./engine.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -161,10 +161,11 @@ function cmpDesc(a: number[], b: number[]): number {
 }
 
 export interface SearchOptions {
-  /** Fights per candidate (default 20). */
+  /** Fights per candidate in the quick stages (default 10). */
   n?: number;
-  seed0?: number;
-  /** Multisets whose orderings are tried (default 3). */
+  /** Fights per finalist (best orderings x passives; default 30). */
+  nFinal?: number;
+  /** Skill sets whose orderings are tried, and orderings kept for the final stage (default 3). */
   top?: number;
   rare?: boolean;
   shouldStop?: () => boolean;
@@ -177,48 +178,21 @@ export interface SkillChoice {
 }
 
 /**
- * Best solo rotation and passive of `hero` against `quest` (the hero is left with them):
- * every multiset of unlocked skills within the AP budget under each passive (one order),
- * then every ordering of the `top` best. Same seeds for every candidate.
- * A lighter version of the combat.ts skill search, for heroes that are not in a save.
+ * Best solo rotation and passive of `hero` against `quest`; the hero is left with them. Runs the combat.ts
+ * searchSkills (every skill set within the AP budget, the orderings of the best, then every passive at nFinal
+ * fights; AP budgets per passive respected). Throws SearchCancelled when `shouldStop` returns true.
  */
 export function searchSkills(sim: Sim, hero: Hero, quest: number, o: SearchOptions = {}): SkillChoice {
-  const n = o.n ?? 20, seed0 = o.seed0 ?? 1, top = o.top ?? 3;
-  const ev = () => evaluate(sim, quest, [hero], [], n, o.rare ?? false, 1, seed0);
-  const info = sim.skillInfo(hero);
-  const skills = info.skills.slice(0, info.unlocked);
-  const names = skills.map((s) => s.name), costs = skills.map((s) => s.ap);
-  const passives = hero.level >= D.heroLevelUnlockSkills ? info.passives : ["None"];
-  let best: SkillChoice | undefined;
-  const consider = (rotation: string[], passive: string) => {
-    sim.setSkills(hero, rotation, passive);
-    // The passive can change the AP budget (Wisdom): the game resets an over-budget rotation.
-    const actual = sim.rotation(hero);
-    if (actual.join() !== rotation.join() || hero.passiveSelect !== passive) return undefined;
-    const e = ev();
-    if (!best || e.score > best.ev.score) best = { rotation, passive, ev: e };
-    return e.score;
-  };
-  consider(sim.rotation(hero), hero.passiveSelect); // the current one: a result even if stopped at once
-  const multisets: [number, string[], string][] = [];
-  for (const p of passives) {
-    sim.setSkills(hero, ["Basic", "Basic", "Basic", "Basic", "Basic"], p);
-    for (const combo of rotations(names, costs, sim.skillInfo(hero).maxAP)) {
-      if (o.shouldStop?.()) break;
-      const s = consider(combo, p);
-      if (s !== undefined) multisets.push([s, combo, p]);
-    }
-  }
-  multisets.sort((a, b) => b[0] - a[0]);
-  for (const [, combo, p] of multisets.slice(0, top)) {
-    for (const perm of uniquePermutations(combo)) {
-      if (o.shouldStop?.()) break;
-      consider(perm, p);
-    }
-  }
-  if (!best) throw new Error("no rotation fits the AP budget");
-  sim.setSkills(hero, best.rotation, best.passive);
-  return best;
+  const res = searchRotation(sim, hero, [hero], [], { quest, rare: o.rare ?? false },
+    { nQuick: o.n ?? 10, nFinal: o.nFinal ?? 30, top: o.top ?? 3 }, { shouldStop: o.shouldStop });
+  const best = res.ranked[0] ?? res.current;
+  if (best.ev.score < res.current.ev.score) return applied(sim, hero, res.current);
+  return applied(sim, hero, best);
+}
+
+function applied(sim: Sim, hero: Hero, c: SkillChoice): SkillChoice {
+  sim.setSkills(hero, c.rotation, c.passive);
+  return c;
 }
 
 export interface ClassMatrixOptions {
@@ -236,8 +210,9 @@ export interface ClassMatrixOptions {
    * (enemy HP x (atk + matk)).
    */
   searchQuest?: number | "each";
-  /** Fights per candidate of the rotation search (default 20). */
+  /** Fights per candidate of the rotation search's quick stages (default 10) and per finalist (default 30). */
   searchN?: number;
+  searchNFinal?: number;
   /** Fights per (class, quest) cell (default 100). */
   n?: number;
   seed0?: number;
@@ -247,7 +222,7 @@ export interface ClassMatrixOptions {
   crafterLevel?: number;
   /** Called after every cell and every rotation search. */
   onProgress?: (done: number, total: number) => void;
-  /** Checked before every cell: when true, the rows done so far are returned. */
+  /** Checked before every cell and during rotation searches: when true, the rows done so far are returned. */
   shouldStop?: () => boolean;
 }
 
@@ -275,8 +250,10 @@ export interface ClassMatrixRow {
   dmgTaken: number;
   healing: number;
   deathRate: number;
-  /** share of the enemy's HP removed (0-1) */
+  /** share of the enemy's HP removed at the end (0-1; negative when it shields above max HP, e.g. Protector of the Forest) */
   enemyHpRemoved: number;
+  /** share of the enemy's HP removed at its lowest point (>= enemyHpRemoved; what to compare against healing enemies) */
+  enemyHpRemovedPeak: number;
   /** share of the hero's HP left (0-1) */
   hpLeft: number;
 }
@@ -308,9 +285,15 @@ export function classMatrix(sim: Sim, o: ClassMatrixOptions): ClassMatrixRow[] {
   const total = classes.length * (o.quests.length + searches);
   let done = 0;
   const rows: ClassMatrixRow[] = [];
-  const search = (h: Hero, q: number) => {
-    searchSkills(sim, h, q, { n: o.searchN ?? 20, seed0, rare: o.rare, shouldStop: o.shouldStop });
+  const search = (h: Hero, q: number): boolean => {
+    try {
+      searchSkills(sim, h, q, { n: o.searchN ?? 10, nFinal: o.searchNFinal ?? 30, rare: o.rare, shouldStop: o.shouldStop });
+    } catch (e) {
+      if (e instanceof SearchCancelled) return false;
+      throw e;
+    }
     o.onProgress?.(++done, total);
+    return true;
   };
   for (const c of classes) {
     if (o.shouldStop?.()) break;
@@ -319,11 +302,11 @@ export function classMatrix(sim: Sim, o: ClassMatrixOptions): ClassMatrixRow[] {
       itemGrade: o.itemGrade, itemAsc: o.itemAsc, crafterLevel: o.crafterLevel,
       rotation: explicit?.rotation, passive: explicit?.passive,
     });
-    if (skills === "search" && !each) search(h, searchQuest);
+    if (skills === "search" && !each && !search(h, searchQuest)) return rows;
     const gear = (h._standardGear as GearPick[]).map((g) => g.name);
     for (const q of o.quests) {
       if (o.shouldStop?.()) return rows;
-      if (skills === "search" && each) search(h, q);
+      if (skills === "search" && each && !search(h, q)) return rows;
       if (o.shouldStop?.()) return rows;
       const ev = evaluate(sim, q, [h], [], n, o.rare ?? false, 1, seed0);
       const he = Object.values(ev.heroes)[0];
@@ -333,7 +316,7 @@ export function classMatrix(sim: Sim, o: ClassMatrixOptions): ClassMatrixRow[] {
         rotation: sim.rotation(h), passive: h.passiveSelect, gear,
         n, win: ev.win, turns: ev.turns, turnsWin: ev.turns_win, grade: ev.grade,
         dmgDealt: he.dmg, dmgTaken: he.taken, healing: he.heal, deathRate: he.death_rate,
-        enemyHpRemoved: ev.enemy_dmg, hpLeft: ev.hp_left,
+        enemyHpRemoved: ev.enemy_dmg, enemyHpRemovedPeak: ev.enemy_dmg_peak, hpLeft: ev.hp_left,
       });
       o.onProgress?.(++done, total);
     }
@@ -350,11 +333,12 @@ export interface ClassSummary {
   /** quests won at least `threshold` of the time */
   soloable: number;
   enemyHpRemoved: number;
+  enemyHpRemovedPeak: number;
   dmgDealt: number;
   dmgTaken: number;
 }
 
-/** One line per class, best mean win rate first (then most enemy HP removed). */
+/** One line per class, best mean win rate first (then most enemy HP removed at its lowest point). */
 export function summarizeByClass(rows: ClassMatrixRow[], threshold = 0.9): ClassSummary[] {
   const by = new Map<number, ClassMatrixRow[]>();
   for (const r of rows) by.set(r.classId, [...(by.get(r.classId) ?? []), r]);
@@ -362,7 +346,8 @@ export function summarizeByClass(rows: ClassMatrixRow[], threshold = 0.9): Class
   return [...by].map(([classId, rs]) => ({
     classId, className: rs[0].className, quests: rs.length, win: avg(rs, (r) => r.win),
     soloable: rs.filter((r) => r.win >= threshold).length, enemyHpRemoved: avg(rs, (r) => r.enemyHpRemoved),
+    enemyHpRemovedPeak: avg(rs, (r) => r.enemyHpRemovedPeak),
     dmgDealt: avg(rs, (r) => r.dmgDealt), dmgTaken: avg(rs, (r) => r.dmgTaken),
-  })).sort((a, b) => (b.win - a.win) || (b.enemyHpRemoved - a.enemyHpRemoved));
+  })).sort((a, b) => (b.win - a.win) || (b.enemyHpRemovedPeak - a.enemyHpRemovedPeak));
 }
 
