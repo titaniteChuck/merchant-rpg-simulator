@@ -18,6 +18,7 @@ timestamp: 2026-11-23
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
+  - [Regression snapshots](#regression-snapshots)
 - [Roadmap](#roadmap)
 
 ## Public repo rules
@@ -135,6 +136,22 @@ flowchart LR
 - **Speed**: about 0.34 ms per single-hero fight in Node.
 - Search/optimisation and profit code (`combat.ts`, `profit.ts`) lives in `web/src/tools/`, for the pages. There are no
   command-line tools: the site is the product; `npm test` and the difftests are the local checks.
+
+### Regression snapshots
+
+CI-safe drift check (no save data, runs in CI): fixed-seed outputs compared with committed JSON.
+
+| Test | Covers | Snapshot |
+|---|---|---|
+| `test/snapshots-sim.test.ts` | 57 fights: 5 parties, all 9 classes, L10-60, normal + rare, 1-4 enemies, seeds 1-3 | `fights.json` |
+| | 10 map runs: maps 1, 8, 13, 17, 21, asc 0 + 1, prefix/suffix, scrolls, seeds 1-2 | `maps.json` |
+| | Goblin Warlord's Feast heal (quest 91 x10, map 3 asc 1): HP rises on turns 3, 8, 13 | `feast.json` |
+| `test/snapshots-profit.test.ts` | `profitReport` default and grade 5 + crafter level 40: top 30 rows, essence table, sha256 of every table | `profit-*.json` |
+
+- Heroes: `test/helpers/catalog-heroes.ts`: best catalog item of the class's subtypes at the hero's level, `makeItem` with fixed seeds.
+- Snapshots in `web/test/snapshots/`; a mismatch fails with the first differing path.
+- Regenerate on purpose only: `npm run test:update-snapshots` (= `UPDATE_SNAPSHOTS=1`), then review the diff and commit.
+- Runtime: about 11 s (profit report ~5 s per variant).
 
 ## Roadmap
 

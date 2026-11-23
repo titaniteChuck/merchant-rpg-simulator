@@ -1,0 +1,6555 @@
+[
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -38,
+  "enemyMaxHP": 100,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 125,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 138
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -38,
+  "enemyMaxHP": 100,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 125,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 138
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -38,
+  "enemyMaxHP": 100,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 125,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 138
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 3,
+  "seed": 1,
+  "won": true,
+  "turns": 4,
+  "actions": 7,
+  "enemyHP": -42,
+  "enemyMaxHP": 300,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 207,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 311,
+    "magicDmgDealt": 31,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 342
+    },
+    "skillUses": {
+     "Basic": 4
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 4
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 3,
+  "seed": 2,
+  "won": true,
+  "turns": 4,
+  "actions": 7,
+  "enemyHP": -42,
+  "enemyMaxHP": 300,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 207,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 311,
+    "magicDmgDealt": 31,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 342
+    },
+    "skillUses": {
+     "Basic": 4
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 4
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": false,
+  "amount": 3,
+  "seed": 3,
+  "won": true,
+  "turns": 4,
+  "actions": 7,
+  "enemyHP": -42,
+  "enemyMaxHP": 300,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 207,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 311,
+    "magicDmgDealt": 31,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 342
+    },
+    "skillUses": {
+     "Basic": 4
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 4
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": true,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -8,
+  "enemyMaxHP": 120,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 115,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 128
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": true,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -8,
+  "enemyMaxHP": 120,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 115,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 128
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 7,
+  "isRare": true,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 1,
+  "actions": 1,
+  "enemyHP": -8,
+  "enemyMaxHP": 120,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 246,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 115,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 128
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 9,
+  "isRare": false,
+  "amount": 2,
+  "seed": 1,
+  "won": true,
+  "turns": 3,
+  "actions": 5,
+  "enemyHP": -4,
+  "enemyMaxHP": 260,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 204,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 240,
+    "magicDmgDealt": 24,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Basic": 264
+    },
+    "skillUses": {
+     "Basic": 3
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 9,
+  "isRare": false,
+  "amount": 2,
+  "seed": 2,
+  "won": true,
+  "turns": 3,
+  "actions": 5,
+  "enemyHP": -4,
+  "enemyMaxHP": 260,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 204,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 240,
+    "magicDmgDealt": 24,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Basic": 264
+    },
+    "skillUses": {
+     "Basic": 3
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "solo L10",
+  "quest": 9,
+  "isRare": false,
+  "amount": 2,
+  "seed": 3,
+  "won": true,
+  "turns": 3,
+  "actions": 5,
+  "enemyHP": -4,
+  "enemyMaxHP": 260,
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 204,
+    "maxHP": 246,
+    "dead": false,
+    "physicalDmgDealt": 240,
+    "magicDmgDealt": 24,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Basic": 264
+    },
+    "skillUses": {
+     "Basic": 3
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 14,
+  "isRare": false,
+  "amount": 2,
+  "seed": 1,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -291,
+  "enemyMaxHP": 400,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 22,
+    "magicDmgDealt": 417,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 439
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 239,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 225,
+    "magicDmgDealt": 27,
+    "dmgTaken": 11,
+    "skillDmg": {
+     "Basic": 252
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 14,
+  "isRare": false,
+  "amount": 2,
+  "seed": 2,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -207,
+  "enemyMaxHP": 400,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 22,
+    "magicDmgDealt": 417,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 439
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 239,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 150,
+    "magicDmgDealt": 18,
+    "dmgTaken": 11,
+    "skillDmg": {
+     "Basic": 168
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 14,
+  "isRare": false,
+  "amount": 2,
+  "seed": 3,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -291,
+  "enemyMaxHP": 400,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 22,
+    "magicDmgDealt": 417,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 439
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 239,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 225,
+    "magicDmgDealt": 27,
+    "dmgTaken": 11,
+    "skillDmg": {
+     "Basic": 252
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 17,
+  "isRare": true,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 1,
+  "actions": 2,
+  "enemyHP": -186,
+  "enemyMaxHP": 210,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 14,
+    "magicDmgDealt": 302,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 316
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 250,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 70,
+    "magicDmgDealt": 10,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 80
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 17,
+  "isRare": true,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 1,
+  "actions": 2,
+  "enemyHP": -186,
+  "enemyMaxHP": 210,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 14,
+    "magicDmgDealt": 302,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 316
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 250,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 70,
+    "magicDmgDealt": 10,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 80
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 17,
+  "isRare": true,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 1,
+  "actions": 2,
+  "enemyHP": -186,
+  "enemyMaxHP": 210,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 14,
+    "magicDmgDealt": 302,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 316
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 250,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 70,
+    "magicDmgDealt": 10,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 80
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 20,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -45,
+  "enemyMaxHP": 450,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 268,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 280
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 211,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 190,
+    "magicDmgDealt": 25,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 215
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 20,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -45,
+  "enemyMaxHP": 450,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 268,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 280
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 211,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 190,
+    "magicDmgDealt": 25,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 215
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "duo L20",
+  "quest": 20,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 2,
+  "actions": 5,
+  "enemyHP": -45,
+  "enemyMaxHP": 450,
+  "heroes": [
+   {
+    "name": "Mage L20",
+    "class": 3,
+    "level": 20,
+    "prestige": 1,
+    "hp": 228,
+    "maxHP": 228,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 268,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 280
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L20",
+    "class": 2,
+    "level": 20,
+    "prestige": 1,
+    "hp": 211,
+    "maxHP": 250,
+    "dead": false,
+    "physicalDmgDealt": 190,
+    "magicDmgDealt": 25,
+    "dmgTaken": 39,
+    "skillDmg": {
+     "Basic": 215
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 24,
+  "isRare": false,
+  "amount": 4,
+  "seed": 1,
+  "won": true,
+  "turns": 2,
+  "actions": 7,
+  "enemyHP": -239,
+  "enemyMaxHP": 960,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 24,
+    "magicDmgDealt": 421,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 445
+    },
+    "skillUses": {
+     "Basic": 2
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 316,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 435,
+    "magicDmgDealt": 7,
+    "dmgTaken": 14,
+    "skillDmg": {
+     "Slash": 268,
+     "Basic": 174
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 310,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 286,
+    "magicDmgDealt": 26,
+    "dmgTaken": 20,
+    "skillDmg": {
+     "Kidney Shot": 238,
+     "Basic": 74
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 24,
+  "isRare": false,
+  "amount": 4,
+  "seed": 2,
+  "won": true,
+  "turns": 1,
+  "actions": 3,
+  "enemyHP": -7,
+  "enemyMaxHP": 960,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 16,
+    "magicDmgDealt": 281,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 297
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 268,
+    "magicDmgDealt": 0,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Slash": 268
+    },
+    "skillUses": {
+     "Slash": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 389,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Kidney Shot": 402
+    },
+    "skillUses": {
+     "Kidney Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 24,
+  "isRare": false,
+  "amount": 4,
+  "seed": 3,
+  "won": true,
+  "turns": 1,
+  "actions": 3,
+  "enemyHP": -7,
+  "enemyMaxHP": 960,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 16,
+    "magicDmgDealt": 281,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 297
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 268,
+    "magicDmgDealt": 0,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Slash": 268
+    },
+    "skillUses": {
+     "Slash": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 389,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Kidney Shot": 402
+    },
+    "skillUses": {
+     "Kidney Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 26,
+  "isRare": true,
+  "amount": 2,
+  "seed": 1,
+  "won": true,
+  "turns": 1,
+  "actions": 3,
+  "enemyHP": -132,
+  "enemyMaxHP": 640,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 15,
+    "magicDmgDealt": 281,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 296
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 251,
+    "magicDmgDealt": 0,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Slash": 251
+    },
+    "skillUses": {
+     "Slash": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 212,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Kidney Shot": 225
+    },
+    "skillUses": {
+     "Kidney Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 26,
+  "isRare": true,
+  "amount": 2,
+  "seed": 2,
+  "won": true,
+  "turns": 1,
+  "actions": 3,
+  "enemyHP": -285,
+  "enemyMaxHP": 640,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 15,
+    "magicDmgDealt": 281,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 296
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 251,
+    "magicDmgDealt": 0,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Slash": 251
+    },
+    "skillUses": {
+     "Slash": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 365,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Kidney Shot": 378
+    },
+    "skillUses": {
+     "Kidney Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 26,
+  "isRare": true,
+  "amount": 2,
+  "seed": 3,
+  "won": true,
+  "turns": 1,
+  "actions": 3,
+  "enemyHP": -285,
+  "enemyMaxHP": 640,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 15,
+    "magicDmgDealt": 281,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 296
+    },
+    "skillUses": {
+     "Basic": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 251,
+    "magicDmgDealt": 0,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Slash": 251
+    },
+    "skillUses": {
+     "Slash": 1
+    },
+    "healingDone": 0,
+    "hits": 1,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 330,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 365,
+    "magicDmgDealt": 13,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Kidney Shot": 378
+    },
+    "skillUses": {
+     "Kidney Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 28,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 4,
+  "actions": 15,
+  "enemyHP": -364,
+  "enemyMaxHP": 1200,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 23,
+    "magicDmgDealt": 560,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 583
+    },
+    "skillUses": {
+     "Basic": 4
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 170,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 549,
+    "magicDmgDealt": 16,
+    "dmgTaken": 160,
+    "skillDmg": {
+     "Slash": 182,
+     "Basic": 383,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 105,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 362,
+    "magicDmgDealt": 54,
+    "dmgTaken": 225,
+    "skillDmg": {
+     "Kidney Shot": 165,
+     "Basic": 86,
+     "Expose Weakness": 165
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 28,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 3,
+  "actions": 11,
+  "enemyHP": -157,
+  "enemyMaxHP": 1200,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 19,
+    "magicDmgDealt": 448,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 467
+    },
+    "skillUses": {
+     "Basic": 3
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 225,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 354,
+    "magicDmgDealt": 11,
+    "dmgTaken": 105,
+    "skillDmg": {
+     "Slash": 182,
+     "Basic": 183,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 1,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 182,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 472,
+    "magicDmgDealt": 53,
+    "dmgTaken": 148,
+    "skillDmg": {
+     "Kidney Shot": 276,
+     "Basic": 84,
+     "Expose Weakness": 165
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 1,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "trio L30",
+  "quest": 28,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 3,
+  "actions": 11,
+  "enemyHP": -24,
+  "enemyMaxHP": 1200,
+  "heroes": [
+   {
+    "name": "Cleric L30",
+    "class": 5,
+    "level": 30,
+    "prestige": 1,
+    "hp": 341,
+    "maxHP": 341,
+    "dead": false,
+    "physicalDmgDealt": 19,
+    "magicDmgDealt": 448,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 467
+    },
+    "skillUses": {
+     "Basic": 3
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Berserker L30",
+    "class": 4,
+    "level": 30,
+    "prestige": 1,
+    "hp": 225,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 268,
+    "magicDmgDealt": 5,
+    "dmgTaken": 105,
+    "skillDmg": {
+     "Slash": 182,
+     "Basic": 91,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 1,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Assassin L30",
+    "class": 6,
+    "level": 30,
+    "prestige": 1,
+    "hp": 182,
+    "maxHP": 330,
+    "dead": false,
+    "physicalDmgDealt": 441,
+    "magicDmgDealt": 43,
+    "dmgTaken": 148,
+    "skillDmg": {
+     "Kidney Shot": 276,
+     "Basic": 43,
+     "Expose Weakness": 165
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 1,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 45,
+  "isRare": false,
+  "amount": 3,
+  "seed": 1,
+  "won": true,
+  "turns": 6,
+  "actions": 35,
+  "enemyHP": -1609,
+  "enemyMaxHP": 7200,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 364,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 642,
+    "magicDmgDealt": 585,
+    "dmgTaken": 146,
+    "skillDmg": {
+     "Fortune Strike": 819,
+     "Basic": 408,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 275,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 2268,
+    "magicDmgDealt": 529,
+    "dmgTaken": 302,
+    "skillDmg": {
+     "Sunder": 624,
+     "Basic": 504,
+     "Ambush": 813,
+     "Cheap Shot": 856
+    },
+    "skillUses": {
+     "Sunder": 2,
+     "Basic": 2,
+     "Ambush": 1,
+     "Cheap Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 605.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 736,
+    "magicDmgDealt": 629,
+    "dmgTaken": 110,
+    "skillDmg": {
+     "Unholy Slash": 583,
+     "Basic": 370,
+     "Slow": 0,
+     "Terrify": 287
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 41,
+    "hits": 5,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 329,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1655,
+    "magicDmgDealt": 413,
+    "dmgTaken": 301,
+    "skillDmg": {
+     "Kidney Shot": 917,
+     "Basic": 400,
+     "Expose Weakness": 375,
+     "Puncture": 376
+    },
+    "skillUses": {
+     "Kidney Shot": 2,
+     "Basic": 2,
+     "Expose Weakness": 1,
+     "Puncture": 1
+    },
+    "healingDone": 0,
+    "hits": 9,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 507.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 1339,
+    "magicDmgDealt": 13,
+    "dmgTaken": 241,
+    "skillDmg": {
+     "Slash": 634,
+     "Basic": 212,
+     "Enrage": 0,
+     "Slash II": 506
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 2,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 1,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 45,
+  "isRare": false,
+  "amount": 3,
+  "seed": 2,
+  "won": true,
+  "turns": 5,
+  "actions": 29,
+  "enemyHP": -715,
+  "enemyMaxHP": 7200,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 364,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 484,
+    "magicDmgDealt": 418,
+    "dmgTaken": 146,
+    "skillDmg": {
+     "Fortune Strike": 410,
+     "Basic": 492,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 331,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 1658,
+    "magicDmgDealt": 557,
+    "dmgTaken": 246,
+    "skillDmg": {
+     "Sunder": 312,
+     "Basic": 641,
+     "Ambush": 406,
+     "Cheap Shot": 856
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1,
+     "Cheap Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 586.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 893,
+    "magicDmgDealt": 654,
+    "dmgTaken": 110,
+    "skillDmg": {
+     "Unholy Slash": 317,
+     "Basic": 581,
+     "Slow": 0,
+     "Terrify": 573
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 22,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 385,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1346,
+    "magicDmgDealt": 443,
+    "dmgTaken": 245,
+    "skillDmg": {
+     "Kidney Shot": 383,
+     "Basic": 509,
+     "Expose Weakness": 521,
+     "Puncture": 376
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1,
+     "Puncture": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 552.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 1433,
+    "magicDmgDealt": 29,
+    "dmgTaken": 196,
+    "skillDmg": {
+     "Slash": 555,
+     "Basic": 401,
+     "Enrage": 0,
+     "Slash II": 506
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 45,
+  "isRare": false,
+  "amount": 3,
+  "seed": 3,
+  "won": true,
+  "turns": 5,
+  "actions": 29,
+  "enemyHP": -209,
+  "enemyMaxHP": 7200,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 364,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 411,
+    "magicDmgDealt": 361,
+    "dmgTaken": 146,
+    "skillDmg": {
+     "Fortune Strike": 410,
+     "Basic": 362,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 331,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 1402,
+    "magicDmgDealt": 492,
+    "dmgTaken": 246,
+    "skillDmg": {
+     "Sunder": 312,
+     "Basic": 320,
+     "Ambush": 406,
+     "Cheap Shot": 856
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1,
+     "Cheap Shot": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 586.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 592,
+    "magicDmgDealt": 496,
+    "dmgTaken": 110,
+    "skillDmg": {
+     "Unholy Slash": 317,
+     "Basic": 370,
+     "Slow": 0,
+     "Terrify": 287
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 22,
+    "hits": 4,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 385,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1816,
+    "magicDmgDealt": 443,
+    "dmgTaken": 245,
+    "skillDmg": {
+     "Kidney Shot": 622,
+     "Basic": 509,
+     "Expose Weakness": 752,
+     "Puncture": 376
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1,
+     "Puncture": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 0,
+    "crits": 5,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 552.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 1355,
+    "magicDmgDealt": 41,
+    "dmgTaken": 196,
+    "skillDmg": {
+     "Slash": 278,
+     "Basic": 612,
+     "Enrage": 0,
+     "Slash II": 506
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 37,
+  "isRare": true,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 4,
+  "actions": 23,
+  "enemyHP": -386,
+  "enemyMaxHP": 4000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 390,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 328,
+    "magicDmgDealt": 319,
+    "dmgTaken": 120,
+    "skillDmg": {
+     "Fortune Strike": 418,
+     "Basic": 229,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 535,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 897,
+    "magicDmgDealt": 84,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Sunder": 324,
+     "Basic": 363,
+     "Ambush": 294
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 580.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 276,
+    "magicDmgDealt": 262,
+    "dmgTaken": 116,
+    "skillDmg": {
+     "Unholy Slash": 323,
+     "Basic": 139,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 23,
+    "hits": 2,
+    "misses": 1,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 588,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1290,
+    "magicDmgDealt": 189,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Kidney Shot": 639,
+     "Basic": 399,
+     "Expose Weakness": 441
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 705.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 703,
+    "magicDmgDealt": 38,
+    "dmgTaken": 43,
+    "skillDmg": {
+     "Slash": 286,
+     "Basic": 455,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 37,
+  "isRare": true,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 4,
+  "actions": 23,
+  "enemyHP": -615,
+  "enemyMaxHP": 4000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 390,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 271,
+    "magicDmgDealt": 262,
+    "dmgTaken": 120,
+    "skillDmg": {
+     "Fortune Strike": 418,
+     "Basic": 115,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 535,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 1106,
+    "magicDmgDealt": 56,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Sunder": 324,
+     "Basic": 249,
+     "Ambush": 589
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 580.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 445,
+    "magicDmgDealt": 351,
+    "dmgTaken": 116,
+    "skillDmg": {
+     "Unholy Slash": 323,
+     "Basic": 435,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 23,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 588,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1045,
+    "magicDmgDealt": 189,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Kidney Shot": 394,
+     "Basic": 292,
+     "Expose Weakness": 548
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 705.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 864,
+    "magicDmgDealt": 26,
+    "dmgTaken": 43,
+    "skillDmg": {
+     "Slash": 572,
+     "Basic": 318,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 37,
+  "isRare": true,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 4,
+  "actions": 23,
+  "enemyHP": -650,
+  "enemyMaxHP": 4000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": 390,
+    "maxHP": 510,
+    "dead": false,
+    "physicalDmgDealt": 271,
+    "magicDmgDealt": 262,
+    "dmgTaken": 120,
+    "skillDmg": {
+     "Fortune Strike": 418,
+     "Basic": 115,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": 535,
+    "maxHP": 577,
+    "dead": false,
+    "physicalDmgDealt": 1106,
+    "magicDmgDealt": 56,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Sunder": 324,
+     "Basic": 249,
+     "Ambush": 589
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": 580.57,
+    "maxHP": 696.57,
+    "dead": false,
+    "physicalDmgDealt": 538,
+    "magicDmgDealt": 415,
+    "dmgTaken": 116,
+    "skillDmg": {
+     "Unholy Slash": 323,
+     "Basic": 592,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 23,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": 588,
+    "maxHP": 630,
+    "dead": false,
+    "physicalDmgDealt": 1060,
+    "magicDmgDealt": 159,
+    "dmgTaken": 42,
+    "skillDmg": {
+     "Kidney Shot": 639,
+     "Basic": 306,
+     "Expose Weakness": 274
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": 705.36,
+    "maxHP": 748.36,
+    "dead": false,
+    "physicalDmgDealt": 745,
+    "magicDmgDealt": 38,
+    "dmgTaken": 43,
+    "skillDmg": {
+     "Slash": 286,
+     "Basic": 497,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Enrage": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "five L45",
+  "quest": 52,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": false,
+  "turns": 9,
+  "actions": 41,
+  "enemyHP": 234,
+  "enemyMaxHP": 6000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": -375,
+    "maxHP": 510,
+    "dead": true,
+    "physicalDmgDealt": 368,
+    "magicDmgDealt": 495,
+    "dmgTaken": 885,
+    "skillDmg": {
+     "Fortune Strike": 508,
+     "Basic": 355,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": -179,
+    "maxHP": 577,
+    "dead": true,
+    "physicalDmgDealt": 1027,
+    "magicDmgDealt": 81,
+    "dmgTaken": 756,
+    "skillDmg": {
+     "Sunder": 206,
+     "Basic": 329,
+     "Ambush": 573
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": -61.42999999999995,
+    "maxHP": 696.57,
+    "dead": true,
+    "physicalDmgDealt": 495,
+    "magicDmgDealt": 757,
+    "dmgTaken": 758,
+    "skillDmg": {
+     "Unholy Slash": 465,
+     "Basic": 152,
+     "Slow": 0,
+     "Terrify": 436
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 33,
+    "hits": 3,
+    "misses": 4,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": -117,
+    "maxHP": 630,
+    "dead": true,
+    "physicalDmgDealt": 977,
+    "magicDmgDealt": 200,
+    "dmgTaken": 747,
+    "skillDmg": {
+     "Kidney Shot": 440,
+     "Basic": 368,
+     "Expose Weakness": 369
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": -427.64,
+    "maxHP": 748.36,
+    "dead": true,
+    "physicalDmgDealt": 1318,
+    "magicDmgDealt": 48,
+    "dmgTaken": 1176,
+    "skillDmg": {
+     "Slash": 443,
+     "Basic": 571,
+     "Enrage": 0,
+     "Slash II": 352
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 1,
+    "crits": 2,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "five L45",
+  "quest": 52,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": false,
+  "turns": 9,
+  "actions": 41,
+  "enemyHP": 358,
+  "enemyMaxHP": 6000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": -375,
+    "maxHP": 510,
+    "dead": true,
+    "physicalDmgDealt": 184,
+    "magicDmgDealt": 245,
+    "dmgTaken": 885,
+    "skillDmg": {
+     "Fortune Strike": 327,
+     "Basic": 102,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 2,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": -179,
+    "maxHP": 577,
+    "dead": true,
+    "physicalDmgDealt": 1130,
+    "magicDmgDealt": 108,
+    "dmgTaken": 756,
+    "skillDmg": {
+     "Sunder": 206,
+     "Basic": 459,
+     "Ambush": 573
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": -61.42999999999995,
+    "maxHP": 696.57,
+    "dead": true,
+    "physicalDmgDealt": 667,
+    "magicDmgDealt": 909,
+    "dmgTaken": 758,
+    "skillDmg": {
+     "Unholy Slash": 693,
+     "Basic": 248,
+     "Slow": 0,
+     "Terrify": 436
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 49,
+    "hits": 5,
+    "misses": 2,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": -117,
+    "maxHP": 630,
+    "dead": true,
+    "physicalDmgDealt": 972,
+    "magicDmgDealt": 200,
+    "dmgTaken": 747,
+    "skillDmg": {
+     "Kidney Shot": 375,
+     "Basic": 265,
+     "Expose Weakness": 532
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": -427.64,
+    "maxHP": 748.36,
+    "dead": true,
+    "physicalDmgDealt": 1197,
+    "magicDmgDealt": 30,
+    "dmgTaken": 1176,
+    "skillDmg": {
+     "Slash": 638,
+     "Basic": 237,
+     "Enrage": 0,
+     "Slash II": 352
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 1,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "five L45",
+  "quest": 52,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": false,
+  "turns": 9,
+  "actions": 41,
+  "enemyHP": 827,
+  "enemyMaxHP": 6000,
+  "heroes": [
+   {
+    "name": "Bard L45",
+    "class": 9,
+    "level": 45,
+    "prestige": 2,
+    "hp": -375,
+    "maxHP": 510,
+    "dead": true,
+    "physicalDmgDealt": 249,
+    "magicDmgDealt": 346,
+    "dmgTaken": 885,
+    "skillDmg": {
+     "Fortune Strike": 327,
+     "Basic": 268,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 1,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Rogue L45",
+    "class": 2,
+    "level": 45,
+    "prestige": 2,
+    "hp": -179,
+    "maxHP": 577,
+    "dead": true,
+    "physicalDmgDealt": 1160,
+    "magicDmgDealt": 54,
+    "dmgTaken": 756,
+    "skillDmg": {
+     "Sunder": 411,
+     "Basic": 230,
+     "Ambush": 573
+    },
+    "skillUses": {
+     "Sunder": 1,
+     "Basic": 2,
+     "Ambush": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Dark Knight L45",
+    "class": 8,
+    "level": 45,
+    "prestige": 2,
+    "hp": -61.42999999999995,
+    "maxHP": 696.57,
+    "dead": true,
+    "physicalDmgDealt": 404,
+    "magicDmgDealt": 696,
+    "dmgTaken": 758,
+    "skillDmg": {
+     "Unholy Slash": 465,
+     "Basic": 0,
+     "Slow": 0,
+     "Terrify": 436
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 33,
+    "hits": 2,
+    "misses": 5,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Assassin L45",
+    "class": 6,
+    "level": 45,
+    "prestige": 2,
+    "hp": -117,
+    "maxHP": 630,
+    "dead": true,
+    "physicalDmgDealt": 925,
+    "magicDmgDealt": 172,
+    "dmgTaken": 747,
+    "skillDmg": {
+     "Kidney Shot": 440,
+     "Basic": 288,
+     "Expose Weakness": 369
+    },
+    "skillUses": {
+     "Kidney Shot": 1,
+     "Basic": 2,
+     "Expose Weakness": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front2"
+   },
+   {
+    "name": "Berserker L45",
+    "class": 4,
+    "level": 45,
+    "prestige": 2,
+    "hp": -427.64,
+    "maxHP": 748.36,
+    "dead": true,
+    "physicalDmgDealt": 1125,
+    "magicDmgDealt": 42,
+    "dmgTaken": 1176,
+    "skillDmg": {
+     "Slash": 443,
+     "Basic": 372,
+     "Enrage": 0,
+     "Slash II": 352
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Enrage": 1,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 1,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 80,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 6,
+  "actions": 41,
+  "enemyHP": -5683,
+  "enemyMaxHP": 20000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1321.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 8456,
+    "dmgTaken": 67,
+    "skillDmg": {
+     "Mind Blast": 3833,
+     "Basic": 1523,
+     "Magic Missile": 1027,
+     "Mind Blast II": 2085
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 2,
+     "Magic Missile": 1,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2282.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1228,
+    "magicDmgDealt": 786,
+    "dmgTaken": 330,
+    "skillDmg": {
+     "Divine Strike": 869,
+     "Basic": 518,
+     "Templar Shield": 627,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 2,
+     "Basic": 2,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 27,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1344.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 20,
+    "magicDmgDealt": 5368,
+    "dmgTaken": 75,
+    "skillDmg": {
+     "Mind Blast": 2406,
+     "Basic": 1968,
+     "Divine Smite": 1014,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 2,
+     "Divine Smite": 1,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2230.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2362,
+    "magicDmgDealt": 950,
+    "dmgTaken": 354,
+    "skillDmg": {
+     "Unholy Slash": 1196,
+     "Basic": 1234,
+     "Slow": 0,
+     "Terrify": 694
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 83,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1080.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1916,
+    "magicDmgDealt": 2024,
+    "dmgTaken": 217,
+    "skillDmg": {
+     "Fortune Strike": 2396,
+     "Basic": 1544,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1751.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 2490,
+    "magicDmgDealt": 71,
+    "dmgTaken": 246,
+    "skillDmg": {
+     "Slash": 1231,
+     "Basic": 1131,
+     "Shield Slam": 199,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 2,
+     "Shield Slam": 1,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 80,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 5,
+  "actions": 34,
+  "enemyHP": -3358,
+  "enemyMaxHP": 20000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1321.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 8010,
+    "dmgTaken": 67,
+    "skillDmg": {
+     "Mind Blast": 2207,
+     "Basic": 1523,
+     "Magic Missile": 2207,
+     "Mind Blast II": 2085
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Magic Missile": 1,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2286.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1139,
+    "magicDmgDealt": 522,
+    "dmgTaken": 312,
+    "skillDmg": {
+     "Divine Strike": 360,
+     "Basic": 907,
+     "Templar Shield": 394,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 1,
+     "Basic": 2,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 13,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1344.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 5570,
+    "dmgTaken": 75,
+    "skillDmg": {
+     "Mind Blast": 2075,
+     "Basic": 1245,
+     "Divine Smite": 2262,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Divine Smite": 1,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2230.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2572,
+    "magicDmgDealt": 947,
+    "dmgTaken": 326,
+    "skillDmg": {
+     "Unholy Slash": 561,
+     "Basic": 1234,
+     "Slow": 0,
+     "Terrify": 1547
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 39,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1080.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1357,
+    "magicDmgDealt": 1232,
+    "dmgTaken": 217,
+    "skillDmg": {
+     "Fortune Strike": 1045,
+     "Basic": 1544,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1763.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 1914,
+    "magicDmgDealt": 71,
+    "dmgTaken": 234,
+    "skillDmg": {
+     "Slash": 524,
+     "Basic": 1131,
+     "Shield Slam": 330,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Shield Slam": 1,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 80,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 5,
+  "actions": 34,
+  "enemyHP": -1267,
+  "enemyMaxHP": 20000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1321.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 6830,
+    "dmgTaken": 67,
+    "skillDmg": {
+     "Mind Blast": 2207,
+     "Basic": 1523,
+     "Magic Missile": 1027,
+     "Mind Blast II": 2085
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Magic Missile": 1,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2286.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1057,
+    "magicDmgDealt": 516,
+    "dmgTaken": 312,
+    "skillDmg": {
+     "Divine Strike": 360,
+     "Basic": 819,
+     "Templar Shield": 394,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 1,
+     "Basic": 2,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 13,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1344.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 28,
+    "magicDmgDealt": 5838,
+    "dmgTaken": 75,
+    "skillDmg": {
+     "Mind Blast": 2075,
+     "Basic": 2777,
+     "Divine Smite": 1014,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Divine Smite": 1,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 4,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2230.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2024,
+    "magicDmgDealt": 706,
+    "dmgTaken": 326,
+    "skillDmg": {
+     "Unholy Slash": 561,
+     "Basic": 1365,
+     "Slow": 0,
+     "Terrify": 694
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 39,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1080.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1228,
+    "magicDmgDealt": 1103,
+    "dmgTaken": 217,
+    "skillDmg": {
+     "Fortune Strike": 1045,
+     "Basic": 1286,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1763.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 1846,
+    "magicDmgDealt": 79,
+    "dmgTaken": 234,
+    "skillDmg": {
+     "Slash": 524,
+     "Basic": 1254,
+     "Shield Slam": 147,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Shield Slam": 1,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 81,
+  "isRare": true,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 4,
+  "actions": 27,
+  "enemyHP": -3056,
+  "enemyMaxHP": 19000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1185.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 24,
+    "magicDmgDealt": 6527,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 2508,
+     "Basic": 2876,
+     "Magic Missile": 1167
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Magic Missile": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2215.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1391,
+    "magicDmgDealt": 861,
+    "dmgTaken": 382,
+    "skillDmg": {
+     "Divine Strike": 576,
+     "Basic": 964,
+     "Templar Shield": 712
+    },
+    "skillUses": {
+     "Divine Strike": 1,
+     "Basic": 2,
+     "Templar Shield": 1
+    },
+    "healingDone": 13,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1216.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 25,
+    "magicDmgDealt": 5842,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 1057,
+     "Basic": 2239,
+     "Divine Smite": 2571
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Divine Smite": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1831.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 1251,
+    "magicDmgDealt": 405,
+    "dmgTaken": 398,
+    "skillDmg": {
+     "Unholy Slash": 0,
+     "Basic": 1594,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 0,
+    "hits": 2,
+    "misses": 1,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1094.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1612,
+    "magicDmgDealt": 1401,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Fortune Strike": 1216,
+     "Basic": 1797,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1637.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 2637,
+    "magicDmgDealt": 80,
+    "dmgTaken": 359,
+    "skillDmg": {
+     "Slash": 840,
+     "Basic": 1340,
+     "Shield Slam": 537
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Shield Slam": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 81,
+  "isRare": true,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 4,
+  "actions": 27,
+  "enemyHP": -4159,
+  "enemyMaxHP": 19000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1185.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 32,
+    "magicDmgDealt": 7366,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 2508,
+     "Basic": 3723,
+     "Magic Missile": 1167
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Magic Missile": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2215.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 938,
+    "magicDmgDealt": 549,
+    "dmgTaken": 382,
+    "skillDmg": {
+     "Divine Strike": 426,
+     "Basic": 614,
+     "Templar Shield": 447
+    },
+    "skillUses": {
+     "Divine Strike": 1,
+     "Basic": 2,
+     "Templar Shield": 1
+    },
+    "healingDone": 13,
+    "hits": 4,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1216.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 25,
+    "magicDmgDealt": 5725,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 2358,
+     "Basic": 2239,
+     "Divine Smite": 1153
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Divine Smite": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1831.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 1775,
+    "magicDmgDealt": 619,
+    "dmgTaken": 398,
+    "skillDmg": {
+     "Unholy Slash": 661,
+     "Basic": 1594,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 46,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1094.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1458,
+    "magicDmgDealt": 1253,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Fortune Strike": 1216,
+     "Basic": 1495,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1637.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 3326,
+    "magicDmgDealt": 93,
+    "dmgTaken": 359,
+    "skillDmg": {
+     "Slash": 1393,
+     "Basic": 1489,
+     "Shield Slam": 537
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Shield Slam": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 81,
+  "isRare": true,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 4,
+  "actions": 27,
+  "enemyHP": -3497,
+  "enemyMaxHP": 19000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1185.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 24,
+    "magicDmgDealt": 7571,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 2508,
+     "Basic": 2579,
+     "Magic Missile": 2508
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Magic Missile": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2215.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1352,
+    "magicDmgDealt": 477,
+    "dmgTaken": 382,
+    "skillDmg": {
+     "Divine Strike": 426,
+     "Basic": 1072,
+     "Templar Shield": 331
+    },
+    "skillUses": {
+     "Divine Strike": 1,
+     "Basic": 2,
+     "Templar Shield": 1
+    },
+    "healingDone": 13,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1216.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 16,
+    "magicDmgDealt": 4912,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Mind Blast": 2358,
+     "Basic": 1417,
+     "Divine Smite": 1153
+    },
+    "skillUses": {
+     "Mind Blast": 1,
+     "Basic": 2,
+     "Divine Smite": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1831.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2297,
+    "magicDmgDealt": 766,
+    "dmgTaken": 398,
+    "skillDmg": {
+     "Unholy Slash": 1474,
+     "Basic": 1450,
+     "Slow": 0
+    },
+    "skillUses": {
+     "Unholy Slash": 1,
+     "Basic": 2,
+     "Slow": 1
+    },
+    "healingDone": 103,
+    "hits": 3,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1094.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1242,
+    "magicDmgDealt": 1074,
+    "dmgTaken": 202,
+    "skillDmg": {
+     "Fortune Strike": 821,
+     "Basic": 1495,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 1,
+     "Basic": 2,
+     "Serenade": 1
+    },
+    "healingDone": 0,
+    "hits": 3,
+    "misses": 0,
+    "crits": 1,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1637.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 2705,
+    "magicDmgDealt": 61,
+    "dmgTaken": 359,
+    "skillDmg": {
+     "Slash": 1393,
+     "Basic": 975,
+     "Shield Slam": 398
+    },
+    "skillUses": {
+     "Slash": 1,
+     "Basic": 2,
+     "Shield Slam": 1
+    },
+    "healingDone": 0,
+    "hits": 4,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 84,
+  "isRare": false,
+  "amount": 2,
+  "seed": 1,
+  "won": false,
+  "turns": 24,
+  "actions": 127,
+  "enemyHP": 20352,
+  "enemyMaxHP": 80000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -141.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 23,
+    "magicDmgDealt": 23985,
+    "dmgTaken": 1530,
+    "skillDmg": {
+     "Mind Blast": 5706,
+     "Basic": 6362,
+     "Magic Missile": 5283,
+     "Mind Blast II": 6657
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Magic Missile": 4,
+     "Mind Blast II": 3
+    },
+    "healingDone": 0,
+    "hits": 18,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -190.10999999999967,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 1488,
+    "magicDmgDealt": 2064,
+    "dmgTaken": 2831,
+    "skillDmg": {
+     "Divine Strike": 1126,
+     "Basic": 794,
+     "Templar Shield": 1632,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 4,
+     "Basic": 7,
+     "Templar Shield": 4,
+     "Shield": 3
+    },
+    "healingDone": 55,
+    "hits": 15,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -299.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 23,
+    "magicDmgDealt": 18628,
+    "dmgTaken": 1719,
+    "skillDmg": {
+     "Mind Blast": 5847,
+     "Basic": 6069,
+     "Divine Smite": 6735,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Divine Smite": 4,
+     "Lesser Heal": 3
+    },
+    "healingDone": 2340,
+    "hits": 15,
+    "misses": 0,
+    "crits": 6,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -405.8800000000001,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 3555,
+    "magicDmgDealt": 3304,
+    "dmgTaken": 4888,
+    "skillDmg": {
+     "Unholy Slash": 2417,
+     "Basic": 2426,
+     "Slow": 0,
+     "Terrify": 1220
+    },
+    "skillUses": {
+     "Unholy Slash": 5,
+     "Basic": 10,
+     "Slow": 5,
+     "Terrify": 4
+    },
+    "healingDone": 169,
+    "hits": 19,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -397.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 1236,
+    "magicDmgDealt": 1791,
+    "dmgTaken": 1695,
+    "skillDmg": {
+     "Fortune Strike": 1504,
+     "Basic": 1523,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -178.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 3359,
+    "magicDmgDealt": 192,
+    "dmgTaken": 2176,
+    "skillDmg": {
+     "Slash": 1817,
+     "Basic": 1355,
+     "Shield Slam": 379,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 4,
+     "Basic": 7,
+     "Shield Slam": 3,
+     "Block": 3
+    },
+    "healingDone": 0,
+    "hits": 14,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 84,
+  "isRare": false,
+  "amount": 2,
+  "seed": 2,
+  "won": false,
+  "turns": 24,
+  "actions": 127,
+  "enemyHP": 15223,
+  "enemyMaxHP": 80000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -141.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 26,
+    "magicDmgDealt": 27357,
+    "dmgTaken": 1530,
+    "skillDmg": {
+     "Mind Blast": 8780,
+     "Basic": 7134,
+     "Magic Missile": 6657,
+     "Mind Blast II": 4812
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Magic Missile": 4,
+     "Mind Blast II": 3
+    },
+    "healingDone": 0,
+    "hits": 18,
+    "misses": 0,
+    "crits": 8,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -190.10999999999967,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 1570,
+    "magicDmgDealt": 2350,
+    "dmgTaken": 2831,
+    "skillDmg": {
+     "Divine Strike": 875,
+     "Basic": 1155,
+     "Templar Shield": 1890,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 4,
+     "Basic": 7,
+     "Templar Shield": 4,
+     "Shield": 3
+    },
+    "healingDone": 55,
+    "hits": 15,
+    "misses": 0,
+    "crits": 5,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -299.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 26,
+    "magicDmgDealt": 20124,
+    "dmgTaken": 1719,
+    "skillDmg": {
+     "Mind Blast": 6727,
+     "Basic": 6688,
+     "Divine Smite": 6735,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Divine Smite": 4,
+     "Lesser Heal": 3
+    },
+    "healingDone": 2340,
+    "hits": 15,
+    "misses": 0,
+    "crits": 8,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -411.8800000000001,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 3006,
+    "magicDmgDealt": 3212,
+    "dmgTaken": 4888,
+    "skillDmg": {
+     "Unholy Slash": 1855,
+     "Basic": 1836,
+     "Slow": 0,
+     "Terrify": 1607
+    },
+    "skillUses": {
+     "Unholy Slash": 5,
+     "Basic": 10,
+     "Slow": 5,
+     "Terrify": 4
+    },
+    "healingDone": 130,
+    "hits": 19,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -397.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 1328,
+    "magicDmgDealt": 2003,
+    "dmgTaken": 1695,
+    "skillDmg": {
+     "Fortune Strike": 1808,
+     "Basic": 1523,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -178.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 3553,
+    "magicDmgDealt": 222,
+    "dmgTaken": 2176,
+    "skillDmg": {
+     "Slash": 1706,
+     "Basic": 1631,
+     "Shield Slam": 438,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 4,
+     "Basic": 7,
+     "Shield Slam": 3,
+     "Block": 3
+    },
+    "healingDone": 0,
+    "hits": 14,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 84,
+  "isRare": false,
+  "amount": 2,
+  "seed": 3,
+  "won": false,
+  "turns": 24,
+  "actions": 127,
+  "enemyHP": 14305,
+  "enemyMaxHP": 80000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -141.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 22,
+    "magicDmgDealt": 29346,
+    "dmgTaken": 1530,
+    "skillDmg": {
+     "Mind Blast": 7243,
+     "Basic": 7908,
+     "Magic Missile": 9405,
+     "Mind Blast II": 4812
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Magic Missile": 4,
+     "Mind Blast II": 3
+    },
+    "healingDone": 0,
+    "hits": 18,
+    "misses": 0,
+    "crits": 9,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -190.10999999999967,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 1630,
+    "magicDmgDealt": 2136,
+    "dmgTaken": 2831,
+    "skillDmg": {
+     "Divine Strike": 1258,
+     "Basic": 876,
+     "Templar Shield": 1632,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 4,
+     "Basic": 7,
+     "Templar Shield": 4,
+     "Shield": 3
+    },
+    "healingDone": 55,
+    "hits": 15,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -299.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 22,
+    "magicDmgDealt": 18675,
+    "dmgTaken": 1719,
+    "skillDmg": {
+     "Mind Blast": 6727,
+     "Basic": 5235,
+     "Divine Smite": 6735,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 4,
+     "Basic": 7,
+     "Divine Smite": 4,
+     "Lesser Heal": 3
+    },
+    "healingDone": 2340,
+    "hits": 15,
+    "misses": 0,
+    "crits": 6,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -411.8800000000001,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 3870,
+    "magicDmgDealt": 3364,
+    "dmgTaken": 4888,
+    "skillDmg": {
+     "Unholy Slash": 2790,
+     "Basic": 2428,
+     "Slow": 0,
+     "Terrify": 1220
+    },
+    "skillUses": {
+     "Unholy Slash": 5,
+     "Basic": 10,
+     "Slow": 5,
+     "Terrify": 4
+    },
+    "healingDone": 196,
+    "hits": 19,
+    "misses": 0,
+    "crits": 5,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -397.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 1074,
+    "magicDmgDealt": 1669,
+    "dmgTaken": 1695,
+    "skillDmg": {
+     "Fortune Strike": 1220,
+     "Basic": 1523,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -178.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 3640,
+    "magicDmgDealt": 247,
+    "dmgTaken": 2176,
+    "skillDmg": {
+     "Slash": 1691,
+     "Basic": 1670,
+     "Shield Slam": 526,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 4,
+     "Basic": 7,
+     "Shield Slam": 3,
+     "Block": 3
+    },
+    "healingDone": 0,
+    "hits": 14,
+    "misses": 0,
+    "crits": 6,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 87,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 13,
+  "actions": 89,
+  "enemyHP": -2415,
+  "enemyMaxHP": 45000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 47.52000000000021,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 24246,
+    "dmgTaken": 1341,
+    "skillDmg": {
+     "Mind Blast": 7444,
+     "Basic": 6758,
+     "Magic Missile": 6836,
+     "Mind Blast II": 3208
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 5,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 13,
+    "misses": 0,
+    "crits": 10,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1734.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1123,
+    "magicDmgDealt": 1477,
+    "dmgTaken": 892,
+    "skillDmg": {
+     "Divine Strike": 1299,
+     "Basic": 141,
+     "Templar Shield": 1160,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 5,
+     "Templar Shield": 3,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 11,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -89.72000000000003,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 12013,
+    "dmgTaken": 1509,
+    "skillDmg": {
+     "Mind Blast": 4634,
+     "Basic": 5418,
+     "Divine Smite": 1961,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 5,
+     "Divine Smite": 2,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1560,
+    "hits": 10,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2116.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 1776,
+    "magicDmgDealt": 1429,
+    "dmgTaken": 1138,
+    "skillDmg": {
+     "Unholy Slash": 990,
+     "Basic": 437,
+     "Slow": 0,
+     "Terrify": 1430
+    },
+    "skillUses": {
+     "Unholy Slash": 3,
+     "Basic": 5,
+     "Slow": 3,
+     "Terrify": 2
+    },
+    "healingDone": 70,
+    "hits": 9,
+    "misses": 1,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 49.19999999999982,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1018,
+    "magicDmgDealt": 2841,
+    "dmgTaken": 1248,
+    "skillDmg": {
+     "Fortune Strike": 2251,
+     "Basic": 1608,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 3,
+     "Basic": 5,
+     "Serenade": 3,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 8,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1191.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 1369,
+    "magicDmgDealt": 123,
+    "dmgTaken": 806,
+    "skillDmg": {
+     "Slash": 1333,
+     "Basic": 142,
+     "Shield Slam": 17,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 3,
+     "Basic": 5,
+     "Shield Slam": 3,
+     "Block": 2
+    },
+    "healingDone": 0,
+    "hits": 11,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 87,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 14,
+  "actions": 95,
+  "enemyHP": -920,
+  "enemyMaxHP": 45000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 47.52000000000021,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 20792,
+    "dmgTaken": 1341,
+    "skillDmg": {
+     "Mind Blast": 5907,
+     "Basic": 6215,
+     "Magic Missile": 5462,
+     "Mind Blast II": 3208
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 14,
+    "misses": 0,
+    "crits": 7,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1659.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1042,
+    "magicDmgDealt": 1640,
+    "dmgTaken": 967,
+    "skillDmg": {
+     "Divine Strike": 1202,
+     "Basic": 201,
+     "Templar Shield": 1279,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 6,
+     "Templar Shield": 3,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 12,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -89.72000000000003,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 11854,
+    "dmgTaken": 1509,
+    "skillDmg": {
+     "Mind Blast": 5514,
+     "Basic": 3419,
+     "Divine Smite": 2921,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 5,
+     "Divine Smite": 2,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1560,
+    "hits": 10,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1997.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 1836,
+    "magicDmgDealt": 1768,
+    "dmgTaken": 1257,
+    "skillDmg": {
+     "Unholy Slash": 1419,
+     "Basic": 612,
+     "Slow": 0,
+     "Terrify": 1058
+    },
+    "skillUses": {
+     "Unholy Slash": 3,
+     "Basic": 6,
+     "Slow": 3,
+     "Terrify": 2
+    },
+    "healingDone": 100,
+    "hits": 11,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 49.19999999999982,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1299,
+    "magicDmgDealt": 3632,
+    "dmgTaken": 1248,
+    "skillDmg": {
+     "Fortune Strike": 2951,
+     "Basic": 1980,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 3,
+     "Basic": 6,
+     "Serenade": 3,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 9,
+    "misses": 0,
+    "crits": 9,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1069.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 1868,
+    "magicDmgDealt": 189,
+    "dmgTaken": 928,
+    "skillDmg": {
+     "Slash": 1827,
+     "Basic": 219,
+     "Shield Slam": 11,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 3,
+     "Basic": 6,
+     "Shield Slam": 3,
+     "Block": 2
+    },
+    "healingDone": 0,
+    "hits": 12,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 87,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 13,
+  "actions": 89,
+  "enemyHP": -1629,
+  "enemyMaxHP": 45000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 47.52000000000021,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 21181,
+    "dmgTaken": 1341,
+    "skillDmg": {
+     "Mind Blast": 5907,
+     "Basic": 5230,
+     "Magic Missile": 6836,
+     "Mind Blast II": 3208
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 5,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 13,
+    "misses": 0,
+    "crits": 7,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1734.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1125,
+    "magicDmgDealt": 1637,
+    "dmgTaken": 892,
+    "skillDmg": {
+     "Divine Strike": 1306,
+     "Basic": 163,
+     "Templar Shield": 1293,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 5,
+     "Templar Shield": 3,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 11,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -89.72000000000003,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 0,
+    "magicDmgDealt": 12647,
+    "dmgTaken": 1509,
+    "skillDmg": {
+     "Mind Blast": 4022,
+     "Basic": 4252,
+     "Divine Smite": 4373,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 5,
+     "Divine Smite": 2,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1560,
+    "hits": 10,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2116.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2247,
+    "magicDmgDealt": 1807,
+    "dmgTaken": 1138,
+    "skillDmg": {
+     "Unholy Slash": 1944,
+     "Basic": 600,
+     "Slow": 0,
+     "Terrify": 1058
+    },
+    "skillUses": {
+     "Unholy Slash": 3,
+     "Basic": 5,
+     "Slow": 3,
+     "Terrify": 2
+    },
+    "healingDone": 137,
+    "hits": 10,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 49.19999999999982,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 1018,
+    "magicDmgDealt": 2931,
+    "dmgTaken": 1248,
+    "skillDmg": {
+     "Fortune Strike": 2341,
+     "Basic": 1608,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 3,
+     "Basic": 5,
+     "Serenade": 3,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 8,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1191.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 1863,
+    "magicDmgDealt": 173,
+    "dmgTaken": 806,
+    "skillDmg": {
+     "Slash": 1827,
+     "Basic": 200,
+     "Shield Slam": 9,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 3,
+     "Basic": 5,
+     "Shield Slam": 3,
+     "Block": 2
+    },
+    "healingDone": 0,
+    "hits": 11,
+    "misses": 0,
+    "crits": 4,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 53,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": true,
+  "turns": 8,
+  "actions": 55,
+  "enemyHP": -929,
+  "enemyMaxHP": 23000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1388.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 18,
+    "magicDmgDealt": 7862,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 2513,
+     "Basic": 1671,
+     "Magic Missile": 2393,
+     "Mind Blast II": 1303
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Magic Missile": 2,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 8,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2177.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1643,
+    "magicDmgDealt": 624,
+    "dmgTaken": 435,
+    "skillDmg": {
+     "Divine Strike": 796,
+     "Basic": 1001,
+     "Templar Shield": 470,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 2,
+     "Basic": 3,
+     "Templar Shield": 2,
+     "Shield": 1
+    },
+    "healingDone": 27,
+    "hits": 7,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1419.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 32,
+    "magicDmgDealt": 6321,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 1612,
+     "Basic": 2325,
+     "Divine Smite": 2416,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Divine Smite": 2,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 7,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1997.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2897,
+    "magicDmgDealt": 767,
+    "dmgTaken": 679,
+    "skillDmg": {
+     "Unholy Slash": 1048,
+     "Basic": 1143,
+     "Slow": 0,
+     "Terrify": 1351
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 3,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 74,
+    "hits": 6,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1297.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 2078,
+    "magicDmgDealt": 1584,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Fortune Strike": 1918,
+     "Basic": 1744,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1353.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 3408,
+    "magicDmgDealt": 70,
+    "dmgTaken": 644,
+    "skillDmg": {
+     "Slash": 1344,
+     "Basic": 1498,
+     "Shield Slam": 636,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 53,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": true,
+  "turns": 7,
+  "actions": 48,
+  "enemyHP": -1135,
+  "enemyMaxHP": 23000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1388.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 18,
+    "magicDmgDealt": 7416,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 3818,
+     "Basic": 1671,
+     "Magic Missile": 642,
+     "Mind Blast II": 1303
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Magic Missile": 1,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 0,
+    "crits": 2,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2177.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1612,
+    "magicDmgDealt": 545,
+    "dmgTaken": 435,
+    "skillDmg": {
+     "Divine Strike": 680,
+     "Basic": 1085,
+     "Templar Shield": 392,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 2,
+     "Basic": 3,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 27,
+    "hits": 6,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1419.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 32,
+    "magicDmgDealt": 6293,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 2327,
+     "Basic": 2584,
+     "Divine Smite": 1414,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Divine Smite": 1,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 6,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2045.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 3316,
+    "magicDmgDealt": 914,
+    "dmgTaken": 679,
+    "skillDmg": {
+     "Unholy Slash": 1731,
+     "Basic": 1026,
+     "Slow": 0,
+     "Terrify": 1351
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 3,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 122,
+    "hits": 6,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1297.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 2202,
+    "magicDmgDealt": 1666,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Fortune Strike": 1918,
+     "Basic": 1950,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1353.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 3413,
+    "magicDmgDealt": 83,
+    "dmgTaken": 644,
+    "skillDmg": {
+     "Slash": 996,
+     "Basic": 1788,
+     "Shield Slam": 712,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Shield Slam": 1,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 53,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": true,
+  "turns": 7,
+  "actions": 48,
+  "enemyHP": -2532,
+  "enemyMaxHP": 23000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1388.5200000000002,
+    "maxHP": 1388.5200000000002,
+    "dead": false,
+    "physicalDmgDealt": 32,
+    "magicDmgDealt": 9787,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 2513,
+     "Basic": 3125,
+     "Magic Missile": 1379,
+     "Mind Blast II": 2802
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Magic Missile": 1,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2177.8900000000003,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 1535,
+    "magicDmgDealt": 328,
+    "dmgTaken": 435,
+    "skillDmg": {
+     "Divine Strike": 680,
+     "Basic": 1001,
+     "Templar Shield": 182,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 2,
+     "Basic": 3,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 27,
+    "hits": 6,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1419.28,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 39,
+    "magicDmgDealt": 6740,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 2327,
+     "Basic": 3038,
+     "Divine Smite": 1414,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 2,
+     "Basic": 3,
+     "Divine Smite": 1,
+     "Lesser Heal": 1
+    },
+    "healingDone": 780,
+    "hits": 6,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1997.12,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 2897,
+    "magicDmgDealt": 807,
+    "dmgTaken": 679,
+    "skillDmg": {
+     "Unholy Slash": 1048,
+     "Basic": 1141,
+     "Slow": 0,
+     "Terrify": 1351
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 3,
+     "Slow": 1,
+     "Terrify": 1
+    },
+    "healingDone": 74,
+    "hits": 6,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1297.1999999999998,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 2078,
+    "magicDmgDealt": 1555,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Fortune Strike": 1918,
+     "Basic": 1715,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 1,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": 1353.6000000000001,
+    "maxHP": 1997.6000000000001,
+    "dead": false,
+    "physicalDmgDealt": 3019,
+    "magicDmgDealt": 90,
+    "dmgTaken": 644,
+    "skillDmg": {
+     "Slash": 996,
+     "Basic": 1795,
+     "Shield Slam": 318,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 3,
+     "Shield Slam": 1,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 6,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front3"
+   }
+  ],
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "quest": 72,
+  "isRare": false,
+  "amount": 1,
+  "seed": 1,
+  "won": false,
+  "turns": 15,
+  "actions": 80,
+  "enemyHP": 121944,
+  "enemyMaxHP": 140000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1073.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 8361,
+    "dmgTaken": 2462,
+    "skillDmg": {
+     "Mind Blast": 2521,
+     "Basic": 3147,
+     "Magic Missile": 934,
+     "Mind Blast II": 1771
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 13,
+    "misses": 1,
+    "crits": 7,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -907.1099999999997,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 196,
+    "magicDmgDealt": 363,
+    "dmgTaken": 3547,
+    "skillDmg": {
+     "Divine Strike": 83,
+     "Basic": 255,
+     "Templar Shield": 221,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 4,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 8,
+    "misses": 1,
+    "crits": 1,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -791.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 6532,
+    "dmgTaken": 2747,
+    "skillDmg": {
+     "Mind Blast": 2353,
+     "Basic": 1932,
+     "Divine Smite": 2259,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Divine Smite": 3,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1072,
+    "hits": 12,
+    "misses": 0,
+    "crits": 6,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -83.88000000000011,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 516,
+    "magicDmgDealt": 662,
+    "dmgTaken": 2864,
+    "skillDmg": {
+     "Unholy Slash": 195,
+     "Basic": 486,
+     "Slow": 0,
+     "Terrify": 299
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 14,
+    "hits": 7,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1092.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 169,
+    "magicDmgDealt": 879,
+    "dmgTaken": 2390,
+    "skillDmg": {
+     "Fortune Strike": 387,
+     "Basic": 661,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -425.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 276,
+    "magicDmgDealt": 78,
+    "dmgTaken": 2423,
+    "skillDmg": {
+     "Slash": 0,
+     "Basic": 354,
+     "Shield Slam": 0,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 4,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 8,
+    "misses": 0,
+    "crits": 2,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 72,
+  "isRare": false,
+  "amount": 1,
+  "seed": 2,
+  "won": false,
+  "turns": 15,
+  "actions": 80,
+  "enemyHP": 123050,
+  "enemyMaxHP": 140000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1073.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 15,
+    "magicDmgDealt": 7841,
+    "dmgTaken": 2462,
+    "skillDmg": {
+     "Mind Blast": 2217,
+     "Basic": 3045,
+     "Magic Missile": 1470,
+     "Mind Blast II": 1124
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 13,
+    "misses": 1,
+    "crits": 6,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -907.1099999999997,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 196,
+    "magicDmgDealt": 486,
+    "dmgTaken": 3547,
+    "skillDmg": {
+     "Divine Strike": 65,
+     "Basic": 263,
+     "Templar Shield": 354,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 4,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 9,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -791.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 5697,
+    "dmgTaken": 2747,
+    "skillDmg": {
+     "Mind Blast": 1542,
+     "Basic": 2475,
+     "Divine Smite": 1692,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Divine Smite": 3,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1072,
+    "hits": 12,
+    "misses": 0,
+    "crits": 4,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -86.88000000000011,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 516,
+    "magicDmgDealt": 683,
+    "dmgTaken": 2864,
+    "skillDmg": {
+     "Unholy Slash": 159,
+     "Basic": 574,
+     "Slow": 0,
+     "Terrify": 299
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 11,
+    "hits": 7,
+    "misses": 0,
+    "crits": 1,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1092.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 169,
+    "magicDmgDealt": 774,
+    "dmgTaken": 2390,
+    "skillDmg": {
+     "Fortune Strike": 333,
+     "Basic": 610,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 3,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -425.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 497,
+    "magicDmgDealt": 64,
+    "dmgTaken": 2423,
+    "skillDmg": {
+     "Slash": 0,
+     "Basic": 561,
+     "Shield Slam": 0,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 4,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 7,
+    "misses": 1,
+    "crits": 1,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "quest": 72,
+  "isRare": false,
+  "amount": 1,
+  "seed": 3,
+  "won": false,
+  "turns": 15,
+  "actions": 80,
+  "enemyHP": 123191,
+  "enemyMaxHP": 140000,
+  "heroes": [
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1073.4799999999998,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 18,
+    "magicDmgDealt": 7393,
+    "dmgTaken": 2462,
+    "skillDmg": {
+     "Mind Blast": 1478,
+     "Basic": 2692,
+     "Magic Missile": 1470,
+     "Mind Blast II": 1771
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Magic Missile": 3,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 13,
+    "misses": 1,
+    "crits": 6,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -907.1099999999997,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 196,
+    "magicDmgDealt": 301,
+    "dmgTaken": 3547,
+    "skillDmg": {
+     "Divine Strike": 105,
+     "Basic": 259,
+     "Templar Shield": 133,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 3,
+     "Basic": 4,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 41,
+    "hits": 8,
+    "misses": 1,
+    "crits": 2,
+    "slot": "front1"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -791.72,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 12,
+    "magicDmgDealt": 6055,
+    "dmgTaken": 2747,
+    "skillDmg": {
+     "Mind Blast": 1575,
+     "Basic": 2800,
+     "Divine Smite": 1692,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 3,
+     "Basic": 6,
+     "Divine Smite": 3,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1072,
+    "hits": 12,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back2"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": -90.88000000000011,
+    "maxHP": 2230.12,
+    "dead": true,
+    "physicalDmgDealt": 625,
+    "magicDmgDealt": 622,
+    "dmgTaken": 2864,
+    "skillDmg": {
+     "Unholy Slash": 104,
+     "Basic": 677,
+     "Slow": 0,
+     "Terrify": 299
+    },
+    "skillUses": {
+     "Unholy Slash": 2,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 1
+    },
+    "healingDone": 7,
+    "hits": 6,
+    "misses": 1,
+    "crits": 2,
+    "slot": "front2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -1092.8000000000002,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 169,
+    "magicDmgDealt": 879,
+    "dmgTaken": 2390,
+    "skillDmg": {
+     "Fortune Strike": 387,
+     "Basic": 661,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 2,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 5,
+    "misses": 0,
+    "crits": 5,
+    "slot": "back3"
+   },
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -425.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 448,
+    "magicDmgDealt": 91,
+    "dmgTaken": 2423,
+    "skillDmg": {
+     "Slash": 0,
+     "Basic": 539,
+     "Shield Slam": 0,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 2,
+     "Basic": 4,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 8,
+    "misses": 0,
+    "crits": 3,
+    "slot": "front3"
+   }
+  ],
+  "grade": 0
+ }
+]

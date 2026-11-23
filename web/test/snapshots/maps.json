@@ -1,0 +1,3301 @@
+[
+ {
+  "party": "six L10",
+  "map": 1,
+  "asc": 0,
+  "prefix": 0,
+  "suffix": 0,
+  "scrolls": [],
+  "seed": 1,
+  "won": true,
+  "escaped": false,
+  "rooms": 5,
+  "mapName": "Tuvale Map",
+  "mapAsc": 0,
+  "enemyMod": 8,
+  "combats": [
+   {
+    "questId": 3,
+    "name": "Forest Treant",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 6,
+    "name": "Wild Boar",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 8,
+    "name": "Goblin Enchanter",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 9,
+    "name": "Goblin Chieftain",
+    "isRare": true,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 10,
+    "name": "Maexna",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 5,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 7,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 18,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 19,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 1,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 24,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 25,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 21,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 22,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 27,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 12,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 13,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 29,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 33,
+    "amount": 86,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 121,
+    "maxHP": 259,
+    "dead": false,
+    "physicalDmgDealt": 667,
+    "magicDmgDealt": 63,
+    "dmgTaken": 138,
+    "skillDmg": {
+     "Basic": 730
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L10",
+    "class": 3,
+    "level": 10,
+    "prestige": 1,
+    "hp": 183,
+    "maxHP": 183,
+    "dead": false,
+    "physicalDmgDealt": 178,
+    "magicDmgDealt": 585,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 763
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L10",
+    "class": 7,
+    "level": 10,
+    "prestige": 1,
+    "hp": 132,
+    "maxHP": 270,
+    "dead": false,
+    "physicalDmgDealt": 590,
+    "magicDmgDealt": 88,
+    "dmgTaken": 138,
+    "skillDmg": {
+     "Basic": 678
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L10",
+    "class": 5,
+    "level": 10,
+    "prestige": 1,
+    "hp": 189,
+    "maxHP": 189,
+    "dead": false,
+    "physicalDmgDealt": 177,
+    "magicDmgDealt": 559,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 736
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L10",
+    "class": 9,
+    "level": 10,
+    "prestige": 1,
+    "hp": 176,
+    "maxHP": 176,
+    "dead": false,
+    "physicalDmgDealt": 337,
+    "magicDmgDealt": 336,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 673
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L10",
+    "class": 4,
+    "level": 10,
+    "prestige": 1,
+    "hp": 89,
+    "maxHP": 235,
+    "dead": false,
+    "physicalDmgDealt": 956,
+    "magicDmgDealt": 63,
+    "dmgTaken": 146,
+    "skillDmg": {
+     "Basic": 1019
+    },
+    "skillUses": {
+     "Basic": 9
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 1150,
+  "cleared": 5,
+  "scrollsUsed": [],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L10",
+  "map": 1,
+  "asc": 0,
+  "prefix": 0,
+  "suffix": 0,
+  "scrolls": [],
+  "seed": 2,
+  "won": true,
+  "escaped": false,
+  "rooms": 6,
+  "mapName": "Tuvale Map",
+  "mapAsc": 0,
+  "enemyMod": 8,
+  "combats": [
+   {
+    "questId": 2,
+    "name": "Moss Golem",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 6,
+    "name": "Wild Boar",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 8,
+    "name": "Goblin Enchanter",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 99,
+    "name": "Treasure Bush",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 9,
+    "name": "Goblin Chieftain",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 10,
+    "name": "Maexna",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 1,
+    "amount": 8,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 3,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 18,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 19,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 24,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 25,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 31,
+    "amount": 7,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 30,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 32,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 21,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 22,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 27,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 7,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 12,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 13,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 33,
+    "amount": 86,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L10",
+    "class": 1,
+    "level": 10,
+    "prestige": 1,
+    "hp": 138,
+    "maxHP": 259,
+    "dead": false,
+    "physicalDmgDealt": 1286,
+    "magicDmgDealt": 122,
+    "dmgTaken": 121,
+    "skillDmg": {
+     "Basic": 1408
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L10",
+    "class": 3,
+    "level": 10,
+    "prestige": 1,
+    "hp": 183,
+    "maxHP": 183,
+    "dead": false,
+    "physicalDmgDealt": 432,
+    "magicDmgDealt": 1383,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 1815
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L10",
+    "class": 7,
+    "level": 10,
+    "prestige": 1,
+    "hp": 152,
+    "maxHP": 270,
+    "dead": false,
+    "physicalDmgDealt": 1299,
+    "magicDmgDealt": 187,
+    "dmgTaken": 118,
+    "skillDmg": {
+     "Basic": 1486
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L10",
+    "class": 5,
+    "level": 10,
+    "prestige": 1,
+    "hp": 189,
+    "maxHP": 189,
+    "dead": false,
+    "physicalDmgDealt": 385,
+    "magicDmgDealt": 1177,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 1562
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L10",
+    "class": 9,
+    "level": 10,
+    "prestige": 1,
+    "hp": 176,
+    "maxHP": 176,
+    "dead": false,
+    "physicalDmgDealt": 913,
+    "magicDmgDealt": 877,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Basic": 1790
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L10",
+    "class": 4,
+    "level": 10,
+    "prestige": 1,
+    "hp": 109,
+    "maxHP": 235,
+    "dead": false,
+    "physicalDmgDealt": 1935,
+    "magicDmgDealt": 129,
+    "dmgTaken": 126,
+    "skillDmg": {
+     "Basic": 2064
+    },
+    "skillUses": {
+     "Basic": 17
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 1386,
+  "cleared": 6,
+  "scrollsUsed": [],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L40",
+  "map": 8,
+  "asc": 0,
+  "prefix": 1,
+  "suffix": 0,
+  "scrolls": [],
+  "seed": 1,
+  "won": true,
+  "escaped": false,
+  "rooms": 6,
+  "mapName": "Burning Aldur Map",
+  "mapAsc": 0,
+  "enemyMod": 7,
+  "combats": [
+   {
+    "questId": 22,
+    "name": "Highland Titan",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 24,
+    "name": "Aldur Ram",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 26,
+    "name": "Gnoll Hunter",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 27,
+    "name": "Gnoll Shaman",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 28,
+    "name": "Gnoll Overlord",
+    "isRare": true,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 29,
+    "name": "Ares",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 66,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 68,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 97,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 77,
+    "amount": 9,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 78,
+    "amount": 9,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 72,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 85,
+    "amount": 9,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 86,
+    "amount": 9,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 98,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 89,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 90,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 93,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 95,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 70,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 84,
+    "amount": 96,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L40",
+    "class": 1,
+    "level": 40,
+    "prestige": 2,
+    "hp": 464,
+    "maxHP": 721,
+    "dead": false,
+    "physicalDmgDealt": 4294,
+    "magicDmgDealt": 75,
+    "dmgTaken": 257,
+    "skillDmg": {
+     "Slash": 3195,
+     "Basic": 632,
+     "Shield Slam": 542,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 3,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L40",
+    "class": 3,
+    "level": 40,
+    "prestige": 2,
+    "hp": 597,
+    "maxHP": 597,
+    "dead": false,
+    "physicalDmgDealt": 20,
+    "magicDmgDealt": 5652,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 3944,
+     "Basic": 478,
+     "Magic Missile": 608,
+     "Mind Blast II": 642
+    },
+    "skillUses": {
+     "Mind Blast": 7,
+     "Basic": 3,
+     "Magic Missile": 2,
+     "Mind Blast II": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L40",
+    "class": 7,
+    "level": 40,
+    "prestige": 2,
+    "hp": -4,
+    "maxHP": 769,
+    "dead": true,
+    "physicalDmgDealt": 1500,
+    "magicDmgDealt": 768,
+    "dmgTaken": 1075,
+    "skillDmg": {
+     "Divine Strike": 1818,
+     "Basic": 289,
+     "Templar Shield": 161,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 7,
+     "Basic": 3,
+     "Templar Shield": 1,
+     "Shield": 1
+    },
+    "healingDone": 100,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L40",
+    "class": 5,
+    "level": 40,
+    "prestige": 2,
+    "hp": 626,
+    "maxHP": 626,
+    "dead": false,
+    "physicalDmgDealt": 31,
+    "magicDmgDealt": 4990,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 3286,
+     "Basic": 664,
+     "Divine Smite": 1071,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 7,
+     "Basic": 3,
+     "Divine Smite": 2,
+     "Lesser Heal": 1
+    },
+    "healingDone": 272,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L40",
+    "class": 9,
+    "level": 40,
+    "prestige": 2,
+    "hp": 489,
+    "maxHP": 489,
+    "dead": false,
+    "physicalDmgDealt": 1028,
+    "magicDmgDealt": 940,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Fortune Strike": 1639,
+     "Basic": 329,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 7,
+     "Basic": 3,
+     "Serenade": 2,
+     "Inspirational Song": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L40",
+    "class": 4,
+    "level": 40,
+    "prestige": 2,
+    "hp": 214,
+    "maxHP": 575,
+    "dead": false,
+    "physicalDmgDealt": 5363,
+    "magicDmgDealt": 54,
+    "dmgTaken": 361,
+    "skillDmg": {
+     "Slash": 3981,
+     "Basic": 783,
+     "Enrage": 0,
+     "Slash II": 653
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 3,
+     "Enrage": 2,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 3063,
+  "cleared": 6,
+  "scrollsUsed": [],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L40",
+  "map": 8,
+  "asc": 0,
+  "prefix": 1,
+  "suffix": 0,
+  "scrolls": [],
+  "seed": 2,
+  "won": true,
+  "escaped": false,
+  "rooms": 7,
+  "mapName": "Burning Aldur Map",
+  "mapAsc": 0,
+  "enemyMod": 7,
+  "combats": [
+   {
+    "questId": 100,
+    "name": "Treasure Bush",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 22,
+    "name": "Highland Titan",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 25,
+    "name": "Highland Tunneler",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 26,
+    "name": "Gnoll Hunter",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 27,
+    "name": "Gnoll Shaman",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 28,
+    "name": "Gnoll Overlord",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 29,
+    "name": "Ares",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 65,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 44,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 48,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 66,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 68,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 75,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 81,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 82,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 85,
+    "amount": 9,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 86,
+    "amount": 8,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 90,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 70,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 89,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 98,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 92,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 97,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 77,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 78,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 84,
+    "amount": 96,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L40",
+    "class": 1,
+    "level": 40,
+    "prestige": 2,
+    "hp": 425,
+    "maxHP": 721,
+    "dead": false,
+    "physicalDmgDealt": 6604,
+    "magicDmgDealt": 190,
+    "dmgTaken": 296,
+    "skillDmg": {
+     "Slash": 3873,
+     "Basic": 2161,
+     "Shield Slam": 760
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 6,
+     "Shield Slam": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L40",
+    "class": 3,
+    "level": 40,
+    "prestige": 2,
+    "hp": 597,
+    "maxHP": 597,
+    "dead": false,
+    "physicalDmgDealt": 134,
+    "magicDmgDealt": 6602,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 3339,
+     "Basic": 2126,
+     "Magic Missile": 1271
+    },
+    "skillUses": {
+     "Mind Blast": 7,
+     "Basic": 6,
+     "Magic Missile": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L40",
+    "class": 7,
+    "level": 40,
+    "prestige": 2,
+    "hp": -149,
+    "maxHP": 769,
+    "dead": true,
+    "physicalDmgDealt": 2478,
+    "magicDmgDealt": 1385,
+    "dmgTaken": 935,
+    "skillDmg": {
+     "Divine Strike": 2128,
+     "Basic": 1222,
+     "Templar Shield": 513
+    },
+    "skillUses": {
+     "Divine Strike": 7,
+     "Basic": 5,
+     "Templar Shield": 2
+    },
+    "healingDone": 98,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L40",
+    "class": 5,
+    "level": 40,
+    "prestige": 2,
+    "hp": 626,
+    "maxHP": 626,
+    "dead": false,
+    "physicalDmgDealt": 124,
+    "magicDmgDealt": 7314,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Mind Blast": 3602,
+     "Basic": 1926,
+     "Divine Smite": 1910
+    },
+    "skillUses": {
+     "Mind Blast": 7,
+     "Basic": 6,
+     "Divine Smite": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L40",
+    "class": 9,
+    "level": 40,
+    "prestige": 2,
+    "hp": 489,
+    "maxHP": 489,
+    "dead": false,
+    "physicalDmgDealt": 1707,
+    "magicDmgDealt": 1378,
+    "dmgTaken": 0,
+    "skillDmg": {
+     "Fortune Strike": 1907,
+     "Basic": 1178,
+     "Serenade": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 7,
+     "Basic": 6,
+     "Serenade": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L40",
+    "class": 4,
+    "level": 40,
+    "prestige": 2,
+    "hp": 189,
+    "maxHP": 575,
+    "dead": false,
+    "physicalDmgDealt": 9572,
+    "magicDmgDealt": 163,
+    "dmgTaken": 386,
+    "skillDmg": {
+     "Slash": 5951,
+     "Basic": 3784,
+     "Enrage": 0
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 6,
+     "Enrage": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 3147,
+  "cleared": 7,
+  "scrollsUsed": [],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L48",
+  "map": 13,
+  "asc": 1,
+  "prefix": 3,
+  "suffix": 3,
+  "scrolls": [
+   61,
+   63
+  ],
+  "seed": 1,
+  "won": false,
+  "escaped": false,
+  "rooms": 7,
+  "mapName": "Flaming Vulkrum Map +3",
+  "mapAsc": 1,
+  "enemyMod": 14.4,
+  "combats": [
+   {
+    "questId": 31,
+    "name": "Dark Colossus",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 33,
+    "name": "Nightmare Scorpion",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 34,
+    "name": "Night Beast",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 35,
+    "name": "Undead Warrior",
+    "isRare": false,
+    "status": 2,
+    "grade": 0
+   },
+   {
+    "questId": 36,
+    "name": "Undead Mage",
+    "isRare": true,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 37,
+    "name": "Antares",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 38,
+    "name": "Lich King",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 99,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 101,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 107,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 110,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 111,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 103,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 113,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 114,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 127,
+    "amount": 1,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L48",
+    "class": 1,
+    "level": 48,
+    "prestige": 2,
+    "hp": -73,
+    "maxHP": 1038,
+    "dead": true,
+    "physicalDmgDealt": 2359,
+    "magicDmgDealt": 88,
+    "dmgTaken": 1610,
+    "skillDmg": {
+     "Slash": 1409,
+     "Basic": 765,
+     "Shield Slam": 273,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 5,
+     "Basic": 6,
+     "Shield Slam": 2,
+     "Block": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L48",
+    "class": 3,
+    "level": 48,
+    "prestige": 2,
+    "hp": -79,
+    "maxHP": 656,
+    "dead": true,
+    "physicalDmgDealt": 116,
+    "magicDmgDealt": 6342,
+    "dmgTaken": 735,
+    "skillDmg": {
+     "Mind Blast": 2217,
+     "Basic": 2023,
+     "Magic Missile": 1113,
+     "Mind Blast II": 1105
+    },
+    "skillUses": {
+     "Mind Blast": 6,
+     "Basic": 10,
+     "Magic Missile": 4,
+     "Mind Blast II": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L48",
+    "class": 7,
+    "level": 48,
+    "prestige": 2,
+    "hp": -907,
+    "maxHP": 1019,
+    "dead": true,
+    "physicalDmgDealt": 1205,
+    "magicDmgDealt": 740,
+    "dmgTaken": 2665,
+    "skillDmg": {
+     "Divine Strike": 859,
+     "Basic": 741,
+     "Templar Shield": 345,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 5,
+     "Basic": 7,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 79,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L48",
+    "class": 5,
+    "level": 48,
+    "prestige": 2,
+    "hp": -69,
+    "maxHP": 668,
+    "dead": true,
+    "physicalDmgDealt": 121,
+    "magicDmgDealt": 5136,
+    "dmgTaken": 737,
+    "skillDmg": {
+     "Mind Blast": 1977,
+     "Basic": 1995,
+     "Divine Smite": 1285,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 6,
+     "Basic": 10,
+     "Divine Smite": 4,
+     "Lesser Heal": 2
+    },
+    "healingDone": 734,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L48",
+    "class": 9,
+    "level": 48,
+    "prestige": 2,
+    "hp": -80,
+    "maxHP": 540,
+    "dead": true,
+    "physicalDmgDealt": 1803,
+    "magicDmgDealt": 2073,
+    "dmgTaken": 620,
+    "skillDmg": {
+     "Fortune Strike": 2123,
+     "Basic": 1753,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 6,
+     "Basic": 9,
+     "Serenade": 4,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L48",
+    "class": 4,
+    "level": 48,
+    "prestige": 2,
+    "hp": -245,
+    "maxHP": 874,
+    "dead": true,
+    "physicalDmgDealt": 3975,
+    "magicDmgDealt": 124,
+    "dmgTaken": 1118,
+    "skillDmg": {
+     "Slash": 2038,
+     "Basic": 1384,
+     "Enrage": 0,
+     "Slash II": 677
+    },
+    "skillUses": {
+     "Slash": 4,
+     "Basic": 5,
+     "Enrage": 2,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 2742,
+  "cleared": 3,
+  "scrollsUsed": [
+   {
+    "id": 61,
+    "chargesUsed": 1
+   },
+   {
+    "id": 63,
+    "chargesUsed": 0
+   }
+  ],
+  "lastEnemyRemoved": 0.17313432835820897,
+  "grade": 0
+ },
+ {
+  "party": "six L48",
+  "map": 13,
+  "asc": 1,
+  "prefix": 3,
+  "suffix": 3,
+  "scrolls": [
+   61,
+   63
+  ],
+  "seed": 2,
+  "won": false,
+  "escaped": false,
+  "rooms": 8,
+  "mapName": "Flaming Vulkrum Map +3",
+  "mapAsc": 1,
+  "enemyMod": 14.4,
+  "combats": [
+   {
+    "questId": 101,
+    "name": "Treasure Bush",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 31,
+    "name": "Dark Colossus",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 32,
+    "name": "Haunted Harwood",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 34,
+    "name": "Night Beast",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 35,
+    "name": "Undead Warrior",
+    "isRare": false,
+    "status": 2,
+    "grade": 0
+   },
+   {
+    "questId": 36,
+    "name": "Undead Mage",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 37,
+    "name": "Antares",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 38,
+    "name": "Lich King",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 97,
+    "amount": 8,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 88,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 99,
+    "amount": 4,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 101,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 107,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 103,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 105,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 113,
+    "amount": 3,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 114,
+    "amount": 4,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L48",
+    "class": 1,
+    "level": 48,
+    "prestige": 2,
+    "hp": -89,
+    "maxHP": 1038,
+    "dead": true,
+    "physicalDmgDealt": 6520,
+    "magicDmgDealt": 279,
+    "dmgTaken": 1626,
+    "skillDmg": {
+     "Slash": 3487,
+     "Basic": 2515,
+     "Shield Slam": 797,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 8,
+     "Basic": 10,
+     "Shield Slam": 3,
+     "Block": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L48",
+    "class": 3,
+    "level": 48,
+    "prestige": 2,
+    "hp": -115,
+    "maxHP": 656,
+    "dead": true,
+    "physicalDmgDealt": 308,
+    "magicDmgDealt": 13320,
+    "dmgTaken": 771,
+    "skillDmg": {
+     "Mind Blast": 4417,
+     "Basic": 4389,
+     "Magic Missile": 1726,
+     "Mind Blast II": 3096
+    },
+    "skillUses": {
+     "Mind Blast": 8,
+     "Basic": 12,
+     "Magic Missile": 4,
+     "Mind Blast II": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L48",
+    "class": 7,
+    "level": 48,
+    "prestige": 2,
+    "hp": -103,
+    "maxHP": 1019,
+    "dead": true,
+    "physicalDmgDealt": 2997,
+    "magicDmgDealt": 1870,
+    "dmgTaken": 1605,
+    "skillDmg": {
+     "Divine Strike": 1975,
+     "Basic": 1926,
+     "Templar Shield": 966,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 7,
+     "Basic": 10,
+     "Templar Shield": 3,
+     "Shield": 2
+    },
+    "healingDone": 109,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L48",
+    "class": 5,
+    "level": 48,
+    "prestige": 2,
+    "hp": -106,
+    "maxHP": 668,
+    "dead": true,
+    "physicalDmgDealt": 258,
+    "magicDmgDealt": 9520,
+    "dmgTaken": 774,
+    "skillDmg": {
+     "Mind Blast": 3975,
+     "Basic": 3811,
+     "Divine Smite": 1992,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 8,
+     "Basic": 12,
+     "Divine Smite": 4,
+     "Lesser Heal": 3
+    },
+    "healingDone": 1101,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L48",
+    "class": 9,
+    "level": 48,
+    "prestige": 2,
+    "hp": -64,
+    "maxHP": 540,
+    "dead": true,
+    "physicalDmgDealt": 4621,
+    "magicDmgDealt": 4730,
+    "dmgTaken": 604,
+    "skillDmg": {
+     "Fortune Strike": 4707,
+     "Basic": 4644,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 8,
+     "Basic": 11,
+     "Serenade": 4,
+     "Inspirational Song": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L48",
+    "class": 4,
+    "level": 48,
+    "prestige": 2,
+    "hp": -36,
+    "maxHP": 874,
+    "dead": true,
+    "physicalDmgDealt": 10636,
+    "magicDmgDealt": 331,
+    "dmgTaken": 909,
+    "skillDmg": {
+     "Slash": 3665,
+     "Basic": 4230,
+     "Enrage": 0,
+     "Slash II": 3072
+    },
+    "skillUses": {
+     "Slash": 5,
+     "Basic": 7,
+     "Enrage": 2,
+     "Slash II": 1
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 3303,
+  "cleared": 4,
+  "scrollsUsed": [
+   {
+    "id": 61,
+    "chargesUsed": 1
+   },
+   {
+    "id": 63,
+    "chargesUsed": 0
+   }
+  ],
+  "lastEnemyRemoved": 0.433167495854063,
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "map": 17,
+  "asc": 0,
+  "prefix": 0,
+  "suffix": 4,
+  "scrolls": [
+   60
+  ],
+  "seed": 1,
+  "won": true,
+  "escaped": false,
+  "rooms": 8,
+  "mapName": "Grimhal Map +4",
+  "mapAsc": 0,
+  "enemyMod": 2.5,
+  "combats": [
+   {
+    "questId": 43,
+    "name": "Molten Giant",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 44,
+    "name": "Volcanic Lumberer",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 46,
+    "name": "Lava Beast",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 48,
+    "name": "Demon Warrior",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 49,
+    "name": "Infernal Guardian",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 51,
+    "name": "Phoenix",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 52,
+    "name": "Cerberus",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 56,
+    "name": "Firelord Ozai",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 130,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 132,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 139,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 134,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 136,
+    "amount": 7,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 144,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 159,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 160,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 148,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 146,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 149,
+    "amount": 10,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 150,
+    "amount": 10,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 158,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 151,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 152,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 153,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 154,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 198,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 140,
+    "amount": 137,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2116,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 5982,
+    "magicDmgDealt": 1217,
+    "dmgTaken": 497,
+    "skillDmg": {
+     "Divine Strike": 5953,
+     "Basic": 579,
+     "Templar Shield": 667,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 9,
+     "Basic": 4,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 118,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Rogue L60",
+    "class": 2,
+    "level": 60,
+    "prestige": 3,
+    "hp": 834,
+    "maxHP": 1389.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 18742,
+    "magicDmgDealt": 1946,
+    "dmgTaken": 556,
+    "skillDmg": {
+     "Sunder": 14833,
+     "Basic": 650,
+     "Ambush": 1429,
+     "Cheap Shot": 3776
+    },
+    "skillUses": {
+     "Sunder": 9,
+     "Basic": 4,
+     "Ambush": 2,
+     "Cheap Shot": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2231,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 8670,
+    "magicDmgDealt": 2322,
+    "dmgTaken": 943,
+    "skillDmg": {
+     "Unholy Slash": 8923,
+     "Basic": 1326,
+     "Slow": 0,
+     "Terrify": 554
+    },
+    "skillUses": {
+     "Unholy Slash": 9,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 2
+    },
+    "healingDone": 625,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 966,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 11,
+    "magicDmgDealt": 21267,
+    "dmgTaken": 454,
+    "skillDmg": {
+     "Mind Blast": 16341,
+     "Basic": 1600,
+     "Divine Smite": 3337,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 9,
+     "Basic": 4,
+     "Divine Smite": 2,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1560,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 721,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 6947,
+    "magicDmgDealt": 4849,
+    "dmgTaken": 577,
+    "skillDmg": {
+     "Fortune Strike": 10158,
+     "Basic": 1638,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 9,
+     "Basic": 4,
+     "Serenade": 2,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Assassin L60",
+    "class": 6,
+    "level": 60,
+    "prestige": 3,
+    "hp": 640,
+    "maxHP": 1574.7200000000003,
+    "dead": false,
+    "physicalDmgDealt": 27788,
+    "magicDmgDealt": 3381,
+    "dmgTaken": 935,
+    "skillDmg": {
+     "Kidney Shot": 22187,
+     "Basic": 582,
+     "Expose Weakness": 2220,
+     "Puncture": 6180
+    },
+    "skillUses": {
+     "Kidney Shot": 9,
+     "Basic": 4,
+     "Expose Weakness": 2,
+     "Puncture": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 4982,
+  "cleared": 8,
+  "scrollsUsed": [
+   {
+    "id": 60,
+    "chargesUsed": 0
+   }
+  ],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "map": 17,
+  "asc": 0,
+  "prefix": 0,
+  "suffix": 4,
+  "scrolls": [
+   60
+  ],
+  "seed": 2,
+  "won": true,
+  "escaped": false,
+  "rooms": 8,
+  "mapName": "Grimhal Map +4",
+  "mapAsc": 0,
+  "enemyMod": 2.5,
+  "combats": [
+   {
+    "questId": 43,
+    "name": "Molten Giant",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 44,
+    "name": "Volcanic Lumberer",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 47,
+    "name": "Fire Wyrm",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 48,
+    "name": "Demon Warrior",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 49,
+    "name": "Infernal Guardian",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 50,
+    "name": "Demon Mage",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 51,
+    "name": "Phoenix",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 56,
+    "name": "Firelord Ozai",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 130,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 132,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 139,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 134,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 136,
+    "amount": 8,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 141,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 142,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 160,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 148,
+    "amount": 10,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 146,
+    "amount": 11,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 145,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 159,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 149,
+    "amount": 10,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 150,
+    "amount": 10,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 144,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 151,
+    "amount": 6,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 152,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 197,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 158,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 140,
+    "amount": 137,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2116,
+    "maxHP": 2598.8900000000003,
+    "dead": false,
+    "physicalDmgDealt": 5940,
+    "magicDmgDealt": 1016,
+    "dmgTaken": 497,
+    "skillDmg": {
+     "Divine Strike": 5802,
+     "Basic": 604,
+     "Templar Shield": 550,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 9,
+     "Basic": 4,
+     "Templar Shield": 2,
+     "Shield": 2
+    },
+    "healingDone": 118,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Rogue L60",
+    "class": 2,
+    "level": 60,
+    "prestige": 3,
+    "hp": 834,
+    "maxHP": 1389.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 20194,
+    "magicDmgDealt": 1946,
+    "dmgTaken": 556,
+    "skillDmg": {
+     "Sunder": 16008,
+     "Basic": 650,
+     "Ambush": 1706,
+     "Cheap Shot": 3776
+    },
+    "skillUses": {
+     "Sunder": 9,
+     "Basic": 4,
+     "Ambush": 2,
+     "Cheap Shot": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Dark Knight L60",
+    "class": 8,
+    "level": 60,
+    "prestige": 3,
+    "hp": 2231,
+    "maxHP": 2230.12,
+    "dead": false,
+    "physicalDmgDealt": 6938,
+    "magicDmgDealt": 1674,
+    "dmgTaken": 943,
+    "skillDmg": {
+     "Unholy Slash": 7036,
+     "Basic": 775,
+     "Slow": 0,
+     "Terrify": 650
+    },
+    "skillUses": {
+     "Unholy Slash": 9,
+     "Basic": 4,
+     "Slow": 2,
+     "Terrify": 2
+    },
+    "healingDone": 493,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": 966,
+    "maxHP": 1419.28,
+    "dead": false,
+    "physicalDmgDealt": 17,
+    "magicDmgDealt": 20901,
+    "dmgTaken": 454,
+    "skillDmg": {
+     "Mind Blast": 14065,
+     "Basic": 2582,
+     "Divine Smite": 4271,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 9,
+     "Basic": 4,
+     "Divine Smite": 2,
+     "Lesser Heal": 2
+    },
+    "healingDone": 1560,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": 721,
+    "maxHP": 1297.1999999999998,
+    "dead": false,
+    "physicalDmgDealt": 7329,
+    "magicDmgDealt": 4634,
+    "dmgTaken": 577,
+    "skillDmg": {
+     "Fortune Strike": 10484,
+     "Basic": 1479,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 9,
+     "Basic": 4,
+     "Serenade": 2,
+     "Inspirational Song": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Assassin L60",
+    "class": 6,
+    "level": 60,
+    "prestige": 3,
+    "hp": 640,
+    "maxHP": 1574.7200000000003,
+    "dead": false,
+    "physicalDmgDealt": 29325,
+    "magicDmgDealt": 3376,
+    "dmgTaken": 935,
+    "skillDmg": {
+     "Kidney Shot": 23719,
+     "Basic": 582,
+     "Expose Weakness": 2220,
+     "Puncture": 6180
+    },
+    "skillUses": {
+     "Kidney Shot": 9,
+     "Basic": 4,
+     "Expose Weakness": 2,
+     "Puncture": 2
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 4982,
+  "cleared": 8,
+  "scrollsUsed": [
+   {
+    "id": 60,
+    "chargesUsed": 0
+   }
+  ],
+  "lastEnemyRemoved": 0,
+  "grade": 5
+ },
+ {
+  "party": "six L60",
+  "map": 21,
+  "asc": 1,
+  "prefix": 20,
+  "suffix": 5,
+  "scrolls": [
+   62,
+   67,
+   69
+  ],
+  "seed": 1,
+  "won": false,
+  "escaped": false,
+  "rooms": 7,
+  "mapName": "Titan's Frentir Map +5",
+  "mapAsc": 1,
+  "enemyMod": 5.2,
+  "combats": [
+   {
+    "questId": 78,
+    "name": "Glacial Goliath",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 79,
+    "name": "Mourning Balwood",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 80,
+    "name": "Nightmare Bison",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 81,
+    "name": "Desolation Wolf",
+    "isRare": false,
+    "status": 2,
+    "grade": 0
+   },
+   {
+    "questId": 82,
+    "name": "Calamity Wraith",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 83,
+    "name": "Hungering Gigas",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 88,
+    "name": "Karthas",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 206,
+    "amount": 7,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 208,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 254,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 210,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 212,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 214,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 218,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 217,
+    "amount": 5,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -85.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 14885,
+    "magicDmgDealt": 388,
+    "dmgTaken": 4183,
+    "skillDmg": {
+     "Slash": 6966,
+     "Basic": 6158,
+     "Shield Slam": 2149,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 9,
+     "Basic": 14,
+     "Shield Slam": 7,
+     "Block": 6
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -168,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 127,
+    "magicDmgDealt": 63311,
+    "dmgTaken": 1557,
+    "skillDmg": {
+     "Mind Blast": 17456,
+     "Basic": 14998,
+     "Magic Missile": 11784,
+     "Mind Blast II": 19200
+    },
+    "skillUses": {
+     "Mind Blast": 10,
+     "Basic": 15,
+     "Magic Missile": 7,
+     "Mind Blast II": 7
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -162,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 8623,
+    "magicDmgDealt": 3178,
+    "dmgTaken": 6750,
+    "skillDmg": {
+     "Divine Strike": 4215,
+     "Basic": 5309,
+     "Templar Shield": 2277,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 10,
+     "Basic": 17,
+     "Templar Shield": 8,
+     "Shield": 7
+    },
+    "healingDone": 136,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -188,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 149,
+    "magicDmgDealt": 35128,
+    "dmgTaken": 1608,
+    "skillDmg": {
+     "Mind Blast": 14016,
+     "Basic": 13792,
+     "Divine Smite": 7469,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 10,
+     "Basic": 15,
+     "Divine Smite": 7,
+     "Lesser Heal": 7
+    },
+    "healingDone": 5460,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -204,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 9540,
+    "magicDmgDealt": 8054,
+    "dmgTaken": 2502,
+    "skillDmg": {
+     "Fortune Strike": 8373,
+     "Basic": 9221,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 9,
+     "Basic": 13,
+     "Serenade": 7,
+     "Inspirational Song": 6
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L60",
+    "class": 4,
+    "level": 60,
+    "prestige": 3,
+    "hp": -206,
+    "maxHP": 1830.8400000000001,
+    "dead": true,
+    "physicalDmgDealt": 32693,
+    "magicDmgDealt": 137,
+    "dmgTaken": 3537,
+    "skillDmg": {
+     "Slash": 8952,
+     "Basic": 8351,
+     "Enrage": 0,
+     "Slash II": 15527
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 11,
+     "Enrage": 5,
+     "Slash II": 4
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 3830,
+  "cleared": 3,
+  "scrollsUsed": [
+   {
+    "id": 62,
+    "chargesUsed": 1
+   },
+   {
+    "id": 67,
+    "chargesUsed": 0
+   },
+   {
+    "id": 69,
+    "chargesUsed": 5
+   }
+  ],
+  "lastEnemyRemoved": 0.9786083425618309,
+  "grade": 0
+ },
+ {
+  "party": "six L60",
+  "map": 21,
+  "asc": 1,
+  "prefix": 20,
+  "suffix": 5,
+  "scrolls": [
+   62,
+   67,
+   69
+  ],
+  "seed": 2,
+  "won": false,
+  "escaped": false,
+  "rooms": 7,
+  "mapName": "Titan's Frentir Map +5",
+  "mapAsc": 1,
+  "enemyMod": 5.2,
+  "combats": [
+   {
+    "questId": 78,
+    "name": "Glacial Goliath",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 79,
+    "name": "Mourning Balwood",
+    "isRare": false,
+    "status": 1,
+    "grade": 5
+   },
+   {
+    "questId": 80,
+    "name": "Nightmare Bison",
+    "isRare": true,
+    "status": 1,
+    "grade": 4
+   },
+   {
+    "questId": 81,
+    "name": "Desolation Wolf",
+    "isRare": true,
+    "status": 2,
+    "grade": 0
+   },
+   {
+    "questId": 82,
+    "name": "Calamity Wraith",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 83,
+    "name": "Hungering Gigas",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   },
+   {
+    "questId": 88,
+    "name": "Karthas",
+    "isRare": false,
+    "status": 0,
+    "grade": 0
+   }
+  ],
+  "rewards": [
+   {
+    "itemType": "material",
+    "itemID": 206,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 208,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 254,
+    "amount": 2,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 210,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 212,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 218,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 217,
+    "amount": 5,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 243,
+    "amount": 1,
+    "prestigeLevel": 0
+   },
+   {
+    "itemType": "material",
+    "itemID": 252,
+    "amount": 1,
+    "prestigeLevel": 0
+   }
+  ],
+  "heroes": [
+   {
+    "name": "Warrior L60",
+    "class": 1,
+    "level": 60,
+    "prestige": 3,
+    "hp": -181.39999999999986,
+    "maxHP": 1997.6000000000001,
+    "dead": true,
+    "physicalDmgDealt": 13988,
+    "magicDmgDealt": 401,
+    "dmgTaken": 4315,
+    "skillDmg": {
+     "Slash": 6700,
+     "Basic": 6360,
+     "Shield Slam": 1329,
+     "Block": 0
+    },
+    "skillUses": {
+     "Slash": 9,
+     "Basic": 12,
+     "Shield Slam": 6,
+     "Block": 5
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front1"
+   },
+   {
+    "name": "Mage L60",
+    "class": 3,
+    "level": 60,
+    "prestige": 3,
+    "hp": -351,
+    "maxHP": 1388.5200000000002,
+    "dead": true,
+    "physicalDmgDealt": 117,
+    "magicDmgDealt": 56715,
+    "dmgTaken": 2238,
+    "skillDmg": {
+     "Mind Blast": 14899,
+     "Basic": 13658,
+     "Magic Missile": 11404,
+     "Mind Blast II": 16871
+    },
+    "skillUses": {
+     "Mind Blast": 11,
+     "Basic": 16,
+     "Magic Missile": 8,
+     "Mind Blast II": 7
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back1"
+   },
+   {
+    "name": "Paladin L60",
+    "class": 7,
+    "level": 60,
+    "prestige": 3,
+    "hp": -99,
+    "maxHP": 2598.8900000000003,
+    "dead": true,
+    "physicalDmgDealt": 7282,
+    "magicDmgDealt": 3225,
+    "dmgTaken": 8113,
+    "skillDmg": {
+     "Divine Strike": 4201,
+     "Basic": 3889,
+     "Templar Shield": 2417,
+     "Shield": 0
+    },
+    "skillUses": {
+     "Divine Strike": 10,
+     "Basic": 15,
+     "Templar Shield": 8,
+     "Shield": 6
+    },
+    "healingDone": 136,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front2"
+   },
+   {
+    "name": "Cleric L60",
+    "class": 5,
+    "level": 60,
+    "prestige": 3,
+    "hp": -213,
+    "maxHP": 1419.28,
+    "dead": true,
+    "physicalDmgDealt": 142,
+    "magicDmgDealt": 36890,
+    "dmgTaken": 2411,
+    "skillDmg": {
+     "Mind Blast": 14706,
+     "Basic": 13075,
+     "Divine Smite": 9251,
+     "Lesser Heal": 0
+    },
+    "skillUses": {
+     "Mind Blast": 11,
+     "Basic": 16,
+     "Divine Smite": 8,
+     "Lesser Heal": 7
+    },
+    "healingDone": 5460,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back2"
+   },
+   {
+    "name": "Bard L60",
+    "class": 9,
+    "level": 60,
+    "prestige": 3,
+    "hp": -289,
+    "maxHP": 1297.1999999999998,
+    "dead": true,
+    "physicalDmgDealt": 6922,
+    "magicDmgDealt": 5706,
+    "dmgTaken": 1587,
+    "skillDmg": {
+     "Fortune Strike": 6778,
+     "Basic": 5850,
+     "Serenade": 0,
+     "Inspirational Song": 0
+    },
+    "skillUses": {
+     "Fortune Strike": 7,
+     "Basic": 9,
+     "Serenade": 5,
+     "Inspirational Song": 4
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "back3"
+   },
+   {
+    "name": "Berserker L60",
+    "class": 4,
+    "level": 60,
+    "prestige": 3,
+    "hp": -17,
+    "maxHP": 1830.8400000000001,
+    "dead": true,
+    "physicalDmgDealt": 29954,
+    "magicDmgDealt": 116,
+    "dmgTaken": 2347,
+    "skillDmg": {
+     "Slash": 10428,
+     "Basic": 7299,
+     "Enrage": 0,
+     "Slash II": 12343
+    },
+    "skillUses": {
+     "Slash": 7,
+     "Basic": 7,
+     "Enrage": 4,
+     "Slash II": 3
+    },
+    "healingDone": 0,
+    "hits": 0,
+    "misses": 0,
+    "crits": 0,
+    "slot": "front3"
+   }
+  ],
+  "time": 3660,
+  "cleared": 3,
+  "scrollsUsed": [
+   {
+    "id": 62,
+    "chargesUsed": 1
+   },
+   {
+    "id": 67,
+    "chargesUsed": 0
+   },
+   {
+    "id": 69,
+    "chargesUsed": 6
+   }
+  ],
+  "lastEnemyRemoved": 0.42701719576719577,
+  "grade": 0
+ }
+]

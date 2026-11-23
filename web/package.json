@@ -5,6 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
+    "test:update-snapshots": "UPDATE_SNAPSHOTS=1 node --test test/snapshots-*.test.ts",
     "difftest": "node test/difftest.ts",
     "difftest:maps": "node test/difftest-maps.ts",
     "difftest:items": "node test/difftest-items.ts",

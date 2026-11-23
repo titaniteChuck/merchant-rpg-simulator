@@ -8,6 +8,7 @@ Node 24, from `web/` (`npm ci` once).
 |---|---|
 | `npm run site` | Builds the site into `_site/` (pages, `data/gamedata.json`, bundled `js/`); preview with `npx --yes serve _site` |
 | `npm test` | Unit tests, and the engine's Lua parity tests when the local fixtures (`web/test/fixtures/`) exist |
+| `npm run test:update-snapshots` | Rewrites the regression snapshots (`web/test/snapshots/`) from the current code; review the diff before committing |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run difftest`, `difftest:maps`, `difftest:items` | The Lua parity checks one by one, with details on the first divergence |
 | `npm run export:gamedata` | Rebuilds `inventory/gamedata.json` (the site's game data) from `decompiled/` |
