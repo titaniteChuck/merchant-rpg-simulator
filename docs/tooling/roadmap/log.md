@@ -34,3 +34,6 @@
 - **Update**: U14–U16, U18, U19 done; U20 partly done (the UI session went offline; its work was verified and committed by the release agent).
 - **Update**: User batch: U21 wiki enemy/map fixes, U22 hero page v2, U23 battle v3 + page headers; map HP carry-over question sent to the engine.
 - **Update**: U20, U22 done; U23 started (agent); U21 extended (good-against table, wiki headers). Rarity names: none in the game (only the prize wheel's texts).
+- **Update**: E15, U21, U23 done; E16 in progress.
+- **Update**: User batch: U24 wiki fixes + regions, U25 Stats/Battle reference pages, U26 battle results order + centered numbers (three parallel agents).
+- **Update**: E17 top-K party search and U27 merged Best party mode queued (user).
