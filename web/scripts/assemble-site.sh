@@ -9,8 +9,8 @@ OUT="$(realpath -m "${1:-$ROOT/_site}")"
 rm -rf "$OUT"
 mkdir -p "$OUT/data" "$OUT/js"
 cp -r "$ROOT/site/." "$OUT/"
-cp "$ROOT/inventory/gamedata.json" "$OUT/data/"
+cp "$ROOT/inventory/gamedata.json" "$ROOT/inventory/wikidata.json" "$OUT/data/"
 cd "$ROOT/web"
 # node:* = CLI-only code paths (profit.ts main) that never run in a page.
-npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts \
+npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts src/ui/wiki.ts \
   --bundle --format=esm --target=es2020 --platform=browser --external:'node:*' --minify --sourcemap --outdir="$OUT/js"

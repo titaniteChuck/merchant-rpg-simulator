@@ -47,9 +47,19 @@ export function rateTone(x: number, lowerIsBetter = false): string {
 
 export const GRADE_LETTERS = ["D", "C", "B", "A", "S"];
 
-/** A grade badge: "S", "B" … or a split stack ("B93 A100"). */
+/**
+ * A grade badge: "S", "B" … A stack split by grade ("C14 B21 A164" = 14 items of grade C, 21 of B …)
+ * becomes one "count × letter" chip per grade.
+ */
 export function gradeBadge(label: string): HTMLElement {
-  return el("span", { class: `grade ${/^[DCBAS]$/.test(label) ? `grade-${label}` : "grade-mix"}` }, label);
+  if (/^[DCBAS]$/.test(label)) return el("span", { class: `grade grade-${label}` }, label);
+  const parts = [...label.matchAll(/([DCBAS])(\d+)/g)];
+  if (!parts.length) return el("span", { class: "grade grade-mix" }, label);
+  const title = parts.map(([, g, n]) => `${n} of grade ${g}`).join(", ");
+  return el("span", { class: "grade-stack", title, "aria-label": title },
+    ...parts.map(([, g, n]) => el("span", { class: "gq" },
+      el("span", { class: "gq-n" }, fmt.format(Number(n))), el("span", { class: "gq-x", "aria-hidden": "true" }, "×"),
+      el("span", { class: `grade grade-${g}` }, g))));
 }
 
 /** An item name coloured by rarity (the game's rarity colours). */

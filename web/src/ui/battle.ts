@@ -12,7 +12,9 @@ import type { MapSpec } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, el, fmt, fmt1, pct, pill, rateTone, type Row, select, table, tile } from "./dom.ts";
-import { bindSaveInput } from "./save-file.ts";
+import { radar, type RadarAxis } from "./radar.ts";
+import { initSaveSource } from "./save-source.ts";
+import { loadWikiText, skillLink } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -22,11 +24,46 @@ const SLOTS = [["front", 0], ["front", 1], ["front", 2], ["back", 0], ["back", 1
 
 interface State {
   sv: Save | null;
+  /** file name of the save, to remember the party per save */
+  saveName: string;
   slots: Record<string, number | null>; // "front0" -> hero index in sv.raw.hero
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
   worker: Worker | null;
 }
-const state: State = { sv: null, slots: {}, skills: {}, worker: null };
+const state: State = { sv: null, saveName: "", slots: {}, skills: {}, worker: null };
+
+// The party and edited rotations, remembered per save in this browser (convenience only).
+const partyKey = () => `battle-party:${state.saveName}`;
+function persistParty(): void {
+  try {
+    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills }));
+  } catch { /* storage blocked: the party just isn't remembered */ }
+}
+function restoreParty(heroes: number): void {
+  try {
+    const p = JSON.parse(localStorage.getItem(partyKey()) ?? "null");
+    if (!p) return;
+    const ok = (i: unknown) => i === null || (typeof i === "number" && i >= 0 && i < heroes);
+    state.slots = Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as State["slots"];
+    state.skills = Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as State["skills"];
+  } catch { /* ignore */ }
+}
+
+const RADAR: [string, string][] = [["maxHP", "HP"], ["atk", "Atk"], ["matk", "Matk"], ["def", "Def"], ["mdef", "Mdef"], ["acc", "Acc"], ["crit", "Crit"]];
+/** Strongest value of each stat among the save's heroes (radar rims), computed once per save. */
+let best: Record<string, { max: number; who: string }> = {};
+function computeBest(sv: Save): void {
+  best = {};
+  sv.raw.hero.forEach((h: Any) => {
+    let st: Record<string, number>;
+    try {
+      st = api.heroStats(api.newHero(h));
+    } catch {
+      return;
+    }
+    for (const [k] of RADAR) if ((st[k] ?? 0) > (best[k]?.max ?? 0)) best[k] = { max: st[k], who: h.name };
+  });
+}
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
@@ -95,6 +132,7 @@ function skillEditor(i: number): HTMLElement {
     apText.className = `small ${spent > info.maxAP ? "error" : "muted"}`;
     if (spent > info.maxAP) apText.textContent += " — over budget: the game falls back to the default rotation";
     state.skills[i] = { attackList: [...current.attackList], passive: current.passive };
+    persistParty();
   };
   const slots = current.attackList.map((name, k) => {
     const s = select({ "aria-label": `Turn ${k + 1} skill` },
@@ -133,9 +171,8 @@ function renderParty(): void {
         details.replaceChildren();
         if (idx === null || idx === undefined) return;
         const stats = api.heroStats(api.newHero(heroRaw(idx)));
-        const stat = (label: string, v: number) => el("span", { class: "nowrap" }, `${label} ${fmt.format(v)}`);
-        const parts = [stat("HP", stats.maxHP), stat("Atk", stats.atk), stat("Matk", stats.matk), stat("Def", stats.def), stat("Mdef", stats.mdef)];
-        details.append(el("p", { class: "muted small" }, ...parts.flatMap((p, k) => (k ? [" · ", p] : [p]))));
+        const axes: RadarAxis[] = RADAR.map(([k, label]) => ({ label, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
+        details.append(radar(axes, { title: `${heroRaw(idx).name}'s combat stats`, size: 220 }));
         const edit = el("details", {}, el("summary", { class: "small" }, "Rotation and passive"));
         edit.addEventListener("toggle", () => {
           if (edit.open && edit.children.length === 1) edit.append(skillEditor(idx));
@@ -147,6 +184,7 @@ function renderParty(): void {
         // A hero can stand in one slot only: clear it elsewhere.
         if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) state.slots[k] = null;
         state.slots[key] = v;
+        persistParty();
         renderParty();
       });
       fill();
@@ -187,7 +225,7 @@ function renderTarget(): void {
           ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []), pill(`level ${d.levelReq ?? "?"}`, "plain")),
         el("p", { class: "small", style: "margin: 0 0 8px" }, ...[stat("HP", "enemyHp"), stat("Atk", "enemyAtk"), stat("Matk", "enemyMatk"),
           stat("Def", "enemyDef"), stat("Mdef", "enemyMdef"), stat("Eva", "enemyEva")].flatMap((p, k) => (k ? [" · ", p] : [p]))),
-        el("div", { class: "chips" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => pill(sk, sk === "Basic" ? "skill basic" : "skill t-pink"))));
+        el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk)))));
     };
     q.addEventListener("change", update);
     rare.addEventListener("change", update);
@@ -344,37 +382,39 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
 }
 
 // ---------------------------------------------------------------- page
-async function openFile(file: File): Promise<void> {
-  const status = $("#loaded");
-  status.replaceChildren(el("span", { class: "muted" }, "Reading…"));
+/** Parse and use a save (from a file or from the browser's storage); throws when it isn't one. */
+async function loadSave(text: string, name: string): Promise<void> {
+  await Promise.all([loadData(), loadWikiText()]);
+  let sv: Save;
   try {
-    await loadData();
-    let sv: Save;
-    try {
-      sv = loadSaveText(await file.text());
-    } catch {
-      throw new Error("this is not a Merchant save. Pick PlayerData.txt, Slot2Data.txt … Slot5Data.txt or one of their backups.");
-    }
-    if (!Array.isArray(sv.raw?.hero) || !sv.raw.hero.length) throw new Error("this save has no heroes.");
-    api.setMode(sv.raw.gameMode || "Standard");
-    state.sv = sv;
-    state.slots = {};
-    state.skills = {};
-    status.replaceChildren(el("span", { class: "muted small" }, `Loaded ${file.name}: ${sv.raw.hero.length} heroes, mode ${sv.raw.gameMode || "Standard"}.`));
-    $("#setup").hidden = false;
-    $("#results").replaceChildren();
-    renderParty();
-    renderTarget();
-  } catch (e) {
-    status.replaceChildren(el("span", { class: "error", role: "alert" }, `Could not read ${file.name}: ${e instanceof Error ? e.message : e}`));
+    sv = loadSaveText(text);
+  } catch {
+    throw new Error("this is not a Merchant save. Pick PlayerData.txt, Slot2Data.txt … Slot5Data.txt or one of their backups.");
   }
+  if (!Array.isArray(sv.raw?.hero) || !sv.raw.hero.length) throw new Error("this save has no heroes.");
+  api.setMode(sv.raw.gameMode || "Standard");
+  state.sv = sv;
+  state.saveName = name;
+  state.slots = {};
+  state.skills = {};
+  restoreParty(sv.raw.hero.length);
+  computeBest(sv);
+  $("#setup").hidden = false;
+  $("#results").replaceChildren();
+  renderParty();
+  renderTarget();
 }
 
 function init(): void {
-  bindSaveInput({
-    input: $<HTMLInputElement>("#file"), drop: $("#drop"), onFile: openFile,
-    onError: (m) => $("#loaded").replaceChildren(el("span", { class: "error", role: "alert" }, m)),
+  initSaveSource({
+    input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
+    onForget: () => {
+      state.sv = null;
+      $("#setup").hidden = true;
+      $("#results").replaceChildren();
+    },
   });
+  loadWikiText();
   document.querySelectorAll<HTMLInputElement>("input[name=mode]").forEach((r) => r.addEventListener("change", renderTarget));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));

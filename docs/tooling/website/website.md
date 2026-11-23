@@ -15,6 +15,8 @@ timestamp: 2026-11-23
 - [Deployment](#deployment)
 - [Save viewer](#save-viewer)
 - [Battle simulator](#battle-simulator)
+- [Wiki](#wiki)
+- [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
@@ -51,7 +53,7 @@ flowchart LR
 - Decoding: `web/src/tools/save.ts`.
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export`; checked equal to its CSVs on a real
   save (inventory 167, maps 5, heroes 17, gear 102 rows).
-- Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`).
+- Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
   CSV download per table.
 - Not shown yet: essence per map run (needs `profit.ts`).
@@ -72,6 +74,33 @@ flowchart LR
 - Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (Node-only scripts such as the data exporter)
   are external.
 - Not yet: skill, gear and party search (`cmdSkills`, `cmdGear`, `cmdParty` exist in `web/src/tools/combat.ts`).
+
+## Wiki
+
+`site/wiki.html` + `web/src/ui/wiki.ts` (hash routes) + `web/src/ui/wiki-data.ts` (summaries, cross-references, links).
+
+- Lists (filter, sort) and detail pages: skills (AP, effect, classes, enemies using it), passives (bonuses), equipment
+  (stats by grade from `api.makeItem`, crafter level 60, asc 0), consumables, materials (where they drop), maps (bosses
+  and room enemies with the map modifier, essence), classes (base stats, growth per level, skills, passives).
+  Recipes and "used in" link items both ways.
+- Text: `inventory/wikidata.json`, written by `npm run export:gamedata` next to `gamedata.json` (skill effects, item,
+  map and class descriptions; the game's byte escapes decoded as UTF-8). `gamedata.json` itself is unchanged, so the
+  engine's parity is untouched.
+- Links everywhere: skills, passives, items and maps on the save viewer and battle pages link to the wiki and show a
+  summary in a tooltip on hover or keyboard focus (`web/src/ui/tooltip.ts`).
+
+## Shared page parts
+
+- Top bar on every page: Save viewer, Battle simulator, Wiki, and the GitHub link (right).
+- The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
+  page, so moving between pages never asks again. Bar: file name and age, Reload (rereads the same file without a dialog
+  when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser).
+- File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
+  open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.
+- Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest
+  hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
+  effect); grade stacks read "14 × C".
+- Battle page: the party and edited rotations are remembered per save name (localStorage).
 
 ## What can run in the browser
 

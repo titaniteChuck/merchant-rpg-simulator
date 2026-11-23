@@ -1,5 +1,6 @@
 /**
- * Export the game data tables used by the TypeScript simulator to inventory/gamedata.json
+ * Export the game data tables used by the TypeScript simulator to inventory/gamedata.json, and the
+ * wiki text (descriptions) to inventory/wikidata.json
  * (port of the former tools/export_gamedata.py; output was byte-identical).
  *
  * Tables keep their Lua shape: every table becomes a JSON object with the same keys
@@ -62,14 +63,79 @@ export function exportGamedata(src: string): { json: string; missing: string[] }
   return { json: pyJsonDumps(out, { compact: true }), missing };
 }
 
+// ---------------------------------------------------------------- wiki text
+/**
+ * The game's escapes are bytes ("\\226\\134\\145" = "↑"); the evaluator keeps one char per byte, as the
+ * Python version did. Decode them as UTF-8 when the string is a valid byte sequence.
+ */
+export function utf8Fix(s: string): string {
+  if (![...s].every((c) => c.charCodeAt(0) < 256) || !/[\x80-\xff]/.test(s)) return s;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from([...s].map((c) => c.charCodeAt(0))));
+  } catch {
+    return s;
+  }
+}
+
+const text = (v: Value | undefined): string | undefined => {
+  if (typeof v !== "string") return undefined;
+  const t = utf8Fix(v).trim();
+  return t ? t : undefined;
+};
+
+/**
+ * Text the website's wiki shows (descriptions dropped from gamedata.json, which the engine reads):
+ * skill effects, item / map / class descriptions. Written to inventory/wikidata.json.
+ */
+export function exportWikidata(src: string): string {
+  const env = loadDataFiles(src);
+  const g = (n: string) => env.globals.get(n);
+  const out = new Map<string, Json>();
+  const skills = new Map<string, Json>();
+  const ab = g("abilityData");
+  if (ab instanceof LuaTable) for (const [k, v] of ab.items()) {
+    const d = v instanceof LuaTable ? text(v.get("desc")) : undefined;
+    if (typeof k === "string" && d) skills.set(k, d);
+  }
+  out.set("skills", skills);
+  const lines = (v: Value): Json => {
+    if (!(v instanceof LuaTable)) return null;
+    const l = [text(v.get("desc1")), text(v.get("desc2"))].filter((x): x is string => Boolean(x));
+    return l.length ? l : null;
+  };
+  const items = new Map<string, Json>();
+  const itemData = g("itemData");
+  for (const t of ["equipment", "consumable", "material", "map"]) {
+    const tbl = itemData instanceof LuaTable ? itemData.get(t) : null;
+    const m = new Map<string, Json>();
+    if (tbl instanceof LuaTable) for (const [k, v] of tbl.items()) {
+      const l = lines(v);
+      if (l) m.set(String(k), l);
+    }
+    items.set(t, m);
+  }
+  out.set("items", items);
+  const classes = new Map<string, Json>();
+  const hl = g("heroList");
+  if (hl instanceof LuaTable) for (const [k, v] of hl.items()) {
+    const l = lines(v);
+    if (l) classes.set(String(k), l);
+  }
+  out.set("classes", classes);
+  return pyJsonDumps(out, { compact: true, ensureAscii: false });
+}
+
 if (/[\\/]export-gamedata\.ts$/.test(process.argv[1] ?? "")) {
   const { values: v } = parseArgs({
     options: {
       src: { type: "string", default: join(ROOT, "decompiled") },
       out: { type: "string", default: join(ROOT, "inventory", "gamedata.json") },
+      wiki: { type: "string", default: join(ROOT, "inventory", "wikidata.json") },
     },
   });
   const { json, missing } = exportGamedata(v.src!);
   writeFileSync(v.out!, json);
   console.log(`${v.out}: ${Math.floor(statSync(v.out!).size / 1024)} KB` + (missing.length ? `; missing ${JSON.stringify(missing)}` : ""));
+  writeFileSync(v.wiki!, exportWikidata(v.src!));
+  console.log(`${v.wiki}: ${Math.floor(statSync(v.wiki!).size / 1024)} KB`);
 }

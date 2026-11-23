@@ -4,8 +4,10 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, type Column, el, fmt, gradeBadge, itemName, pill, type Row as Cells, table, tile } from "./dom.ts";
-import { bindSaveInput } from "./save-file.ts";
+import { $, type Column, el, fmt, gradeBadge, pill, type Row as Cells, table, tile } from "./dom.ts";
+import { radar, type RadarAxis } from "./radar.ts";
+import { initSaveSource } from "./save-source.ts";
+import { itemLink, loadWikiText, passiveLink, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
   crafterRows, gearRows, type HeroView, heroViews, inventoryRows, mapRows, type Row, summary, toCsv,
 } from "./save-tables.ts";
@@ -35,8 +37,8 @@ function toolbar(...kids: Node[]): HTMLElement {
   return el("div", { class: "toolbar" }, ...kids);
 }
 
-/** Item name coloured by rarity, then grade and ascension badges. */
-const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemName(String(r.name), r.rarity));
+/** Item name coloured by rarity, linked to its wiki page (summary on hover). */
+const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity));
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
 
 // ---------------------------------------------------------------- sections
@@ -58,25 +60,51 @@ const STAT_LABELS: Record<string, string> = {
   maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit ×", def: "Def", mdef: "Mdef",
   eva: "Eva", speed: "Speed", maxActionPoints: "AP",
 };
-const STAT_ORDER = ["maxHP", "atk", "matk", "def", "mdef", "acc", "crit", "critMod", "maxActionPoints", "eva", "speed"];
+/** Radar axes (combat stats on a comparable scale); the rest is listed under the chart. */
+const RADAR_STATS = ["maxHP", "atk", "matk", "def", "mdef", "acc", "crit"];
+const EXTRA_STATS = ["critMod", "maxActionPoints", "eva", "speed"];
+
+/** Strongest value of each radar stat among the save's heroes, and who holds it. */
+type Best = Record<string, { max: number; who: string }>;
+function bestOf(views: HeroView[]): Best {
+  const best: Best = {};
+  for (const k of RADAR_STATS) {
+    best[k] = { max: 0, who: "" };
+    for (const v of views) if (v.stats && v.stats[k] > best[k].max) best[k] = { max: v.stats[k], who: String(v.row.name) };
+  }
+  return best;
+}
+
+export function statRadar(stats: Record<string, number>, best: Best, title: string, size?: number): HTMLElement {
+  const axes: RadarAxis[] = RADAR_STATS.map((k) => ({ label: STAT_LABELS[k] ?? k, value: stats[k] ?? 0, max: best[k]?.max ?? 0, best: best[k]?.who }));
+  return radar(axes, { title, size });
+}
 const SLOT_ICONS: Record<string, string> = { weapon: "⚔️", head: "🪖", body: "🥋", hands: "🧤", feet: "👢", trinket: "💍" };
 const STATUS_TONE: Record<string, string> = { idle: "t-green", "on a map": "t-violet", "on a quest": "t-blue" };
 
-function heroCard(v: HeroView): HTMLElement {
+/** The rotation as numbered rows: skill (wiki link, effect on hover), AP cost, effect. */
+export function rotationRows(skills: string[]): HTMLElement {
+  return el("ol", { class: "rotation" }, ...skills.map((sk) => el("li", {}, skillLink(sk),
+    el("span", { class: "ap" }, sk === "Basic" ? "0 AP" : `${skillAp(sk) ?? "?"} AP`),
+    ...(sk === "Basic" ? [] : [el("span", { class: "muted small eff" }, skillDesc(sk))]))));
+}
+
+function heroCard(v: HeroView, best: Best): HTMLElement {
   const r = v.row;
   const name = String(r.name);
   const stats = v.stats
-    ? el("dl", { class: "stats" }, ...STAT_ORDER.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k]))
-      .map((k) => {
-        const x = v.stats![k];
-        return el("div", { class: k === "maxHP" ? "hp" : "" }, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
-      }))
+    ? el("div", { class: "hero-stats" }, statRadar(v.stats, best, `${name}'s combat stats`),
+      el("dl", { class: "stats extra" }, ...EXTRA_STATS.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k]))
+        .map((k) => {
+          const x = v.stats![k];
+          return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
+        })))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
-  const rotation = el("div", { class: "chips" }, ...v.rotation.map((sk) => pill(sk, sk === "Basic" ? "skill basic" : "skill")));
+  const rotation = rotationRows(v.rotation);
   const gear = el("ul", { class: "gear" }, ...v.gear.map((g) =>
     el("li", { class: `rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${g.slot}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
       el("span", { class: "slot-ico", "aria-label": String(g.slot) }, SLOT_ICONS[String(g.slot)] ?? "•"),
-      itemName(String(g.name), g.rarity),
+      itemLink("equipment", Number(g.id), String(g.name), g.rarity),
       el("span", { class: "meta" }, gradeBadge(String(g.grade)), ...(g.asc ? [pill(`asc ${g.asc}`, "plain")] : [])))));
   return el("article", { class: `card hero cls-${v.cls}` },
     el("header", { class: "hero-head" },
@@ -86,7 +114,7 @@ function heroCard(v: HeroView): HTMLElement {
           pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
     stats,
     el("div", {}, el("p", { class: "section-label" }, "Rotation"), rotation),
-    el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, pill(String(r.passive || "none"), "t-gold"))),
+    el("div", {}, el("p", { class: "section-label" }, "Passive"), el("div", { class: "chips" }, passiveLink(String(r.passive || ""), "pill t-gold"))),
     gear,
     el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`)),
   );
@@ -94,10 +122,10 @@ function heroCard(v: HeroView): HTMLElement {
 
 function renderHeroes(views: HeroView[]): HTMLElement {
   return el("div", {},
-    toolbar(el("p", { class: "muted small" }, "Combat stats are computed with the game's rules from your gear, level, passive and enchants."),
+    toolbar(el("p", { class: "muted small" }, "Combat stats are computed with the game's rules from your gear, level, passive and enchants. Each radar axis runs from 0 to your strongest hero for that stat."),
       csvButton("heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
       csvButton("hero_gear", () => gearRows(views), "gear")),
-    el("div", { class: "cards" }, ...views.map(heroCard)));
+    el("div", { class: "cards" }, ...views.map((v) => heroCard(v, bestOf(views)))));
 }
 
 const ITEM_COLS: Column[] = [
@@ -168,9 +196,8 @@ function render(sv: Save, fileName: string): void {
     b.addEventListener("click", () => select(name));
     tabList.append(b);
   }
-  $("#result").replaceChildren(
-    el("p", { class: "muted small" }, `Loaded ${fileName}`),
-    renderSummary(sv), tabList, panel);
+  $("#result").replaceChildren(renderSummary(sv), tabList, panel);
+  void fileName;
   select("Heroes");
 }
 
@@ -178,25 +205,25 @@ function showError(msg: string): void {
   $("#result").replaceChildren(el("p", { class: "error", role: "alert" }, msg));
 }
 
-async function openFile(file: File): Promise<void> {
-  $("#result").replaceChildren(el("p", { class: "muted" }, "Reading…"));
+/** Parse and show a save (from a file or from the browser's storage); throws when it isn't one. */
+async function loadSave(text: string, name: string): Promise<void> {
+  await Promise.all([loadData(), loadWikiText()]); // skill effects in the rotation rows
+  let sv: Save;
   try {
-    await loadData();
-    let sv: Save;
-    try {
-      sv = loadSaveText(await file.text());
-    } catch {
-      throw new Error("this is not a Merchant save. Pick PlayerData.txt, Slot2Data.txt … Slot5Data.txt or one of their backups.");
-    }
-    if (!sv.raw || !Array.isArray(sv.raw.hero)) throw new Error("this file has no heroes. Is it a PlayerData / SlotNData save?");
-    render(sv, file.name);
-  } catch (e) {
-    showError(`Could not read ${file.name}: ${e instanceof Error ? e.message : e}`);
+    sv = loadSaveText(text);
+  } catch {
+    throw new Error("this is not a Merchant save. Pick PlayerData.txt, Slot2Data.txt … Slot5Data.txt or one of their backups.");
   }
+  if (!sv.raw || !Array.isArray(sv.raw.hero)) throw new Error("this file has no heroes. Is it a PlayerData / SlotNData save?");
+  render(sv, name);
 }
 
 function init(): void {
-  bindSaveInput({ input: $<HTMLInputElement>("#file"), drop: $("#drop"), onFile: openFile, onError: showError });
+  initSaveSource({
+    input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: loadSave,
+    onForget: () => $("#result").replaceChildren(),
+  });
+  loadWikiText();
   loadData().catch((e) => showError(String(e)));
 }
 
