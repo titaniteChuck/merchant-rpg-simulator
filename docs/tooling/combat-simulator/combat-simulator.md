@@ -98,6 +98,8 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 | `surveyMaps(sim, front, back, {n, mapGrade, scrolls, include70}, ctl)` | per map and asc: `MapSurveyRow` + `MapEval`, or the game error |
 | `searchScrolls(sim, mapSpec, front, back, {pool, scrollAsc, nQuick, nFinal, top, prices}, ctl)` | `ranked {loadout, ev, cost}` |
 | `searchParty(sim, Map<id, hero>, questOrMapTarget, {size, nQuick, nFinal}, ctl)` | `party {front, back}` (ids), `ev`, greedy steps |
+| `evaluateTarget(sim, questOrMapTarget, front, back, n)` | `FightEval` for a quest, `MapEval` for a map run (both have `score`) |
+| `optimiseFight(sim, Map<id, hero>, questOrMapTarget, {save, size, nQuick, nFinal, maxRounds, minGain, timeBudgetMs, steps}, ctl)` (`optimise.ts`) | `config {party, skills, gear, scrolls}`, final `ev`, `firstPartyEv`, per-step `trace {round, step, before, after, change, ms}` |
 
 - `ctl: SearchControl = {onProgress(done, total, stage), shouldStop()}`. Totals are per stage; a stopped search
   throws `SearchCancelled`. Heroes are always put back as they were (rotation, gear).
@@ -123,6 +125,22 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   - `catalog`: every equipment item within `--level-window` levels, built by the game at `--item-grade`,
     `--asc`, `--crafter-level`, with modifier odds forced to 0 (plain item).
 - `party`: greedy add (hero × slot) while it helps, then swaps and moves until no improvement.
+- `searchSkills` and `searchGear` take a quest or a map target (typed overloads: a quest still returns `FightEval`).
+- **Joint optimiser** (`optimiseFight`, `web/src/tools/optimise.ts`): coordinate descent over party and rows (round 1),
+  each member's rotation and passive, each member's gear (owned items: inventory, sale slots, gear of heroes outside
+  the party; never one item for two heroes), then scrolls for a map run. A step is kept only if the score rises by
+  `minGain` (default 5: half a turn or 1 % HP); another round runs while skills or gear still improve
+  (`maxRounds` 2). Defaults: 10 fights / 4 map runs per candidate, 200 / 30 for the final evaluation, 2-minute budget
+  (`timeBudgetMs`), after which the best configuration so far is returned. Heroes are restored; apply `config`.
+
+| Target (save's 17 heroes) | `searchParty` alone | `optimiseFight` (2 min) | Unbounded |
+|---|---|---|---|
+| Desolation Wolf (quest 81) | 100 % win, 2.9 turns | same (59 s, nothing to gain) | same |
+| Odin (quest 72) | 0 %, 8.9 % HP removed at lowest | 0 %, 19.8 % (rotations of 5 heroes) | 0 %, 33.5 % (288 s, + gear, round 2) |
+| Gnoll Vendetta map asc 1 (boss Gnoll Khan) | 93.3 % win, grade 5 | same (budget spent on party and 2 rotation searches) | — |
+
+  The rotation search is the costly step on long fights (Odin: 15-19 turns) and on map runs; a page should let the
+  player raise the budget.
 
 ## Class balance on equal gear
 

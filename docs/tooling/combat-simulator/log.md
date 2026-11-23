@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Joint optimiser (E9)**: `optimiseFight` tunes party, rotations, gear and scrolls together for one quest or map run (coordinate descent, common random numbers, trace, 2-minute budget); `searchSkills`/`searchGear` accept map targets; `evaluateTarget`.
 - **Class matrix search (E8)**: `classMatrix` uses the combat.ts `searchSkills` (cheaper defaults, ~30 s for 9 classes); rows add `enemyHpRemovedPeak`; `searchSkills` respects the AP budget of each passive (Wisdom) and never scores a rotation the game would replace.
 - **Class balance on equal gear** (E3): `classes.ts` with `standardHero` (catalog gear policies best/fit/none, default or searched rotation) and `classMatrix` (class × quest rows, pure, progress and cancel); tests in `classes.test.ts`.
 - **Healing enemies**: fights report the enemy's lowest HP and total damage taken (`enemy_dmg_peak`, `enemy_dmg_total`); the score uses the lowest point, so lost fights vs Archon no longer read 0 %. Gear search now restores empty slots too.

@@ -410,6 +410,15 @@ export interface MapTarget {
   scrolls?: Scroll[] | null;
 }
 
+/** evaluate (quest) or evaluateMap (map run) with seeds seed0..seed0+n-1; both carry a comparable `score`. */
+export function evaluateTarget(sim: Sim, t: QuestTarget, front: Row, back: Row, n: number, seed0?: number): FightEval;
+export function evaluateTarget(sim: Sim, t: MapTarget, front: Row, back: Row, n: number, seed0?: number): MapEval;
+export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0?: number): FightEval | MapEval;
+export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0 = 1): FightEval | MapEval {
+  if ("map" in t) return evaluateMap(sim, t.map, front, back, n, seed0, t.scrolls ? t.scrolls.map((x) => ({ ...x })) : null);
+  return evaluate(sim, t.quest, front, back, n, t.rare, t.amount, seed0);
+}
+
 // ---------------------------------------------------------------- commands
 export interface FightOpts {
   quest: number;
@@ -615,17 +624,17 @@ export function uniquePermutations<T>(xs: T[]): T[][] {
   return out;
 }
 
-export interface RotationResult {
+export interface RotationResult<E extends FightEval | MapEval = FightEval> {
   rotation: string[];
   passive: string;
-  ev: FightEval;
+  ev: E;
 }
 
-export interface SkillSearch {
-  /** The hero as loaded, at nFinal fights. */
-  current: RotationResult;
+export interface SkillSearch<E extends FightEval | MapEval = FightEval> {
+  /** The hero as loaded, at nFinal fights (or map runs). */
+  current: RotationResult<E>;
   /** Final candidates (best orderings x every passive) at nFinal fights, best score first. */
-  ranked: RotationResult[];
+  ranked: RotationResult<E>[];
   maxAP: number;
   unlocked: { name: string; ap: number }[];
   /** Candidates per stage: skill multisets, their orderings, final evaluations. */
@@ -639,7 +648,13 @@ export interface SkillSearch {
  * If the hero is in neither row, it is added at the front of the front row.
  */
 export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget,
-  o: { nQuick?: number; nFinal?: number; top?: number } = {}, ctl: SearchControl = {}): SkillSearch {
+  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch;
+export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: MapTarget,
+  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch<MapEval>;
+export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
+  o?: { nQuick?: number; nFinal?: number; top?: number }, ctl?: SearchControl): SkillSearch<FightEval | MapEval>;
+export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
+  o: { nQuick?: number; nFinal?: number; top?: number } = {}, ctl: SearchControl = {}): SkillSearch<FightEval | MapEval> {
   const nQuick = o.nQuick ?? 30, nFinal = o.nFinal ?? 300, top = o.top ?? 8;
   const h = hero;
   if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
@@ -651,7 +666,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
   const current: [string[], string] = [sim.rotation(h), h.passiveSelect];
   const ev = (n: number) => {
     st.check();
-    const e = evaluate(sim, t.quest, front, back, n, t.rare, t.amount);
+    const e = evaluateTarget(sim, t, front, back, n);
     st.tick();
     return e;
   };
@@ -702,7 +717,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     const finalists = scored2.slice(0, top);
     const pairs = finalists.flatMap(([, perm]) => passives.filter((p) => apOf(perm) <= (budget.get(p) ?? 0)).map((p) => [perm, p] as const));
     st.stage("final", pairs.length);
-    const ranked: RotationResult[] = [];
+    const ranked: RotationResult<FightEval | MapEval>[] = [];
     for (const [perm, p] of pairs) {
       if (!apply(perm, p)) continue; // over budget for this passive: the game would play the default rotation
       ranked.push({ ev: ev(nFinal), rotation: perm, passive: p });
@@ -787,9 +802,9 @@ export function gearCandidates(sim: Sim, roster: Roster, h: Hero, o: GearOpts): 
 
 export const SLOT_NAMES: Record<number, string> = { 1: "weapon", 2: "head", 3: "body", 4: "hands", 5: "feet", 6: "trinket" };
 
-export interface GearSearch {
-  base: FightEval;
-  final: FightEval;
+export interface GearSearch<E extends FightEval | MapEval = FightEval> {
+  base: E;
+  final: E;
   /** Slots 1..6: the item kept or chosen. `from` is the candidate label, null when the hero keeps its item. */
   gear: { slot: number; slotName: string; item: string | undefined; from: string | null }[];
   /** Fights evaluated (candidates x passes). */
@@ -802,7 +817,13 @@ export interface GearSearch {
  * back at the end. If the hero is in neither row, it is added at the front of the front row.
  */
 export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget, cands: Map<number, GearCandidate[]>,
-  o: { n?: number; passes?: number } = {}, ctl: SearchControl = {}): GearSearch {
+  o?: { n?: number; passes?: number }, ctl?: SearchControl): GearSearch;
+export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: MapTarget, cands: Map<number, GearCandidate[]>,
+  o?: { n?: number; passes?: number }, ctl?: SearchControl): GearSearch<MapEval>;
+export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
+  cands: Map<number, GearCandidate[]>, o?: { n?: number; passes?: number }, ctl?: SearchControl): GearSearch<FightEval | MapEval>;
+export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: QuestTarget | MapTarget,
+  cands: Map<number, GearCandidate[]>, o: { n?: number; passes?: number } = {}, ctl: SearchControl = {}): GearSearch<FightEval | MapEval> {
   const n = o.n ?? 60;
   const h = hero;
   if (!front.includes(h) && !back.includes(h)) front = [h, ...front];
@@ -810,7 +831,7 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
   let evaluated = 0;
   const ev = () => {
     st.check();
-    const e = evaluate(sim, t.quest, front, back, n, t.rare, t.amount);
+    const e = evaluateTarget(sim, t, front, back, n);
     evaluated++;
     st.tick();
     return e;
