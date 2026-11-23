@@ -16,6 +16,7 @@ timestamp: 2026-11-23
 - [Save viewer](#save-viewer)
 - [Battle simulator](#battle-simulator)
 - [Wiki](#wiki)
+- [Profit page](#profit-page)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -56,7 +57,7 @@ flowchart LR
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
   CSV download per table.
-- Not shown yet: essence per map run (needs `profit.ts`).
+- Not shown yet: essence per map run (`profit.ts` runs in the browser now, see [Profit page](#profit-page)).
 
 ## Battle simulator
 
@@ -100,9 +101,33 @@ flowchart LR
 - Links everywhere: skills, passives, items and maps on the save viewer and battle pages link to the wiki and show a
   summary in a tooltip on hover or keyboard focus (`web/src/ui/tooltip.ts`).
 
+## Profit page
+
+`site/profit.html` + `web/src/ui/profit.ts` (page) + `web/src/ui/profit-tables.ts` (columns, sortable table) +
+`web/src/ui/profit-worker.ts` (web worker). Model: [profit calculator](../profit-calculator/profit-calculator.md).
+
+- The worker runs `profitReport(gameFromData(), options)` (3-5 s) and sends back plain rows (`PyFloat` -> number,
+  `""` -> null) plus one entry per orb (ascension tier, level band, cheapest map). Settings changed while it solves are
+  queued; only the newest answer is shown. The results are dimmed with a spinner while it works.
+- Options: run grade, party luck, crafter level, Enchanter level, who pays for a run (`alloc` value/full), map
+  modifiers on/off, and a forced map per orb (`essenceFrom`). Any change recomputes.
+- Tabs:
+  - What to make: every item × ascension, sorted by `best_profit`; filter by name, type, level range, ascension.
+    Columns: profit and return of the best plan, best plan, sell value, average sale, cost to make, modifier chance
+    (prefix / suffix / both on hover), craft time, cheapest way to get it.
+  - Enchanting: `buildEnchantRows` (suffix and prefix odds, tries, cost, net gain per equipment and ascension).
+  - Orb sources: cheapest map per orb for ascension 1 and 2, then every map × orb (`buildEssenceRows`).
+- Every column header explains its metric on hover or focus (`tooltip.ts`). Tables show 100 rows, then "Show all";
+  the sort applies to the whole filtered list and survives filtering.
+- A save opened on any page marks the items the player owns ("You have" column, "Only what I own" filter), from
+  `owned()` in `save.ts`, matched in the page: no recompute.
+- Known engine limit: forcing an orb to a map that needs that orb to be crafted (every map except the single-region
+  base maps Tuvale, Yarsol, … Frentir) leaves the orb unpriced (the solver relaxes from "unknown"), so items that
+  need it drop out. The page warns when it happens.
+
 ## Shared page parts
 
-- Top bar on every page: Save viewer, Battle simulator, Wiki, and the GitHub link (right).
+- Top bar on every page: Save viewer, Battle simulator, Wiki, Profit (on the profit page so far), and the GitHub link (right).
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Bar: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser).
@@ -126,7 +151,7 @@ flowchart LR
 |---|---|---|
 | Save decoding | Yes | `web/src/tools/save.ts`; used by `save.html`. File stays local. |
 | Item names, recipes, sell values | Yes | `data/gamedata.json`. |
-| Profit calculator | Possible, no page yet | `web/src/tools/profit.ts`; needs its game model built from `gamedata.json` in the page. |
+| Profit calculator | Yes | `web/src/tools/profit.ts` in a web worker (`profit-worker.ts`), game model from `data/gamedata.json`; used by `profit.html`. |
 | Combat engine (fights, map runs) | Yes | Ported to TypeScript in `web/src/sim/` (see below). |
 
 ## Battle simulation in the browser
@@ -203,5 +228,5 @@ CI-safe drift check (no save data, runs in CI): fixed-seed outputs compared with
 ## Roadmap
 
 1. Save viewer: done (`save.html`).
-2. Profit tables page on `web/src/tools/profit.ts`.
+2. Profit page: done (`profit.html`). Next: essence column in the save viewer's maps table.
 3. Battle simulator: done (`battle.html`). Next: skill, gear and party search on the same page.

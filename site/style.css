@@ -433,3 +433,37 @@ a.wl.asc { border-bottom: 0; }
 .party-result { display: grid; gap: 6px; }
 .party-result > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .party-result .muted { min-width: 60px; }
+
+/* ------------------------------------------------------------------ profit page */
+.pf-options { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-items: end;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.pf-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.pf-field > span, .pf-field > legend { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 0; }
+.pf-field select, .pf-field input[type="number"] { width: 100%; }
+.pf-field .mode-switch { box-shadow: none; }
+.pf-check { min-height: 38px; }
+.pf-orbs { grid-column: 1 / -1; margin: 0; }
+.pf-orb-grid { display: grid; gap: 10px 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.pf-status { min-height: 1.6em; }
+.pf-status p { margin: 0 0 12px; }
+.pf-working { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; }
+.pf-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: pf-spin .8s linear infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pf-spinner { animation-duration: 3s; } }
+#result.pf-busy { opacity: .55; pointer-events: none; transition: opacity .2s; }
+.pf-filters input[type="number"] { width: 4.5em; }
+.pf-range { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.9rem; }
+.pf-count { margin: -6px 0 8px; }
+.pf-more { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pf-h3 { margin: 22px 0 10px; }
+.pf-money { font-variant-numeric: tabular-nums; }
+.pf-gain { color: var(--good); }
+.pf-loss { color: var(--bad); }
+.pf-odds { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.pf-owned { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  color: color-mix(in srgb, var(--good) var(--ink), var(--fg)); background: color-mix(in srgb, var(--good) var(--tint), transparent); }
+th button[data-tip] { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+@media (prefers-color-scheme: dark) {
+  #result.pf-busy { opacity: .45; }
+}
+/* end profit page */

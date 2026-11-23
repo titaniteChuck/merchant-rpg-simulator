@@ -12,5 +12,5 @@ cp -r "$ROOT/site/." "$OUT/"
 cp "$ROOT/inventory/gamedata.json" "$ROOT/inventory/wikidata.json" "$OUT/data/"
 cd "$ROOT/web"
 # node:* = CLI-only code paths (profit.ts main) that never run in a page.
-npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts src/ui/wiki.ts \
+npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts src/ui/wiki.ts src/ui/profit.ts src/ui/profit-worker.ts \
   --bundle --format=esm --target=es2020 --platform=browser --external:'node:*' --minify --sourcemap --outdir="$OUT/js"
