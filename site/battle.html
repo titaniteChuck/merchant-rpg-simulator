@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battle Simulator · Merchant RPG Simulator</title>
+  <meta name="description" content="Simulate quest fights and map runs for your Merchant party with the game's own combat rules.">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/battle.js"></script>
+</head>
+<body>
+  <nav class="nav"><a href="./">Merchant RPG Simulator</a> <span aria-hidden="true">›</span> Battle simulator</nav>
+  <header>
+    <h1>Battle simulator</h1>
+    <p class="lead">Put your heroes in the party, pick an enemy or a map, and simulate hundreds of fights with the game's combat rules.</p>
+  </header>
+
+  <main>
+    <label id="drop" class="drop">
+      <input id="file" type="file" accept=".txt,application/json,text/plain">
+      <span class="drop-title">Drop your save file here, or click to choose it</span>
+      <span class="muted small">Your heroes come from the save. The file is read by your browser and never uploaded.</span>
+    </label>
+    <p id="loaded" aria-live="polite"></p>
+    <p class="muted small">Save location: <code>%APPDATA%\Retora\Merchant\Documents\PlayerData.txt</code> on Windows (more in the <a href="save.html">save viewer</a> help).</p>
+
+    <div id="setup" hidden>
+      <section>
+        <h2>1. Party</h2>
+        <div id="party"></div>
+      </section>
+
+      <section>
+        <h2>2. Opponent</h2>
+        <div class="toolbar" role="radiogroup" aria-label="What to simulate">
+          <label class="check"><input type="radio" name="mode" value="quest" checked> Quest enemy</label>
+          <label class="check"><input type="radio" name="mode" value="map"> Map run</label>
+        </div>
+        <div id="target"></div>
+      </section>
+
+      <section>
+        <h2>3. Simulate</h2>
+        <div class="toolbar">
+          <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
+          <button id="run" type="button" class="primary">Simulate</button>
+        </div>
+        <section id="results" aria-live="polite"></section>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>Fights use a TypeScript re-implementation of the game's combat rules, checked action by action against the game's own code.
+      Fan project, not affiliated with the developers of Merchant.</p>
+  </footer>
+</body>
+</html>

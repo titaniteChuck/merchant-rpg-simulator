@@ -7,3 +7,4 @@
 - **Update**: Cost of putting battle simulation in the browser (port vs Lua in WebAssembly).
 - **Update**: TypeScript combat engine ported; fights, map runs and item rolls match the game (difftests).
 - **Update**: Save viewer page (`save.html`); site built by `web/scripts/assemble-site.sh` (esbuild).
+- **Update**: Battle simulator page (`battle.html`, web worker); same results as the CLI.

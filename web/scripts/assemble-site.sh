@@ -12,4 +12,6 @@ cp -r "$ROOT/site/." "$OUT/"
 cp "$ROOT/inventory/inventory.json" "$ROOT/inventory/gamedata.json" "$OUT/data/"
 cp "$ROOT/tools/"*.py "$OUT/py/"
 cd "$ROOT/web"
-npx esbuild src/ui/save-viewer.ts --bundle --format=esm --target=es2020 --minify --sourcemap --outdir="$OUT/js"
+# node:* = CLI-only code paths (profit.ts main) that never run in a page.
+npx esbuild src/ui/save-viewer.ts src/ui/battle.ts src/ui/battle-worker.ts \
+  --bundle --format=esm --target=es2020 --platform=browser --external:'node:*' --minify --sourcemap --outdir="$OUT/js"

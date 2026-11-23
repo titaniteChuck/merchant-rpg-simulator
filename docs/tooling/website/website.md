@@ -14,6 +14,7 @@ timestamp: 2026-11-23
 - [Public repo rules](#public-repo-rules)
 - [Deployment](#deployment)
 - [Save viewer](#save-viewer)
+- [Battle simulator](#battle-simulator)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
@@ -53,6 +54,22 @@ flowchart LR
 - Sections: summary tiles, heroes (stats, rotation, passive, gear), inventory (filter, sort, base value), maps, crafters;
   CSV download per table.
 - Not shown yet: essence per map run (needs `profit.ts`).
+
+## Battle simulator
+
+`site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
+
+- Party: six slots (front/back × 3) filled from the save's heroes; per hero, an optional rotation and passive editor
+  with the AP budget (`api.skillInfo`). Over budget, the game falls back to the default rotation: shown as a warning.
+- Opponent: a quest enemy (rare variant, 1-4 enemies) or a map run (owned map from the save, or any catalog map
+  with ascension 0/1 and grade, up to 3 scrolls).
+- The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n, like the CLI, so the page
+  gives the same numbers as `npm run combat` (checked: quest 80, 200 fights; map 22, 20 runs).
+- Results: win rate, turns, grade, enemy HP removed, party HP left; for maps progress, time, loot value, essence,
+  where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
+- Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (CLI-only code paths)
+  are external.
+- Not yet: skill, gear and party search (`cmdSkills`, `cmdGear`, `cmdParty` exist in `web/src/tools/combat.ts`).
 
 ## What can run in the browser
 
@@ -119,4 +136,4 @@ flowchart LR
 
 1. Save viewer: done (`save.html`).
 2. Profit tables from `inventory.json` (pre-computed or in Pyodide).
-3. Battle simulation and gear/party optimisation pages on top of `web/src/sim` + `web/src/tools`.
+3. Battle simulator: done (`battle.html`). Next: skill, gear and party search on the same page.
