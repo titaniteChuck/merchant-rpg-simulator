@@ -15,3 +15,5 @@
 - **Update**: U1 built, merging; E11 added.
 - **Update**: E8, U1, U2 done; U3 and E9 in progress.
 - **Update**: U6a (wiki review, agent) and U6b (save viewer review, UI session) added from the user's review.
+- **Update**: U3, U6a done; U6c (enemy pages, quests excluded by static enum) added.
+- **Update**: E9 done; E11 started; U7 (optimiser on the battle page) added.

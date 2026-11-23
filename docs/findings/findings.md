@@ -176,6 +176,10 @@ Model: [combat simulator](../tooling/combat-simulator/combat-simulator.md).
   self-heal 1× matk, twice per rotation, growing with the stacking Unleashed Power) heals it back to full; Soul Barrier
   reflects hits for 2 turns. The 0% is the end-of-fight HP. Game design, not a bug; the port matches the Lua
   (32 reference Archon fights).
+- Joint optimiser (`optimiseFight`: party, rotations, owned gear, scrolls together; E9) on the full roster:
+  Odin 8.9% → 19.8% of its HP removed at the lowest point in the 2-minute budget, 33.5% unbounded (288 s), still
+  0% wins. Desolation Wolf was already 100% with the best party alone; Gnoll Vendetta asc 1 stays at 93% wins.
+  Better rotations, not gear, gave most of the gain: Odin is out of reach for this roster, not misconfigured.
 
 ### Equal gear
 

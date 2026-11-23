@@ -13,3 +13,4 @@
 - **Update**: Archon "0% damage" explained (self-heal + reflect, end-of-fight HP); open question closed. Goblin Warlord Feast checked: ported correctly.
 - **Update**: Class balance on equal gear (classMatrix): Bard weakest solo class, Assassin/Paladin behind.
 - **Update**: Enchant order, Reset and modded ingredients (E7): enchant after ascending; Reset/modded ingredients rarely pay.
+- **Update**: Joint optimiser (E9) results on Odin, Desolation Wolf, Gnoll Vendetta asc 1.
