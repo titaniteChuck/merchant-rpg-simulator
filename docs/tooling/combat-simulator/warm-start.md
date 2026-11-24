@@ -2,7 +2,7 @@
 type: Tool
 title: Warm start
 description: Offline table of the best rotation per class, tier and enemy, generated locally and tried first by the rotation searches.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Warm start
@@ -25,7 +25,8 @@ For each class (9) × tier (1–3) × enemy (104 quests, 37 of them with a rare 
 
 - **Hero:** `standardHero` ([class balance](./combat-simulator.md#class-balance-on-equal-gear)) at the tier's max
   level (50 / 50 / 60), with the class-blind "best" catalog gear at grade 5, asc 0, crafter level 60.
-- **Fight:** the hero alone against the enemy.
+- **Fight:** the hero alone against the enemy, in the game's slot: front 2 in a party quest, front 1 in a solo quest
+  ([party setup rules](../../combat/combat.md#party-setup-rules); rebuilt 2026-11-24, 182 entries changed).
 - **Search:** `searchSkills` with nQuick 10, nFinal 30, top 3 and the schedule pre-filter ([schedule](./schedule.md)).
 - **Entry:** `{ rotation, passive, win, peak, turns }` (peak = enemy HP removed at its lowest point), under the key
   `class:tier:quest`, with a `B` suffix for a rare.

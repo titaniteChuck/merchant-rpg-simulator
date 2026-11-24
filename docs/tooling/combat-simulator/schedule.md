@@ -2,7 +2,7 @@
 type: Tool
 title: Schedule
 description: Skill probe, enemy timelines and the counter-schedule score that ranks rotations against an enemy's 5-turn timetable.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Schedule
@@ -54,6 +54,8 @@ loadTimelines(json); enemyTimeline(quest, rare); skillProfile(name, side); skill
 
   Shields, reflects and counters also carry the result of a test hit (damage taken vs none, damage sent back).
 - Windows of effects that end at their first use are upper bounds, because the probe never attacks.
+- In enemy-skill probes the heroes deal no damage, so a forced Basic (Drown: each hero's next 2 actions) can't kill
+  the probe enemy and cut its windows short (`timelines.json` version 5).
 
 ## Counter-schedule score
 

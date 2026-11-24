@@ -18,8 +18,8 @@ const cheap = { nQuick: 4, nFinal: 8, beam: 3, refine: 2, rotations: false } as 
 const ids = (c: PartyConfig) => [...c.layout.front, ...c.layout.back].filter((x): x is number => x !== null);
 
 test("the smallest party that wins comes first; ranking: winners, then fewer heroes, then score", () => {
-  // quest 2 is easy for a level-30 hero: one hero is enough
-  const r = searchParties(sim, pool(), { quest: 2 }, { ...cheap, maxSize: 3, topK: 6, enough: 2 });
+  // a Treasure Bush (quest 99, a 6-hero party quest) is easy for a level-30 hero: one hero is enough
+  const r = searchParties(sim, pool(), { quest: 99 }, { ...cheap, maxSize: 3, topK: 6, enough: 2 });
   assert.ok(r.results.length > 0 && r.tried > 0 && !r.stopped);
   assert.equal(r.results[0].size, 1);
   assert.ok(r.results[0].ev.win >= 0.9);
@@ -34,14 +34,14 @@ test("the smallest party that wins comes first; ranking: winners, then fewer her
   assert.equal(new Set(sets).size, sets.length);
   for (const c of r.results) assert.equal(ids(c).length, c.size);
   assert.ok(r.results[0].tuned, "the winning size was tuned");
-  // enough = 2 winners: it stops growing as soon as a size reaches it
-  assert.ok(Math.max(...r.results.map((c) => c.size)) <= 3);
+  // enough = 2 winners: it stops growing as soon as a size reaches it; the party quest's front 2 is always filled
+  for (const c of r.results) assert.ok(c.size <= 3 && c.layout.front[1] !== null, `${JSON.stringify(c.layout)}`);
 });
 
 test("top-K, lock and exclude; heroes left as they were", () => {
   const p = pool();
   const before = [...p.values()].map((h) => [sim.rotation(h).join(), h.passiveSelect]);
-  const r = searchParties(sim, p, { quest: 3 }, { ...cheap, rotations: true, minSize: 2, maxSize: 2, topK: 2, lock: [4], exclude: [3] });
+  const r = searchParties(sim, p, { quest: 10 }, { ...cheap, rotations: true, minSize: 2, maxSize: 2, topK: 2, lock: [4], exclude: [3] });
   assert.ok(r.results.length <= 2);
   for (const c of r.results) {
     assert.ok(ids(c).includes(4), "locked hero in every party");
@@ -51,17 +51,19 @@ test("top-K, lock and exclude; heroes left as they were", () => {
   }
   assert.deepEqual([...p.values()].map((h) => [sim.rotation(h).join(), h.passiveSelect]), before);
   assert.throws(() => searchParties(sim, p, { quest: 3 }, { lock: [9] }), /not in the pool/);
+  assert.throws(() => searchParties(sim, p, { quest: 10 }, { lock: [1, 2, 4] }), /at most 2 heroes/);
 });
 
 test("scrolls only on map runs; a stop returns what was found", () => {
   const q = searchParties(sim, pool(), { quest: 2 }, { ...cheap, maxSize: 1, scrolls: true });
   assert.ok(q.results.every((c) => c.scrolls === null), "scrolls are ignored for quests");
+  // rotations are tuned on the map's boss fight, as a map room: the boss quest's own party rules don't apply
   const m = searchParties(sim, pool(), { map: { id: 1, prestigeLevel: 0, grade: 3 } },
-    { nQuick: 1, nFinal: 2, beam: 1, refine: 1, maxSize: 1, rotations: false, scrolls: true });
+    { nQuick: 1, nFinal: 2, beam: 1, refine: 1, maxSize: 1, rotations: true, scrolls: true });
   assert.ok(m.results.length === 1 && "cleared" in m.results[0].ev);
   assert.ok(m.results[0].scrolls === null || m.results[0].scrolls.length <= 3);
   let calls = 0;
-  const s = searchParties(sim, pool(), { quest: 3 }, { ...cheap, maxSize: 4 }, { shouldStop: () => ++calls > 30 });
+  const s = searchParties(sim, pool(), { quest: 61 }, { ...cheap, maxSize: 4 }, { shouldStop: () => ++calls > 30 });
   assert.equal(s.stopped, true);
   const z = searchParties(sim, pool(), { quest: 3 }, { ...cheap, timeBudgetMs: 0 });
   assert.equal(z.stopped, true);

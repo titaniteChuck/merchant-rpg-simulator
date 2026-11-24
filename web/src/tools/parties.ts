@@ -10,12 +10,14 @@
  * the schedule pre-filter and warm start, cheap settings; a map run on its boss fight), scrolls for map runs, and a
  * final evaluation at nFinal. Sizes far from winning keep their screened sets (`tuned: false`) and the search grows.
  * Results: winners first (fewer heroes first, then score), then the others by score; one configuration per hero set.
+ * The game's party rules hold (partyRules): no more heroes than the quest takes, a party quest's front 2 always
+ * filled, a solo quest's one hero in front 1.
  *
  * Pure, worker-safe; progress ("size 3: 12/40") and cancel through SearchControl; heroes are left as they were.
  */
 import {
-  evaluateTarget, type FightEval, type MapEval, type MapTarget, maxQuestAmount, type PartyLayout, type QuestTarget,
-  SearchCancelled, type SearchControl, searchScrolls, searchSkills,
+  evaluateTarget, type FightEval, type MapEval, type MapTarget, maxQuestAmount, type PartyLayout, partyProblem, partyRules,
+  type QuestTarget, SearchCancelled, type SearchControl, searchScrolls, searchSkills, soloRows,
 } from "./combat.ts";
 import type { Hero, Row, Sim } from "./engine.ts";
 
@@ -110,7 +112,10 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     if (exclude.has(id)) throw new Error(`hero ${id} is both locked and excluded`);
   }
   const ids = [...pool.keys()].filter((id) => !exclude.has(id));
-  const minSize = Math.max(o.minSize ?? 1, lock.length, 1), maxSize = Math.min(o.maxSize ?? 6, 6, ids.length);
+  // the game's rules: a party quest's size and its required front 2, a solo quest's one hero in front 1 (partyRules)
+  const rules = partyRules(target);
+  if (lock.length > rules.maxSize) throw new Error(`at most ${rules.maxSize} heroes can be locked for this target`);
+  const minSize = Math.max(o.minSize ?? 1, lock.length, 1), maxSize = Math.min(o.maxSize ?? 6, rules.maxSize, ids.length);
   const deadline = Date.now() + (o.timeBudgetMs ?? 120000);
   const amount = map ? 1 : (target as QuestTarget).amount ?? 1, rare = map ? false : Boolean((target as QuestTarget).rare);
   let tried = 0, stopped = false;
@@ -142,12 +147,22 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     const byS = [...set].sort((a, b) => sturdy.get(b)! - sturdy.get(a)!);
     const nf = Math.min(3, Math.max(set.length - 3, Math.ceil(set.length / 2)));
     const pad = (r: number[]) => [0, 1, 2].map((i) => r[i] ?? null);
-    return { front: pad(byS.slice(0, nf)), back: pad(byS.slice(nf)) };
+    const l: Layout = { front: pad(byS.slice(0, nf)), back: pad(byS.slice(nf)) };
+    // a required slot left empty (a party quest's front 2) gets the sturdiest hero of its row, else of the other row
+    for (const s of rules.required) {
+      const row = l[s.row], other = l[s.row === "front" ? "back" : "front"];
+      if (row[s.i] !== null) continue;
+      const from = row.some((x) => x !== null) ? row : other;
+      const j = from.findIndex((x) => x !== null);
+      [row[s.i], from[j]] = [from[j], null];
+    }
+    return l;
   };
+  const allowed = (l: Layout) => !partyProblem(target, l.front, l.back);
 
   // rotations are tuned on a quest: the target itself, or a map's boss fight
   const boss = map ? sim.makeMap((target as MapTarget).map, 1) : undefined;
-  const skillTarget: QuestTarget | MapTarget = boss?.bossID ? { quest: boss.bossID, rare: Boolean(boss.bossRare) } : target;
+  const skillTarget: QuestTarget | MapTarget = boss?.bossID ? { quest: boss.bossID, rare: Boolean(boss.bossRare), mapRoom: true } : target;
   const questN = "map" in skillTarget ? nQuick : Math.max(nQuick, 10);
   const configs = new Map<string, PartyConfig>();
   // winners first, the smallest first; parties that don't win by score (a bigger one may simply get further)
@@ -167,7 +182,7 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
       const t = map ? target : { ...(target as QuestTarget), amount: Math.min(amount, maxQuestAmount([h], rare, sim.mode)) };
       check();
       tried++;
-      solo.set(id, evaluateTarget(sim, t, [h, null, null], [null, null, null], nQuick).score);
+      solo.set(id, evaluateTarget(sim, t, ...soloRows(t, h), nQuick).score);
       ctl.onProgress?.(i + 1, ids.length, "solo");
     });
     const strongest = [...ids].sort((a, b) => solo.get(b)! - solo.get(a)!);
@@ -228,13 +243,14 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     // 1. front / back split (heroes by sturdiness within rows), then the order within rows
     let best = defaultLayout(set), bestSc = -Infinity;
     for (const l of splits([...set].sort((a, b) => sturdy.get(b)! - sturdy.get(a)!))) {
+      if (!allowed(l)) continue;
       const sc = evalLayout(l, nQuick).score;
       if (sc > bestSc) (bestSc = sc, best = l);
     }
     for (const f of orders(best.front)) {
       for (const b of orders(best.back)) {
         const l = { front: f, back: b };
-        if (l.front.join() === best.front.join() && l.back.join() === best.back.join()) continue;
+        if ((l.front.join() === best.front.join() && l.back.join() === best.back.join()) || !allowed(l)) continue;
         const sc = evalLayout(l, nQuick).score;
         if (sc > bestSc) (bestSc = sc, best = l);
       }

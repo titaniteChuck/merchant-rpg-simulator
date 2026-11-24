@@ -17,7 +17,7 @@ import { G } from "../sim/data.ts";
 import { consumableStat } from "../sim/defaults.ts";
 import { type ClassMatrixOptions, standardHero } from "./classes.ts";
 import {
-  evaluateTarget, type FightEval, type MapEval, type MapTarget, type QuestTarget, SearchCancelled, type SearchControl,
+  evaluateTarget, type FightEval, type MapEval, type MapTarget, type QuestTarget, SearchCancelled, type SearchControl, soloRows,
 } from "./combat.ts";
 import type { Hero, Row, Sim } from "./engine.ts";
 import type { Solver } from "./profit.ts";
@@ -169,7 +169,7 @@ export function consumableMatrix(sim: Sim, target: QuestTarget | MapTarget,
   classes.forEach((c, i) => {
     const h = standardHero(sim, c, o.level ?? 60, o.prestige ?? 3, o.gearPolicy ?? "best",
       { itemGrade: o.itemGrade, itemAsc: o.itemAsc, crafterLevel: o.crafterLevel });
-    const r = rankConsumables(sim, h, [h], [], target, { kind: o.kind, n: o.n, ascs: o.ascs, solver: o.solver },
+    const r = rankConsumables(sim, h, ...soloRows(target, h), target, { kind: o.kind, n: o.n, ascs: o.ascs, solver: o.solver },
       { shouldStop: ctl.shouldStop });
     rows.push({ classId: c, className: G.heroList[c].name, base: r.base, best: r.ranked.slice(0, o.top ?? 3) });
     ctl.onProgress?.(i + 1, classes.length, "classes");

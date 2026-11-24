@@ -12,7 +12,7 @@
  */
 import { D } from "../sim/api.ts";
 import { G } from "../sim/data.ts";
-import { evaluate, type FightEval, SearchCancelled, searchSkills as searchRotation } from "./combat.ts";
+import { evaluate, type FightEval, SearchCancelled, searchSkills as searchRotation, soloRows } from "./combat.ts";
 import type { Hero, Sim } from "./engine.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -183,7 +183,7 @@ export interface SkillChoice {
  * fights; AP budgets per passive respected). Throws SearchCancelled when `shouldStop` returns true.
  */
 export function searchSkills(sim: Sim, hero: Hero, quest: number, o: SearchOptions = {}): SkillChoice {
-  const res = searchRotation(sim, hero, [hero], [], { quest, rare: o.rare ?? false },
+  const res = searchRotation(sim, hero, ...soloRows({ quest }, hero), { quest, rare: o.rare ?? false },
     { nQuick: o.n ?? 10, nFinal: o.nFinal ?? 30, top: o.top ?? 3 }, { shouldStop: o.shouldStop });
   const best = res.ranked[0] ?? res.current;
   if (best.ev.score < res.current.ev.score) return applied(sim, hero, res.current);
@@ -308,7 +308,7 @@ export function classMatrix(sim: Sim, o: ClassMatrixOptions): ClassMatrixRow[] {
       if (o.shouldStop?.()) return rows;
       if (skills === "search" && each && !search(h, q)) return rows;
       if (o.shouldStop?.()) return rows;
-      const ev = evaluate(sim, q, [h], [], n, o.rare ?? false, 1, seed0);
+      const ev = evaluate(sim, q, ...soloRows({ quest: q }, h), n, o.rare ?? false, 1, seed0);
       const he = Object.values(ev.heroes)[0];
       rows.push({
         classId: c, className: G.heroList[c].name, quest: q, questName: G.questData[q].name,

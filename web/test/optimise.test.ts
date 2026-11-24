@@ -67,7 +67,7 @@ test("evaluateTarget runs a quest or a map on the same seeds", () => {
   assert.ok("cleared" in evaluateTarget(sim, { map: { id: 1, prestigeLevel: 0, grade: 3 } }, [h], [], 1));
 });
 
-// five made-up heroes for the layout steps: Warrior, a level-5 Berserker, Rogue in front; Mage and Bard at the back
+// five made-up heroes for the layout steps, on Leviathan (quest 61, a 5-hero party quest): Warrior, a level-5 Berserker, Rogue in front; Mage and Bard at the back
 const layoutPool = (rotations: Record<number, number[]> = {}) => new Map<number, ReturnType<typeof sim.hero>>(
   ([[1, 1, 20], [2, 4, 5], [3, 2, 18], [4, 3, 15], [5, 9, 15]] as const)
     .map(([id, cls, lvl]) => [id, sim.hero(raw(id, cls, lvl, [WEAPON], rotations[id]))] as const));
@@ -81,13 +81,13 @@ test("order step: finds the best of the 36 row orders on the same seeds", () => 
   let best = { score: -Infinity, front: START.front as (number | null)[], back: START.back as (number | null)[] };
   for (const front of perms3<number | null>(START.front)) {
     for (const back of perms3<number | null>(START.back)) {
-      const sc = evaluateTarget(sim, { quest: 20 }, row(front), row(back), 10).score;
+      const sc = evaluateTarget(sim, { quest: 61 }, row(front), row(back), 10).score;
       if (sc > best.score) best = { score: sc, front, back };
     }
   }
-  const start = evaluateTarget(sim, { quest: 20 }, row(START.front), row(START.back), 10).score;
+  const start = evaluateTarget(sim, { quest: 61 }, row(START.front), row(START.back), 10).score;
   assert.ok(best.score >= start + 5, "the made-up case has a better order");
-  const res = optimiseFight(sim, p, { quest: 20 }, { startParty: START, nQuick: 10, nFinal: 10, steps: { ...ONLY, order: true } });
+  const res = optimiseFight(sim, p, { quest: 61 }, { startParty: START, nQuick: 10, nFinal: 10, steps: { ...ONLY, order: true } });
   const step = res.trace.find((s) => s.step === "Order within rows")!;
   assert.equal(step.before, start);
   assert.equal(step.after, best.score);
@@ -96,13 +96,13 @@ test("order step: finds the best of the 36 row orders on the same seeds", () => 
   // same heroes, same rows: only their order changed
   assert.deepEqual(new Set(res.config.party.front), new Set(START.front));
   // disabled: the starting layout is kept
-  const off = optimiseFight(sim, layoutPool(), { quest: 20 }, { startParty: START, nQuick: 10, nFinal: 10, steps: ONLY });
+  const off = optimiseFight(sim, layoutPool(), { quest: 61 }, { startParty: START, nQuick: 10, nFinal: 10, steps: ONLY });
   assert.deepEqual(off.config.party, START);
   assert.equal(off.trace.length, 0);
 });
 
 test("row swap step: tries one front-back exchange per pair, then re-orders the rows", () => {
-  const res = optimiseFight(sim, layoutPool(), { quest: 20 }, { startParty: START, nQuick: 10, nFinal: 10, maxRounds: 1,
+  const res = optimiseFight(sim, layoutPool(), { quest: 61 }, { startParty: START, nQuick: 10, nFinal: 10, maxRounds: 1,
     steps: { ...ONLY, order: true, swap: true } });
   const steps = res.trace.map((s) => s.step);
   const swap = res.trace.find((s) => s.step.startsWith("Swap rows"))!;
@@ -123,7 +123,7 @@ test("phase step: cyclic shifts of each rotation, passive kept, heroes restored"
   const p = layoutPool(rotations);
   const before = [...p.values()].map((h) => [sim.rotation(h).join(), h.passiveSelect]);
   const progress: string[] = [];
-  const res = optimiseFight(sim, p, { quest: 20 }, { startParty: START, nQuick: 10, nFinal: 10, maxRounds: 1,
+  const res = optimiseFight(sim, p, { quest: 61 }, { startParty: START, nQuick: 10, nFinal: 10, maxRounds: 1,
     steps: { ...ONLY, phase: true } }, { onProgress: (_d, _t, s) => void progress.push(s) });
   assert.deepEqual([...p.values()].map((h) => [sim.rotation(h).join(), h.passiveSelect]), before);
   // all-Basic hero 2 has no other phase: still a (kept) trace entry
@@ -148,7 +148,7 @@ test("layout steps honour a stop and restore the phase being tried", () => {
   const p = layoutPool(rotations);
   const rot4 = sim.rotation(p.get(4)!).join();
   let n = 0;
-  const res = optimiseFight(sim, p, { quest: 20 }, { startParty: START, nQuick: 4, nFinal: 4, steps: { ...ONLY, order: true, phase: true } },
+  const res = optimiseFight(sim, p, { quest: 61 }, { startParty: START, nQuick: 4, nFinal: 4, steps: { ...ONLY, order: true, phase: true } },
     { onProgress: (_d, _t, s) => void (s.startsWith("Phase") && n++), shouldStop: () => n >= 3 });
   assert.equal(res.stopped, true);
   assert.equal(sim.rotation(p.get(4)!).join(), rot4);
@@ -157,20 +157,20 @@ test("layout steps honour a stop and restore the phase being tried", () => {
 
 test("lock: locked heroes stay in the party found, wherever the layout steps put them", () => {
   // unlocked, the party step drops the level-5 Berserker (#2) on this quest
-  const free = optimiseFight(sim, layoutPool(), { quest: 20 }, { size: 3, nQuick: 6, nFinal: 6, maxRounds: 1,
+  const free = optimiseFight(sim, layoutPool(), { quest: 61 }, { size: 3, nQuick: 6, nFinal: 6, maxRounds: 1,
     steps: { ...ONLY, party: true } });
   const ids = (r: typeof free) => [...r.config.party.front, ...r.config.party.back].filter((x) => x !== null);
   assert.ok(!ids(free).includes(2));
-  const res = optimiseFight(sim, layoutPool(), { quest: 20 }, { size: 3, lock: [2], nQuick: 6, nFinal: 6, maxRounds: 1,
+  const res = optimiseFight(sim, layoutPool(), { quest: 61 }, { size: 3, lock: [2], nQuick: 6, nFinal: 6, maxRounds: 1,
     steps: { ...ONLY, party: true, order: true, swap: true } });
   assert.ok(ids(res).includes(2));
   assert.equal(ids(res).length, 3);
   // a starting party without the locked hero: the party step adds it even when that scores lower
-  const added = optimiseFight(sim, layoutPool(), { quest: 20 }, { startParty: { front: [1, 3, null], back: [4, 5, null] },
+  const added = optimiseFight(sim, layoutPool(), { quest: 61 }, { startParty: { front: [1, 3, null], back: [4, 5, null] },
     lock: [2], nQuick: 6, nFinal: 6, maxRounds: 1, steps: { ...ONLY, party: true } });
   assert.ok(ids(added).includes(2));
-  assert.throws(() => optimiseFight(sim, layoutPool(), { quest: 20 }, { startParty: START, lock: [9] }), /not in the pool/);
-  assert.throws(() => optimiseFight(sim, layoutPool(), { quest: 20 }, { startParty: { front: [1], back: [] }, lock: [2], steps: ONLY }),
+  assert.throws(() => optimiseFight(sim, layoutPool(), { quest: 61 }, { startParty: START, lock: [9] }), /not in the pool/);
+  assert.throws(() => optimiseFight(sim, layoutPool(), { quest: 61 }, { startParty: { front: [null, 1], back: [] }, lock: [2], steps: ONLY }),
     /locked heroes not in the starting party/);
 });
 

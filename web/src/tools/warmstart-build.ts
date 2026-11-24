@@ -7,7 +7,7 @@
 import { G } from "../sim/data.ts";
 import { D } from "../sim/defaults.ts";
 import { standardHero } from "./classes.ts";
-import { searchSkills } from "./combat.ts";
+import { searchSkills, soloRows } from "./combat.ts";
 import type { Sim } from "./engine.ts";
 import { enemyQuests } from "./skill-probe.ts";
 import { type WarmEntry, warmKey } from "./warmstart.ts";
@@ -34,7 +34,7 @@ export function warmStartEntry(sim: Sim, j: WarmJob, o: Partial<typeof WARM_PARA
   const p = { ...WARM_PARAMS, ...o };
   const level = D.maxHeroLevel[j.tier];
   const h = standardHero(sim, j.classId, level, j.tier, p.gear, { itemGrade: p.itemGrade, itemAsc: p.itemAsc, crafterLevel: p.crafterLevel });
-  const r = searchSkills(sim, h, [h], [], { quest: j.quest, rare: j.rare }, { nQuick: p.nQuick, nFinal: p.nFinal, top: p.top, warmStart: false });
+  const r = searchSkills(sim, h, ...soloRows({ quest: j.quest }, h), { quest: j.quest, rare: j.rare }, { nQuick: p.nQuick, nFinal: p.nFinal, top: p.top, warmStart: false });
   const best = r.ranked[0] ?? r.current;
   const ev = best.ev as { win: number; enemy_dmg_peak: number; turns: number };
   const round = (x: number) => Math.round(x * 1000) / 1000;

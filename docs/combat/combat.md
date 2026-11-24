@@ -2,7 +2,7 @@
 type: Mechanic
 title: Combat
 description: How a quest battle runs - turn order, 5-slot rotations, hit, crit, damage reduction, rows and grade.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Combat
@@ -16,6 +16,7 @@ Simulated exactly by the [combat simulator](../tooling/combat-simulator/combat-s
 
 - [Battle loop](#battle-loop)
 - [Rows and targeting](#rows-and-targeting)
+  - [Party setup rules](#party-setup-rules)
 - [Attack resolution](#attack-resolution)
 - [Effects](#effects)
   - [Effect timing](#effect-timing)
@@ -62,6 +63,33 @@ flowchart LR
   only, then ends.
 - Hero skills always target the single enemy. Heals: Lesser Heal heals the front hero of the caster's column (a
   front-row caster heals itself), Greater Heal and party effects reach every living hero.
+
+### Party setup rules
+
+The battle code fights any layout (`Battle:setupHero` skips empty slots). The rules come from the screens that start
+a fight:
+
+| Fight | Heroes | Required slot | Where |
+| --- | --- | --- | --- |
+| Solo quest (`questData.party` false, 30 quests) | 1 | front 1 | `startSoloQuest` puts the hero in `frontRow[1]` (`obj.GameClass.lua:277`–`:278`). |
+| Party quest (74 quests) | up to `questSize` (2–6) | front 2 | The party screen (`scene.QuestAssignHeroMenu.lua`). |
+| Map run | up to 6 | none | The map party screen (`scene.maps.MapAssignHeroMenu.lua`). |
+
+- **Party quests: front 2 is always filled.** The screen opens with the hero the quest was opened from in front 2
+  (`drawScrollingHeroes`, `:279`–`:283`). A hero in front 2 can be swapped with another hero, but never moved to an
+  empty slot (`switch`, `:350`). So you can change who stands in front 2, but you can't leave it empty, and you can't
+  dodge the enemy's `mid` attacks (location 4) or the `midline` ones by leaving it empty.
+- **Size:** a party quest takes at most `questSize` heroes (`haveFreeRoom`, `:324`); for example, Desolation Wolf takes 3.
+- **Maps:** the map screen has the same swap rule (`:356`), but its party starts empty (or as last saved), so front 2
+  can stay empty. Map rooms, the boss included, don't use the quest's own rules.
+- Nothing in the game refuses or auto-loses an invalid layout: the screens make it impossible.
+
+The tools follow the same rules (`partyRules`, `requiredSlots`, `partyProblem` in `web/src/tools/combat.ts`):
+
+- `evaluate` and `evaluateMap` refuse a layout the game would not start, with the reason.
+- The party searches never build one: `searchParty`, `searchParties`, and `optimiseFight`'s party, order and swap steps.
+- One-hero tools (solo matrix, class matrix, warm start) put the hero where the game would: front 1 in a solo quest,
+  front 2 in a party quest.
 
 ## Attack resolution
 

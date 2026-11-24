@@ -2,7 +2,7 @@
 type: Tool
 title: Combat simulator
 description: The combat tools (web/src/tools, on the TypeScript port of the game's combat code) simulate fights and search skills, gear and parties.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Combat simulator
@@ -67,31 +67,33 @@ flowchart LR
 ## Commands
 
 `web/src/tools/combat.ts` functions. The battle page runs `evaluate` (quest fights) and `evaluateMap` (map runs, with
-scrolls). The searches are pure functions (see [Search API](#search-api)); the `cmd*` functions below are text reports
-built on them, kept from the former command line.
+scrolls). The searches are pure functions (see [Search API](#search-api)). The `cmd*` functions below are text reports
+built on them, kept from the former command line: they take a `Roster` (the save's heroes by id) and an options
+object, write lines through an `io` callback and return their data (CSV rows where noted).
 
-| Command | What it answers |
-|---|---|
-| `roster` | Every hero's computed stats, AP use, rotation and passive |
-| `fight --quest Q --front ids --back ids` | Win %, turns, grade, damage/taken/heal/death per hero, damage per skill |
-| `damage --hero H --quest Q` | Solo damage per fight, per turn, per skill use |
-| `solo [--heroes] [--quests]` | Win % of every hero alone vs every quest → `reports/solo.csv` + class table |
-| `skills --hero H --quest Q [--front --back]` | Best 5-slot rotation and passive within the AP budget |
-| `gear --hero H --quest Q --pool owned\|catalog` | Best item per slot from your items, or from the craftable catalog |
-| `party --quest Q [--size 6]` | Best heroes and row positions from your roster |
-| `map --map ID\|inv:N [--asc 1] --front --back` | Full map runs: win %, progress, grade, time, loot and essence per run, where it fails |
-| `party --map ID` | Best party for a map run |
-| `maps --front --back` | Every map (asc 0 and 1) with one party → `reports/maps_survey.csv` (essence/h, loot/h) |
-| `map … --scrolls 61,63,69@1` | Map runs with up to 3 scrolls (`ID@ASC` for ascended); charges used and escapes reported |
-| `scrolls --map ID --front --back` | Best loadout of up to 3 scrolls (all 286 combinations), with each scroll's crafted cost |
+| Report | Options | What it answers |
+|---|---|---|
+| `cmdRoster` | none | Every hero's computed stats, AP use, rotation and passive |
+| `cmdFight` | `quest, front, back` (hero ids) | Win %, turns, grade, damage/taken/heal/death per hero, damage per skill |
+| `cmdDamage` | `quest, hero` | Solo damage per fight, per turn, per skill use (the hero in the game's slot) |
+| `cmdSolo` | `heroes, quests` | Win % of every hero alone vs every quest (`solo.csv` rows) + class table |
+| `cmdSkills` | `hero, quest, front, back` | Best 5-slot rotation and passive within the AP budget |
+| `cmdGear` | `hero, quest, pool: owned \| catalog` | Best item per slot from your items, or from the craftable catalog |
+| `cmdParty` | `quest` or `map`, `size` | Best heroes and row positions from your roster |
+| `cmdMap` | `map` (id or `inv:N`), `asc, front, back, scrolls` | Full map runs: win %, progress, grade, time, loot and essence per run, where it fails; with up to 3 scrolls (`61,63,69@1`, `ID@ASC` for ascended), charges used and escapes |
+| `cmdMaps` | `front, back` | Every map (asc 0 and 1) with one party (`maps_survey.csv` rows: essence/h, loot/h) |
+| `cmdScrolls` | `map, front, back` | Best loadout of up to 3 scrolls (all 286 combinations), with each scroll's crafted cost |
 
-Options: `--rare` (rare variant), `--amount` (quest amount), `-n` (fights per evaluation).
+Common options: `rare` (rare variant), `amount` (quest amount), `n` (fights per evaluation).
 
 - **Quest amount**: one enemy with its max HP × amount (`obj.Enemy`), loot and quest time scaled with it; not several
   enemies. The game offers 1 to `prestigeLevel × 2 − 1` (1, 3 or 5) for the hero the quest is opened with
   (`default.enemyAmount`; Quick mode `× 3 + 1`, Legendary `× 2 + 1`), less if gold is short; a rare quest is 1.
   `maxQuestAmount(heroes, rare, mode)` takes the party's highest prestige; `evaluate` and the farming report refuse
   an amount outside it.
+- **Party setup** ([rules](../../combat/combat.md#party-setup-rules)): a solo quest takes one hero in front 1, a party
+  quest up to `questSize` heroes with front 2 always filled, a map any layout. `evaluate` and `evaluateMap` refuse
+  any other layout, with the reason (`partyProblem`).
 
 ## Search API
 
@@ -100,15 +102,21 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
 | Function | Returns |
 |---|---|
 | `soloMatrix(sim, [[id, hero]], quests, {n, rare}, ctl)` + `soloSummary(rows, threshold)` | `SoloRow[]` (solo.csv); per-hero and per-class summary |
-| `searchSkills(sim, hero, front, back, {quest, rare, amount}, {nQuick, nFinal, top}, ctl)` | `current` and `ranked` `{rotation, passive, ev}` |
+| `searchSkills(sim, hero, front, back, questOrMapTarget, {nQuick, nFinal, top, prefilter, warmStart}, ctl)` | `current`, `warm` and `ranked` `{rotation, passive, ev}`, `counts` |
 | `searchGear(sim, hero, front, back, quest, candidates, {n, passes}, ctl)` | `base`, `final`, `gear[{slot, item, from}]` |
 | `catalogGearCandidates(sim, hero, {itemGrade, asc, …})`, `ownedGearCandidates(save, heroId)` | candidates by slot for `searchGear` |
 | `surveyMaps(sim, front, back, {n, mapGrade, scrolls, include70}, ctl)` | per map and asc: `MapSurveyRow` + `MapEval`, or the game error |
 | `searchScrolls(sim, mapSpec, front, back, {pool, scrollAsc, nQuick, nFinal, top, prices}, ctl)` | `ranked {loadout, ev, cost}` |
-| `searchParty(sim, Map<id, hero>, questOrMapTarget, {size, nQuick, nFinal}, ctl)` | `party {front, back}` (ids), `ev`, greedy steps |
+| `searchParty(sim, Map<id, hero>, questOrMapTarget, {size, nQuick, nFinal, lock}, ctl)` | `party {front, back}` (ids), `ev`, greedy steps |
+| `searchParties(sim, Map<id, hero>, questOrMapTarget, {minSize, maxSize, topK, lock, exclude, rotations, scrolls, timeBudgetMs, …}, ctl)` (`parties.ts`) | the smallest winning parties, fully set up: `results[{size, layout, skills, scrolls, ev, score, tuned}]`, `tried`, `stopped` ([party search](./party-search.md)) |
 | `evaluateTarget(sim, questOrMapTarget, front, back, n)` | `FightEval` for a quest, `MapEval` for a map run (both have `score`) |
+| `partyRules(target)`, `requiredSlots(target)`, `partyProblem(target, front, back)`, `soloRows(target, hero)` | `{kind, maxSize, required}`; the slots that can't be empty (`[{row: "front", i: 1}]` for a party quest); why a layout is refused, or `null`; one hero's rows in the game's slot |
 | `optimiseFight(sim, Map<id, hero>, questOrMapTarget, {save, size, startParty, lock, nQuick, nFinal, maxRounds, minGain, timeBudgetMs, steps}, ctl)` (`optimise.ts`) | `config {party, skills, gear, scrolls}`, final `ev`, `firstPartyEv`, per-step `trace {round, step, before, after, change, ms}` |
 
+- Targets: `QuestTarget = {quest, rare?, amount?, mapRoom?}` (`mapRoom`: a map room's fight, e.g. the map's boss, where
+  the quest's own party rules don't apply); `MapTarget = {map: {id, prestigeLevel, grade, prefix, suffix}, scrolls?}`.
+- Every function that simulates a layout refuses one the game would not start ([party setup rules](../../combat/combat.md#party-setup-rules)); the searches
+  never build one.
 - `ctl: SearchControl = {onProgress(done, total, stage), shouldStop()}`. Totals are per stage; a stopped search
   throws `SearchCancelled`. Heroes are always put back as they were (rotation, gear).
 - Same results as the former commands for the same seeds: checked on a real save for all six searches (return values
@@ -141,11 +149,13 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
     ([schedule](./schedule.md)). Only the top-k orderings and the best ordering of the top-k skill sets from both
     rankings, the current rotation and the [warm start](./warm-start.md) rotation are simulated, then the usual
     finalists × passives. Map runs and quests without a timeline use the full search.
-- `gear`: coordinate descent, slot by slot, repeated `--passes` times.
+- `gear`: coordinate descent, slot by slot, repeated `passes` times.
   - `owned`: inventory, sale slots and gear worn by other heroes.
-  - `catalog`: every equipment item within `--level-window` levels, built by the game at `--item-grade`,
-    `--asc`, `--crafter-level`, with modifier odds forced to 0 (plain item).
-- `party`: greedy add (hero × slot) while it helps, then swaps and moves until no improvement.
+  - `catalog`: every equipment item within `levelWindow` levels, built by the game at `itemGrade`, `asc` and
+    `crafterLevel`, with modifier odds forced to 0 (plain item).
+- `party`: greedy add (hero × slot) while it helps, then swaps and moves until no improvement. A party quest's front 2
+  is filled first and never emptied, and the size stops at `questSize`; a solo quest gets one hero in front 1.
+- `searchParties`: beam search over party sizes, smallest winning parties first ([party search](./party-search.md)).
 - `searchSkills` and `searchGear` take a quest or a map target (typed overloads: a quest still returns `FightEval`).
 - **Joint optimiser** (`optimiseFight`, `web/src/tools/optimise.ts`): coordinate descent over party and rows (round 1),
   the layout steps below, each member's rotation and passive, the layout steps again, each member's gear (owned items:
@@ -169,6 +179,9 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
     after a kept swap, 4 shifts per hero) at `nQuick` each: 3-10 s on Odin, Archon or a map run.
   - A shift keeps the AP total, the only rule the game puts on a rotation (`Hero:calculateAPRemainder`; slot order is
     free), so every shift is valid; a shift the engine would replace is still skipped.
+- **Party setup rules**: every step scores a layout the game would not start as −∞, so it is never kept: the order and
+  swap steps never empty a party quest's front 2, and the party step stops at `questSize`. A `startParty` that breaks
+  the rules throws the reason when the party step is off; with it on, a valid party replaces it.
 - **Starting party and locks**: `startParty {front, back}` (hero ids) is the layout to start from when the party
   step is off, and the candidate the party search must beat when it is on. `lock: [ids]` keeps heroes in the party:
   the party step places them first (their `startParty` slot, else the best free slot) and never swaps them out; the
@@ -183,6 +196,8 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   hero's rotation (Archon: score 801 → 423 between two gear steps).
 - **Schedule pre-filter** (`prefilter`, default 15): the skill step's `searchSkills` uses it. The phase step
   simulates only the 2 best shifts by schedule score and the best by damage only, instead of all 4.
+
+Measured 2026-11-23 (E13), before the party setup rules:
 
 | Target (save's 17 heroes) | `searchParty` alone | `optimiseFight` (2 min) | Unbounded |
 |---|---|---|---|
@@ -242,7 +257,7 @@ the same quests alone on the same seeds. Browser-safe (no console, no `node:*`),
 standardHero(sim, classId, level, prestige, gearPolicy = "best", { itemGrade, itemAsc, crafterLevel, rotation, passive }): Hero
 classMatrix(sim, { classes, quests, level, prestige, gearPolicy, skills, searchQuest, searchN, searchNFinal, n, seed0,
   rare, onProgress, shouldStop }): ClassMatrixRow[]
-searchSkills(sim, hero, quest, { n, nFinal, top, rare, shouldStop }): { rotation, passive, ev }   // combat.ts searchSkills, solo
+searchSkills(sim, hero, quest, { n, nFinal, top, rare, shouldStop }): { rotation, passive, ev }   // combat.ts searchSkills, solo, in the game's slot
 summarizeByClass(rows, threshold = 0.9): ClassSummary[]
 ```
 
@@ -270,7 +285,7 @@ summarizeByClass(rows, threshold = 0.9): ClassSummary[]
   goes negative when an enemy regenerates above max HP, e.g. Protector of the Forest), HP left, plus the rotation,
   passive and gear used. `summarizeByClass` breaks win-rate ties on the lowest-point value.
 - `onProgress(done, total)` after every cell and every rotation search; `shouldStop()` returns the rows done so far.
-- Caveats: solo fights only (no party roles: a healer or tank counts only for what it does alone); the `default`
+- Caveats: solo fights only, the hero in the game's slot (front 1 in a solo quest, front 2 in a party quest; no party roles: a healer or tank counts only for what it does alone); the `default`
   rotation hides skills, so compare classes with `search`; a rotation searched on one quest is not the best on
   another; `fit` is a stat proxy, not a fight-tested gear search.
 
@@ -302,18 +317,27 @@ prestigePayoff(sim, raw, { quest, n }, levellingOptions, ctl): PrestigePayoff
 
 ## Validation
 
-- Computed max HP equals saved HP for the 7 heroes at full health; the 10 wounded ones are all below it.
-- Fight outcomes look right against known difficulty: level-60 heroes one-shot region-1 enemies, Odin and
-  Archon stay out of reach.
+- **Lua parity:** the engine gives exactly the game code's output on frozen recordings: 3,000 fights, 400 map runs
+  and 1,949 item rolls (`web/test/lua-parity.test.ts`, `npm run difftest`, `difftest:maps`, `difftest:items`;
+  `web/src/sim/PORTING.md`). The recordings embed the player's heroes, so they run only on the machine that made them;
+  CI skips them. Any change to `web/src/sim/` must keep them at 100 %.
+- **Engine snapshots:** `web/test/snapshots-sim.test.ts` fixes fixed-seed fight and map results with heroes built from catalog data (CI).
+- **Save:** computed max HP equals saved HP for the 7 heroes at full health; the 10 wounded ones are all below it.
+- **Difficulty:** level-60 heroes one-shot region-1 enemies, Odin and Archon stay out of reach.
 - Not yet compared with a real combat log (`quest_*.clog2` in the save folder).
 
 ## Limits
 
 - Loot value counts everything at sell price, including essence; time is the game's map time (battles + walking).
-- Level-70 maps (ids 27–32) are skipped by `maps` unless `--include-70`: crafters cap at 60, and generating
+- Level-70 maps (ids 27–32) are skipped by `surveyMaps` unless `include70`: crafters cap at 60, and generating
   them crashes at grade ≥ 3 (see [maps](../../game-economy/maps/maps.md#level-70-maps)).
 - `gear` and `skills` optimise one hero at a time; a full joint search would be much bigger.
-- Hero campaign buffs are ignored (`campaignID` forced to -1); potion boosts removed before each fight.
+- Every simulated fight and map run starts at full HP: a hero injured in the save is simulated as healed
+  ([HP, heals and revives](../../combat/combat.md#hp-heals-and-revives)).
+- Quest fights ignore campaign buffs (`campaignID` forced to -1; map runs set it, so scroll buffs apply). Potion boosts
+  are removed before each fight unless a tool applied one (`_keepBoost`).
+- Party layouts follow the game's [party setup rules](../../combat/combat.md#party-setup-rules); a layout the game
+  would not start is refused, not simulated.
 - `solo` results depend on your heroes' gear: its class table compares your heroes; use
   [class balance on equal gear](#class-balance-on-equal-gear) for classes.
 
@@ -340,7 +364,12 @@ The first version (2026-11-23) ran the game's decompiled Lua through `lupa` from
 
 ## Code
 
-- `web/src/tools/combat.ts`, `engine.ts`; engine in `web/src/sim/`; page: `web/src/ui/battle*.ts`.
-- `web/src/tools/classes.ts` (equal-gear class balance).
-- `web/src/tools/levelling.ts` (levelling and prestige), tests in `web/test/levelling.test.ts`.
-- Tests: `web/test/tools.test.ts`, `web/test/search.test.ts`, `web/test/classes.test.ts` (catalog data only, runs in CI); Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.
+- `web/src/tools/combat.ts` (evaluation, party rules, searches, reports), `engine.ts`; engine in `web/src/sim/`; page:
+  `web/src/ui/battle*.ts`.
+- `web/src/tools/optimise.ts` (joint optimiser), `parties.ts` ([party search](./party-search.md)),
+  `schedule.ts` and `skill-probe.ts` ([schedule](./schedule.md)), `warmstart*.ts` ([warm start](./warm-start.md)).
+- `web/src/tools/consumables.ts` (potions and enchants), `classes.ts` (equal-gear class balance), `levelling.ts`
+  (levelling and prestige).
+- Tests (made-up heroes or catalog data, run in CI): `web/test/tools.test.ts`, `search.test.ts`, `optimise.test.ts`,
+  `parties.test.ts`, `party-rules.test.ts`, `schedule.test.ts`, `warmstart.test.ts`, `consumables.test.ts`,
+  `classes.test.ts`, `levelling.test.ts`. Lua parity: `web/test/lua-parity.test.ts` with the local fixtures.

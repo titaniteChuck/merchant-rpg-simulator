@@ -131,12 +131,15 @@ export function fightSeed(seed0: number, k: number): number {
   return ((h >>> 0) % 2147483646) + 1;
 }
 
-/** Monte-Carlo summary of n fights with seeds fightSeed(seed0, 0..n-1). */
-export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200, rare = false, amount = 1, seed0 = 1): FightEval {
+/** Monte-Carlo summary of n fights with seeds fightSeed(seed0, 0..n-1). Throws for a layout the game would not start
+ * (checkParty), unless `mapRoom` (the quest fought as a map room, where the map's rules apply). */
+export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200, rare = false, amount = 1, seed0 = 1,
+  mapRoom = false): FightEval {
   const q = G.questData[quest];
   if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${quest} has no enemy to fight`);
   // The game code fails on a rare fight without rare stats (obj.Enemy); the port would fight a NaN enemy.
   if (rare && (q.enemyHpB === undefined || q.attackListB === undefined)) throw new Error(`quest ${quest} has no rare variant`);
+  if (!mapRoom) checkParty({ quest }, front, back);
   checkAmount(sim, front, back, rare, amount);
   let wins = 0;
   const turns: number[] = [], turnsWin: number[] = [], grades: number[] = [], enemyFrac: number[] = [], hpFrac: number[] = [];
@@ -239,6 +242,7 @@ export interface MapEval {
 
 /** Monte-Carlo summary of n map runs (each seed = a new layout and new fights). */
 export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 100, seed0 = 1, scrolls?: Scroll[] | null): MapEval {
+  checkParty({ map: spec }, front, back);
   let wins = 0, escapes = 0;
   const cleared: number[] = [], grades: number[] = [], times: number[] = [], hpLeft: number[] = [], rooms: number[] = [];
   const lootValue: number[] = [], errors: string[] = [];
@@ -433,6 +437,9 @@ export interface QuestTarget {
   /** Quest amount: one enemy with its max HP x amount (obj.Enemy), loot and quest time scaled too. 1 to
    * maxQuestAmount (prestige x 2 - 1 in the standard mode: 1, 3 or 5); a rare quest is always 1. */
   amount?: number;
+  /** The fight is a map room (e.g. the map's boss, to tune rotations on): the quest's own party rules (partyRules)
+   * don't apply, the map's do. */
+  mapRoom?: boolean;
 }
 
 /**
@@ -454,13 +461,83 @@ export interface MapTarget {
   scrolls?: Scroll[] | null;
 }
 
+/** A party slot: row and index 0-2 (front 2 = { row: "front", i: 1 }, party location 4). */
+export interface PartySlot {
+  row: "front" | "back";
+  i: number;
+}
+
+/** How the game lets a party be set up for a target (see partyRules). */
+export interface PartyRules {
+  /** Most heroes the game lets into the party. */
+  maxSize: number;
+  /** Slots that can never be empty. */
+  required: PartySlot[];
+  /** "solo": a solo quest (questData.party false), one hero in front 1; "party": a party quest; "map": a map run. */
+  kind: "solo" | "party" | "map";
+}
+
+/**
+ * The game's party rules for a target. They come from the screens that start a fight, not from the battle code (which
+ * fights any layout):
+ * - Solo quest (`questData.party` false): `startSoloQuest` puts the one hero in front 1 (obj.GameClass.lua:277-278).
+ * - Party quest: the party screen opens with the hero the quest was opened from in front 2
+ *   (scene.QuestAssignHeroMenu.lua:279-283), and a hero in front 2 can only be swapped with another hero, never moved
+ *   to an empty slot (`switch`, :350). So front 2 is always filled. At most `questSize` heroes (:324).
+ * - Map run: no required slot; up to the map's party size (`partySize or 6`, obj.Map.lua:26). The map screen has the
+ *   same front-2 swap rule (scene.maps.MapAssignHeroMenu.lua:356), but its party starts empty, so any layout is possible.
+ */
+export function partyRules(t: QuestTarget | MapTarget): PartyRules {
+  if ("map" in t || t.mapRoom) return { kind: "map", maxSize: 6, required: [] }; // map items never set partySize
+  const q = G.questData[t.quest];
+  if (!q?.party) return { kind: "solo", maxSize: 1, required: [{ row: "front", i: 0 }] };
+  return { kind: "party", maxSize: Math.min(6, q.questSize ?? 6), required: [{ row: "front", i: 1 }] };
+}
+
+/** Slots the game never lets be empty for this target (for the UI: mark them as required). */
+export function requiredSlots(t: QuestTarget | MapTarget): PartySlot[] {
+  return partyRules(t).required;
+}
+
+/** Why the game would not start this layout (rows of heroes or ids, null = empty), or null when it would. */
+export function partyProblem(t: QuestTarget | MapTarget, front: readonly unknown[], back: readonly unknown[]): string | null {
+  const r = partyRules(t);
+  const size = [...front, ...back].filter((x) => x !== null && x !== undefined).length;
+  const what = "map" in t ? `map ${typeof t.map === "string" ? t.map : t.map.id}` : `quest ${t.quest}${G.questData[t.quest]?.name ? ` (${G.questData[t.quest].name})` : ""}`;
+  if (size === 0) return `${what}: the party is empty`;
+  if (r.kind === "solo" && (size > 1 || !front[0])) return `${what} is a solo quest: one hero, in front 1`;
+  if (size > r.maxSize) return `${what} takes at most ${r.maxSize} heroes, not ${size}`;
+  for (const s of r.required) {
+    const row = s.row === "front" ? front : back;
+    if (!row[s.i]) {
+      return `${what} needs a hero in ${s.row} ${s.i + 1}: the game starts the party there with the hero the quest is ` +
+        `opened from, and never lets that slot be emptied`;
+    }
+  }
+  return null;
+}
+
+/** Throws partyProblem's message for a layout the game would not start. */
+export function checkParty(t: QuestTarget | MapTarget, front: readonly unknown[], back: readonly unknown[]): void {
+  const p = partyProblem(t, front, back);
+  if (p) throw new Error(p);
+}
+
+/** Rows for one hero alone, where the game would put it: front 1 in a solo quest, front 2 in a party quest. */
+export function soloRows<H>(t: QuestTarget | MapTarget, h: H): [(H | null)[], (H | null)[]] {
+  const s = partyRules(t).required[0] ?? { row: "front", i: 0 };
+  const front: (H | null)[] = [null, null, null], back: (H | null)[] = [null, null, null];
+  (s.row === "front" ? front : back)[s.i] = h;
+  return [front, back];
+}
+
 /** evaluate (quest) or evaluateMap (map run) with seeds fightSeed(seed0, 0..n-1); both carry a comparable `score`. */
 export function evaluateTarget(sim: Sim, t: QuestTarget, front: Row, back: Row, n: number, seed0?: number): FightEval;
 export function evaluateTarget(sim: Sim, t: MapTarget, front: Row, back: Row, n: number, seed0?: number): MapEval;
 export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0?: number): FightEval | MapEval;
 export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0 = 1): FightEval | MapEval {
   if ("map" in t) return evaluateMap(sim, t.map, front, back, n, seed0, t.scrolls ? t.scrolls.map((x) => ({ ...x })) : null);
-  return evaluate(sim, t.quest, front, back, n, t.rare, t.amount, seed0);
+  return evaluate(sim, t.quest, front, back, n, t.rare, t.amount, seed0, Boolean(t.mapRoom));
 }
 
 // ---------------------------------------------------------------- commands
@@ -516,7 +593,7 @@ export function cmdFight(sim: Sim, roster: Roster, o: FightOpts, io: IO = consol
 
 export function cmdDamage(sim: Sim, roster: Roster, o: FightOpts & { hero: number }, io: IO = consoleIO): FightEval {
   const n = o.n ?? 300;
-  const ev = evaluate(sim, o.quest, [roster.get(o.hero)], [], n, o.rare, o.amount);
+  const ev = evaluate(sim, o.quest, ...soloRows({ quest: o.quest }, roster.get(o.hero)), n, o.rare, o.amount);
   const v = Object.values(ev.heroes)[0];
   io.out(`${roster.label(o.hero)} vs ${questName(o.quest)}, ${n} fights: ${fmtEval(ev)}`);
   io.out(`  damage per fight ${fx(v.dmg, 0, 0)}, per turn ${fx((v.dmg / ev.turns), 0, 0)}`);
@@ -564,7 +641,7 @@ export function soloMatrix(sim: Sim, heroes: [number, Hero][], quests: number[],
   for (const [hid, h] of heroes) {
     for (const q of quests) {
       st.check();
-      const ev = evaluate(sim, q, [h], [], n, o.rare);
+      const ev = evaluate(sim, q, ...soloRows({ quest: q }, h), n, o.rare);
       rows.push({ hero_id: hid, hero: h.name, class: G.heroList[h.class].name, level: h.level,
         prestige: h.prestigeLevel, quest_id: q, quest: questName(q), quest_level: G.questData[q].levelReq,
         enemy_power: enemyPower(q, o.rare), "win%": r(100 * ev.win, 1),
@@ -1301,15 +1378,18 @@ export interface PartySearch {
  * the result is evaluated with nFinal. Progress stages: "add 1".."add N" (one tick per hero x slot tried), then
  * "improve" (one tick per swap or move tried; its total is the number of options for the current slot).
  * `lock`: heroes that must be in the party (placed first, may move, never swapped out). With a quest amount above 1,
- * parties whose highest prestige can't take it are skipped; it throws only if no legal party exists.
+ * parties whose highest prestige can't take it are skipped; it throws only if no legal party exists. The game's
+ * layout rules (partyRules) hold: the size is capped at the quest's party size, a required slot (front 2 in a party
+ * quest, front 1 in a solo quest) is filled first and never emptied.
  */
 export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | MapTarget,
   o: { size?: number; nQuick?: number; nFinal?: number; lock?: number[] } = {}, ctl: SearchControl = {}): PartySearch {
   const nQuick = o.nQuick ?? 40, nFinal = o.nFinal ?? 500;
   const lock = [...new Set(o.lock ?? [])];
   for (const id of lock) if (!pool.has(id)) throw new Error(`locked hero ${id} is not in the pool`);
-  if (lock.length > 6) throw new Error("at most 6 heroes can be locked");
-  const size = Math.max(o.size ?? 6, lock.length);
+  const rules = partyRules(t);
+  if (lock.length > rules.maxSize) throw new Error(`at most ${rules.maxSize} heroes can be locked for this ${rules.kind === "map" ? "map" : "quest"}`);
+  const size = Math.min(Math.max(o.size ?? 6, lock.length), rules.maxSize);
   const ids = [...pool.keys()];
   const st = stepper(ctl);
   const slots = ["front:0", "front:1", "front:2", "back:0", "back:1", "back:2"];
@@ -1333,7 +1413,9 @@ export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | 
   // A quest amount above 1 needs a hero of high enough prestige in the party (maxQuestAmount): parties without one
   // are skipped instead of evaluated (evaluate refuses them).
   const amount = "map" in t ? 1 : t.amount ?? 1;
-  const legal = () => amount <= 1 || amount <= maxQuestAmount([...used()].map((id) => pool.get(id)), Boolean((t as QuestTarget).rare), sim.mode);
+  // The game's layout rules (partyRules: a required front 2, a solo quest's front 1) are checked the same way.
+  const legal = () => (amount <= 1 || amount <= maxQuestAmount([...used()].map((id) => pool.get(id)), Boolean((t as QuestTarget).rare), sim.mode)) &&
+    !partyProblem(t, ...rows());
 
   // Greedy: add the hero + slot that improves the score most, until the party is full or another hero stops
   // helping. Locked heroes go in first (best slot each, in the order given), whatever the score.
@@ -1367,7 +1449,7 @@ export function searchParty(sim: Sim, pool: Map<number, Hero>, t: QuestTarget | 
     added.push({ heroId: candBest[1], slot: slotLabel(candBest[2]), score: candBest[0] });
   }
 
-  if (!legal()) throw new Error(`no party with these locked heroes can take quest amount ${amount}`);
+  if (!legal()) throw new Error(partyProblem(t, ...rows()) ?? `no party with these locked heroes can take quest amount ${amount}`);
 
   // Local search: replace a placed hero by an unused one, or move a hero to an empty slot.
   let improvements = 0;

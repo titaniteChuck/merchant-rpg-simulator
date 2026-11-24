@@ -15,8 +15,8 @@ const hero = (id: number, cls: number, name: string) => ({
   heroInventory: ["3|3|3|1|0|0|A10B2C5D1|0|A0B0C0|0"],
 });
 const WARRIOR = hero(1, 1, "Tank"), MAGE = hero(2, 3, "Caster");
-const base = { gameMode: "Standard", front: [WARRIOR, null, null], back: [MAGE, null, null] };
-const QUEST = { id: 5, rare: false, amount: 1 };
+const base = { gameMode: "Standard", front: [null, WARRIOR, null], back: [MAGE, null, null] };
+const QUEST = { id: 10, rare: false, amount: 1 }; // a party quest (2 heroes): the game keeps front 2 filled
 
 async function run(req: Parameters<typeof runSearch>[0]): Promise<{ done: Extract<Msg, { type: "done" }>; progress: Msg[] }> {
   const msgs: Msg[] = [];
@@ -27,7 +27,7 @@ async function run(req: Parameters<typeof runSearch>[0]): Promise<{ done: Extrac
 }
 
 test("best rotation: ranked candidates, progress per stage", async () => {
-  const { done, progress } = await run({ ...base, search: "skills", hero: { row: "front", i: 0 }, quest: QUEST, nQuick: 2, nFinal: 3, top: 2 });
+  const { done, progress } = await run({ ...base, search: "skills", hero: { row: "front", i: 1 }, quest: QUEST, nQuick: 2, nFinal: 3, top: 2 });
   assert.equal(done.search, "skills");
   if (done.search !== "skills") return;
   assert.ok(done.result.ranked.length >= 1);
@@ -36,7 +36,7 @@ test("best rotation: ranked candidates, progress per stage", async () => {
 });
 
 test("best gear from the catalog", async () => {
-  const { done } = await run({ ...base, search: "gear", hero: { row: "front", i: 0 }, quest: QUEST, n: 2, passes: 1, pool: "catalog", itemGrade: 3, asc: 0 });
+  const { done } = await run({ ...base, search: "gear", hero: { row: "front", i: 1 }, quest: QUEST, n: 2, passes: 1, pool: "catalog", itemGrade: 3, asc: 0 });
   assert.equal(done.search, "gear");
   if (done.search === "gear") assert.equal(done.result.gear.length, 6);
 });

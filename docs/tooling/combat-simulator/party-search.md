@@ -2,7 +2,7 @@
 type: Tool
 title: Party search
 description: The merged best-party search: the smallest parties that win, with rows, order, rotations and scrolls.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Party search
@@ -10,8 +10,8 @@ timestamp: 2026-11-23
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Party search
 
 `searchParties` (`web/src/tools/parties.ts`) serves the merged "best party" mode: "best party", "best rotation" and
-"best scrolls" in one search. It returns the smallest parties that win, each fully set up. `searchParty`,
-`searchSkills` and `searchScrolls` are unchanged.
+"best scrolls" in one search. It returns the smallest parties that win, each fully set up. It is built on
+`searchSkills` and `searchScrolls`; `searchParty` (one party, greedy) stays available.
 
 ## Table of contents
 
@@ -50,12 +50,13 @@ PartyConfig = { size, layout: { front, back } /* hero ids, null = empty */,
 3. **Screen:** every set fights once at nQuick, with a default layout (sturdiest heroes in front: max HP × defences) and the heroes' own rotations.
 4. **Tune** the best `refine` sets of a size, once that size comes near winning (best screened win rate ≥ winThreshold / 2) or is the last size:
    - every front / back split, then every order within the rows;
-   - each hero's rotation and passive in turn (`searchSkills`, cheap settings, with the schedule pre-filter and the warm start). A map run is tuned on its boss fight, a quest where both apply and a fight costs one room instead of a whole run;
+   - each hero's rotation and passive in turn (`searchSkills`, cheap settings, with the schedule pre-filter and the warm start). A map run is tuned on its boss fight, a quest where both apply and a fight costs one room instead of a whole run. The fight is marked `mapRoom`, so the boss quest's own party rules don't apply;
    - for map runs with `scrolls`, the best loadout of up to 3 scrolls (`searchScrolls`);
    - a final evaluation at nFinal.
 
    Sizes far from winning keep their screened sets (`tuned: false`), and the search moves on to bigger parties.
-5. **Stop** growing once `enough` configurations win at `winThreshold`, at `maxSize`, or when the time runs out.
+5. **Game rules:** sizes stop at the quest's `questSize`, layouts that leave a party quest's front 2 empty are never tried (the default layout moves a hero there), and a solo quest gets one hero in front 1 ([party setup rules](../../combat/combat.md#party-setup-rules)).
+6. **Stop** growing once `enough` configurations win at `winThreshold`, at `maxSize`, or when the time runs out.
 
 ## Ranking
 
@@ -65,15 +66,15 @@ PartyConfig = { size, layout: { front, back } /* hero ids, null = empty */,
 
 ## Measured
 
-The real save (17 heroes), default options except a 300 s time budget (2026-11-23):
+The real save (17 heroes), default options except a 300 s time budget. Desolation Wolf re-measured on 2026-11-24 with the party setup rules (3 heroes at most, front 2 filled); the map rows are from 2026-11-23 (maps have no required slot):
 
 | Target | Time | Evaluations | Best |
 | --- | --- | --- | --- |
-| Desolation Wolf (quest 81) | 311 s (budget) | 2,562 | 2 heroes (front #1, back #8): win 100 %, 10.4 turns |
+| Desolation Wolf (quest 81) | 108 s | 1,521 | 3 heroes (front #1, #15, back #8): win 100 %, 6.6 turns |
 | Gnoll Vendetta asc 1 (map 11), no scrolls | 145 s | 1,071 | 6 heroes: win 85 %; best 5-hero set clears 96 % of rooms |
 | Gnoll Vendetta asc 1, scrolls | 311 s (budget) | 919 | 6 heroes, scrolls 63, 64, 69 (2,077 g): win 100 % |
 
-- The quest found its 2-hero winners early, then used the rest of the budget on 3-hero sets (`enough` = 10 not yet reached).
+- Desolation Wolf: no 2-hero party wins any more (best: #8 in front 1, #1 in front 2, 81 %). Before the rules, #1 in front 1 and #8 in back 2 won 100 % by leaving front 2 empty, which the game doesn't allow. The search ends at 3 heroes, the quest's size, well within the budget.
 - On the map, sizes 1 to 5 stayed far from winning, so only size 6 was tuned (`tuned: false` below it). The scroll loadout search makes each tuning about twice as slow.
 - Use a shorter budget in the UI: the results at hand are returned with `stopped: true`.
 

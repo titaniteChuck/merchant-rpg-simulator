@@ -123,7 +123,7 @@ test("shouldStop cancels a search and leaves the hero as it was", () => {
 
 test("healing enemies: lowest HP reached and total damage are reported and scored", () => {
   // Goblin Warlord (quest 91) heals with Feast/Gluttony: against this hero it ends higher than its lowest point.
-  const ev = evaluate(sim, 91, [warrior()], [], 10);
+  const ev = evaluate(sim, 91, [null, warrior(), null], [], 10); // a party quest: front 2
   assert.ok(ev.enemy_dmg_peak > ev.enemy_dmg, `peak ${ev.enemy_dmg_peak} vs end ${ev.enemy_dmg}`);
   assert.ok(ev.enemy_dmg_total > 0 && ev.enemy_dmg_total_frac > 0);
   assert.equal(ev.score, score(ev));
@@ -145,7 +145,7 @@ test("healing enemies: lowest HP reached and total damage are reported and score
 test("skills: every ranked rotation is really played with its passive (AP budget per passive, Wisdom +2)", async () => {
   const { standardHero } = await import("../src/tools/classes.ts");
   const mage = standardHero(sim, 3, 60, 3, "best");
-  const res = searchSkills(sim, mage, [mage], [], { quest: 60 }, { nQuick: 2, nFinal: 3, top: 2 });
+  const res = searchSkills(sim, mage, [null, mage, null], [], { quest: 60 }, { nQuick: 2, nFinal: 3, top: 2 });
   assert.ok(res.ranked.length > 0);
   for (const c of res.ranked) {
     sim.setSkills(mage, c.rotation, c.passive);

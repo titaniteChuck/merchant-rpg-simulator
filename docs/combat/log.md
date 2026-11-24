@@ -2,6 +2,9 @@
 
 [Root](../index.md) > [Combat](./index.md) > Update Log
 
+## 2026-11-24
+- **Party setup rules (E21)**: solo quests take one hero in front 1, party quests up to `questSize` heroes with front 2 always filled (the party screen opens with the quest's hero there and never lets it be emptied), maps have no required slot; from the quest and map party screens.
+
 ## 2026-11-23
 - **Rule fixes (E17b, from U25)**: `midline` attacks hit locations 3-4 (only party *effects* treat unknown strings as everyone); a skill's own penetration never applies (lower of skill and attacker, attacker always 0); potions use a charge per map room (heroes page).
 - **HP, heals and revives**: HP carried between map rooms, heals capped at max HP (not at start-of-battle HP; overload exception), revive amounts, end-of-map `min(questHP, hp)`, with file:line in decompiled/ and the port.

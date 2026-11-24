@@ -10,8 +10,8 @@
  * configuration on the same rolls. Pure: no output, no Node APIs; progress and cancel through SearchControl.
  */
 import {
-  checkAmount, evaluateTarget, type FightEval, scheduleParty, type GearCandidate, type MapEval, type MapTarget, type PartyLayout, type QuestTarget,
-  SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls, searchSkills,
+  checkAmount, evaluateTarget, type FightEval, scheduleParty, type GearCandidate, type MapEval, type MapTarget, type PartyLayout, partyProblem, partyRules,
+  type QuestTarget, SearchCancelled, type SearchControl, searchGear, searchParty, searchScrolls, searchSkills,
 } from "./combat.ts";
 import type { Hero, Row, Scroll, Sim } from "./engine.ts";
 import type { Save } from "./save.ts";
@@ -35,7 +35,8 @@ export interface OptimiseOptions {
   nQuick?: number;
   nFinal?: number;
   /** Steps to run (default all; gear needs `save`, scrolls a map target). `order`: every order of the heroes within
-   * the front and back rows (3! x 3!, empty slots included); `swap`: one front slot exchanged with one back slot (9
+   * the front and back rows (3! x 3!, empty slots included; layouts that empty a required slot, see partyRules, are
+   * skipped); `swap`: one front slot exchanged with one back slot (9
    * pairs), then `order` again if kept; `phase`: each member's rotation shifted cyclically by 1-4 turns (passive
    * unchanged). order, swap and phase run after the party step and again after the skill steps. */
   steps?: { party?: boolean; order?: boolean; swap?: boolean; phase?: boolean; skills?: boolean; gear?: boolean; scrolls?: boolean };
@@ -128,7 +129,9 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     : { front: [null, null, null], back: [null, null, null] };
   const lock = [...new Set(o.lock ?? [])];
   for (const id of [...party.front, ...party.back, ...lock]) if (id !== null && !pool.has(id)) throw new Error(`hero #${id} is not in the pool`);
-  if (lock.length > 6) throw new Error("at most 6 heroes can be locked in the party");
+  const rules = partyRules(target);
+  if (lock.length > rules.maxSize) throw new Error(`at most ${rules.maxSize} heroes can be locked in the party for this target`);
+  if (!steps.party && start && partyProblem(target, start.front, start.back)) throw new Error(partyProblem(target, start.front, start.back)!);
   const missingLocked = () => lock.filter((id) => !party.front.includes(id) && !party.back.includes(id));
   if (!steps.party && missingLocked().length) {
     throw new Error(`locked heroes not in the starting party: ${missingLocked().map((id) => `#${id}`).join(", ")}`);
@@ -139,10 +142,11 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
   };
   const toRows = (p: PartyLayout): [Row, Row] => [p.front.map((id) => (id === null ? null : pool.get(id)!)),
     p.back.map((id) => (id === null ? null : pool.get(id)!))];
-  /** nQuick score of a layout; -Infinity when it is empty or the game would not offer it the quest amount
+  /** nQuick score of a layout; -Infinity when the game would not start it (partyProblem: empty, more heroes than the
+   * quest takes, a required slot such as a party quest's front 2 left empty) or would not offer it the quest amount
    * (maxQuestAmount: the party's highest prestige), instead of the error evaluate throws. */
   const evalScore = (front: Row, back: Row): number => {
-    if (!front.some(Boolean) && !back.some(Boolean)) return -Infinity;
+    if (partyProblem(t, front, back)) return -Infinity; // empty, too big, or a required slot empty (partyRules)
     if (!map) {
       const q = t as QuestTarget;
       try {
@@ -292,7 +296,7 @@ export function optimiseFight(sim: Sim, pool: Map<number, Hero>, target: QuestTa
        */
       function constrainedParty(): { party: PartyLayout; score: number } {
         const ids = [...pool.keys()];
-        const size = Math.max(o.size ?? 6, lock.length);
+        const size = Math.min(Math.max(o.size ?? 6, lock.length), rules.maxSize);
         const slots = ["front:0", "front:1", "front:2", "back:0", "back:1", "back:2"];
         const at = new Map<string, number>();
         const layout = (): PartyLayout => ({
