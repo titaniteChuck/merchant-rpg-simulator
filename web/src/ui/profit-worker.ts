@@ -41,7 +41,7 @@ export interface Orb {
 }
 
 export type ProfitResponse =
-  | { ok: true; id: number; ms: number; items: Row[]; enchant: Row[]; essence: Row[]; orbs: Orb[]; summary: string }
+  | { ok: true; id: number; ms: number; items: Row[]; enchant: Row[]; essence: Row[]; orbs: Orb[] }
   | { ok: false; id: number; error: string };
 
 let game: Promise<Game> | null = null;
@@ -65,6 +65,36 @@ function plain(rows: ProfitRow[]): Row[] {
   });
 }
 
+/** Max level of the game: level-70 items and maps (Hard / Weekly Boss Rush) are left out. */
+export const MAX_LEVEL = 60;
+const inLevel = (level: Cell) => level === null || Number(level) <= MAX_LEVEL;
+
+const nameIndex = new Map<string, Map<string, number>>();
+/** Id of a quest (by `nameB || name`, as the engine names it), material or map, from its English name. */
+function idByName(g: Game, kind: "quest" | "material" | "map", name: string): number | null {
+  if (!nameIndex.has(kind)) {
+    const m = new Map<string, number>();
+    const src: Map<number, Any> = kind === "quest" ? g.quests : g.items[kind];
+    for (const [id, x] of src) {
+      const n = kind === "quest" ? x.nameB || x.name : x.name;
+      if (n && !m.has(n)) m.set(n, id);
+    }
+    nameIndex.set(kind, m);
+  }
+  return nameIndex.get(kind)!.get(name) ?? null;
+}
+
+/** The id the "how" text names (crafter, orb, quest or map), so the page can name it in the visitor's language. */
+function howId(g: Game, r: Row): number | null {
+  const how = String(r.how ?? "");
+  let m: RegExpExecArray | null;
+  if (how.startsWith("craft")) return g.item(String(r.type), Number(r.id))?.crafterID ?? null;
+  if ((m = /^ascend asc\d item \(\+\d+x (.+)\)$/.exec(how))) return idByName(g, "material", m[1]);
+  if ((m = /^quest (.+?)(?: \[rare\])? \([\d.]+g, /.exec(how))) return idByName(g, "quest", m[1]);
+  if ((m = /^map loot (.+) \(valued at sell price\)$/.exec(how))) return idByName(g, "map", m[1]);
+  return null;
+}
+
 export async function runProfit(req: ProfitRequest): Promise<ProfitResponse> {
   try {
     const g = await loadGame();
@@ -73,13 +103,14 @@ export async function runProfit(req: ProfitRequest): Promise<ProfitResponse> {
       grade: req.grade, luck: req.luck, crafterLevel: req.crafterLevel, enchanterLevel: req.enchanterLevel,
       mapMods: req.mapMods, alloc: req.alloc, essenceFrom: new Map(req.essenceFrom.map(([e, m, p]) => [e, [m, p]])),
     });
-    const items = plain(rep.rows);
+    const items = plain(rep.rows).filter((r) => inLevel(r.level));
     for (const r of items) {
+      r.how_id = howId(g, r);
       // chance of at least one modifier
       const pp = Number(r["p_prefix%"] ?? 0), ps = Number(r["p_suffix%"] ?? 0), pb = Number(r["p_both%"] ?? 0);
       r.p_any = Math.round((pp + ps - pb) * 10) / 10;
     }
-    const essence = plain(rep.essence);
+    const essence = plain(rep.essence).filter((r) => (g.items.map.get(Number(r.map_id))?.itemLevel ?? 1) <= MAX_LEVEL);
     const s = rep.solver;
     const orbs: Orb[] = [];
     for (const [tier, ids] of g.prestigeItemId) {
@@ -94,7 +125,7 @@ export async function runProfit(req: ProfitRequest): Promise<ProfitResponse> {
         });
       });
     }
-    return { ok: true, id: req.id, ms: performance.now() - t0, items, enchant: plain(rep.enchant), essence, orbs, summary: rep.lines[1].trim() };
+    return { ok: true, id: req.id, ms: performance.now() - t0, items, enchant: plain(rep.enchant).filter((r) => inLevel(r.level)), essence, orbs };
   } catch (e) {
     return { ok: false, id: req.id, error: e instanceof Error ? e.message : String(e) };
   }

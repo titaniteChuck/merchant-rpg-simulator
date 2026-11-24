@@ -1,18 +1,26 @@
 /**
  * Profit page (site/profit.html): what to make and sell, when enchanting pays, where orbs are cheapest.
  * The economy is solved by profitReport (web/src/tools/profit.ts) in a web worker (profit-worker.ts);
- * the page only filters and sorts the tables it sends back. An opened save marks the items the player owns.
+ * the page only filters and sorts the tables it sends back. A save opened from the top-bar Save dropdown marks the
+ * items the player owns. With Scribe hidden there are no orbs or maps: no Orbs tab, orb sources, map-modifier chip,
+ * ascension filter or "no orbs" tile.
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
-import { $, el, fmt, fmt1, tile } from "./dom.ts";
+import { $, chipToggle, el, fmt1, gold, segField, segmented, tile } from "./dom.ts";
 import type { Orb, ProfitRequest, ProfitResponse, Row } from "./profit-worker.ts";
-import { enchantColumns, essenceColumns, type InfoColumn, itemColumns, rankedTable, type SortState, STRATEGY } from "./profit-tables.ts";
+import {
+  enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, type ProfitTab, profitTabs, rankedTable, type SortState, STRATEGY,
+  TAB_LABELS,
+} from "./profit-tables.ts";
 import { initSaveSource } from "./save-source.ts";
-import { itemLink, loadWikiText } from "./wiki-data.ts";
-import { isVisible, subscribe } from "./expansion-state.ts";
+import { itemLink, loadWikiText, REGIONS } from "./wiki-data.ts";
+import { isHidden, isVisible, subscribe } from "./expansion-state.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
-import { itemName } from "./names.ts";
+import { ITEM_TYPE_PLURALS, itemName, regionName } from "./names.ts";
+
+/** Orbs and maps are Scribe content. */
+export const orbsHidden = (): boolean => isHidden("Scribe");
 
 /** U28: an orb source on a map (or an orb) of an expansion the visitor hides is left out. */
 const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension: Number(x.map_asc) || 0 }) && isVisible("material", Number(x.essence_id));
@@ -20,14 +28,17 @@ const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension
 type Result = Extract<ProfitResponse, { ok: true }>;
 
 const PAGE = 100; // rows shown before "Show all"
+const MAX_LEVEL = 60;
 
 interface Filters {
   q: string;
-  type: string;
+  /** Item types shown; empty = all. */
+  types: Set<string>;
   min: number;
   max: number;
   asc: string;
   ownedOnly: boolean;
+  gainsOnly: boolean;
   orb: string;
 }
 
@@ -38,8 +49,9 @@ const state = {
   busy: false,
   lastId: 0,
   pending: null as ProfitRequest | null,
-  tab: "Items" as (typeof TABS)[number],
-  filters: { q: "", type: "all", min: 1, max: 70, asc: "all", ownedOnly: false, orb: "all" } as Filters,
+  tab: "Items" as ProfitTab,
+  settings: { grade: "3", alloc: "value" as "value" | "full", mapMods: true },
+  filters: { q: "", types: new Set<string>(), min: 1, max: MAX_LEVEL, asc: "all", ownedOnly: false, gainsOnly: true, orb: "all" } as Filters,
   sort: { Items: { key: "best_profit", desc: true }, Enchanting: { key: "suffix_net", desc: true }, Orbs: { key: "cost_per_essence", desc: false } } as Record<string, SortState>,
   limit: { Items: PAGE, Enchanting: PAGE, Orbs: PAGE } as Record<string, number>,
   orbChoice: new Map<number, string>(), // essence id -> "mapId@asc"
@@ -61,17 +73,23 @@ const num = (id: string, lo: number, hi: number, dflt: number) => {
 };
 
 function request(): ProfitRequest {
-  const alloc = (document.querySelector<HTMLInputElement>('input[name="alloc"]:checked')?.value ?? "value") as "value" | "full";
   const essenceFrom: [number, number, number][] = [];
   for (const [eid, v] of state.orbChoice) {
     const [m, p] = v.split("@").map(Number);
     essenceFrom.push([eid, m, p]);
   }
+  const s = state.settings;
   return {
-    id: ++state.lastId, grade: num("#grade", 1, 5, 3), luck: num("#luck", 0, 1000, 0), crafterLevel: num("#crafter", 1, 60, 60),
-    enchanterLevel: num("#enchanter", 0, 60, 60), mapMods: $<HTMLInputElement>("#mapmods").checked, alloc, essenceFrom,
+    id: ++state.lastId, grade: Number(s.grade), luck: num("#luck", 0, 1000, 0), crafterLevel: num("#crafter", 1, 60, 60),
+    enchanterLevel: num("#enchanter", 0, 60, 60), mapMods: s.mapMods, alloc: s.alloc, essenceFrom,
   };
 }
+
+/** "Hard Tuvale Map" (ascension 1 named, as in the orb selects). */
+const mapLabel = (key: string): string => {
+  const [m, p] = key.split("@").map(Number);
+  return `${itemName("map", m) ?? `#${m}`}${p ? " · ascension 1" : ""}`;
+};
 
 function worker(): Worker {
   if (state.worker) return state.worker;
@@ -92,17 +110,10 @@ function worker(): Worker {
       return;
     }
     state.result = r;
-    const unpriced = /(\d+) items without/.exec(r.summary)?.[1];
-    const status: Node[] = [el("p", { class: "muted small" }, `${fmt.format(r.items.length)} prices (each item at each ascension level)`
-      + (unpriced ? `; ${unpriced} items have no known source (events, weekly shop) and are left out` : "")
-      + `. Worked out in ${fmt1.format(r.ms / 1000)} s.`)];
-    // A forced map that needs its own orb to be made can't price it (the solver starts from "unknown").
+    // A forced map whose recipe uses at least as many of its orb as a run yields has no price.
     const stuck = r.orbs.filter((o) => state.orbChoice.has(o.id) && o.cost === null);
-    if (stuck.length) {
-      status.push(el("p", { class: "error", role: "alert" }, `${stuck.map((o) => itemName("material", o.id) ?? o.name).join(", ")}: the map you picked needs that orb to be made, `
-        + "so it can't be its only source. Items that need it are left out. Pick another map or go back to Cheapest."));
-    }
-    $("#status").replaceChildren(...status);
+    $("#status").replaceChildren(...stuck.map((o) => el("p", { class: "error", role: "alert" },
+      `${itemName("material", o.id) ?? o.name} can't come from ${mapLabel(state.orbChoice.get(o.id)!)} alone: a run yields fewer than its recipe uses.`)));
     buildOrbSelects(r);
     render();
   };
@@ -155,7 +166,7 @@ function buildOrbSelects(r: Result): void {
       if (seen.has(key)) continue;
       seen.add(key);
       // Options can't be outlined; an ascended map needs a word to tell it from the plain one.
-      s.append(el("option", { value: key }, `${itemName("map", Number(row.map_id)) ?? row.map}${Number(row.map_asc) ? " · ascension 1" : ""}`));
+      s.append(el("option", { value: key }, mapLabel(key)));
     }
     const chosen = state.orbChoice.get(o.id);
     if (chosen && [...s.options].some((x) => x.value === chosen)) s.value = chosen; // kept across a rebuild (U28)
@@ -183,14 +194,18 @@ const visibleRow = (r: Row) => isVisible("item", Number(r.id), { type: String(r.
 function itemFilter(rows: Row[], withType: boolean): Row[] {
   const f = state.filters;
   const q = f.q.trim().toLowerCase();
-  return rows.filter((r) => visibleRow(r) && (!withType || f.type === "all" || r.type === f.type)
+  const asc = orbsHidden() ? "all" : f.asc;
+  return rows.filter((r) => visibleRow(r) && (!withType || !f.types.size || f.types.has(String(r.type)))
     && (r.level === null || (Number(r.level) >= f.min && Number(r.level) <= f.max))
-    && (f.asc === "all" || String(r.asc) === f.asc)
+    && (asc === "all" || String(r.asc) === asc)
     && (!f.ownedOnly || Number(r.owned) > 0)
     && (!q || `${r.name} ${itemName(String(r.type ?? "equipment"), Number(r.id)) ?? ""}`.toLowerCase().includes(q))); // U29: either name
 }
 
-function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HTMLElement {
+/** Enchanting: a +1 suffix or a first prefix earns more than it costs. */
+const gains = (r: Row) => Number(r.suffix_net) > 0 || Number(r.prefix_net) > 0;
+
+function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; orbs?: Orb[] }): HTMLElement {
   const f = state.filters;
   const search = el("input", { type: "search", placeholder: "Filter by name", "aria-label": "Filter by name", value: f.q }) as HTMLInputElement;
   let t = 0;
@@ -206,11 +221,15 @@ function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HT
     set();
     renderPanel(true);
   });
+  const chip = (label: string, on: boolean, set: (v: boolean) => void) => chipToggle(label, on, (v) => {
+    set(v);
+    renderPanel(true);
+  });
   if (opts.types) {
-    const type = el("select", { "aria-label": "Item type" }, ...[["all", "All types"], ["equipment", "Equipment"], ["consumable", "Consumables"], ["map", "Maps"]]
-      .map(([v, l]) => el("option", v === f.type ? { value: v, selected: "" } : { value: v }, l))) as HTMLSelectElement;
-    change(type, () => (f.type = type.value));
-    kids.push(type);
+    for (const type of ["equipment", "consumable", "map"]) {
+      if (type === "map" && orbsHidden()) continue;
+      kids.push(chip(ITEM_TYPE_PLURALS[type], f.types.has(type), (v) => (v ? f.types.add(type) : f.types.delete(type))));
+    }
   }
   if (opts.orbs) {
     const orb = el("select", { "aria-label": "Orb" }, el("option", { value: "all" }, "All orbs"),
@@ -218,22 +237,23 @@ function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HT
     change(orb, () => (f.orb = orb.value));
     kids.push(orb);
   } else {
-    const asc = el("select", { "aria-label": "Ascension" }, ...[["all", "Any ascension"], ["0", "No ascension"], ["1", "Ascension 1"], ["2", "Ascension 2"]]
-      .map(([v, l]) => el("option", v === f.asc ? { value: v, selected: "" } : { value: v }, l))) as HTMLSelectElement;
-    change(asc, () => (f.asc = asc.value));
+    if (!orbsHidden()) {
+      kids.push(segField("Ascension", segmented("pf-asc", "Ascension", [["all", "Any"], ["0", "0"], ["1", "1"], ["2", "2"]]
+        .map(([value, label]) => ({ value, label })), f.asc, (v) => {
+        f.asc = v;
+        renderPanel(true);
+      })));
+    }
     const lvl = (v: number, label: string, set: (x: number) => void) => {
-      const i = el("input", { type: "number", min: "1", max: "70", value: String(v), "aria-label": label, inputmode: "numeric" }) as HTMLInputElement;
-      change(i, () => set(Math.max(1, Math.min(70, Number(i.value) || 1))));
+      const i = el("input", { type: "number", min: "1", max: String(MAX_LEVEL), value: String(v), "aria-label": label, inputmode: "numeric" }) as HTMLInputElement;
+      change(i, () => set(Math.max(1, Math.min(MAX_LEVEL, Number(i.value) || 1))));
       return i;
     };
-    kids.push(asc, el("span", { class: "pf-range" }, "Level ", lvl(f.min, "Lowest item level", (x) => (f.min = x)), " to ",
+    kids.push(el("span", { class: "pf-range" }, "Level ", lvl(f.min, "Lowest item level", (x) => (f.min = x)), " to ",
       lvl(f.max, "Highest item level", (x) => (f.max = x))));
   }
-  if (opts.owned && state.owned) {
-    const own = el("input", { type: "checkbox", ...(f.ownedOnly ? { checked: "" } : {}) }) as HTMLInputElement;
-    change(own, () => (f.ownedOnly = own.checked));
-    kids.push(el("label", { class: "check" }, own, " Only what I own"));
-  }
+  if (opts.gains) kids.push(chip("Only gains", f.gainsOnly, (v) => (f.gainsOnly = v)));
+  if (opts.owned && state.owned) kids.push(chip("Only what I own", f.ownedOnly, (v) => (f.ownedOnly = v)));
   return el("div", { class: "toolbar pf-filters" }, ...kids);
 }
 
@@ -252,15 +272,9 @@ function tableFor(tab: string, rows: Row[], cols: InfoColumn[]): HTMLElement {
   });
 }
 
-function countLine(n: number, what: string): HTMLElement {
-  return el("p", { class: "muted small pf-count" }, `${fmt.format(n)} ${what}`);
-}
-
 function itemsPanel(r: Result): HTMLElement[] {
   const rows = itemFilter(withOwned(r.items), true);
-  return [filterBar({ types: true, owned: true }), countLine(rows.length, "items and ascension levels"),
-    tableFor("Items", rows, itemColumnsCached()),
-    el("p", { class: "muted small" }, "Profit is per item, for the best plan. Items without a known source (event and weekly-shop items) are not listed.")];
+  return [filterBar({ types: true, owned: true }), tableFor("Items", rows, itemColumnsCached())];
 }
 
 let colsCache: { owned: boolean; cols: InfoColumn[] } | null = null;
@@ -271,25 +285,26 @@ function itemColumnsCached(): InfoColumn[] {
 }
 
 function enchantPanel(r: Result): HTMLElement[] {
-  const rows = itemFilter(withOwned(r.enchant, "equipment"), false);
+  const rows = itemFilter(withOwned(r.enchant, "equipment"), false).filter((x) => !state.filters.gainsOnly || gains(x));
   const cols = enchantColumns();
   if (state.owned) cols.push({ key: "owned", label: "You have", num: true, tip: "Copies in your save: inventory, shop and hero gear." });
-  return [
-    el("p", { class: "muted small" }, "Adding one modifier to a piece of equipment you already have. A +1 suffix is the cheap one; a first prefix gets hard on high-level gear."),
-    filterBar({ owned: true }), countLine(rows.length, "pieces of equipment and ascension levels"), tableFor("Enchanting", rows, cols),
-  ];
+  return [filterBar({ owned: true, gains: true }), tableFor("Enchanting", rows, cols)];
 }
 
-const REGION = ["1–10", "11–20", "21–30", "31–40", "41–50", "51–60"];
+/** The region whose items an orb ascends (0-based band), in the visitor's language. */
+const orbRegion = (band: number): string => {
+  const reg = REGIONS[band];
+  return reg ? regionName(reg.id, reg.full) : "?";
+};
 
 function orbsPanel(r: Result): HTMLElement[] {
-  const best = (tier: number) => el("div", { class: "table-wrap" }, el("table", {},
-    el("thead", {}, el("tr", {}, ...["Orb", "Ascends items of level", "Cost per orb", "Cheapest map", "Orbs per run"]
+  const best = (tier: number) => el("div", { class: "table-wrap pf-table" }, el("table", {},
+    el("thead", {}, el("tr", {}, ...["Orb", "Region", "Cost per orb", "Cheapest map", "Orbs per run"]
       .map((h, i) => el("th", { scope: "col", class: i === 2 || i === 4 ? "num" : "" }, h)))),
     el("tbody", {}, ...r.orbs.filter((o) => o.tier === tier && isVisible("material", o.id)).map((o) => el("tr", {},
       el("td", {}, itemLink("material", o.id, o.name)),
-      el("td", {}, REGION[o.region] ?? "?"),
-      el("td", { class: "num" }, o.cost === null ? "—" : `${fmt1.format(o.cost)} g`),
+      el("td", {}, orbRegion(o.region)),
+      el("td", { class: "num" }, gold(o.cost, 1)),
       el("td", {}, o.mapId === null ? "—" : el("span", { class: "nowrap" }, itemLink("map", o.mapId, undefined, undefined, o.mapAsc),
         ...(o.label && o.label !== "as crafted" ? [el("span", { class: "muted small" }, ` · ${o.label}`)] : []))),
       el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun)))))));
@@ -298,15 +313,11 @@ function orbsPanel(r: Result): HTMLElement[] {
     .filter((x) => !f.q.trim() || `${x.map} ${x.essence} ${itemName("map", Number(x.map_id)) ?? ""} ${itemName("material", Number(x.essence_id)) ?? ""}`.toLowerCase().includes(f.q.trim().toLowerCase()));
   const tiers = [...new Set(r.orbs.map((o) => o.tier))].sort();
   return [
-    el("p", { class: "muted small" }, "Ascending an item uses orbs (essence) matching its level. Map runs drop them: plain maps drop the ascension-1 orbs, ascended maps (silver outline) the ascension-2 orbs. An orb is worth what it costs to farm, not its few gold of sell price."),
     ...tiers.flatMap((t) => [el("h3", { class: "pf-h3" }, `Orbs for ascension ${t}`), best(t)]),
     el("h3", { class: "pf-h3" }, "Every map that drops orbs"),
-    filterBar({ orbs: r.orbs }), countLine(rows.length, "map and orb pairs"), tableFor("Orbs", rows, essenceColumns()),
+    filterBar({ orbs: r.orbs }), tableFor("Orbs", rows, essenceColumns()),
   ];
 }
-
-const TABS = ["Items", "Enchanting", "Orbs"] as const;
-const TAB_LABELS: Record<string, string> = { Items: "💰 What to make", Enchanting: "✨ Enchanting", Orbs: "🔮 Orb sources" };
 
 function summaryTiles(r: Result): HTMLElement {
   const items = r.items.filter(visibleRow);
@@ -315,11 +326,8 @@ function summaryTiles(r: Result): HTMLElement {
   // The item, outlined for its ascension (silver 1, gold 2).
   const mk = (x: Row | null): Node | string => (x ? itemLink(String(x.type ?? "equipment"), Number(x.id), String(x.name), x.rarity, x.asc) : "—");
   return el("div", { class: "tiles" },
-    tile("Most profit", mk(top), top ? `${fmt.format(Number(top.best_profit))} g · ${STRATEGY[String(top.best_strategy)] ?? ""}` : undefined, { icon: "🏆", tone: "t-gold" }),
-    tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${fmt.format(Number(topAsc0.best_profit))} g, no ascension` : undefined, { icon: "🔨", tone: "t-blue" }),
-    tile("Items priced", fmt.format(items.length), "item × ascension level", { icon: "📦", tone: "t-teal" }),
-    tile("Cheapest orb", r.orbs.length ? `${fmt1.format(Math.min(...r.orbs.map((o) => o.cost ?? Infinity)))} g` : "—",
-      r.orbs.length ? ((o) => itemName("material", o.id) ?? o.name)(r.orbs.reduce((a, b) => ((b.cost ?? Infinity) < (a.cost ?? Infinity) ? b : a))) : undefined, { icon: "🔮", tone: "t-violet" }));
+    tile("Most profit", mk(top), top ? `${gold(Number(top.best_profit))} · ${STRATEGY[String(top.best_strategy)] ?? ""}` : undefined, { icon: "🏆", tone: "t-gold" }),
+    ...(orbsHidden() ? [] : [tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${gold(Number(topAsc0.best_profit))}, no ascension` : undefined, { icon: "🔨", tone: "t-blue" })]));
 }
 
 function renderPanel(keepFocus = false): void {
@@ -342,13 +350,15 @@ function renderPanel(keepFocus = false): void {
 
 function render(): void {
   const r = state.result!;
+  const tabs = profitTabs(orbsHidden());
+  if (!tabs.includes(state.tab)) state.tab = "Items";
   const tabList = el("div", { role: "tablist", class: "tabs", "aria-label": "Result tables" });
-  const select = (name: (typeof TABS)[number]) => {
+  const select = (name: ProfitTab) => {
     state.tab = name;
     tabList.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
     renderPanel();
   };
-  for (const name of TABS) {
+  for (const name of tabs) {
     const b = el("button", { role: "tab", type: "button", "aria-selected": String(name === state.tab), "data-tab": name }, TAB_LABELS[name]);
     b.addEventListener("click", () => select(name));
     tabList.append(b);
@@ -370,6 +380,30 @@ async function loadSave(text: string): Promise<void> {
   renderPanel();
 }
 
+/** Run grade, who pays and map modifiers: segmented controls and a chip in the form. */
+function buildSettings(changed: () => void): void {
+  const s = state.settings;
+  $("#grade-seg").replaceChildren(segmented("pf-grade", "Run grade", ["D", "C", "B", "A", "S"].map((l, i) => ({ value: String(i + 1), label: l })),
+    s.grade, (v) => (s.grade = v)));
+  $("#alloc-seg").replaceChildren(segmented("pf-alloc", "Who pays for a run", [
+    { value: "value", label: "Shared", title: "A run's cost is split between everything it drops, by sell value." },
+    { value: "full", label: "Full", title: "Every drop carries the whole run cost: \"I farm this only for that\". Pessimistic." },
+  ], s.alloc, (v) => (s.alloc = v as "value" | "full")));
+  $("#mapmods-box").replaceChildren(chipToggle("Count map modifiers", s.mapMods, (v) => {
+    s.mapMods = v;
+    changed();
+  }, "Crafted maps roll modifiers that raise their orb yield (about +26%). Off: plain maps only."));
+}
+
+/** Scribe hidden: no orb sources, map-modifier chip or orb note. */
+function showOrbControls(): void {
+  const hide = orbsHidden();
+  for (const id of ["#orb-sources", "#mapmods-box", "#orb-note"]) {
+    const e = $(id);
+    if (e) e.hidden = hide;
+  }
+}
+
 function init(): void {
   const form = $<HTMLFormElement>("#options");
   let t = 0;
@@ -382,6 +416,8 @@ function init(): void {
     changed();
   });
   form.addEventListener("submit", (e) => e.preventDefault());
+  buildSettings(changed);
+  showOrbControls();
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: (text) => loadSave(text),
     onForget: () => {
@@ -393,6 +429,7 @@ function init(): void {
   loadWikiText();
   // U28: the tables, tiles and orb choices follow the expansion switches; U29: and the language (state is kept).
   const redraw = () => {
+    showOrbControls();
     if (!state.result) return;
     delete $("#orb-selects").dataset.built;
     buildOrbSelects(state.result);
@@ -404,4 +441,4 @@ function init(): void {
   Promise.all([loadData(), languageReady]).then(compute).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
 }
 
-init();
+if (typeof document !== "undefined") init();

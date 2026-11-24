@@ -3,11 +3,11 @@
  * and a sortable table (dom.ts `table`) that keeps its sort when the rows are filtered and shows only the
  * first rows until asked for all.
  */
-import { ascSwatch, type Column, el, fmt, fmt1, GRADE_LETTERS, gradeBadge, type Row, table } from "./dom.ts";
+import { ascSwatch, type Column, duration, el, fmt, fmt1, gold, goldNumber, GRADE_LETTERS, gradeBadge, pct, type Row, table } from "./dom.ts";
 import type { Row as ProfitRow } from "./profit-worker.ts";
 import { tip } from "./tooltip.ts";
 import { itemLink } from "./wiki-data.ts";
-import { compareNames, itemName } from "./names.ts";
+import { compareNames, crafterName, enemyName, ITEM_TYPE_LABELS, itemName } from "./names.ts";
 
 /** A name cell's text as shown (U29: worker rows name items, maps and orbs in English). */
 function shownName(r: ProfitRow, key: string): unknown {
@@ -28,16 +28,23 @@ export interface SortState {
 }
 
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-const gold = (v: unknown) => (isNum(v) ? `${fmt.format(v)} g` : "—");
-const signed = (v: unknown) => (isNum(v) ? `${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt.format(Math.abs(v))} g` : "—");
-const percent = (v: unknown) => (isNum(v) ? `${fmt1.format(v)}%` : "—");
-const mins = (v: unknown) => (!isNum(v) ? "—" : v >= 120 ? `${fmt1.format(v / 60)} h` : `${fmt1.format(v)} min`);
+const num = (v: unknown): number | null => (isNum(v) ? v : null);
+/** Cell values: gold (whole, or 1 decimal per orb), a share already in percent, minutes. */
+export const goldCell = (v: unknown, decimals: 0 | 1 = 0): string => gold(num(v), decimals);
+export const signedGold = (v: unknown): string => (isNum(v) ? `${v > 0 ? "+" : v < 0 ? "−" : ""}${goldNumber(Math.abs(v))} g` : "—");
+export const percent = (v: unknown): string => (isNum(v) ? pct(v / 100) : "—");
+export const minutes = (v: unknown): string => (isNum(v) ? duration(v * 60) : "—");
 
 /** Gold with a sign, green when it gains and red when it loses. */
 function money(v: unknown): Node | string {
   if (!isNum(v)) return "—";
-  return el("span", { class: `pf-money ${v > 0 ? "pf-gain" : v < 0 ? "pf-loss" : ""}`.trim() }, signed(v));
+  return el("span", { class: `pf-money ${v > 0 ? "pf-gain" : v < 0 ? "pf-loss" : ""}`.trim() }, signedGold(v));
 }
+
+export type ProfitTab = "Items" | "Enchanting" | "Orbs";
+export const TAB_LABELS: Record<ProfitTab, string> = { Items: "What to make", Enchanting: "Enchanting", Orbs: "Orbs" };
+/** The result tabs: no Orbs tab when orbs are hidden (Scribe expansion hidden). */
+export const profitTabs = (orbsHidden: boolean): ProfitTab[] => (orbsHidden ? ["Items", "Enchanting"] : ["Items", "Enchanting", "Orbs"]);
 
 export const STRATEGY: Record<string, string> = {
   "sell as crafted": "Sell as made",
@@ -45,13 +52,24 @@ export const STRATEGY: Record<string, string> = {
   "enchant to 2 mods": "Enchant to 2 modifiers",
 };
 
-/** "craft (Woodworker) at asc 2" and friends, in words. */
-export function howText(how: string): string {
-  return how.replace(/^craft \((.+?)\)( at asc \d)?$/, "Craft ($1)")
-    .replace(/^ascend asc(\d) item \(\+(\d+)x (.+)\)$/, "Ascend the ascension-$1 item ($2 × $3)")
-    .replace(/^quest (.+) \((.+)g, (.+)\/run\)$/, "Quest: $1 ($2 g, $3 per run)")
-    .replace(/^map loot (.+) \(valued at sell price\)$/, "Loot of $1")
-    .replace(/\basc(\d)\b/g, "ascension $1");
+/**
+ * "craft (Woodworker) at asc 2" and friends, in words; `ref` (the worker's how_id: crafter, orb, quest or map id)
+ * names the crafter, orb, enemy or map in the visitor's language.
+ */
+export function howText(how: string, ref: number | null = null): string {
+  const named = (shown: string | undefined, english: string) => (ref !== null && shown) || english;
+  let m = /^craft \((.+?)\)( at asc \d)?$/.exec(how);
+  if (m) return `Craft (${named(ref !== null ? crafterName(ref) : undefined, m[1])})`;
+  m = /^ascend asc(\d) item \(\+(\d+)x (.+)\)$/.exec(how);
+  if (m) return `Ascend the ascension-${m[1]} item (${m[2]} × ${named(ref !== null ? itemName("material", ref) : undefined, m[3])})`;
+  m = /^quest (.+?)( \[rare\])? \(([\d.]+)g, ([\d.]+)\/run\)$/.exec(how);
+  if (m) {
+    const rare = Boolean(m[2]);
+    return `Quest: ${named(ref !== null ? enemyName(ref, rare) : undefined, m[1])}${rare ? " (rare)" : ""} (${gold(Number(m[3]))}, ${m[4]} per run)`;
+  }
+  m = /^map loot (.+) \(valued at sell price\)$/.exec(how);
+  if (m) return `Loot of ${named(ref !== null ? itemName("map", ref) : undefined, m[1])}`;
+  return how.replace(/\basc(\d)\b/g, "ascension $1");
 }
 
 // Ascension is the name's outline (silver 1, gold 2), as on the other pages.
@@ -63,7 +81,7 @@ const ascCell = (r: Row) => ascSwatch(r.asc);
 export function itemColumns(withOwned: boolean): InfoColumn[] {
   return [
     { key: "name", label: "Item", render: itemCell, tip: "Hover a name for its stats, click it for its wiki page." },
-    { key: "type", label: "Type", show: (v) => String(v ?? "").replace(/^./, (c) => c.toUpperCase()) },
+    { key: "type", label: "Type", show: (v) => ITEM_TYPE_LABELS[String(v)] ?? String(v ?? "") },
     { key: "level", label: "Lvl", num: true, tip: "Item level." },
     { key: "asc", label: "Asc", num: true, render: ascCell, tip: "Ascension: 0 is the plain item; 1 and 2 are ascended with orbs (essence) and sell for 2× and 4×." },
     { key: "best_profit", label: "Profit", num: true, render: (r) => money(r.best_profit),
@@ -72,11 +90,11 @@ export function itemColumns(withOwned: boolean): InfoColumn[] {
       tip: "Profit as a share of the cost. 100% means you get back twice what you spent." },
     { key: "best_strategy", label: "Best plan", show: (v) => STRATEGY[String(v)] ?? String(v ?? ""),
       tip: "What to do once it is made: sell it as it comes out, or pay the Enchanter for one or two modifiers first (modifiers raise the price). The plan with the highest average profit." },
-    { key: "sell", label: "Sells for", num: true, show: gold,
+    { key: "sell", label: "Sells for", num: true, show: (v) => goldCell(v),
       tip: "Base price of the plain item (no modifier), before haggling and customer preferences." },
-    { key: "ev_sell", label: "Average sale", num: true, show: gold,
+    { key: "ev_sell", label: "Average sale", num: true, show: (v) => goldCell(v),
       tip: "Average price when you sell it as made: crafting sometimes adds modifiers, which sell for more." },
-    { key: "cost", label: "Cost to make", num: true, show: gold,
+    { key: "cost", label: "Cost to make", num: true, show: (v) => goldCell(v),
       tip: "Full cost of one item made the cheapest way: crafting gold plus every ingredient at its own cheapest cost, orbs for ascending, quest or map costs for drops." },
     { key: "p_any", label: "Modifier chance", num: true, render: (r) => {
       if (!isNum(r.p_any) || r.p_any === 0) return el("span", { class: "muted" }, "—");
@@ -84,8 +102,8 @@ export function itemColumns(withOwned: boolean): InfoColumn[] {
       tip(s, () => `Prefix ${percent(r["p_prefix%"])}, suffix ${percent(r["p_suffix%"])}, both ${percent(r["p_both%"])}`);
       return s;
     }, tip: "Chance that crafting adds at least one modifier (prefix or suffix). Hover a value for prefix / suffix / both. Top gear rarely gets any: use the Enchanter." },
-    { key: "craft_min", label: "Craft time", num: true, show: mins, tip: "Crafter time for one item (or the ascension time when it is ascended)." },
-    { key: "how", label: "Cheapest way to get it", show: (v) => howText(String(v ?? "")),
+    { key: "craft_min", label: "Craft time", num: true, show: minutes, tip: "Crafter time for one item (or the ascension time when it is ascended)." },
+    { key: "how", label: "Cheapest way to get it", show: (v, r) => howText(String(v ?? ""), isNum(r.how_id) ? r.how_id : null),
       tip: "Where the cheapest copy comes from: crafted, ascended from the level below, or dropped by a quest or map." },
     ...(withOwned ? [{ key: "owned", label: "You have", num: true, tip: "Copies in your save: inventory, maps, shop and hero gear." }] : []),
   ];
@@ -101,15 +119,15 @@ export function enchantColumns(): InfoColumn[] {
     { key: "asc", label: "Asc", num: true, render: ascCell, tip: "Ascension level of the item you enchant. Ascended items also use orbs per attempt." },
     { key: "item_grade", label: "Grade", num: true, render: (r) => gradeBadge(GRADE_LETTERS[Number(r.item_grade) - 1] ?? "?"),
       tip: "Grade the item comes out of the crafter with (from the crafter's level and the ingredients' grade). It sets the Enchanter's odds." },
-    { key: "sell", label: "Sells for", num: true, show: gold, tip: "Base price of the plain item." },
+    { key: "sell", label: "Sells for", num: true, show: (v) => goldCell(v), tip: "Base price of the plain item." },
     { key: "gain_1mod", label: "Price gain", num: true, render: (r) => money(r.gain_1mod), tip: "How much more the item sells for with one modifier." },
     { key: "suffix_chance%", label: "Suffix odds", num: true, render: chance("suffix_chance%"), tip: "Chance that one Enchanter attempt adds a +1 suffix. Rings and amulets can't take a suffix." },
     { key: "suffix_attempts", label: "Suffix tries", num: true, show: tries, tip: "Average number of attempts until the suffix sticks." },
-    { key: "suffix_cost", label: "Suffix cost", num: true, show: gold, tip: "Average total cost of those attempts: gold, runes, and orbs on ascended items." },
+    { key: "suffix_cost", label: "Suffix cost", num: true, show: (v) => goldCell(v), tip: "Average total cost of those attempts: gold, runes, and orbs on ascended items." },
     { key: "suffix_net", label: "Suffix gain", num: true, render: (r) => money(r.suffix_net), tip: "Price gain minus the suffix cost: what a +1 suffix earns you." },
     { key: "prefix_chance%", label: "Prefix odds", num: true, render: chance("prefix_chance%"), tip: "Chance that one Enchanter attempt adds a first prefix. Low on high-level gear." },
     { key: "prefix_attempts", label: "Prefix tries", num: true, show: tries, tip: "Average number of attempts until the prefix sticks." },
-    { key: "prefix_cost", label: "Prefix cost", num: true, show: gold, tip: "Average total cost of those attempts: gold, runes and gems, and orbs on ascended items." },
+    { key: "prefix_cost", label: "Prefix cost", num: true, show: (v) => goldCell(v), tip: "Average total cost of those attempts: gold, runes and gems, and orbs on ascended items." },
     { key: "prefix_net", label: "Prefix gain", num: true, render: (r) => money(r.prefix_net), tip: "Price gain minus the prefix cost: what a first prefix earns you." },
   ];
 }
@@ -124,10 +142,10 @@ export function essenceColumns(): InfoColumn[] {
       tip: "The map as it comes out of the crafter, or enchanted first (a higher suffix gives more orbs but costs gold and runes)." },
     { key: "essence_per_run", label: "Orbs per run", num: true, show: (v) => (isNum(v) ? fmt1.format(v) : "—"),
       tip: "Average orbs one run of this map drops at the chosen grade, map modifiers included when they are on." },
-    { key: "map_cost", label: "Map cost", num: true, show: gold, tip: "Cost to make the map (and enchant it when it is)." },
-    { key: "loot_credit", label: "Loot value", num: true, show: gold,
+    { key: "map_cost", label: "Map cost", num: true, show: (v) => goldCell(v), tip: "Cost to make the map (and enchant it when it is)." },
+    { key: "loot_credit", label: "Loot value", num: true, show: (v) => goldCell(v),
       tip: "Value of the other loot of the run, which pays for part of the map. Zero when every drop carries the full cost." },
-    { key: "cost_per_essence", label: "Cost per orb", num: true, show: (v) => (isNum(v) ? `${fmt1.format(v)} g` : "—"),
+    { key: "cost_per_essence", label: "Cost per orb", num: true, show: (v) => goldCell(v, 1),
       tip: "(Map cost − loot value) ÷ orbs per run. Lower is better." },
     { key: "chosen", label: "Used", show: (v) => (v === "yes" ? "✓ cheapest" : ""), tip: "The source the prices on this page use for this orb." },
   ];
@@ -163,6 +181,7 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
   const sorted = sortRows(o.rows, o.sort);
   const shown = sorted.slice(0, o.limit);
   const wrap = table(shown as Row[], o.cols);
+  wrap.classList.add("pf-table");
   const ths = wrap.querySelectorAll("th");
   o.cols.forEach((c, i) => {
     const th = ths[i];

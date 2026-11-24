@@ -851,23 +851,40 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 `web/src/ui/profit-worker.ts` (web worker). Model: [profit calculator](../profit-calculator/profit-calculator.md).
 
 - The worker runs `profitReport(gameFromData(), options)` (3-5 s) and sends back plain rows (`PyFloat` -> number,
-  `""` -> null) plus one entry per orb (ascension tier, level band, cheapest map). Settings changed while it solves are
+  `""` -> null) plus one entry per orb (ascension tier, region, cheapest map). Settings changed while it solves are
   queued; only the newest answer is shown. The results are dimmed with a spinner while it works.
-- Options: run grade, party luck, crafter level, Enchanter level, who pays for a run (`alloc` value/full), map
-  modifiers on/off, and a forced map per orb (`essenceFrom`). Any change recomputes.
-- Tabs:
-  - What to make: every item × ascension, sorted by `best_profit`; filter by name, type, level range, ascension.
-    Columns: profit and return of the best plan, best plan, sell value, average sale, cost to make, modifier chance
-    (prefix / suffix / both on hover), craft time, cheapest way to get it.
-  - Enchanting: `buildEnchantRows` (suffix and prefix odds, tries, cost, net gain per equipment and ascension).
-  - Orb sources: cheapest map per orb for ascension 1 and 2, then every map × orb (`buildEssenceRows`).
-- Every column header explains its metric on hover or focus (`tooltip.ts`). Tables show 100 rows, then "Show all";
-  the sort applies to the whole filtered list and survives filtering.
-- A save opened on any page marks the items the player owns ("You have" column, "Only what I own" filter), from
-  `owned()` in `save.ts`, matched in the page: no recompute.
-- Known engine limit: forcing an orb to a map that needs that orb to be crafted (every map except the single-region
-  base maps Tuvale, Yarsol, … Frentir) leaves the orb unpriced (the solver relaxes from "unknown"), so items that
-  need it drop out. The page warns when it happens.
+- Max level 60: the worker drops every item, enchanting and orb-source row above level 60 (Hard and Weekly Boss Rush
+  maps, level 70); the level filter runs 1–60.
+- Each item row carries `how_id`, the id its "Cheapest way" names (crafter, orb, quest or map), so the page shows the
+  crafter, orb, enemy and map in the visitor's language (`names.ts`); the Type column uses `ITEM_TYPE_LABELS`, the orb
+  tables the region name (`regionName`).
+- Options: run grade and who pays for a run (`alloc` Shared / Full) as `segmented()` controls, party luck, crafter
+  level, Enchanter level, "Count map modifiers" as a `chipToggle()`, and a forced map per orb (`essenceFrom`). Any
+  change recomputes. On a phone the options grid keeps two columns.
+- Tiles: most profit, most profit without orbs.
+- Tabs "What to make", "Enchanting", "Orbs":
+  - What to make: every item × ascension, sorted by `best_profit`; filter by name, type chips (Equipment,
+    Consumables, Maps), ascension (`segmented` Any / 0 / 1 / 2), level range. Columns: profit and return of the best
+    plan, best plan, sell value, average sale, cost to make, modifier chance (prefix / suffix / both on hover), craft
+    time, cheapest way to get it.
+  - Enchanting: `buildEnchantRows` (suffix and prefix odds, tries, cost, net gain per equipment and ascension); the
+    "Only gains" chip (on by default) keeps rows where a suffix or a prefix earns more than it costs.
+  - Orbs: cheapest map per orb for ascension 1 and 2, then every map × orb (`buildEssenceRows`).
+- Numbers through `dom.ts`: `gold()` (cost per orb with one decimal), signed gold built on `goldNumber()`, `duration()`
+  for craft time, `pct()` for shares.
+- Every column header explains its metric on hover or focus (`tooltip.ts`). Tables show 100 rows, then "First 100 of
+  N. Show all N rows"; the sort applies to the whole filtered list and survives filtering. Below 600 px the first
+  column (the item) stays in view when a table scrolls sideways.
+- A save opened from the top-bar Save dropdown (or dropped on the page) marks the items the player owns ("You have"
+  column, "Only what I own" chip), from `owned()` in `save.ts`, matched in the page: no recompute. The page has no save
+  panel of its own (a hidden picker for `initSaveSource`).
+- With Scribe hidden (`isHidden("Scribe")`): no Orbs tab, "no orbs" tile, orb sources, map-modifier chip, ascension
+  filter or Maps type chip.
+- A forced orb source fails only when the map's recipe uses at least as many of that orb as a run yields (Treant /
+  Golem Revenge and Archon's Reality with Glacial Essence, Vanquishers with Necro Essence): "<orb> can't come from
+  <map> alone: a run yields fewer than its recipe uses."
+- Open design choices (map-only drop costs, one cost rule with the wiki, ranking, columns, ascension rows, phone
+  options, the Orbs tab): [Profit page review](../roadmap/review-profit.md#needs-a-design-choice).
 
 ## Farming planner
 
@@ -1101,9 +1118,9 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     screen by `segField(label, seg, cls?)` (`.seg-field`, `.seg-label`): the save viewer's inventory kind filter, the
     battle opponent (static `.seg` markup in `battle.html`), the class page's and item page's ascension (`.cls-asc`,
     options `asc-opt tier-N`: the picked one keeps its tier colour as the edge) and the enemy XP grade, party and
-    ascension (R1-D; `.mode-switch` stays only on the frozen Profit page, same look). The picked option is gold-edged on
+    ascension (R1-D), the Profit page's run grade, who pays and ascension filter (`.mode-switch` is no longer used by any page). The picked option is gold-edged on
     a gold tint. An on / off chip for filters that combine: `.chip-toggle`, a button with `aria-pressed`
-    (`chipToggle(label, on, onToggle)` in `dom.ts`; no page needs one yet: the battle's form checkboxes stay
+    (`chipToggle(label, on, onToggle)` in `dom.ts`; the Profit page's filters and map modifiers; the battle's form checkboxes stay
     checkboxes). Selected tabs (`.tabs`) and the battle mode cards stay as they are.
   - Numbers, gold and time: `fmt` / `fmt1` / `pct` in `dom.ts` format in the language picked in the top bar
     ("171,946" in English, "171 946" in French); `gold(n, decimals?)` is THE gold amount ("171,946 g", "12.5 g", "—"

@@ -9,7 +9,7 @@ timestamp: 2026-11-24
 
 [Root](../../index.md) > [Tooling](../index.md) > [Profit Calculator](./index.md) > Profit calculator
 
-`web/src/tools/profit.ts` (library; the battle page prices scrolls with it, no profit page yet). Implements the [game economy](../../game-economy/game-economy.md) cost chain.
+`web/src/tools/profit.ts` (library; the [Profit page](../website/website.md#profit-page) runs it in a worker, the battle page prices scrolls with it). Implements the [game economy](../../game-economy/game-economy.md) cost chain.
 
 ## Table of contents
 
@@ -250,5 +250,6 @@ Off by default (the report doesn't change); each has its own table for pages.
 - Events, weekly shop, purchases.
 - Crafter level, unlocks and crafter time as a bottleneck (reported per craft-hour; map craft time in `hoursPerUnit`).
 - Level-70 maps (27–32) are still priced as if craftable (a Scribe caps at 60); they are never the cheapest source.
+  The Profit page drops every row above level 60 (items, enchanting, orb sources).
 - Battle time on quests; asc-1 map's stronger enemies lowering grade.
 - 136 ids have no source: placeholders, event/weekly items, random maps.

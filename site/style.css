@@ -1908,3 +1908,15 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .solve-status p { margin: 0; }
 .solve-results { margin-top: 14px; }
 /* end u42 solver */
+
+/* profit p1: options at two columns on a phone; segmented grade / who pays; first column sticky on narrow tables */
+.pf-options { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
+.pf-field .seg { max-width: 100%; }
+.pf-check { display: flex; align-items: center; }
+.pf-filters .seg-field { flex-wrap: nowrap; }
+@media (max-width: 600px) {
+  .pf-table td:first-child, .pf-table th:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
+  .pf-table th:first-child { z-index: 2; background: var(--card-2); }
+  .pf-table tbody tr:hover td:first-child { background: color-mix(in srgb, var(--accent) 5%, var(--card)); }
+}
+/* end profit p1 */

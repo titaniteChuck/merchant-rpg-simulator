@@ -22,40 +22,25 @@
     <section>
       <h2><span class="step">1</span> Your workshop</h2>
       <form id="options" class="pf-options" autocomplete="off">
-        <label class="pf-field"><span>Run grade</span>
-          <select id="grade" title="Grade your quests and map runs end with. Better grades drop more loot and orbs, and better ingredients craft better items.">
-            <option value="1">D</option><option value="2">C</option><option value="3" selected>B</option><option value="4">A</option><option value="5">S</option>
-          </select></label>
+        <div class="pf-field" title="Grade your quests and map runs end with. Better grades drop more loot and orbs, and better ingredients craft better items."><span>Run grade</span>
+          <div id="grade-seg"></div></div>
         <label class="pf-field"><span>Party luck</span>
           <input id="luck" type="number" min="0" max="1000" step="1" value="0" inputmode="numeric" title="Your party's luck: more and better quest drops."></label>
         <label class="pf-field"><span>Crafter level</span>
           <input id="crafter" type="number" min="1" max="60" step="1" value="60" inputmode="numeric" title="Level of your crafters: it sets the craft grade and the odds of modifiers."></label>
         <label class="pf-field"><span>Enchanter level</span>
           <input id="enchanter" type="number" min="0" max="60" step="1" value="60" inputmode="numeric" title="Level of your Enchanter: it sets the odds of adding a modifier. 0 = no Enchanter."></label>
-        <fieldset class="pf-field">
-          <legend>Who pays for a run</legend>
-          <div class="mode-switch" role="radiogroup" aria-label="Who pays for a run">
-            <label title="A run's cost is split between everything it drops, by sell value."><input type="radio" name="alloc" value="value" checked> Shared</label>
-            <label title="Every drop carries the whole run cost: &quot;I farm this only for that&quot;. Pessimistic."><input type="radio" name="alloc" value="full"> Full</label>
-          </div>
-        </fieldset>
-        <label class="check pf-check" title="Crafted maps roll modifiers that raise their orb yield (about +26%). Off: plain maps only."><input id="mapmods" type="checkbox" checked> Count map modifiers</label>
+        <div class="pf-field"><span>Who pays for a run</span>
+          <div id="alloc-seg"></div></div>
+        <div id="mapmods-box" class="pf-check"></div>
         <details id="orb-sources" class="help pf-orbs">
           <summary>Orb sources (cheapest by default)</summary>
-          <p class="muted small">Force where an orb comes from, to compare maps. Prices on the whole page follow.</p>
           <div id="orb-selects" class="pf-orb-grid"><p class="muted small">Available after the first calculation.</p></div>
         </details>
       </form>
     </section>
 
-    <details class="help">
-      <summary>Mark the items you own (optional: open your save)</summary>
-      <label id="drop" class="drop">
-        <input id="file" type="file" accept=".txt,application/json,text/plain">
-        <span class="drop-title">Drop your save file here, or click to choose it</span>
-        <span class="muted small">The file is read by your browser and kept there for the other pages. It is never uploaded.</span>
-      </label>
-    </details>
+    <div hidden><label id="drop" class="drop"><input id="file" type="file" accept=".txt,application/json,text/plain"></label></div>
     <div id="save-status" aria-live="polite"></div>
 
     <section>
@@ -69,7 +54,7 @@
       <ul>
         <li>Each item gets its cheapest source: crafted, ascended from the level below, dropped by a quest, or found on a map run.
           Ingredients are priced the same way, all the way down.</li>
-        <li>Maps cost orbs to make and drop orbs, so the page solves both together until the prices settle (a few seconds).</li>
+        <li id="orb-note">Maps cost orbs to make and drop orbs, so the page solves both together until the prices settle (a few seconds).</li>
         <li>Prices are the game's base sell values, before haggling, customer preferences and shop bonuses.</li>
         <li>Not counted: hero time, events and the weekly shop, modded ingredients, stronger enemies on enchanted maps.</li>
       </ul>
