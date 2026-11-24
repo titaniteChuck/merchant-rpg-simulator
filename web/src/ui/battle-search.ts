@@ -1,8 +1,13 @@
 /**
- * Search panels of the battle page (one per mode of step 1): best rotation, best gear, best party, best scrolls and
- * optimise everything. Each runs one search of web/src/tools/combat.ts (optimiseFight of optimise.ts for the last)
- * in the battle worker, with progress and Cancel (the search is synchronous inside the worker, so Cancel terminates
- * it). The page passes a SearchContext so this module doesn't import it.
+ * Search panels of the battle page (one per mode of step 1): best party (the solver), best gear, best potion /
+ * enchant and optimise everything. Each runs one search of web/src/tools (searchParties of parties.ts, searchGear of
+ * combat.ts, rankConsumables, optimiseFight) in the battle worker, with progress and Cancel (the search is synchronous
+ * inside the worker, so Cancel terminates it; Best party stops it softly and keeps what was found). The page passes a
+ * SearchContext so this module doesn't import it.
+ *
+ * U27: Best party merges the former Best party, Best rotation and Best scrolls modes. It is a spoiler (it gives the
+ * answer to a quest or map), so its panel starts hidden behind a disclaimer; "Show me the solver anyway" is
+ * remembered in this browser (localStorage `battle-solver-shown`) and a warning line with "Hide it again" stays.
  *
  * Expansions (U28): candidates from expansions the visitor hides are left out: catalog gear (the worker filters it with
  * `expansions`), ascension options (Scribe), scrolls, and heroes of a hidden class start ticked in "Leave heroes out".
@@ -11,14 +16,15 @@
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import type { ConsumableRank, ConsumableRanking } from "../tools/consumables.ts";
-import type { FightEval, MapEval, ScrollLoadout } from "../tools/combat.ts";
+import type { FightEval, MapEval } from "../tools/combat.ts";
 import type { OptimiseResult } from "../tools/optimise.ts";
-import { SCROLL_IDS } from "../tools/combat.ts";
+import type { PartiesResult, PartyConfig } from "../tools/parties.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
+import type { PartyRules } from "./battle-rules.ts";
 import { bar, bySlot, el, fmt, fmt1, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, type GearSlot, pct, pill, rateTone, select, table } from "./dom.ts";
-import { locationOf, notesFor, type PlanMember, scheduleFor } from "./timeline.ts";
+import { locationOf, notesFor, scheduleFor } from "./timeline.ts";
 import { itemLink, passiveLink, skillLink, statText } from "./wiki-data.ts";
 import { isVisible, ownedExpansions, showAll } from "./expansion-state.ts";
 import { itemIdByName, itemName, itemNameFromEnglish } from "./names.ts";
@@ -59,9 +65,35 @@ export interface SearchContext {
   locks(): number[];
   /** A search started (its progress is in the results): the page may bring the results into view. */
   onStart?(): void;
+  /** Switch to the Simulate mode (the spoiler guard's "Try Simulate first"). */
+  goSimulate?(): void;
+  /** The opponent's party setup rules (battle-rules.ts): the solver's size fields clamp to maxSize. */
+  rules?(): PartyRules;
+  /** Why a layout (save hero ids, null = empty) can't fight the opponent, or null: Load is offered only without one. */
+  problem?(front: (number | null)[], back: (number | null)[]): string | null;
 }
 
-export type SearchKey = "skills" | "gear" | "party" | "scrolls" | "optimise" | "consumables";
+export type SearchKey = "gear" | "party" | "optimise" | "consumables";
+
+/** U27: the solver's spoiler guard, remembered in this browser (convenience only: storage may be blocked). */
+const SOLVER_KEY = "battle-solver-shown";
+/** This page view's choice (storage blocked: it holds until the page is left). */
+let solverChoice: boolean | null = null;
+function solverShown(): boolean {
+  if (solverChoice !== null) return solverChoice;
+  try {
+    return localStorage.getItem(SOLVER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function setSolverShown(on: boolean): void {
+  solverChoice = on;
+  try {
+    if (on) localStorage.setItem(SOLVER_KEY, "1");
+    else localStorage.removeItem(SOLVER_KEY);
+  } catch { /* not remembered: the guard comes back on the next visit */ }
+}
 
 const GRADES = ["D", "C", "B", "A", "S"];
 const num = (attrs: Record<string, string>, value: number) => {
@@ -126,9 +158,13 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     mount.replaceChildren(...(key ? [panel(key, out)] : []));
   };
 
-  /** Run a search in a fresh worker; progress and results go to `out`. */
+  /**
+   * Run a search in a fresh worker; progress and results go to `out`. `budgetMs`: the bar shows the time used.
+   * `soft`: Cancel asks the search to stop (SearchRequest.stopUrl) and its result, with what was found so far, is
+   * shown as usual; a worker that doesn't answer within 10 s is terminated.
+   */
   function runSearch(req: SearchRequest, out: HTMLElement, render: (m: Extract<SearchResponse, { type: "done" }>, again: boolean) => Node[],
-    budgetMs?: number): void {
+    budgetMs?: number, soft = false): void {
     stopWorker();
     last = null;
     const w = new Worker(new URL("js/battle-worker.js", document.baseURI), { type: "module" });
@@ -136,7 +172,26 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     const stage = el("span", { class: "muted small" }, "Starting…");
     const prog = bar(0);
     const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");
+    let stopUrl = soft ? URL.createObjectURL(new Blob(["run"], { type: "text/plain" })) : "";
+    let stopping = false;
+    const release = () => {
+      if (stopUrl) URL.revokeObjectURL(stopUrl);
+      stopUrl = "";
+    };
+    if (stopUrl) req = { ...req, stopUrl };
     cancel.addEventListener("click", () => {
+      if (stopUrl) {
+        release();
+        stopping = true;
+        cancel.setAttribute("disabled", "");
+        stage.textContent = "Stopping: keeping what was found so far…";
+        setTimeout(() => {
+          if (worker !== w) return;
+          stopWorker();
+          out.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
+        }, 10000);
+        return;
+      }
       stopWorker();
       out.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
     });
@@ -154,11 +209,13 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     w.onmessage = (e: MessageEvent<SearchResponse>) => {
       const m = e.data;
       if (m.type === "progress") {
+        if (stopping) return;
         stage.textContent = `${m.stage}: ${fmt.format(m.done)} / ${fmt.format(m.total)}`;
         if (!budgetMs) (prog.firstElementChild as HTMLElement).style.width = `${m.total ? (100 * m.done) / m.total : 0}%`;
         return;
       }
       if (timer) clearInterval(timer);
+      release();
       stopWorker();
       if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
       else {
@@ -169,6 +226,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     };
     w.onerror = (e) => {
       if (timer) clearInterval(timer);
+      release();
       stopWorker();
       out.replaceChildren(el("p", { class: "error", role: "alert" }, `Search failed: ${e.message}`));
     };
@@ -190,52 +248,13 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
   // ---------------------------------------------------------------- panels
   function panel(key: SearchKey, out: HTMLElement): HTMLElement {
     const t = ctx.target();
-    const needQuest = (key === "skills" || key === "gear") && !t.quest;
-    const needMap = key === "scrolls" && !t.map;
-    if (needQuest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in the opponent card (step 3).");
-    if (needMap) return el("p", { class: "muted" }, "This search optimises map runs: choose 🗺️ Map run in the opponent card (step 3).");
-    if (key !== "party" && key !== "optimise" && !ctx.party().members.length) return el("p", { class: "muted" }, "Put at least one hero in the party (step 3).");
+    if (key === "gear" && !t.quest) return el("p", { class: "muted" }, "This search optimises quest fights: choose ⚔️ Quest enemy in the opponent card (step 3).");
+    if (key === "party") return solverPanel(out);
+    if (key !== "optimise" && !ctx.party().members.length) return el("p", { class: "muted" }, "Put at least one hero in the party (step 3).");
     const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
     let form: HTMLElement[] = [];
     let start: () => void = () => {};
     let intro = "";
-
-    if (key === "skills") {
-      intro = "Tries every rotation of unlocked skills within the hero's AP budget, then the best orderings with each passive.";
-      const hero = heroPicker()!;
-      const quick = num({ "aria-label": "Fights per candidate" }, 30), final = num({ "aria-label": "Fights for the finalists" }, 300), top = num({ "aria-label": "Finalists", max: "20" }, 8);
-      form = [hero, field("fights per candidate", quick), field("finalists", top), field("fights per finalist", final)];
-      start = () => {
-        const [row, i] = hero.value.split(":");
-        const m = ctx.party().members.find((x) => x.row === row && x.i === Number(i))!;
-        runSearch({ ...base(), search: "skills", hero: { row: row as "front" | "back", i: Number(i) }, quest: ctx.target().quest!,
-          nQuick: intOf(quick), nFinal: intOf(final), top: intOf(top, 1, 20) }, out, (r) => {
-          if (r.search !== "skills") return [];
-          const res = r.result;
-          const card = (label: string, rot: string[], passive: string, ev: FightEval, apply: boolean) =>
-            el("article", { class: "search-card" }, el("header", {}, el("strong", {}, label), evLine(ev)),
-              // Passive first, then the rotation (the page's rule).
-              el("p", { class: "small" }, "Passive: ", passiveLink(passive)),
-              el("ol", { class: "rotation compact" }, ...rot.map((s) => el("li", {}, skillLink(s)))),
-              ...[whyRotation(m.row, m.i, rot)].filter((x): x is HTMLElement => x !== null),
-              ...(apply ? [(() => {
-                const b = el("button", { type: "button", class: "secondary" }, "Use this rotation");
-                b.addEventListener("click", () => {
-                  ctx.applyRotation(m.idx, rot, passive);
-                  b.textContent = "✓ Applied to the party";
-                  b.setAttribute("disabled", "");
-                });
-                return b;
-              })()] : []));
-          return [el("p", { class: "muted small" }, `${res.counts.combos} skill sets, ${res.counts.orderings} orderings, ${res.counts.final} finalists · AP budget ${res.maxAP}.`),
-            // The offline warm start (E15) the search tried first, as the hero could play it.
-            ...(res.warm ? [el("p", { class: "small warm-line" }, el("strong", {}, "Suggested start: "), "Passive ", passiveLink(res.warm.passive), " · ",
-              ...res.warm.rotation.flatMap((x, k) => [...(k ? [" → "] : []), skillLink(x)]), ...(res.warm.adapted ? [el("span", { class: "muted" }, " (adapted)")] : []))] : []),
-            el("div", { class: "search-cards" }, card("Now", res.current.rotation, res.current.passive, res.current.ev, false),
-              ...res.ranked.slice(0, 5).map((x, k) => card(`#${k + 1}`, x.rotation, x.passive, x.ev, true)))];
-        });
-      };
-    }
 
     if (key === "gear") {
       intro = "Slot by slot, tries every candidate item and keeps it when the party does better (repeated for a few passes).";
@@ -268,60 +287,6 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
           el("p", { class: "muted small" }, `${fmt.format(g.evaluated)} candidates evaluated. The hero keeps its own gear; equip the items in the game.`)];
         });
       };
-    }
-
-    if (key === "party") {
-      intro = "Builds the party one hero at a time (the hero and slot that help most), then swaps and moves heroes while it improves.";
-      const sv = ctx.save();
-      const size = num({ "aria-label": "Party size", max: "6" }, 6);
-      const isMap = Boolean(t.map);
-      const quick = num({ "aria-label": "Fights per candidate" }, isMap ? 5 : 20), final = num({ "aria-label": "Fights for the result" }, isMap ? 30 : 200);
-      form = [field("heroes", size), field(isMap ? "runs per candidate" : "fights per candidate", quick), field(isMap ? "runs for the result" : "fights for the result", final)];
-      const excl = excludePicker(sv);
-      form = [...form, excl.node];
-      intro += " Every hero of the save is a candidate, except the ones you leave out; locked slots (🔒) keep their hero. "
-        + "The result fills the six slots (step 3). This can take a few minutes.";
-      start = () => {
-        const undo = snapshot();
-        const locks = ctx.locks();
-        runSearch({ ...base(), search: "party", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...ctx.target(), size: intOf(size, 1, 6),
-          nQuick: intOf(quick), nFinal: intOf(final) }, out, (r, again) => {
-          if (r.search !== "party") return [];
-          const p = r.result;
-          if (!again) ctx.applyParty(p.party.front, p.party.back);
-          return [el("article", { class: "search-card" }, el("header", {}, el("strong", {}, "✓ Best party found: it is in the party slots below"), evLine(p.ev)), undo),
-            el("p", { class: "muted small" }, `${p.added.length} heroes added, ${p.improvements} improvement${p.improvements === 1 ? "" : "s"} by swapping or moving.`)];
-        });
-      };
-    }
-
-    if (key === "scrolls") {
-      intro = "Tries every loadout of up to 3 scrolls on this map with this party, then re-runs the best ones with more runs.";
-      const asc = select({ "aria-label": "Scroll ascension" }, ascOptions(2));
-      const quick = num({ "aria-label": "Runs per loadout" }, 5), final = num({ "aria-label": "Runs for the finalists" }, 30), top = num({ "aria-label": "Finalists", max: "20" }, 6);
-      const pool = SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id));
-      form = [asc, field("runs per loadout", quick), field("finalists", top), field("runs per finalist", final)];
-      intro += ` ${pool.length} scrolls, every loadout of 0 to 3.`;
-      start = () => runSearch({ ...base(), search: "scrolls", map: { spec: ctx.target().map!.spec }, pool, scrollAsc: Number(asc.value),
-        nQuick: intOf(quick), nFinal: intOf(final), top: intOf(top, 1, 20) }, out, (r) => {
-        if (r.search !== "scrolls") return [];
-        const rows = r.result.ranked.map((x: ScrollLoadout, k: number) => ({
-          rank: k + 1, loadout: x.loadout.join(","), cost: x.cost, win: x.ev.win, progress: x.ev.cleared, grade: x.ev.grade,
-          essence: Object.values(x.ev.essence).reduce((a, b) => a + b, 0), loot: x.ev.loot_value, escaped: x.ev.escaped,
-        }));
-        return [table(rows, [
-          { key: "rank", label: "#", num: true },
-          { key: "loadout", label: "Scrolls", render: (rr) => {
-            const ids = String(rr.loadout).split(",").filter(Boolean).map(Number);
-            return ids.length ? el("span", { class: "skill-line" }, ...ids.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id, undefined, undefined, Number(asc.value))]))
-              : el("span", { class: "muted" }, "no scrolls");
-          } },
-          { key: "cost", label: "Crafted cost", num: true, show: (v) => (Number.isFinite(Number(v)) ? `${fmt.format(Number(v))} g` : "?") },
-          { key: "win", label: "Win", num: true, show: (v) => pct(Number(v)) }, { key: "progress", label: "Progress", num: true, show: (v) => pct(Number(v)) },
-          { key: "grade", label: "Grade", num: true, show: (v) => fmt1.format(Number(v)) }, { key: "essence", label: "Essence / run", num: true, show: (v) => fmt1.format(Number(v)) },
-          { key: "loot", label: "Loot / run", num: true, show: (v) => `${fmt.format(Number(v))} g` }, { key: "escaped", label: "Escaped", num: true, show: (v) => pct(Number(v)) },
-        ]), ...(r.result.priceError ? [el("p", { class: "muted small" }, `Scroll prices unavailable: ${r.result.priceError}`)] : [])];
-      });
     }
 
     if (key === "consumables") {
@@ -409,6 +374,153 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       el("div", { class: "toolbar search-form" }, ...form, go));
   }
 
+  // ---------------------------------------------------------------- Best party: the solver (U27)
+  /** The spoiler guard, or the solver's form (searchParties) under a warning line. */
+  function solverPanel(out: HTMLElement): HTMLElement {
+    if (!solverShown()) {
+      const yes = el("button", { type: "button", class: "secondary" }, "Show me the solver anyway");
+      yes.addEventListener("click", () => {
+        setSolverShown(true);
+        show("party", true);
+        mount.querySelector<HTMLElement>(".search-panel button.primary")?.focus();
+      });
+      const sim = el("button", { type: "button", class: "primary" }, "▶ Try Simulate first");
+      sim.addEventListener("click", () => ctx.goSimulate?.());
+      return el("div", { class: "spoiler-guard", role: "note", "aria-label": "Spoiler warning" },
+        el("p", { class: "spoiler-title" }, el("span", { "aria-hidden": "true" }, "🙈 "), el("strong", {}, "Spoiler ahead")),
+        el("p", {}, "This tool runs simulations and finds the best fit to defeat any quest or map. Idle games are fun while we iterate, "
+          + "try things and solve the puzzles ourselves: this feature can kill that fun by just giving you the answer."),
+        el("p", {}, "Try the Simulate tool first to test your builds, try different things, and if you come back here, do it at your own risk."),
+        el("div", { class: "toolbar" }, ...(ctx.goSimulate ? [sim] : []), yes));
+    }
+    const hide = el("button", { type: "button", class: "link-btn" }, "Hide it again");
+    hide.addEventListener("click", () => {
+      setSolverShown(false);
+      stopWorker();
+      last = null;
+      show(null);
+      show("party");
+    });
+    const warn = el("p", { class: "spoiler-warn small" }, el("strong", {}, "⚠ Spoiler tool: it gives you the answer. "), hide);
+
+    const t = ctx.target();
+    const sv = ctx.save();
+    const isMap = Boolean(t.map);
+    // The opponent's size cap (a party quest takes at most questSize heroes, a solo quest one).
+    const cap = Math.max(1, Math.min(6, ctx.rules?.().maxSize ?? 6));
+    const minN = num({ "aria-label": "Smallest party", max: String(cap) }, 1), maxN = num({ "aria-label": "Largest party", max: String(cap) }, cap);
+    if (cap === 1) minN.disabled = maxN.disabled = true;
+    const capNote = cap < 6 ? [el("span", { class: "muted small" }, cap === 1 ? "solo quest: one hero" : `this quest takes at most ${cap} heroes`)] : [];
+    const sc = el("input", { type: "checkbox" }) as HTMLInputElement;
+    sc.checked = isMap;
+    sc.disabled = !isMap;
+    const scLabel = el("label", { class: `check${isMap ? "" : " off"}` }, sc, " Include scrolls",
+      ...(isMap ? [] : [el("span", { class: "muted small" }, " (map runs only)")]));
+    const budget = select({ "aria-label": "Time budget" }, [["60", "60 s"], ["120", "120 s"]]);
+    const excl = excludePicker(sv);
+    const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
+    const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
+      + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
+      + "Locked slots (🔒) keep their hero. Up to 10 setups, winners (90 % or more) first, the fewest heroes first.";
+    go.addEventListener("click", () => {
+      let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
+      minN.value = String(lo);
+      maxN.value = String(hi);
+      if (lo > hi) [lo, hi] = [hi, lo];
+      const locks = ctx.locks();
+      if (locks.length > hi) {
+        out.replaceChildren(el("p", { class: "error", role: "alert" }, `${locks.length} heroes are locked: raise the largest party size to ${locks.length} or unlock some.`));
+        return;
+      }
+      const scrolls = isMap && sc.checked;
+      const budgetMs = Number(budget.value) * 1000;
+      // Load state of this result (kept when it is drawn again in another language).
+      const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
+      runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...ctx.target(),
+        minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
+      (r) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st) : []), budgetMs, true);
+    });
+    return el("div", { class: "search-panel solver" }, warn, el("p", { class: "muted small" }, intro),
+      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, scLabel, field("time", budget), excl.node, go));
+  }
+
+  /** The solver's table: one row per setup, Load fills step 3 (party, rotations, passives, scrolls) with an undo. */
+  function partiesResult(res: PartiesResult, sv: Save, isMap: boolean, withScrolls: boolean, st: { loaded: number; undo: HTMLElement | null }): Node[] {
+    const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
+    const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
+    const box = el("div", { class: "solver-out" });
+    const chip = (id: number) => {
+      const h = hero(id);
+      return el("span", { class: `pill hero-chip cls-${h?.class ?? 0}`, title: h ? `${h.name} · level ${h.level}` : `#${id}` }, h?.name ?? `#${id}`);
+    };
+    const partyCell = (c: PartyConfig) => el("div", { class: "solver-party" },
+      ...(["back", "front"] as const).filter((row) => c.layout[row].some((id) => id !== null)).map((row) =>
+        el("div", { class: "solver-row" }, el("span", { class: "row-ico", title: row === "front" ? "Front row" : "Back row", role: "img", "aria-label": row === "front" ? "Front row" : "Back row" },
+          row === "front" ? "🛡️" : "🏹"), ...c.layout[row].filter((id): id is number => id !== null).map(chip))),
+      ...(c.tuned ? [] : [el("span", { class: "pill t-orange rough", title: "Only screened: default rows and the heroes' own rotations, not tuned (its party size was far from winning)." }, "rough")]));
+    const scrollCell = (c: PartyConfig) => (c.scrolls?.length
+      ? el("span", { class: "solver-scrolls" }, ...c.scrolls.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id)]))
+      : el("span", { class: "muted" }, "—"));
+    const load = (c: PartyConfig, k: number) => {
+      st.undo = snapshot();
+      ctx.applyParty(c.layout.front, c.layout.back);
+      for (const [id, s] of Object.entries(c.skills)) {
+        const i = idx(Number(id));
+        if (i >= 0) ctx.applyRotation(i, s.rotation, s.passive);
+      }
+      if (withScrolls) ctx.applyScrolls(c.scrolls ?? []);
+      st.loaded = k;
+      st.undo.addEventListener("click", () => {
+        st.loaded = -1;
+        paint();
+      });
+      paint();
+    };
+    const paint = () => {
+      const rows = res.results.map((c, k) => {
+        const ev = c.ev;
+        const b = el("button", { type: "button", class: st.loaded === k ? "secondary loaded" : "secondary" }, st.loaded === k ? "✓ Loaded" : "Load");
+        b.setAttribute("aria-label", `Load setup ${k + 1} into the party slots`);
+        // A setup the opponent's party rules refuse (required slot, size) is not loaded.
+        const problem = ctx.problem?.(c.layout.front, c.layout.back) ?? null;
+        if (problem) {
+          b.setAttribute("disabled", "");
+          b.title = `Can't load: ${problem}`;
+        } else b.addEventListener("click", () => load(c, k));
+        const win = el("strong", { class: `rate ${rateTone(ev.win)}`, style: "color: var(--c)" }, pct(ev.win));
+        const third = isMapEval(ev)
+          ? el("span", { title: `average grade ${fmt1.format(ev.grade)} (D = 1 … S = 5)` }, GRADES[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))])
+          : el("span", {}, fmt1.format(ev.turns));
+        const fourth = isMapEval(ev) ? pct(ev.cleared) : pct(Math.max(0, 1 - (ev.enemy_dmg_peak ?? ev.enemy_dmg)));
+        return el("tr", { class: st.loaded === k ? "loaded" : "" },
+          el("td", { class: "num" }, String(k + 1)), el("td", { class: "num" }, String(c.size)), el("td", {}, partyCell(c)),
+          ...(isMap ? [el("td", {}, scrollCell(c))] : []), el("td", { class: "num" }, win), el("td", { class: "num" }, third),
+          el("td", { class: "num" }, fourth), el("td", {}, b));
+      });
+      const head = ["#", "Heroes", "Party", ...(isMap ? ["Scrolls"] : []), "Win", isMap ? "Grade" : "Turns", isMap ? "Progress" : "Lowest enemy HP", ""];
+      const nums = new Set(["#", "Heroes", "Win", "Grade", "Turns", "Progress", "Lowest enemy HP"]);
+      box.replaceChildren(
+        // After Load: what is in the slots, and the undo (once used, it stays as "✓ Previous party back").
+        ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, ...(st.loaded >= 0 ? [`✓ Setup #${st.loaded + 1} is in the party slots below. `] : []), st.undo)] : []),
+        el("div", { class: "table-wrap" }, el("table", { class: "solver-table" },
+          el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}) }, h)))),
+          el("tbody", {}, ...rows))));
+    };
+    if (!res.results.length) {
+      return [el("p", { class: "muted" }, res.stopped ? "Stopped before any party was evaluated: try again with more time." : "No party found with these heroes and sizes.")];
+    }
+    paint();
+    const wins = res.results.filter((c) => c.ev.win >= 0.9).length;
+    return [
+      ...(res.stopped ? [el("p", { class: "muted small" }, "⏱️ Stopped early (time budget or Cancel): these are the setups found so far.")] : []),
+      el("p", { class: "small" }, wins ? `${wins} setup${wins === 1 ? "" : "s"} win${wins === 1 ? "s" : ""} 90 % of the fights or more.`
+        : "No setup wins 90 % of the time yet: the closest ones are listed."),
+      box,
+      el("p", { class: "muted small" }, `${fmt.format(res.tried)} evaluations. ${isMap ? "Progress: rooms cleared per run." : "Lowest enemy HP: the lowest point the enemy's HP reached, on average (0 % = killed)."} `
+        + "Rough: only screened (default rows, the heroes' own rotations); the sizes far from winning are not tuned."),
+    ];
+  }
+
   /** Ranked potions or enchants: the baseline, free enchant slots, and one row per option. */
   function consumableResult(res: ConsumableRanking, kind: "boost" | "enchant", isMap: boolean): Node[] {
     const signed = (x: number) => `${x >= 0 ? "+" : "−"}${fmt.format(Math.abs(x))}`;
@@ -441,19 +553,6 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     ];
   }
 
-  /** "Why this rotation": hero (row, i) playing `rot`, the others their current rotations, against the quest's timeline. */
-  function whyRotation(row: "front" | "back", i: number, rot: string[]): HTMLElement | null {
-    const q = ctx.target().quest;
-    if (!q) return null;
-    const p = ctx.party();
-    const members: PlanMember[] = p.members.map((m) => ({
-      row: m.row, i: m.i, raw: m.raw,
-      rotation: m.row === row && m.i === i ? rot : (p.skills[m.row][m.i]?.attackList ?? api.newHero(m.raw).attackList.slice(1, 6)),
-    }));
-    const r = scheduleFor(q, members);
-    return r ? notesFor(r.score, locationOf(row, i)) : null;
-  }
-
   /** "Leave heroes out" chips: ticked heroes are not candidates, unless kept (`keep`: locked or starting heroes). */
   function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[] } {
     const out = sv.raw.hero.map((h: Any) => {
@@ -481,10 +580,13 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       const sk = p.skills[m.row][m.i];
       return { idx: m.idx, rotation: sk?.attackList ?? own.attackList.slice(1, 6), passive: sk?.passive ?? own.passiveSelect };
     });
+    // A map run's scrolls too (Best party and Optimise everything may set them).
+    const scrolls = ctx.target().map?.scrolls.map((x) => x.id);
     const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
     b.addEventListener("click", () => {
       ctx.applyParty(front, back);
       for (const r of rot) ctx.applyRotation(r.idx, r.rotation, r.passive);
+      if (scrolls) ctx.applyScrolls(scrolls);
       b.textContent = "✓ Previous party back";
       b.setAttribute("disabled", "");
     });

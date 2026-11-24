@@ -21,6 +21,7 @@ import { $, apBadge, clickableRow, el, expansionMark, fmt, fmt1, gradeBadge, her
 import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
+import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLevelSort, enemyLevelText, enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
@@ -42,10 +43,9 @@ type Opp = "quest" | "map";
 interface Mode { key: "simulate" | SearchKey; icon: string; label: string; hint: string; party: boolean; opp: Opp[] }
 const MODES: Mode[] = [
   { key: "simulate", icon: "▶", label: "Simulate", hint: "Your party against an enemy or a map run, hundreds of times.", party: true, opp: ["quest", "map"] },
-  { key: "skills", icon: "🧠", label: "Best rotation", hint: "The best skills, order and passive for one hero of your party.", party: true, opp: ["quest"] },
   { key: "gear", icon: "🛡️", label: "Best gear", hint: "The best item in each slot for one hero, from what you own or the catalog.", party: true, opp: ["quest"] },
-  { key: "party", icon: "👥", label: "Best party", hint: "Which heroes, in which row, from all your heroes. Only the opponent is needed.", party: false, opp: ["quest", "map"] },
-  { key: "scrolls", icon: "📜", label: "Best scrolls", hint: "The best 0 to 3 scrolls for your party on a map.", party: true, opp: ["map"] },
+  // U27: the solver (was Best party, Best rotation and Best scrolls), behind a spoiler guard (battle-search.ts).
+  { key: "party", icon: "👥", label: "Best party", hint: "The smallest parties that win: heroes, rows, rotations and scrolls. A spoiler: it gives the answer.", party: false, opp: ["quest", "map"] },
   { key: "consumables", icon: "🧪", label: "Best potion / enchant", hint: "Which potion to drink, or enchant to add, for one hero against this opponent.", party: true, opp: ["quest", "map"] },
   { key: "optimise", icon: "✨", label: "Optimise everything", hint: "Party, rotations, gear and scrolls tuned together within a time budget.", party: false, opp: ["quest", "map"] },
 ];
@@ -255,6 +255,9 @@ function statStrip(raw: Any | null): HTMLElement {
 function renderParty(refreshSearch = true): void {
   const sv = state.sv!;
   const picks = !state.mode.party;
+  // Party setup rules of the opponent (battle-rules.ts): required slot, solo quests, party size cap.
+  const rules = rulesOf(pageTarget());
+  const filled = SLOTS.filter(([r, i]) => state.slots[slotKey(r, i)] !== null && state.slots[slotKey(r, i)] !== undefined).length;
   const options: [string, string][] = [["", picks ? "— to be found —" : "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
   const slot = (row: "front" | "back", i: number) => {
     const key = slotKey(row, i);
@@ -270,6 +273,7 @@ function renderParty(refreshSearch = true): void {
       // Picking a hero by hand in a search mode locks it (the search keeps it); clearing a slot unlocks it.
       if (v === null) delete state.locked[key];
       else if (picks) state.locked[key] = true;
+      clearUndo = null;
       persistParty();
       renderParty();
     });
@@ -286,25 +290,76 @@ function renderParty(refreshSearch = true): void {
       });
       return b;
     })() : null;
+    // Rules: the required slot is flagged; an empty slot the opponent doesn't allow (solo quest, party full) is disabled.
+    const required = rules.required.some((x) => x.row === row && x.i === i);
+    const soloOff = rules.kind === "solo" && !required;
+    const off = !raw && (soloOff || (rules.kind !== "solo" && filled >= rules.maxSize));
+    if (off) s.disabled = true;
+    const offText = soloOff ? "solo: Front 1 only" : `at most ${rules.maxSize} heroes`;
     const head = el("div", { class: "slot-head" }, el("span", { class: "slot-name" },
       raw ? withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))
         : el("span", { class: "avatar off", "aria-hidden": "true" }, "?"),
       `${row === "front" ? "Front" : "Back"} ${i + 1}`,
-      raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(picks ? "to be found" : "empty", "plain")), ...(lock ? [lock] : []));
-    return el("div", { class: raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty" },
+      raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(off ? offText : picks ? "to be found" : "empty", "plain"),
+      ...(required ? [el("span", { class: "pill t-orange req-badge", title: rules.kind === "solo" ? "A solo quest takes one hero, here" : "A party quest always fills this slot (it can be swapped, never emptied)" }, "required")] : [])),
+    ...(lock ? [lock] : []));
+    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}` },
       head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
   };
   const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
     el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
       el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
     el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
+  // U32: "Clear all" empties the six slots, with the same undo as a search's Load.
+  const clear = el("button", { type: "button", class: "secondary clear-all" }, "🧹 Clear all");
+  clear.title = "Empty every hero slot (the edited rotations are kept)";
+  if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
+  clear.addEventListener("click", clearAll);
   $("#party").replaceChildren(...(picks ? [el("p", { class: "muted small party-note" },
     "The search fills the six slots. 🔒 Locked heroes stay in the party; pick a hero in a slot to lock it.")] : []),
+  el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : [])),
+  ...(rulesText(rules) ? [el("p", { class: "muted small party-rules" }, rulesText(rules))] : []),
+  // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
+  // party fill the slots themselves.
+  ...((p) => (p && !picks ? [el("p", { class: "error small party-problem", role: "status" }, `⚠ ${p}`)] : []))(partyProblem()),
   el("div", { class: "party-cols" }, ...cols));
   syncAmount();
   renderPlan();
   // Not after a search filled the slots: rebuilding the search panel would reset its form.
   if (refreshSearch) search?.refresh();
+}
+
+/** The opponent for the party rules, or null while the opponent card isn't built yet. */
+function pageTarget(): PageTarget | null {
+  if (oppKind() !== "quest") return { map: true };
+  const q = document.querySelector<HTMLSelectElement>("#quest");
+  return q ? { quest: { id: Number(q.value), rare: document.querySelector<HTMLInputElement>("#rare")?.checked ?? false } } : null;
+}
+/** Why the six slots can't fight the opponent (battle-rules.ts), or null. */
+function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): string | null {
+  const key = (row: "front" | "back") => [0, 1, 2].map((i) => state.slots[slotKey(row, i)] ?? null);
+  return problemOf(pageTarget(), front ?? key("front"), back ?? key("back"));
+}
+
+/** The "Put back the previous party" button after Clear all (until it is used or the slots change by hand). */
+let clearUndo: HTMLElement | null = null;
+function clearAll(): void {
+  const prev = { slots: { ...state.slots }, locked: { ...state.locked } };
+  state.slots = {};
+  state.locked = {};
+  const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
+  b.addEventListener("click", () => {
+    state.slots = prev.slots;
+    state.locked = prev.locked;
+    clearUndo = null;
+    persistParty();
+    renderParty();
+    document.querySelector<HTMLElement>("#party .clear-all")?.focus();
+  });
+  clearUndo = b;
+  persistParty();
+  renderParty();
+  clearUndo.focus();
 }
 
 // ---------------------------------------------------------------- target
@@ -363,7 +418,8 @@ function renderTarget(): void {
           timelineOf(Number(q.value), r)),
         el("p", { class: "small" }, el("a", { href: href.enemy(Number(q.value)) }, "Enemy page in the wiki →")));
     };
-    q.addEventListener("change", () => (update(), renderPlan()));
+    // Another enemy may have other party rules (required slot, size cap): the slots are drawn again.
+    q.addEventListener("change", () => (update(), renderParty()));
     rare.addEventListener("change", () => (update(), renderPlan()));
     amount.addEventListener("change", () => (syncAmount(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, q,
@@ -408,8 +464,6 @@ function renderTarget(): void {
           el("h4", {}, "Scrolls"), ...scrolls),
         el("p", { class: "muted small" }, "Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
           + "Base rooms and time, before the map's modifiers."));
-      if (state.mode.key === "scrolls") card.querySelector(".opp-scrolls")?.setAttribute("hidden", "");
-      else card.querySelector(".opp-scrolls")?.removeAttribute("hidden");
     };
     m.addEventListener("change", sync);
     asc.addEventListener("change", sync);
@@ -418,7 +472,8 @@ function renderTarget(): void {
     sync();
     $<HTMLInputElement>("#runs").value = "50";
   }
-  renderPlan();
+  // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
+  renderParty(false);
 }
 
 /**
@@ -490,7 +545,8 @@ function setMode(key: string): void {
   $("#results").hidden = !sim;
   if (state.sv) {
     renderParty(false); // locks and "to be found" slots in the modes that choose the party
-    renderTarget(); // the opponent card depends on the mode (quest size cap, scrolls)
+    // The opponent card depends on the mode (quest size cap); rebuilt keeping the chosen enemy or map (onExpansions).
+    onExpansions();
     search?.show(sim ? null : m.key as SearchKey);
   }
 }
@@ -567,6 +623,8 @@ function run(): void {
   let req: BattleRequest;
   try {
     req = request();
+    const problem = partyProblem();
+    if (problem) throw new Error(problem);
   } catch (e) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, (e as Error).message));
     return;
@@ -723,6 +781,7 @@ function init(): void {
       front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
       back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
       for (const [k, v] of Object.entries(state.slots)) if (v !== null && lockedIdx.has(v)) state.locked[k] = true;
+      clearUndo = null;
       persistParty();
       renderParty(false);
     },
@@ -732,6 +791,14 @@ function init(): void {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
     },
     onStart: revealResults,
+    rules: () => rulesOf(pageTarget()),
+    problem: (front, back) => problemOf(pageTarget(), front, back),
+    goSimulate: () => {
+      const r = document.querySelector<HTMLInputElement>("input[name=what][value=simulate]");
+      if (r) r.checked = true;
+      setMode("simulate");
+      r?.focus();
+    },
   }, $("#search-panel"), $("#search-results"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));

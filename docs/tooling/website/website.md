@@ -113,10 +113,10 @@ flowchart LR
   the heading is off screen, one smooth scroll puts it at the top (instant with reduced motion). Only at the start:
   progress updates and the result never scroll, so a user who scrolls away stays there. No page title or lead
   paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
-- Step 1, mode (U8): Simulate, Best rotation, Best gear, Best party, Best scrolls, Best potion / enchant (U9), Optimise everything (`MODES` in
+- Step 1, mode (U8; U27 merged Best party, Best rotation and Best scrolls into one Best party): Simulate, Best gear, Best party, Best potion / enchant (U9), Optimise everything (`MODES` in
   `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
   is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
-  `battle-mode`). Under 560px the modes are two compact columns (hint in the title). Under the mode cards, one box
+  `battle-mode`; a remembered mode that no longer exists falls back to Simulate). Under 560px the modes are two compact columns (hint in the title). Under the mode cards, one box
   (`.run-box`, U23; was a separate step 3) holds the chosen mode's options and its Run button: Runs and ▶ Simulate, or
   the search's panel and 🔎 Search. The output goes to the Results section, step 2 (`#results` for Simulate,
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
@@ -132,7 +132,18 @@ flowchart LR
   the skill (Basic and the unlocked skills, with AP) or the passive without changing the slot's size; focus returns to
   the same control. Gear is not shown in the slots. In Best party and Optimise everything the slots are the search's:
   empty ones read "to be found", and a filled slot has a 🔒 toggle (a hero picked by hand is locked; locked heroes stay
-  in the party and follow their hero when the search moves it). The opponent:
+  in the party and follow their hero when the search moves it).
+  - Clear all (U32): a button above the slots empties every slot (and its lock; edited rotations are kept), then shows
+    "↩ Put back the previous party" until it is used or a slot is changed by hand.
+  - Party setup rules (game 3.18, `web/src/ui/battle-rules.ts`): a party quest (`questData.party`) always fills Front 2
+    (the game opens the party with the quest's hero there; swapped, never emptied) and takes at most `questSize`
+    heroes (2-6; Desolation Wolf takes 3); a solo quest takes exactly one hero, in Front 1; a map run has no rule. The
+    required slot has a "required" badge and an outline; empty slots the opponent doesn't allow are greyed and
+    disabled ("solo: Front 1 only", "at most N heroes"); a line under Clear all states the rule, and what keeps the
+    party from fighting is shown inline ("⚠ Front 2 must hold a hero …") and stops ▶ Simulate before the worker runs.
+    `rulesOf` / `problemOf` mirror the engine's E21 API (`partyRules`, `partyProblem` in `combat.ts`): once E21 is on
+    main they become thin wrappers over it (TODO in the file).
+  - The opponent:
   - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
     strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
     placeholders are not offered (`isEnemy`).
@@ -140,8 +151,7 @@ flowchart LR
     (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything allow up to the
     strongest hero of the save; the searches skip parties that can't take the size.
   - Map run: owned map from the save (prefix, suffix, grade, ascension outline) or any catalog map with ascension 0/1
-    and grade; card with level, grade, rooms, time, enemy power ×, boss links, modifiers, and up to 3 scrolls (hidden in
-    Best scrolls).
+    and grade; card with level, grade, rooms, time, enemy power ×, boss links, modifiers, and up to 3 scrolls.
 - The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n (common random numbers:
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
   map 22, 20 runs).
@@ -151,16 +161,33 @@ flowchart LR
   are external.
 - The Run button of step 1 runs the mode: Simulate, or one search of the search API of `web/src/tools/combat.ts`
   (`web/src/ui/battle-search.ts`, run in the worker by `runSearch`):
-  - Best rotation (quest): `searchSkills` for a party hero; ranked rotation + passive cards, "Use this rotation" applies
-    it in the party editor. With the warm start loaded, a "Suggested start: passive · rotation" line (U23) shows the
-    offline table's rotation the search tried first (`result.warm`), "(adapted)" when skills had to become Basic.
   - Best gear (quest): `searchGear` with owned items (`ownedGearCandidates`) or crafted catalog items at a grade and
     ascension (`catalogGearCandidates`); now vs best, and the six slots in two columns (`gearGrid`, U23: changed slots
     marked with a "change" pill, the others "keep"), the source of each change listed under it.
-  - Best party (quest or map): `searchParty` over all the save's heroes (with their edited rotations) except the ones
-    ticked in "Leave heroes out", the locked slots' heroes kept (`lock`); the result fills the slots at once, with
-    "Put back the previous party" (party and rotations as before the search).
-  - Best scrolls (map): `searchScrolls`, every loadout of 0–3 scrolls, crafted cost from the profit model.
+  - Best party, the solver (quest or map, U27): `searchParties` (`web/src/tools/parties.ts`, see
+    [Party search](../combat-simulator/party-search.md)) over all the save's heroes (with their edited rotations)
+    except the ones ticked in "Leave heroes out", the locked slots' heroes in every party (`lock`). It replaces the
+    former Best party (`searchParty`), Best rotation (`searchSkills`) and Best scrolls (`searchScrolls`) modes: one
+    search gives the heroes, their rows and order, every hero's rotation and passive and, for a map, the scrolls.
+    - Spoiler guard: the mode starts hidden behind a card ("This tool runs simulations and finds the best fit … do it
+      at your own risk.") with "▶ Try Simulate first" and "Show me the solver anyway". Accepting is remembered in
+      localStorage `battle-solver-shown` (try/catch; with storage blocked it holds for the page view); the panel then
+      starts with "⚠ Spoiler tool: it gives you the answer." and a "Hide it again" link (forgets the choice, stops a
+      running search and clears its results).
+    - Options: smallest and largest party (1 and 6, clamped to the quest's size cap, both 1 on a solo quest),
+      "Include scrolls" (map runs only; disabled with "(map runs only)" on a quest; off, the runs keep the scrolls of
+      step 3), time budget 60 s (default) or 120 s, "Leave heroes out".
+    - Progress by stage ("solo", "size N": done / total) with the time used on the bar. Cancel stops softly: the page
+      revokes a blob: URL that the worker's `shouldStop` reads with a synchronous request (at most every 250 ms;
+      `SearchRequest.stopUrl`, `stopSignal` in `battle-worker.ts`), and the configurations found so far come back as a
+      normal result ("Stopped early"); a worker that doesn't answer within 10 s is terminated.
+    - Results: a table of up to 10 setups, # · Heroes · Party (hero chips in the class colours, 🏹 back row then 🛡️
+      front row, a "rough" tag when `tuned` is false: only screened) · Scrolls (maps: links, "—" if none) · Win ·
+      Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load.
+    - Load fills the six slots, every hero's rotation and passive and (with scrolls) the map's scrolls, marks the row
+      "✓ Loaded" and offers "↩ Put back the previous party" (party, rotations and scrolls as before). A setup that
+      breaks the party rules (e.g. Front 2 empty on a party quest, before E21's search follows the rules) is not
+      loadable: its button is disabled with the reason in its tooltip.
   - Best potion / enchant (quest or map, U9): potions and enchants: `rankConsumables` (`web/src/tools/consumables.ts`)
     rank what a hero should drink or enchant for a fight. Per party hero: potions (one at a time, last 3 quests) or one
     more permanent enchant, ascensions 0/1/2 to try, fights per option (editable: ~56 potions × 40 fights take ~25 s).
@@ -200,8 +227,17 @@ flowchart LR
     (back 1, front 1, back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), each hero's
     slot k under turn k, with `scoreSchedule`'s notes per cell (✓ helps, ⚠ hurts: "into Soul Barrier", "cleanses
     Alternate Reality", "heals after enemy damage") and the score per turn; stats from `scheduleContext`.
-  - Search results: "Against the enemy's timeline" notes under each Best rotation candidate and each optimised
-    rotation (quests only).
+  - What the enemy does to the heroes (U32, `enemyHitsOn` / `castLines` in `timeline.ts`): each hero cell shows the
+    enemy effects on that hero for that turn, from the timeline windows (`ownerTurns`: durations count in the heroes'
+    own actions, offsets from the cast turn, so with the enemy last an effect cast on turn k covers k+1 …; steady
+    state, a window wrapping past T5 covers T1 from the second cycle). A forced action (Drown) strikes the planned
+    skill out and reads "→ Basic", a stun reads "Stunned" (red cell); debuffs ("⬇️ Atk −50 %"), damage over time,
+    stat swaps are small markers with a tooltip (who cast it, when, cleansable). The same effect cast again keeps its
+    latest cast. Effects land on the probe's locations; with that row empty they fall on the other row. The enemy
+    cells say each effect in plain words: "Drown → all heroes: abilities disabled (Basic only), for their next 2
+    actions (T4, T5)", or "→ itself" for its buffs. Murlok Monarch (quest 92): Drown on T3 disables the heroes' T4
+    and T5. The ✓ / ⚠ notes are `scoreSchedule`'s, which doesn't model forced actions yet (an engine follow-up).
+  - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only).
   - Without the timeline data the pages fall back to the plain rotation list.
 
 ## Wiki

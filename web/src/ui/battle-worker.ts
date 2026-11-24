@@ -9,6 +9,7 @@ import {
   type PartySearch, type ScrollLoadout, searchGear, searchParty, searchScrolls, searchSkills, type SkillSearch,
 } from "../tools/combat.ts";
 import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
+import { type PartiesResult, searchParties } from "../tools/parties.ts";
 import { loadTimelines } from "../tools/schedule.ts";
 import { loadWarmStart, WARMSTART_VERSION } from "../tools/warmstart.ts";
 import { type ConsumableKind, type ConsumableRanking, rankConsumables } from "../tools/consumables.ts";
@@ -42,6 +43,12 @@ export interface BattleRequest {
 /** A search from the battle page's search tabs (web/src/tools/combat.ts search API). */
 export type SearchRequest = {
   gameMode: string;
+  /**
+   * U27: a blob: URL the page revokes to stop the search softly (Cancel keeps what was found). The search is
+   * synchronous, so the worker can't get a message: `shouldStop` reads the URL (synchronous request, at most every
+   * 250 ms), and a revoked URL fails. Without it (or without XMLHttpRequest, in Node) the search runs to its end.
+   */
+  stopUrl?: string;
   front: (Any | null)[];
   back: (Any | null)[];
   skills?: { front: (SkillChoice | null)[]; back: (SkillChoice | null)[] };
@@ -53,6 +60,8 @@ export type SearchRequest = {
     expansions?: Expansion[] | "all" }
   | { search: "party"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; size: number; nQuick: number; nFinal: number }
+  | { search: "parties"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
+    map?: { spec: MapSpec; scrolls: Scroll[] }; minSize: number; maxSize: number; scrolls: boolean; timeBudgetMs: number; topK?: number }
   | { search: "optimise"; pool: Any[]; lock?: number[]; startParty?: { front: (number | null)[]; back: (number | null)[] };
     poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; save: Save; size: number; timeBudgetMs: number;
@@ -67,6 +76,7 @@ export type SearchResponse =
   | { type: "done"; search: "skills"; result: SkillSearch; ms: number }
   | { type: "done"; search: "gear"; result: GearSearch; ms: number }
   | { type: "done"; search: "party"; result: PartySearch; ms: number }
+  | { type: "done"; search: "parties"; result: PartiesResult; ms: number }
   | { type: "done"; search: "scrolls"; result: { ranked: ScrollLoadout[]; priceError?: string }; ms: number }
   | { type: "done"; search: "optimise"; result: OptimiseResult; ms: number }
   | { type: "done"; search: "consumables"; result: ConsumableRanking; ms: number }
@@ -125,12 +135,34 @@ export async function runBattle(req: BattleRequest): Promise<BattleResponse> {
   }
 }
 
+/** shouldStop for a soft stop (SearchRequest.stopUrl): true once the page revoked the URL. */
+export function stopSignal(url: string | undefined): (() => boolean) | undefined {
+  if (!url || typeof XMLHttpRequest === "undefined") return undefined;
+  let last = 0, stop = false;
+  return () => {
+    if (stop) return true;
+    const now = performance.now();
+    if (now - last < 250) return false;
+    last = now;
+    try {
+      const x = new XMLHttpRequest();
+      x.open("GET", url, false);
+      x.send();
+      if (x.status !== 200 && x.status !== 0) stop = true;
+    } catch {
+      stop = true;
+    }
+    return stop;
+  };
+}
+
 /** The profit Solver prices potions and enchants (crafted cost); solved once per worker, a few seconds. */
 let solver: Solver | null = null;
 
 /**
  * Run a search, reporting progress through `post` (throttled to ~10 per second). The searches are synchronous,
- * so the page cancels by terminating the worker.
+ * so the page cancels by terminating the worker, or (with `stopUrl`, U27) by revoking the URL: the search then ends
+ * at its next check and its partial result comes back as usual.
  */
 export async function runSearch(req: SearchRequest, post: (m: SearchResponse) => void): Promise<void> {
   try {
@@ -148,6 +180,7 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
     const back = build(req.back, req.skills?.back);
     let last = 0;
     const ctl = {
+      shouldStop: stopSignal(req.stopUrl),
       onProgress: (done: number, total: number, stage: string) => {
         const now = performance.now();
         if (done === 0 || done === total || now - last > 100) {
@@ -196,6 +229,15 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
         const target = req.quest ? quest(req.quest) : { map: req.map!.spec, scrolls: req.map!.scrolls.length ? req.map!.scrolls : null };
         const result = searchParty(sim, pool, target, { size: req.size, nQuick: req.nQuick, nFinal: req.nFinal, lock: req.lock }, ctl);
         return post({ type: "done", search: "party", result, ms: ms() });
+      }
+      case "parties": {
+        const pool = poolOf(req.pool, req.poolSkills);
+        // With "Include scrolls" the search picks them; without, the runs keep the scrolls chosen in step 3.
+        const target = req.quest ? quest(req.quest)
+          : { map: req.map!.spec, scrolls: !req.scrolls && req.map!.scrolls.length ? req.map!.scrolls : null };
+        const result = searchParties(sim, pool, target, { minSize: req.minSize, maxSize: req.maxSize, scrolls: Boolean(req.map && req.scrolls),
+          lock: req.lock, timeBudgetMs: req.timeBudgetMs, topK: req.topK ?? 10 }, ctl);
+        return post({ type: "done", search: "parties", result, ms: ms() });
       }
       case "consumables": {
         const hero = (req.hero.row === "front" ? front : back)[req.hero.i];

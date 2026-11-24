@@ -2,6 +2,10 @@
 
 [Root](./index.md) > Update Log
 
+## 2026-11-24
+- **Website**: Battle page (U27): one "Best party" solver on `searchParties` replaces Best party, Best rotation and Best scrolls: min / max party size, include scrolls (maps), 60 / 120 s budget, a top-10 table with Load and undo, Cancel keeps the partial results; hidden behind a spoiler guard ("Show me the solver anyway", remembered, with a warning line and "Hide it again").
+- **Website**: Battle page (U32): the 5-turn plan shows what the enemy does to the heroes (Drown strikes the planned skill out for Basic, stuns, debuffs) and says each enemy effect in plain words; "Clear all" for the party slots with undo; party setup rules on the slots (required Front 2, solo quests, size cap) ahead of the engine's E21.
+
 ## 2026-11-23
 - **Website**: Expansion-aware site (U28): ownership of the Frozen Tome and Scribe guessed from the save with manual toggles (save menu, or a top-bar button without a save), content of unowned expansions hidden by default on every page with a global "Show expansion content", snowflake / quill badges after every name, greyed placeholders and "N hidden" notes, a wiki Expansions page.
 - **Website**: Wiki v5 (U24): enemy timeline cards carry the skill effect and open the skill page (Rotation section removed); drop tables with a rarity column and "Nothing" first; explanations moved into "?" tooltips, data-source notes removed; "Good against" unlimited; regions from the game data (quest board region, event and map bosses, map screen rule, item drops and recipes) as a column, sort and facts; Treasure Bushes shown on map pages.

@@ -1356,3 +1356,55 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   .topbar .lang-btn { padding: 4px 7px; font-size: 0.78rem; }
 }
 /* end language picker */
+
+/* battle solver + plan */
+/* U27: the Best party solver: spoiler guard, warning line, results table. U32: enemy effects on the plan's hero
+   cells and in its enemy cells, Clear all, and the party setup rules (required slot, slots a quest doesn't allow). */
+.spoiler-guard { padding: 14px 16px; border-radius: 12px; background: var(--card-2); border: 1px dashed var(--border);
+  border-left: 4px solid #f97316; max-width: 72ch; }
+.spoiler-guard p { margin: 0 0 8px; }
+.spoiler-guard .spoiler-title { font-size: 1.02rem; }
+.spoiler-guard .toolbar { margin-top: 4px; }
+.spoiler-warn { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; color: var(--fg);
+  background: color-mix(in srgb, #f97316 14%, transparent); border: 1px solid color-mix(in srgb, #f97316 45%, var(--border)); }
+.spoiler-warn .link-btn { font-size: inherit; }
+.search-form .check.off { opacity: 0.65; }
+.solver-table { width: 100%; }
+.solver-table td { vertical-align: middle; }
+.solver-table tr.loaded td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.solver-table button { white-space: nowrap; }
+.solver-table button.loaded { border-color: var(--accent); }
+.solver-table button[disabled] { opacity: 0.45; cursor: not-allowed; }
+.solver-party { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.solver-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.solver-row .row-ico { width: 1.4em; text-align: center; }
+.solver-party .hero-chip { font-size: 0.75rem; padding: 1px 8px; }
+.solver-party .rough { align-self: flex-start; font-size: 0.7rem; cursor: help; }
+.solver-scrolls { font-size: 0.82rem; }
+.solver-loaded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.party-tools { margin: 0 0 8px; }
+.party-rules { margin: 0 0 6px; }
+.party-problem { margin: 0 0 8px; }
+.slot.required { outline: 2px dashed color-mix(in srgb, #f97316 70%, transparent); outline-offset: 2px; }
+.slot.required.filled { outline-style: solid; outline-color: color-mix(in srgb, #f97316 40%, transparent); }
+.req-badge { font-size: 0.66rem; letter-spacing: .04em; }
+.slot.off-limits { opacity: 0.55; }
+/* plan: what the enemy does to the heroes */
+.tl-cell.hero.hit { background: color-mix(in srgb, #f59e0b 9%, var(--card-2)); }
+.tl-cell.hero.forced { border-color: color-mix(in srgb, #ef4444 65%, var(--border)); background: color-mix(in srgb, #ef4444 10%, var(--card-2)); }
+.tl-planned { opacity: 0.7; text-decoration: line-through; text-decoration-thickness: 2px; }
+.tl-planned a, .tl-planned span { text-decoration: line-through; text-decoration-thickness: 2px; }
+.tl-forced { font-weight: 750; color: color-mix(in srgb, #ef4444 70%, var(--fg)); }
+.tl-hit { display: block; font-size: 0.72rem; line-height: 1.25; white-space: normal; padding: 1px 5px; border-radius: 6px; cursor: help;
+  background: color-mix(in srgb, #f59e0b 20%, transparent); }
+.tl-hit.k-force-action, .tl-hit.k-stun { background: color-mix(in srgb, #ef4444 22%, transparent); }
+.tl-cast { display: block; font-size: 0.72rem; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; color: var(--muted); }
+.tl-cast strong, .tl-cell .tl-cast strong { color: var(--fg); font-weight: 650; font-size: 0.74rem; }
+.tl-cast.on-heroes { border-left: 2px solid #f59e0b; padding-left: 5px; }
+.tl-cast.on-heroes.k-force-action, .tl-cast.on-heroes.k-stun { border-left-color: #ef4444; }
+.tl-cast.on-enemy { border-left: 2px solid #ec4899; padding-left: 5px; }
+@media (max-width: 600px) {
+  .solver-table th, .solver-table td { padding: 4px 5px; }
+  .spoiler-guard { padding: 12px; }
+}
+/* end battle solver + plan */

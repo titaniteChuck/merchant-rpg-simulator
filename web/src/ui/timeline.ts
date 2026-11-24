@@ -8,6 +8,9 @@
  *   from the cast turn, so a window can wrap from turn 5 to turn 1 (the rotation repeats).
  * - partyPlan(): the party's rotations under the enemy's, one row per actor in the real action order (back 1, front 1,
  *   back 2, front 2, back 3, front 3, then the enemy; the enemy first on questType 6), with scoreSchedule's notes.
+ *   U32: the hero cells also show what the enemy does to the heroes on that turn (enemyHitsOn: a forced action such
+ *   as Drown strikes the planned skill out for Basic, a stun reads "Stunned", debuffs and damage over time are small
+ *   markers), and the enemy cells say what each effect does and on whom (castLines).
  * - scheduleFor() / notesFor(): the same notes for the search results ("why this rotation").
  * Data: data/timelines.json (inventory/timelines.json), loaded once per page by loadTimelineData().
  */
@@ -175,6 +178,126 @@ export function enemyStrip(tl: EnemyTimeline, opts: { note?: boolean } = {}): HT
     ...(opts.note === false ? [] : [el("p", { class: "muted small tl-note" }, stripNote(tl))]));
 }
 
+// ---------------------------------------------------------------- what the enemy does to the heroes (U32)
+const STAT_WORDS: Record<string, string> = {
+  atk: "Atk", matk: "Matk", def: "Def", mdef: "Mdef", acc: "Acc", eva: "Eva", crit: "Crit", critMod: "crit damage", maxHP: "max HP",
+  atkBns: "Atk", matkBns: "Matk", defBns: "Def", mdefBns: "Mdef",
+};
+/** "Atk −50 %" for a timeline effect's stat: fractions read as percents, bigger numbers as they are. */
+function fxStat(k: string, v: number): string {
+  const sign = v < 0 ? "−" : "+", a = Math.abs(v);
+  return `${STAT_WORDS[k] ?? k} ${sign}${a <= 5 ? `${Math.round(a * 100)} %` : String(Math.round(a))}`;
+}
+const fxStats = (e: EffectInfo) => Object.entries(e.stats ?? {}).filter(([, v]) => v !== 0).map(([k, v]) => fxStat(k, v));
+
+/** What an effect does to its owner, in plain words. */
+function fxWhat(e: EffectInfo): string {
+  switch (e.kind) {
+    case "force-action": return "abilities disabled (Basic only)";
+    case "stun": return "stunned (the action is lost)";
+    case "dot": return "damage over time";
+    case "stat-swap": return "stats swapped";
+    case "miss-chance": return "attacks may miss";
+    case "shield": return "a shield";
+    case "reflect": return "reflects damage";
+    case "counter": return "counters attacks";
+    case "taunt": return "taunts";
+    case "hot": return "heals over time";
+    case "vulnerability": return "takes more damage";
+    default: return fxStats(e).join(", ") || e.kind;
+  }
+}
+
+/** Icon and short label of an enemy effect on a hero's plan cell. */
+function fxMark(e: EffectInfo): [string, string] {
+  switch (e.kind) {
+    case "force-action": return ["🎯", `${e.name}: Basic only`];
+    case "stun": return ["💫", "Stunned"];
+    case "dot": return ["☠️", e.name];
+    case "stat-swap": return ["🔀", e.name];
+    case "miss-chance": return ["🌫️", e.name];
+    default: return ["⬇️", fxStats(e).join(", ") || e.name];
+  }
+}
+
+const LOC_LABEL = (loc: number) => `${loc % 2 ? "Back" : "Front"} ${Math.ceil(loc / 2)}`;
+
+/**
+ * The party locations an enemy effect on the heroes lands on, for this party. The probe hit a full party; with a row
+ * empty, a row effect falls on the other row (as the schedule scorer counts row attacks).
+ */
+function fxTargets(e: EffectInfo, occupied: number[]): number[] {
+  const locs = e.locations ?? [1, 2, 3, 4, 5, 6];
+  const hit = occupied.filter((l) => locs.includes(l));
+  if (hit.length || !occupied.length) return hit;
+  if (locs.every((l) => l % 2 === 0)) return occupied.filter((l) => l % 2 === 1);
+  if (locs.every((l) => l % 2 === 1)) return occupied.filter((l) => l % 2 === 0);
+  return [];
+}
+
+/** "all heroes", "the front row", "Back 2 and Front 3". */
+function whomText(locs: number[]): string {
+  const s = [...locs].sort((a, b) => a - b);
+  if (s.length === 6) return "all heroes";
+  if (s.length === 3 && s.every((l) => l % 2 === 0)) return "the front row";
+  if (s.length === 3 && s.every((l) => l % 2 === 1)) return "the back row";
+  const names = s.map(LOC_LABEL);
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] ?? "nobody";
+}
+
+/** The hero turns (1-5, in order from the cast) an enemy effect cast on `cast` covers: its owner's turns for the heroes. */
+const coveredTurns = (e: EffectInfo, cast: number) => [...new Set(windowOf(e).offsets.map((o) => slotOf(cast + o)))];
+
+export interface EnemyHit {
+  /** Enemy turn (1-5) that cast it. */
+  cast: number;
+  e: EffectInfo;
+}
+
+/**
+ * Enemy effects on the hero at `loc` while it plays its slot `turn` (steady state: the 5-turn cycle repeats, so a
+ * window cast on turn 5 covers turn 1 from the second cycle on). Durations count in the heroes' own actions; the
+ * probe's offsets already put the enemy last (first on questType 6). `occupied`: the party's locations.
+ */
+export function enemyHitsOn(tl: EnemyTimeline, loc: number, turn: number, occupied: number[]): EnemyHit[] {
+  const out: EnemyHit[] = [];
+  tl.slots.forEach((s, k) => {
+    for (const e of s.effects) {
+      if (e.on !== "heroes" || !fxTargets(e, occupied).includes(loc)) continue;
+      if (coveredTurns(e, k + 1).includes(turn)) out.push({ cast: k + 1, e });
+    }
+  });
+  // The same effect cast again (Tidal Wave on T1 and T4) replaces itself: keep the latest cast before this turn.
+  const recent = (h: EnemyHit) => ((turn - h.cast + 5) % 5) || (tl.enemyFirst ? 0 : 5);
+  const byName = new Map<string, EnemyHit>();
+  for (const h of out) {
+    const was = byName.get(h.e.name);
+    if (!was || recent(h) < recent(was)) byName.set(h.e.name, h);
+  }
+  return [...byName.values()];
+}
+
+/** The plan's enemy cell: what each effect of this turn does, and on whom, in plain words. */
+function castLines(s: Any, cast: number, occupied: number[]): HTMLElement[] {
+  return (s.effects as EffectInfo[]).map((e) => {
+    const turns = coveredTurns(e, cast).map((t) => `T${t}`).join(", ");
+    if (e.on === "heroes") {
+      // In the skill's own words (all heroes, a row) when it lands where the probe saw it; else the heroes it falls on.
+      const hit = fxTargets(e, occupied), locs = e.locations ?? [1, 2, 3, 4, 5, 6];
+      const who = hit.length && hit.every((l) => locs.includes(l)) ? locs : hit;
+      const long = e.until === "next-attack" || e.until === "next-hit" ? "for their next action"
+        : e.until === "permanent" ? "for the rest of the fight" : `for their next ${e.turns ?? "?"} action${e.turns === 1 ? "" : "s"}`;
+      return el("span", { class: `tl-cast on-heroes k-${e.kind}` }, el("strong", {}, `${e.name} → ${who.length ? whomText(who) : "nobody here"}`),
+        `: ${fxWhat(e)}, ${long}${turns ? ` (${turns})` : ""}.`);
+    }
+    if (e.on === "self" || e.on === "party") {
+      return el("span", { class: `tl-cast on-enemy k-${e.kind}` }, el("strong", {}, `${e.name} → itself`),
+        `: ${fxWhat(e)}${turns ? `, heroes face it on ${turns}` : ""}.`);
+    }
+    return el("span", { class: `tl-cast k-${e.kind}` }, el("strong", {}, e.name), `: ${fxWhat(e)}.`);
+  });
+}
+
 // ---------------------------------------------------------------- party plan
 export interface PlanMember {
   row: "front" | "back";
@@ -224,20 +347,42 @@ export function partyPlan(quest: { id: number; rare: boolean; amount: number }, 
   const { tl, score } = res;
   const byLoc = new Map(members.map((m) => [locationOf(m.row, m.i), m]));
   const label = (loc: number) => `${loc % 2 ? "Back" : "Front"} ${Math.ceil(loc / 2)}`;
+  const occupied = [...byLoc.keys()];
   const heroRows = [1, 2, 3, 4, 5, 6].filter((loc) => byLoc.has(loc)).map((loc) => {
     const m = byLoc.get(loc)!;
     return [el("div", { class: `tl-actor cls-${m.raw.class}` }, el("strong", {}, String(m.raw.name)), el("span", { class: "muted small" }, label(loc))),
       ...[1, 2, 3, 4, 5].map((t) => {
         const sk = m.rotation[t - 1] ?? "Basic";
         const notes = score.notes.filter((n) => n.location === loc && n.turn === t && Math.abs(n.delta) > 1e-9);
-        const cell = el("div", { class: `tl-cell hero${notes.some((n) => n.delta < 0) ? " warn" : notes.length ? " ok" : ""}` },
-          tagIcons(skillTags(sk, "hero"), "hero"), el("span", { class: "tl-skill" }, sk === "Basic" ? "Basic" : skillLink(sk)),
-          ...notes.map((n) => noteLine(n)));
+        // U32: what the enemy does to this hero on this turn. A stun loses the action; a forced action (Drown)
+        // turns the planned skill into Basic: the planned one is struck out.
+        const hits = enemyHitsOn(tl, loc, t, occupied);
+        const stun = hits.find((h) => h.e.kind === "stun");
+        const forced = hits.find((h) => h.e.kind === "force-action");
+        const planned = sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk);
+        const skill = stun ? el("span", { class: "tl-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(sk)}` }, planned), " ",
+          el("span", { class: "tl-forced" }, "Stunned"))
+          : forced && sk !== "Basic" ? el("span", { class: "tl-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(sk)}` }, planned), " ",
+            el("span", { class: "tl-forced" }, "→ Basic"))
+          : el("span", { class: "tl-skill" }, planned);
+        const marks = hits.map((h) => {
+          const [ico, text] = fxMark(h.e);
+          const why = `${h.e.name}, cast by ${tlName(tl)} on turn ${h.cast}: ${fxWhat(h.e)}.${h.e.removable ? " A cleanse removes it." : ""}`
+            + `${h.cast >= t && !(tl.enemyFirst && h.cast === t) ? " From the second cycle on (the rotation repeats)." : ""}`;
+          return el("span", { class: `tl-hit k-${h.e.kind}`, title: why, "aria-label": why }, el("span", { "aria-hidden": "true" }, `${ico} `), text);
+        });
+        const cell = el("div", { class: `tl-cell hero${notes.some((n) => n.delta < 0) ? " warn" : notes.length ? " ok" : ""}${hits.length ? " hit" : ""}${stun || forced ? " forced" : ""}` },
+          // The tags of what the hero really does: nothing when stunned, Basic when its abilities are disabled.
+          tagIcons(stun ? [] : skillTags(forced ? "Basic" : sk, "hero"), "hero"), skill, ...marks, ...notes.map((n) => noteLine(n)));
         return linkCard(cell, sk);
       })];
   });
   const enemyRow = [el("div", { class: "tl-actor enemy" }, el("strong", {}, tlName(tl)), el("span", { class: "muted small" }, "enemy")),
-    ...tl.slots.map((s, k) => enemyCell(s, k + 1, false))];
+    ...tl.slots.map((s, k) => {
+      const cell = enemyCell(s, k + 1, false);
+      cell.append(...castLines(s, k + 1, occupied));
+      return cell;
+    })];
   const rows = tl.enemyFirst ? [enemyRow, ...heroRows] : [...heroRows, enemyRow];
   const fmtScore = (x: number) => x.toFixed(1);
   return el("div", { class: "tl tl-plan", role: "group", "aria-label": "The party's 5-turn plan against the enemy's" },
@@ -250,6 +395,8 @@ export function partyPlan(quest: { id: number; rare: boolean; amount: number }, 
       return r;
     }),
     el("p", { class: "muted small tl-note" }, `Each hero plays slot k of its rotation on turn k, in this order${tl.enemyFirst ? " (the enemy first)" : ", then the enemy"}. `
+      + "On the hero cells, what the enemy does to them on that turn (🎯 abilities disabled: the planned skill is struck out and the hero plays Basic; "
+      + "💫 stunned; ⬇️ debuffs; ☠️ damage over time), unless a cleanse removes it first. "
       + `✓ / ⚠: the schedule score's reasons (cleanse after a debuff, no damage into a reflect, heal after a big hit …). `
       + `Score ${fmtScore(score.total)} per 5 turns, a quick guide: the simulation decides.`));
 }

@@ -49,6 +49,25 @@ test("best party for a quest uses hero ids", async () => {
   assert.ok(ids.length >= 1 && ids.every((x) => x === 1 || x === 2));
 });
 
+test("U27 solver (parties): ranked setups with stages, layout and skills by hero id", async () => {
+  const { done, progress } = await run({ ...base, search: "parties", pool: [WARRIOR, MAGE], quest: QUEST, minSize: 1, maxSize: 2, scrolls: false, timeBudgetMs: 60000 });
+  assert.equal(done.search, "parties");
+  if (done.search !== "parties") return;
+  assert.ok(done.result.results.length >= 1);
+  const c = done.result.results[0];
+  const ids = [...c.layout.front, ...c.layout.back].filter((x) => x !== null);
+  assert.equal(ids.length, c.size);
+  assert.ok(ids.every((x) => x === 1 || x === 2));
+  for (const id of ids) assert.equal(c.skills[id as number].rotation.length, 5);
+  assert.ok(progress.some((p) => p.type === "progress" && p.stage === "solo"));
+});
+
+test("soft stop: no XMLHttpRequest in Node, so a stop URL is ignored", async () => {
+  const { stopSignal } = await import("../src/ui/battle-worker.ts");
+  assert.equal(stopSignal("blob:http://localhost/x"), undefined);
+  assert.equal(stopSignal(undefined), undefined);
+});
+
 test("best scrolls on a map", async () => {
   const { done } = await run({ ...base, search: "scrolls", map: { spec: { id: 1, prestigeLevel: 0, grade: 3 } }, pool: [61, 62], scrollAsc: 0, nQuick: 1, nFinal: 1, top: 2 });
   assert.equal(done.search, "scrolls");
