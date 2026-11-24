@@ -59,6 +59,8 @@ test("U27 solver (parties): ranked setups with stages, layout and skills by hero
   assert.equal(ids.length, c.size);
   assert.ok(ids.every((x) => x === 1 || x === 2));
   for (const id of ids) assert.equal(c.skills[id as number].rotation.length, 5);
+  // E21: a party quest's setups keep front 2 filled
+  for (const r of done.result.results) assert.notEqual(r.layout.front[1], null);
   assert.ok(progress.some((p) => p.type === "progress" && p.stage === "solo"));
 });
 

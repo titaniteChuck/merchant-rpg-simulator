@@ -331,7 +331,7 @@ function renderParty(refreshSearch = true): void {
 
 /** The opponent for the party rules, or null while the opponent card isn't built yet. */
 function pageTarget(): PageTarget | null {
-  if (oppKind() !== "quest") return { map: true };
+  if (oppKind() !== "quest") return document.querySelector("#map") ? { map: targetOf().map!.spec } : null;
   const q = document.querySelector<HTMLSelectElement>("#quest");
   return q ? { quest: { id: Number(q.value), rare: document.querySelector<HTMLInputElement>("#rare")?.checked ?? false } } : null;
 }

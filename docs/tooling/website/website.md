@@ -135,14 +135,14 @@ flowchart LR
   in the party and follow their hero when the search moves it).
   - Clear all (U32): a button above the slots empties every slot (and its lock; edited rotations are kept), then shows
     "↩ Put back the previous party" until it is used or a slot is changed by hand.
-  - Party setup rules (game 3.18, `web/src/ui/battle-rules.ts`): a party quest (`questData.party`) always fills Front 2
+  - Party setup rules (game 3.18, the engine's E21 `partyRules` / `partyProblem` in `combat.ts`, wrapped for the page by
+    `web/src/ui/battle-rules.ts`): a party quest (`questData.party`) always fills Front 2
     (the game opens the party with the quest's hero there; swapped, never emptied) and takes at most `questSize`
     heroes (2-6; Desolation Wolf takes 3); a solo quest takes exactly one hero, in Front 1; a map run has no rule. The
     required slot has a "required" badge and an outline; empty slots the opponent doesn't allow are greyed and
     disabled ("solo: Front 1 only", "at most N heroes"); a line under Clear all states the rule, and what keeps the
-    party from fighting is shown inline ("⚠ Front 2 must hold a hero …") and stops ▶ Simulate before the worker runs.
-    `rulesOf` / `problemOf` mirror the engine's E21 API (`partyRules`, `partyProblem` in `combat.ts`): once E21 is on
-    main they become thin wrappers over it (TODO in the file).
+    party from fighting (`partyProblem`'s text, e.g. "quest 81 (Desolation Wolf) takes at most 3 heroes, not 4") is shown
+    inline and stops ▶ Simulate before the worker runs.
   - The opponent:
   - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
     strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
@@ -186,8 +186,8 @@ flowchart LR
       Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load.
     - Load fills the six slots, every hero's rotation and passive and (with scrolls) the map's scrolls, marks the row
       "✓ Loaded" and offers "↩ Put back the previous party" (party, rotations and scrolls as before). A setup that
-      breaks the party rules (e.g. Front 2 empty on a party quest, before E21's search follows the rules) is not
-      loadable: its button is disabled with the reason in its tooltip.
+      breaks the party rules is not loadable (its button is disabled with the reason in its tooltip); since E21 the
+      search only returns setups that follow them (Desolation Wolf: 3-hero winners, Front 2 filled).
   - Best potion / enchant (quest or map, U9): potions and enchants: `rankConsumables` (`web/src/tools/consumables.ts`)
     rank what a hero should drink or enchant for a fight. Per party hero: potions (one at a time, last 3 quests) or one
     more permanent enchant, ascensions 0/1/2 to try, fights per option (editable: ~56 potions × 40 fights take ~25 s).
