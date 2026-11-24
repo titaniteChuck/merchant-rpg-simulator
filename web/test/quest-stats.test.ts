@@ -118,7 +118,7 @@ test("levelling: map runs are candidates from level 10, the same source in conse
   assert.ok(availableMaps(10).includes(1) && !availableMaps(10).includes(27));
   const src = { kind: "quest" as const, quest: 2, label: "x", amount: 1, win: 1, xpPerRun: 10, hoursPerRun: 1, reviveGold: 0, xpPerHour: 10 };
   const step = (a: number, b: number, s = src): LevelStep => ({ fromLevel: a, toLevel: b, source: s, xpNeeded: 100, runs: 10, hours: 10,
-    reviveGold: 1, mapGold: 0, bands: 1 });
+    reviveGold: 1, mapGold: 0, bands: 1, runsExact: 10, win: 1, xpPerRun: 10, xpPerHour: 10, launchGold: 0, potions: 0, potionGold: 0 });
   const merged = mergeSteps([step(1, 6), step(6, 11), step(11, 16, { ...src, amount: 3 }), step(16, 21, { ...src, amount: 3 })]);
   assert.deepEqual(merged.map((s) => [s.fromLevel, s.toLevel, s.runs, s.bands]), [[1, 11, 20, 2], [11, 21, 20, 2]]);
   const plan = levellingPlan(sim, raw(10), { to: 12, band: 1, n: 3, maps: [1], mapRuns: 2, amounts: "one" });

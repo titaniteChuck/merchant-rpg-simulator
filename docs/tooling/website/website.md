@@ -1032,22 +1032,48 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 ## Levelling page
 
 `site/levelling.html` + `web/src/ui/levelling.ts` (page) + `web/src/ui/levelling-worker.ts` (web worker), on
-`levellingPlan` / `prestigePayoff` of `web/src/tools/levelling.ts` (E12, U12).
+`levellingPlan` / `prestigePayoff` of `web/src/tools/levelling.ts` (E12, U12; first batch of the
+[Levelling review](../roadmap/review-levelling.md), L1).
 
 - Step 1: the hero (default: the lowest one below its tier's max level) with avatar, class, level of max and
-  ascension; up to 5 companions (Front 2-3, Back 1-3; the hero stands in Front 1), who fight alongside and share the XP.
-- Step 2, levelling plan: from level (the hero's by default; lower it to plan a fresh hero), target level, levels per
-  step, quest size (×1 and the max, ×1, the max), minimum win rate, XP potion (+30 / +60 / +100 %), fights per quest.
-  Result: time, quest runs and revive gold, then one row per step: best quest by XP per hour among those won often
-  enough, size, win rate, XP per run, runs, hours, XP per hour, revive gold. Gathering quests (questType 1, e.g.
-  Forest Gathering) are included and labelled "gathering" (the best early XP; the wiki hides them from Enemies).
-  "Stuck at level N" when no quest is won often enough. A map step (`source.kind` "map", E20) shows the map, linked in
-  the visitor's language with its ascension and a "map run" tag (U33; it showed `source.quest`, the map's boss).
-- Step 3, next ascension (none at the last tier): a reference quest (default: the plan's last quest, else the
-  toughest quest at or below the tier's max level). Now vs after: max level, enchant slots, quest size cap, stats at
-  max level, solo win and enemy HP removed on the reference quest; costs: level required (reached or not), gold,
-  enchants lost, hours and runs to level back to max (the relevel plan is in a fold-out).
-- Progress per level band; Cancel terminates the worker.
+  ascension; a hero at max level gets a "max level: planned from level 1" pill and From level 1 (a fresh hero of its
+  class and ascension). Up to 5 companions, "Companions" with no slot names (placed by the game rules: they join party
+  quests they may join and map runs, never solo quests, and share the XP; one tooltip says so); each hero can be
+  picked once (the levelled hero and the heroes in the other selects are disabled).
+- Step 2, levelling plan: from level (the hero's by default), target level, levels per step, fights per quest (5–100),
+  then three segmented controls: quest size (×1 and max, ×1, Max), minimum win rate (50 / 75 / 90 / 99 %) and XP
+  potion (None and the XP Boost items by their game names). Help is in one-line tooltips on the labels (`tip()`, also
+  on tap), no `title` attributes and no sentence by the button.
+- What the plan follows (game rules): the hero opens every quest, so a quest counts from its "Required level"
+  (levelReq − 2 × (tier − 1)); companions join under the join rule; the quest size cap comes from the heroes in the
+  fight (a solo quest: the hero's tier); the hero's XP towards its next level counts when the plan starts at its own
+  level; the XP potion is the strongest XP Boost the hero may drink at each step (up to the one picked), one potion
+  per 3 quests or per map run (its first 3 rooms); every launch costs the quest's gold × size. Expansion switches:
+  only visible quests (no Frentir quests without the Frozen Tome), no map runs while Scribe is hidden
+  (`planSources` with `isVisible` / `isHidden("Scribe")`).
+- Result: tiles Time (`duration()`), Runs and Gold (launch + revive + potions + maps; the split as the tile's hint),
+  then one row per step: levels, best quest (quest bushes with a "quest bush" pill; a map step shows the map, linked
+  with its ascension and a "map run" pill, U33), quest size, win, XP / run, runs, time, XP / min (`xpText`), XP
+  potions (count × name, only when the plan uses one) and gold (`gold()`, the split in its tooltip). A merged step
+  shows its own average win, XP / run and XP / min; runs are XP needed / XP per run over the whole step, rounded up
+  once. Win, XP / min and Gold headers have one-line tooltips. "Stuck at level N" when no quest is won often enough.
+- Step 3, next ascension (none at the last tier): reference quest (quests the hero may open at its max level,
+  grouped by region, toughest first; default: the plan's last quest, else the toughest at or below the max level; the
+  comparison rule in the label's tooltip) and Compare. Now vs after: max level, enchant slots, quest size cap, stats
+  at max level, Win and HP removed (best) on the reference quest; costs: level required (reached or not), gold,
+  enchants lost, "Back to N" (hours and runs to the new tier's max level, whatever the target above) and gold on the
+  way; the relevel plan in a fold-out.
+- Runs: the worker stays alive between runs (game data parsed once, price Solver kept, relevel plans cached by hero,
+  tier and options, so Compare on another reference quest only re-runs the reference fights); progress per candidate
+  ("Level 46 · 35 %"); Cancel, or a new run while one is going, terminates it. Any change of an input (hero,
+  companions, options, reference quest, expansion switches) dims the results on screen under "Settings changed: run
+  it again for new figures." until the next run. CSS: the `levelling l1` block of `site/style.css`.
+- Speed (example save, ascension-2 Cleric 1 → 60, Node): solo 7–16 s → 1.8 s, with 5 level-60 companions 39–78 s →
+  13 s (same plan); candidates are tried best bound first and stop as soon as they can't win the band.
+- Left for the user's design choices (D1–D7 of the review): the page layout and options fold (F13, F23), the result
+  layout (F17), the companion model (F07, F24), who opens a party quest (now always the levelled hero: D4 A), the XP
+  potion's form (kept as a picked potion, modelled per step: D5 A), the next-ascension block and map runs (asc 0,
+  grade 3, craft time in full).
 
 ## Class balance page
 

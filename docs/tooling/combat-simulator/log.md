@@ -2,6 +2,9 @@
 
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
+## 2026-11-25
+- **Levelling first batch (L1, [review](../roadmap/review-levelling.md))**: the plan's hero opens its quests (start rule levelReq − 2 × (tier − 1), `openableQuests`; companions join under `canJoin`); quest size cap from the heroes in the fight; quest launch gold, potion and map gold per step and plan (`gold`); XP Boost by level and tier (3 quests, or 3 map rooms through the engine's own boost charges); the hero's XP already earned counts; the hero is found in results by slot; step averages from exact runs; relevel to the new tier's max level; `planSources` for the expansion switches; candidates best bound first with early stops (same choices; example Cleric 1 → 60: 7–16 s → 1.8 s solo, 39–78 s → 13 s with 5 companions). Combat results unchanged.
+
 ## 2026-11-24
 - **Forced actions in the schedule score (E22)**: `scoreSchedule` plays Basic in a forced-action window (Drown, Murlok Monarch) instead of the planned skill, in the score and the race, not just the notes; `played` per location; the pre-filter counts orderings that play the same once. Only quest 92 has a forced action: its 27 warm-start entries changed (now Basic in the drowned slots), the other 3,780 are identical.
 - **Time budget (E22)**: `searchParties` (and every search through `SearchControl`) polls the stop before every fight and map run (`stop` argument of `evaluate` / `evaluateMap` / `evaluateTarget`, every 64 orderings in the pre-filter); scroll prices once per search; a set cut short while tuning stays as screened. Searches end within ~15 ms of the budget (was 24 s for 20 s).

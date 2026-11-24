@@ -668,6 +668,14 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .lv-cost .facts dt { color: var(--muted); }
 .lv-cost .facts dd { margin: 0; }
 .lv-payoff .up { color: var(--good, #16a34a); font-weight: 600; }
+/* levelling l1: tooltip labels, segmented options, results dimmed after a change */
+.lv-tip { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+.lv-options .lv-seg .seg { align-self: flex-start; }
+.lv-options .lv-seg-wide { grid-column: span 2; }
+@media (max-width: 560px) { .lv-options .lv-seg-wide { grid-column: auto; } }
+.lv-stale .lv-result { opacity: .45; }
+.lv-stale-note { margin: 0 0 8px; }
+/* end levelling l1 */
 .lv-payoff .down { color: var(--bad, #dc2626); font-weight: 600; }
 
 /* ------------------------------------------------------------------ enemy timeline (U11) */

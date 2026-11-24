@@ -299,33 +299,58 @@ summarizeByClass(rows, threshold = 0.9): ClassSummary[]
 
 ```ts
 xpBetween(tier, from, to): number          // XP from level `from` to `to`
-availableQuests(level, tier): number[]      // quest-board quests (not questType 8) the hero may take
+availableQuests(level, tier): number[]      // quest-board quests (not questType 8) a hero may join (heroPartyLevelReq)
+openableQuests(level, tier): number[]       // ... it may open itself: level >= levelReq - 2 x (tier - 1) (the plan's hero)
+startLevel(quest, tier), canJoin(level, quest)
 availableMaps(level, crafterLevel = 60): number[]   // craftable maps, from hero level 10
-questXpRate(sim, hero, front, back, quest, amount = 1, n = 30): XpSource   // win, xpPerRun, hoursPerRun, reviveGold, xpPerHour
-mapXpRate(sim, hero, front, back, map, { asc, grade, n, stopBelow }): XpSource   // whole runs: craftHours + runHours
-levellingPlan(sim, raw, { from, to, band = 5, companions, n, quests, amounts, minWin = 0.5, expModBonus,
+planSources(visible, scribeHidden): { quests, maps }   // the plan's quests and maps under the expansion switches
+xpBoosts(), boostLevel(boost, tier), xpBoostAt(level, tier, capId)   // XP Boost potions, by level and tier
+questXpRate(sim, hero, front, back, quest, amount = 1, n = 30, { expModBonus, stopBelow, stopUnder }): XpSource
+questXpBound(hero, front, back, quest, amount, expModBonus): number  // most XP/h it could give
+mapXpRate(sim, hero, front, back, map, { asc, grade, n, stopBelow, stopUnder, boost }): XpSource
+levellingPlan(sim, raw, { from, to, band = 5, companions, n, quests, amounts, minWin = 0.5, xpBoost,
   maps, mapRuns = 10, mapGrade = 3, crafterLevel = 60, solver }, ctl): LevellingPlan
 mergeSteps(steps): LevelStep[]              // consecutive bands with the same source -> one step
-prestigePayoff(sim, raw, { quest, n }, levellingOptions, ctl): PrestigePayoff
+relevelInput(raw, levellingOptions): [raw, options]   // the hero right after ascending, 1 -> the new max level
+prestigePayoff(sim, raw, { quest, n }, levellingOptions, ctl, relevel?): PrestigePayoff
 ```
 
-- **XP rate**: the hero's own share over seeds 1..n, wins only, nothing at max level; hours = quest time.
-  `questXpRate` refuses a map-only enemy (`questType` 8: map bosses 91–98, Treasure Bushes 99–104).
+- **XP rate**: the hero's own share over seeds 1..n, wins only, nothing at max level; hours = quest time. The hero is
+  found in the result by its slot (a companion may share its name and class). `launchGold` = quest gold × amount.
+  `questXpRate` refuses a map-only enemy (`questType` 8: map bosses 91–98, Treasure Bushes 99–104). `stopBelow`:
+  stop once the win rate can't reach it; `stopUnder`: stop once even every fight left won at the fastest grade can't
+  beat that XP/h; either marks the source `cut` (left out by the plan).
 - **Map runs** (`mapXpRate`): XP of every room won while alive (round(exp × mapEnemyMod × 0.2 / heroes) per room,
   `Campaign:runCombat`; a lost run keeps the rooms won), hours = the map's craft time (`mapCraftSeconds`, lower maps
-  included) + the run, win = whole runs won. A step on a map also carries `mapGold` (maps at Solver cost).
-- **Plan**: every `band` levels the hero is rebuilt at that level; candidates are the quest-board quests × amount (1
-  and the party's max by default) and, from level 10, every craftable map run. A map is skipped when even every room
-  won (solo share, 1.5 × the expected rooms) over its shortest time (craft + a quarter of the walk) can't beat the best
-  source. The best XP/h among those won at least `minWin` is kept; runs = XP needed / XP per run. Consecutive bands
-  with the same source (same quest and amount, or same map) are merged into one step (`bands` counts them).
-  `stuckAt` marks a band with no usable source.
+  included) + the run, win = whole runs won. A step on a map also carries `mapGold` (maps at Solver cost). `boost`:
+  the hero drinks an XP Boost before each run; it lasts the first 3 rooms (one charge per room, the engine's own
+  `reduceBoost`).
+- **Plan**: every `band` levels the hero is rebuilt at that level. Candidates: the quest-board quests the hero may
+  open (start rule, region open; `quests` narrows them) × amount (1 and the max of the heroes actually in the fight:
+  a solo quest takes the hero alone, so its cap is the hero's tier), and, from level 10, every craftable map run
+  (`maps`). The hero opens every quest (front 1 solo, front 2 party); companions join party quests they may join
+  (`canJoin`) and map runs. Candidates run quests first, best bound first (`questXpBound`; maps: every room won, solo
+  share, 1.5 × the expected rooms over craft + a quarter of the walk); one whose bound can't beat the best so far is
+  skipped, and a running one stops as soon as it can't (`stopUnder`) or can't reach `minWin` (`stopBelow`): the same
+  choice as running them all. The best XP/h among those won at least `minWin` is kept. Progress counts candidates.
+- **Step figures**: runs = XP needed / XP per run, exact (`runsExact`; hours and gold come from it, `runs` rounds the
+  step up). The first band subtracts the hero's XP towards its next level (`raw.exp`, `startExp`) when the plan starts
+  at its own level. Consecutive bands with the same source (same quest and amount, or same map, same potion) merge
+  into one step (`bands`); a step's `win` (by runs), `xpPerRun` and `xpPerHour` (XP needed / hours) cover all its bands.
+  Gold per step and plan: `launchGold`, `reviveGold`, `potionGold`, `mapGold`; `gold` is their sum. `stuckAt` marks a
+  band with no usable source.
+- **XP Boost** (`xpBoost`, a potion id): at each band the strongest XP Boost the hero may drink (itemLevel − 5 −
+  4 × (tier − 1): XP Boost +2 from 50 at ascension 0, 42 at ascension 2), never stronger than the one picked; quests
+  get its expMod on every run with one potion per 3 quests, maps on their first 3 rooms with one potion per run;
+  `potions` (whole) and `potionGold` (Solver cost) per step.
 - **Why the plan said "Murlok Monarch 23 times, then 12 times"** (before E20): `availableQuests` took every quest with
   an enemy, so the map bosses 91–94 counted as 1v1 quests the hero could chain (Monarch: 12,000 XP, quest time
   1,400 s); and each 5-level band was its own step, so the same pick in two bands printed twice. The Monarch only
   appears at the end of Murlok Madness Map, whose full run a solo level-41 Cleric loses every time.
 - **Prestige payoff**: stats, enchant slots, amount cap and a solo reference fight at each tier's max level (the next
-  tier without enchants), plus level required, gold, enchants lost and the hours to level back up (`relevel`).
+  tier without enchants), plus level required, gold, enchants lost and the hours to level back up to the new tier's
+  max level (`relevel`, whatever `to` the levelling options carry; a plan passed in is reused, the page's worker
+  caches them).
 - **Farming report**: rows add `xp_per_run` and `xp_per_hour` (per hero) and `revive_gold`; map runs report the XP
   each hero earned (`heroes[].xp`, TypeScript only, ignored by the Lua difftest).
 - Example (real save, tier-3 Cleric, solo 1 → 60, n = 20): before E20 33 h in 12 steps, ending with
