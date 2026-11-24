@@ -8,8 +8,8 @@ import { loadSaveText, type Save } from "../tools/save.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import { itemName as shownItemName } from "./names.ts";
 import {
-  $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gradeBadge, heroAsc, pill,
-  type Row as Cells, table, withAsc,
+  $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, duration, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gold, gradeBadge,
+  heroAsc, pill, type Row as Cells, segmented, table, withAsc,
 } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
@@ -66,9 +66,9 @@ const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
 function renderOverview(sv: Save): HTMLElement {
   const s = summary(sv);
   const rows: [string, string, string, string?][] = [
-    ["🪙", "Gold", fmt.format(s.gold)],
-    ["💰", "Inventory value", `${fmt.format(s.inventoryValue)} g`, `base sell value · ${fmt.format(s.inventoryStacks)} stacks`],
-    ["📈", "Gold earned", fmt.format(s.totalGoldEarned), "all time"],
+    ["🪙", "Gold", gold(s.gold)],
+    ["💰", "Inventory value", gold(s.inventoryValue), `base sell value · ${fmt.format(s.inventoryStacks)} stacks`],
+    ["📈", "Gold earned", gold(s.totalGoldEarned), "all time"],
     ["🔨", "Items crafted", fmt.format(s.totalCrafted)],
     ["🛒", "Sales", fmt.format(s.totalSales)],
     ["🛡️", "Heroes", String(s.heroes)],
@@ -98,9 +98,11 @@ function iconHeaders(wrap: HTMLElement, cols: Column[], icons: Record<string, [(
 
 /** A count cell: the number, or a muted "–" for 0 (the row keeps 0, so the column sorts as numbers). */
 const countCell = (key: string) => (r: Cells) => (Number(r[key]) ? fmt.format(Number(r[key])) : el("span", { class: "muted" }, "–"));
+/** A gold cell: "1,250 g" (R1 F28), empty when the value is unknown; the row keeps the number, for sorting and the CSV. */
+const goldCell = (v: unknown) => (typeof v === "number" ? gold(v) : "");
 
 const STAT_LABELS: Record<string, string> = {
-  maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit ×", def: "Def", mdef: "Mdef",
+  maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit damage", def: "Def", mdef: "Mdef",
   eva: "Eva", speed: "Speed", maxActionPoints: "AP",
 };
 /** Radar axes (combat stats on a comparable scale); the rest is listed under the chart. */
@@ -153,14 +155,17 @@ export function passiveRows(passive: string): HTMLElement {
     el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Passive"), el("th", { scope: "col" }, "Bonus"))), el("tbody", {}, tr)));
 }
 
-/** "18 / 20 AP used · 2 left" (over budget: a warning, the game then plays the default rotation). */
+/**
+ * "18 / 20 AP used · 2 left" (over budget: a warning, the game then plays the default rotation). The hero page's
+ * only AP figure (R1 F37: the stats list no longer repeats the hero's AP).
+ */
 export function apBudget(ap: ApBudget): HTMLElement {
   const left = ap.max - ap.used;
   const over = left < 0;
   const label = `${ap.used} of ${ap.max} action points used, ${over ? `${-left} over budget` : `${left} remaining`}`;
   return el("div", { class: `ap-budget${over ? " over" : ""}`, role: "group", "aria-label": label, title: label },
     el("span", { class: "ap-budget-used" }, el("strong", {}, String(ap.used)), ` / ${ap.max} AP used`),
-    el("span", { class: "ap-budget-left" }, over ? `⚠ ${-left} over: the game plays the default rotation` : `Remaining ${left} / ${ap.max}`),
+    el("span", { class: "ap-budget-left" }, over ? `⚠ ${-left} over: the game plays the default rotation` : `· ${left} left`),
     bar(ap.max > 0 ? ap.used / ap.max : 0));
 }
 
@@ -179,10 +184,12 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
   const name = String(r.name);
   const stats = v.stats
     ? el("div", { class: "hero-stats" }, statRadar(v.stats, best, `${name}'s combat stats`, 340),
-      el("dl", { class: "stats extra" }, ...EXTRA_STATS.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k]))
+      // R1 F37: AP only in the rotation's budget line when there is one; crit damage reads "×2.00" (no × in its label).
+      el("dl", { class: "stats extra" }, ...EXTRA_STATS.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k])
+        && (k !== "maxActionPoints" || !v.ap))
         .map((k) => {
           const x = v.stats![k];
-          return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `${x.toFixed(2)}×` : fmt.format(x)));
+          return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `×${x.toFixed(2)}` : fmt.format(x)));
         })))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
   // Two columns: weapon, head, chest | bracers, feet, talisman (gearGrid in dom.ts).
@@ -238,7 +245,7 @@ const ITEM_COLS: Column[] = [
   { key: "name", label: "Item", render: itemCell, sortBy: baseName }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
   ascCol, ...GRADES_BEST_FIRST.map((g): Column => ({ key: g, label: g, num: true, render: countCell(g) })),
   { key: "total", label: "Total", num: true },
-  { key: "unit_sell", label: "Unit value", num: true }, { key: "total_sell", label: "Total value", num: true },
+  { key: "unit_sell", label: "Unit value", num: true, show: goldCell }, { key: "total_sell", label: "Total value", num: true, show: goldCell },
 ];
 /** The inventory table; each grade column's header is the grade's badge ("Grade S count" for screen readers). */
 const inventoryTable = (rows: Row[]) => iconHeaders(table(rows, ITEM_COLS, (r) => (r.where === "counter" ? "counter" : "")), ITEM_COLS,
@@ -247,8 +254,15 @@ const inventoryTable = (rows: Row[]) => iconHeaders(table(rows, ITEM_COLS, (r) =
 function renderInventory(sv: Save): HTMLElement {
   const all = inventoryRows(sv);
   const search = el("input", { type: "search", placeholder: "Filter by name", "aria-label": "Filter by name" }) as HTMLInputElement;
-  const kind = el("select", { "aria-label": "Item kind" },
-    ...["all", "equipment", "consumable", "material", "map", "counter"].map((k) => el("option", { value: k }, k === "counter" ? "on the counter" : k))) as HTMLSelectElement;
+  // The kind filter as the shared segmented control (R1 F27).
+  const kind = { value: "all" };
+  const kinds = segmented("inv-kind", "Item kind", [
+    { value: "all", label: "All" }, { value: "equipment", label: "Equipment" }, { value: "consumable", label: "Consumables" },
+    { value: "material", label: "Materials" }, { value: "map", label: "Maps" }, { value: "counter", label: "On the counter" },
+  ], kind.value, (v) => {
+    kind.value = v;
+    update();
+  });
   const holder = el("div");
   const filtered = () => {
     const q = search.value.trim().toLowerCase();
@@ -259,13 +273,12 @@ function renderInventory(sv: Save): HTMLElement {
   const total = el("span", { class: "muted small" });
   const update = () => {
     const rows = filtered();
-    total.textContent = `${rows.length} stacks · ${fmt.format(rows.reduce((s, r) => s + (Number(r.total_sell) || 0), 0))} g base value`;
+    total.textContent = `${fmt.format(rows.length)} stacks · ${gold(rows.reduce((s, r) => s + (Number(r.total_sell) || 0), 0))} base value`;
     holder.replaceChildren(inventoryTable(rows));
   };
   search.addEventListener("input", update);
-  kind.addEventListener("change", update);
   update();
-  return el("div", {}, toolbar(search, kind, total), holder,
+  return el("div", {}, toolbar(search, kinds, total), holder,
     el("p", { class: "muted small" }, "Value = base customer price before haggling, preferences and counter bonuses."));
 }
 
@@ -274,7 +287,7 @@ function renderMaps(sv: Save): HTMLElement {
   if (!rows.length) return el("p", { class: "muted" }, "No maps in this save.");
   return el("div", {}, table(rows, [
     { key: "name", label: "Map", render: itemCell, sortBy: baseName }, { key: "item_level", label: "Lvl", num: true }, ascCol,
-    { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
+    { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Time", num: true, show: (v) => (typeof v === "number" ? duration(v * 60) : "") },
     { key: "essence", label: "Essence / run", render: (r) => {
       // Linked essence names; the row's text form goes to the CSV.
       const it = sv.mapInventory[Number(r.slot) - 1];
@@ -282,7 +295,7 @@ function renderMaps(sv: Save): HTMLElement {
       return ess.length ? el("span", { class: "nowrap" }, ...ess.flatMap(([id, amt], k) => [...(k ? [", "] : []), `${fmt.format(amt)} × `, itemLink("material", id, undefined, undefined, undefined, { always: true })]))
         : el("span", { class: "muted" }, "—");
     } },
-    { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true }, { key: "enchant_attempts", label: "Enchant attempts" },
+    { key: "boss", label: "Boss" }, { key: "unit_sell", label: "Value", num: true, show: goldCell }, { key: "enchant_attempts", label: "Enchant attempts" },
   ]));
 }
 

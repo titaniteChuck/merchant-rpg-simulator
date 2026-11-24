@@ -67,11 +67,14 @@ flowchart LR
   menus (U35, [Menus](#menus): the Save dropdown, the second row under the top bar once a save is loaded, the phone
   drawer); the in-page tabs are gone. A section link is a normal hash link (`hashchange` re-renders, Back works). No
   hash or an unknown one opens Overview.
-- Overview: small cards (`.save-cards`, about 80px tall, several per row, two per row on a phone), each with a label,
-  a big number and an optional one-line hint: gold, inventory value and stacks, gold earned, items crafted, sales,
-  heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
+- Overview: small cards (`.save-cards`, about 80px tall, at most four per row so the eight cards make two full rows,
+  two per row on a phone; the cards of a short last row grow to fill it, R1 F35), each with a label,
+  a big number and an optional one-line hint: gold, inventory value and stacks, gold earned (both as "171,946 g"),
+  items crafted, sales, heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
   outlines carry their own tooltip and screen-reader label.
-- Inventory: one count column per grade, best first (S, A, B, C, D: `GRADES_BEST_FIRST` / `gradeCounts` in
+- Inventory: a kind filter (All, Equipment, Consumables, Materials, Maps, On the counter) as the shared segmented
+  control (R1 F27, [Shared page parts](#shared-page-parts)); a Type column with the item's subtype in one spelling
+  ("Essence", "Health", "Hood": `itemTypeText` in `names.ts`, R1 F30); values as "15 g". One count column per grade, best first (S, A, B, C, D: `GRADES_BEST_FIRST` / `gradeCounts` in
   `save-tables.ts`), then Total (the stack size). A stack split by grade keeps its split; a single-grade item counts
   in its grade. Cells hold numbers only ("–" for 0; rows keep 0 so the columns sort as numbers). The header shows the
   grade badge (accessible name "Grade S count"); every column sorts. The CSV has the same `S,A,B,C,D,total` columns
@@ -86,7 +89,8 @@ flowchart LR
   - Passive and rotation use the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
     (hover highlight, `clickableRow` in `dom.ts`), the AP shown with the same badge (`apBadge` in `dom.ts`); Basic
     rows (0 AP) have no page. Passive row: name, bonus. Rotation rows: turn, skill, AP, effect.
-  - AP budget beside the "Rotation" label: "18 / 20 AP used", "Remaining 2 / 20" and a bar; over budget it warns that
+  - AP budget beside the "Rotation" label: "18 / 20 AP used · 2 left" and a bar, the page's only AP figure (R1 F37:
+    the stats under the radar no longer list AP; crit damage reads "×2.00"); over budget it warns that
     the game plays the default rotation instead (`Hero.calculateAPRemainder`). `HeroView.ap` in `save-tables.ts`:
     `used` = sum of the skills' `apCost` (`rotationAp`), `max` = `api.skillInfo(hero).maxAP`, the engine's
     `heroMaxActionPoints`: 5 + floor((min(level, 40) − 10) / 2) + apMod (gear, passive); 20 at level 40 and above.
@@ -102,7 +106,7 @@ flowchart LR
   `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each
   ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
   `prestigeLevel` and lower ascensions use `level`; an ascension not unlocked shows "—".
-- Maps: essence per run from the profit model (`mapEssence`, with the map's grade, ascension, prefix and suffix).
+- Maps: time as a duration ("4 min"), value as "15 g"; essence per run from the profit model (`mapEssence`, with the map's grade, ascension, prefix and suffix).
 - Item names with modifiers (U34): "[Prefix] Item +N" everywhere (inventory, counter, maps, hero gear, crafters, CSV),
   `modItemName` in `names.ts` (see [Languages](#languages)); name columns sort by the base name.
 - No "… page in the wiki →" links next to a name that is already a link (U34): a name link opens its wiki page.
@@ -854,6 +858,40 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   pages, battle slots) and the class-balance matrix headers; the battle stat strips, the "Good against" T1–T5 marks
   and the class-balance cells already were. Not tables, so unchanged: the wiki loot lists (`.loot-pct`), overview
   values and tiles.
+- Site-wide consistency (R1, the live-site review; CSS block `/* r1 global */ … /* end r1 global */` at the end of
+  `style.css`, tests `web/test/r1-global.test.ts`):
+  - Grade badges: white letters on darker grade colours, every grade at WCAG AA in both themes (white on D `#6b7085`
+    4.90, C `#1a8048` 4.97, B `#2f6bc8` 5.17, A `#9440c4` 5.54, S gradient `#b45309` → `#c42a6e` 5.02 / 5.38; were
+    3.2–4.5).
+  - Table headers: one style, the `table()` helper's (small, upper case, muted, bold); `thead th` applies it to the
+    hand-built tables too (class and hero ability rows, battle results, Good against, drop tables). Row headers
+    (`tbody th`) keep theirs.
+  - Toggles: two styles only. A segmented control for one choice out of a few: `.seg` with `label.seg-opt` around a
+    radio (`segmented(name, label, options, value, onChange)` in `dom.ts`; the save viewer's inventory kind filter);
+    the older `.mode-switch` (battle, class page ascension, item ascension) and `.qxp-toggle` (enemy XP grade and
+    party) look the same: joined options, the picked one gold-edged on a gold tint (the class page's ascension keeps
+    its tier colour as the edge). An on / off chip for filters that combine: `.chip-toggle`, a button with
+    `aria-pressed` (`chipToggle(label, on, onToggle)` in `dom.ts`). Selected tabs (`.tabs`) and the battle mode cards
+    stay as they are.
+  - Numbers, gold and time: `fmt` / `fmt1` / `pct` in `dom.ts` format in the language picked in the top bar
+    ("171,946" in English, "171 946" in French); `gold(n, decimals?)` is THE gold amount ("171,946 g", "12.5 g", "—"
+    when unknown); `duration(sec)` THE duration ("15 s", "4 min", "2 h 6 min", "1 d 3 h"; never "0 min").
+  - Item types: `subtypeLabel` / `itemTypeText` in `names.ts` give every subtype a capital first letter ("essence" →
+    "Essence"; "Head · Hood" for equipment with its slot) and the kind for an item without one.
+  - Skip link: `nav.ts` puts "Skip to content" (`.skip-link`, visible when focused) first in every page's body; it
+    moves the focus to `<main>` (given `id="main"` when it has no id, and `tabindex="-1"`) without touching the hash,
+    which the save viewer and the wiki read as a route.
+  - Card grids: the save overview cards and the wiki's fact cards (`.facts`) wrap as flex rows whose cards grow, so
+    a last card alone fills its row instead of sitting alone in a column.
+  - Home: no "Available" badge on the cards; Save viewer, Battle simulator, Wiki (the menu's order), then "Other tools"
+    (Profit, Farming, Levelling, Class balance: frozen) as smaller, quieter cards.
+  - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows and Steam Deck
+    paths, slot file names) under the drop zone of every page that uses `initSaveSource`; the help a page's HTML still
+    carries (`data-save-help`) is replaced by it.
+  - Save menu: three groups split by separators: Save file (Reload, Choose another file, Try the example save,
+    Forget), Expansions, then the page's entries folded under their title ("Export (CSV) ▸" in the save viewer). The
+    menu (and the expansions button's) is never taller than the window: `fitMenu` in `expansion-menu.ts` sets its
+    `max-height` to the room under it and it scrolls inside.
 - Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
   less it also checks that the top bar and the tab rows are one line high (U20). Menus (U35): above 760 px the main
   menu shows with a current entry and every dropdown opens on screen and closes with Escape; at 760 px and less only

@@ -41,6 +41,31 @@ export function itemName(type: string, id: number | string): string | undefined 
   return (isItemType(type) ? tr(type, id) : undefined) ?? G.itemData?.[type]?.[id]?.name;
 }
 
+// ---------------------------------------------------------------- item types (R1 F30)
+/** The four item kinds as the site names them. */
+export const ITEM_TYPE_LABELS: Record<string, string> = { equipment: "Equipment", consumable: "Consumable", material: "Material", map: "Map" };
+
+/**
+ * An item subtype as the site shows it: the game's subType with a capital first letter ("essence" → "Essence",
+ * "Great Helm" stays), "" for none (the game's empty and "None" rows). Materials store theirs in lower case,
+ * equipment and consumables in Title case; this one helper makes them read alike.
+ */
+export function subtypeLabel(sub: unknown): string {
+  const s = typeof sub === "string" ? sub.trim() : "";
+  if (!s || s === "None") return "";
+  return s[0].toUpperCase() + s.slice(1);
+}
+
+/**
+ * The type line of an item: "Head · Hood" for equipment (its slot, then subtype), "Essence", "Health" … for the rest;
+ * the kind ("Material") when there is no subtype. `slot` is the slot's name, from the caller (dom.ts GEAR_SLOT_NAMES).
+ */
+export function itemTypeText(type: string, sub: unknown, slot?: string): string {
+  const s = subtypeLabel(sub);
+  if (type === "map") return ITEM_TYPE_LABELS.map; // every map's subType is "Map"
+  return [slot, s].filter(Boolean).join(" · ") || ITEM_TYPE_LABELS[type] || subtypeLabel(type);
+}
+
 /** An enemy's name: the quest's `name`, or its rare variant's `nameB`. */
 export function enemyName(id: number | string, rare = false): string | undefined {
   const q: Any = G.questData?.[id];

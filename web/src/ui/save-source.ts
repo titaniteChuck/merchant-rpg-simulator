@@ -11,11 +11,16 @@
  * file named "Example save": same parsing, kept in IndexedDB for the other pages, Forget and choosing a file as usual.
  *
  * Expansions (U28): every loaded save goes to expansion-state.ts (noteSave), which guesses the expansions it owns; the
- * save menu ends with the expansions items ("I own Frozen Tome", "I own Scribe", "Show expansion content"). With no
+ * save menu holds the expansions items ("I own Frozen Tome", "I own Scribe", "Show expansion content"). With no
  * save loaded, the top bar's expansions button (expansion-menu.ts) holds them instead.
+ *
+ * R1: the save menu is three groups split by separators (Save file; Expansions; the page's own entries such as the
+ * save viewer's "Export (CSV)", folded under their title) and never taller than the window (it scrolls inside). The
+ * "Where is my save file?" help is one component (saveHelp), put under the drop zone of every page that calls
+ * initSaveSource; a help still in a page's HTML (data-save-help) is replaced by it.
  */
 import { el } from "./dom.ts";
-import { expansionMenuSection, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
+import { expansionMenuSection, fitMenu, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, putSave, rereadHandle, type SaveHandle } from "./save-store.ts";
@@ -52,6 +57,24 @@ export interface SaveSourceOptions {
   menuExtras?: () => { title: string; items: { label: string; hint: string; run: () => void }[] };
 }
 
+/**
+ * THE "Where is my save file?" help (R1 F38): one folded section, the same on every page with a drop zone. Marked
+ * data-save-help, so it hides once a save is loaded. initSaveSource puts it under the drop zone and replaces any
+ * help the page's HTML still carries.
+ */
+export function saveHelp(): HTMLElement {
+  const code = (t: string) => el("code", {}, t);
+  return el("details", { class: "help save-help", "data-save-help": "" },
+    el("summary", {}, "Where is my save file?"),
+    el("ul", {},
+      el("li", {}, el("strong", {}, "Windows: "), code("%APPDATA%\\Retora\\Merchant\\Documents"),
+        " (paste it in the file dialog's address bar). In Chrome or Edge you only do this once: the dialog then reopens in that folder."),
+      el("li", {}, el("strong", {}, "Linux / Steam Deck (Proton): "),
+        code("<Steam library>/steamapps/compatdata/346750/pfx/drive_c/users/steamuser/AppData/Roaming/Retora/Merchant/Documents")),
+      el("li", {}, "Slot 1 is ", code("PlayerData.txt"), ", slots 2 to 5 are ", code("Slot2Data.txt"), " … ", code("Slot5Data.txt"),
+        ". Backups (", code("…Backup1.txt"), ") work too.")));
+}
+
 function age(ms: number): string {
   const d = new Date(ms);
   const sameDay = new Date().toDateString() === d.toDateString();
@@ -73,6 +96,9 @@ export function initSaveSource(o: SaveSourceOptions): void {
     el("span", { class: "muted small" }, "No save at hand? Use an anonymised one from a real game."));
   o.drop.after(exampleRow);
   exampleBtn.addEventListener("click", () => useExample());
+  // The one save help, under the example row; a help the page still has in its HTML gives way to it (R1 F38).
+  document.querySelectorAll("[data-save-help]").forEach((h) => h.remove());
+  exampleRow.after(saveHelp());
 
   const setLoaded = (loaded: boolean) => {
     dropBlock.hidden = loaded;
@@ -105,26 +131,47 @@ export function initSaveSource(o: SaveSourceOptions): void {
       });
       return b;
     };
-    const extras = el("div", { class: "save-menu-extras", role: "group" });
-    menu.append(
-      el("p", { class: "muted small" }, el("strong", {}, name), el("br"),
-        isExample ? `an anonymised real save · opened ${age(savedAt)}` : `opened ${age(savedAt)} · kept in this browser only`),
+    // R1 F45: three groups split by separators (the file, the expansions, the page's exports, folded), and the menu
+    // never taller than the window (it scrolls inside, fitMenu).
+    const fileGroup = el("div", { class: "save-menu-group", role: "group", "aria-label": "Save file" },
+      el("p", { class: "muted small save-menu-title" }, "Save file"),
       ...(isExample ? [] : [item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload)]),
       item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
       ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
-      item("🗑 Forget", "Remove the save from this browser", forget), extras, expansionMenuSection());
-    /** The page's own entries, rebuilt on every opening (they follow what the page shows). */
+      item("🗑 Forget", "Remove the save from this browser", forget));
+    const extras = el("div", { class: "save-menu-extras save-menu-group", role: "group" });
+    const sep = () => el("div", { class: "save-menu-sep", role: "separator" });
+    const extrasSep = sep();
+    menu.append(
+      el("p", { class: "muted small save-menu-head" }, el("strong", {}, name), el("br"),
+        isExample ? `an anonymised real save · opened ${age(savedAt)}` : `opened ${age(savedAt)} · kept in this browser only`),
+      fileGroup, sep(), expansionMenuSection(), extrasSep, extras);
+    /** The page's own entries (folded under their title), rebuilt on every opening: they follow what the page shows. */
     const fillExtras = () => {
       const x = o.menuExtras?.();
-      extras.replaceChildren(...(x && x.items.length
-        ? [el("p", { class: "muted small save-menu-title" }, x.title), ...x.items.map((e) => item(e.label, e.hint, e.run))] : []));
-      extras.setAttribute("aria-label", x?.title ?? "");
+      const has = Boolean(x && x.items.length);
+      extrasSep.hidden = !has;
+      if (!x || !has) return void extras.replaceChildren();
+      const list = el("div", { class: "save-menu-sub", id: "save-menu-extras-list", hidden: "" }, ...x.items.map((e) => item(e.label, e.hint, e.run)));
+      const fold = el("button", { type: "button", role: "menuitem", class: "save-menu-fold", "aria-expanded": "false", "aria-controls": list.id },
+        el("span", {}, x.title), el("span", { class: "fold-mark", "aria-hidden": "true" }, "▸"));
+      fold.addEventListener("click", (e) => {
+        e.stopPropagation();
+        list.hidden = !list.hidden;
+        fold.setAttribute("aria-expanded", String(!list.hidden));
+        fitMenu(menu);
+      });
+      extras.replaceChildren(fold, list);
+      extras.setAttribute("aria-label", x.title);
     };
     button.addEventListener("click", () => {
       if (menu.hidden) fillExtras();
       menu.hidden = !menu.hidden;
       button.setAttribute("aria-expanded", String(!menu.hidden));
-      if (!menu.hidden) (menu.querySelector("button") as HTMLButtonElement | null)?.focus();
+      if (!menu.hidden) {
+        fitMenu(menu);
+        (menu.querySelector("button") as HTMLButtonElement | null)?.focus();
+      }
     });
     chip = el("div", { class: "save-chip" }, button, menu);
     document.addEventListener("click", (e) => {

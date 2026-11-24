@@ -1642,3 +1642,102 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .wiki-empty { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
 .wiki-empty p { margin: 0 0 10px; }
 /* end r1 wiki world */
+/* r1 global */
+/*
+ * R1 (live-site review) site-wide fixes, one block so the other pages' blocks stay untouched. Shared classes:
+ * .seg / .seg-opt (segmented control, dom.ts segmented()), .chip-toggle (on / off chip, dom.ts chipToggle()),
+ * .skip-link (nav.ts), .save-help (save-source.ts saveHelp()), .save-menu-group / -sep / -fold (save menu).
+ */
+
+/* F05: grade badges, white text at 4.5:1 or more on every badge (the badge is the same in both themes):
+   D 4.90, C 4.97, B 5.17, A 5.54, S 5.02 to 5.38. */
+.grade-D { background: #6b7085; } .grade-C { background: #1a8048; } .grade-B { background: #2f6bc8; }
+.grade-A { background: #9440c4; } .grade-S { background: linear-gradient(135deg, #b45309, #c42a6e); }
+
+/* F13: ONE table header style, the table() helper's (small, upper case, muted), for hand-built tables too
+   (class pages, the hero page, battle results, Good against…). Row headers (tbody th) keep theirs. */
+thead th { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+thead th button { font-weight: 700; }
+thead th .grade, thead th .xp-badge { letter-spacing: 0; text-transform: none; }
+thead th abbr { text-decoration: none; }
+
+/* F27: ONE segmented control (one choice out of a few) and ONE on / off chip.
+   Segmented: .seg > .seg-opt (radio in a label, dom.ts segmented()); the older .mode-switch (labels with radios) and
+   .qxp-toggle (buttons with aria-pressed) share the look: joined options, the picked one gold-edged on a gold tint. */
+.seg, .mode-switch { display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 0; border: 0; border-radius: 0;
+  background: none; box-shadow: none; max-width: 100%; }
+.seg-opt, .mode-switch > label, .qxp-toggle > button {
+  position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 -1px; padding: 5px 12px;
+  border: 1px solid var(--border); border-radius: 0; background: var(--card-2); color: var(--muted);
+  font: inherit; font-size: 0.88rem; font-weight: 650; line-height: 1.3; cursor: pointer; white-space: nowrap; }
+/* One row: in a narrow box (the battle opponent column, a phone) an option's text wraps inside it, the row never breaks. */
+.seg-opt, .mode-switch > label { flex: 0 1 auto; min-width: 0; white-space: normal; text-align: center; justify-content: center; }
+/* A long .seg (six kinds) may still wrap on a phone, as whole options. */
+.seg { flex-wrap: wrap; row-gap: 4px; }
+.seg-opt { white-space: nowrap; }
+.seg-opt:first-of-type, .mode-switch > label:first-of-type, .qxp-toggle > button:first-of-type { margin-left: 0; border-radius: 9px 0 0 9px; }
+.seg-opt:last-of-type, .mode-switch > label:last-of-type, .qxp-toggle > button:last-of-type { border-radius: 0 9px 9px 0; }
+.seg-opt:only-of-type, .mode-switch > label:only-of-type, .qxp-toggle > button:only-of-type { border-radius: 9px; }
+.seg-opt:hover, .mode-switch > label:hover, .qxp-toggle > button:hover { color: var(--fg); z-index: 1; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.seg-opt input, .mode-switch input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.seg-opt:has(input:checked), .mode-switch > label:has(input:checked), .qxp-toggle > button[aria-pressed="true"] {
+  z-index: 2; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
+.seg-opt:has(input:focus-visible), .mode-switch > label:has(input:focus-visible), .qxp-toggle > button:focus-visible {
+  z-index: 3; outline: 2px solid var(--accent); outline-offset: 2px; }
+.qxp-toggle { gap: 0; }
+.qxp-toggle .qxp-toggle-label { margin-right: 8px; }
+/* The class page's ascension picker keeps its tier colour (standard / silver / gold) as the picked option's edge. */
+.cls-v3 .mode-switch .asc-opt:has(input:checked),
+:root[data-theme="dark"] .cls-v3 .mode-switch .asc-opt.tier-0:has(input:checked) {
+  color: var(--fg); border-color: var(--lc); background: color-mix(in srgb, var(--lc) 24%, var(--card)); box-shadow: inset 0 -3px 0 var(--lc); }
+/* On / off chip: a pill, gold edge and tint when on. */
+.chip-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border: 1px solid var(--border); border-radius: 999px;
+  background: none; color: var(--muted); font-size: 0.85rem; font-weight: 650; line-height: 1.4; }
+.chip-toggle:hover { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.chip-toggle[aria-pressed="true"] { color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.chip-toggle[aria-pressed="true"]::before { content: "✓"; font-size: 0.8em; color: var(--accent); }
+
+/* F34: "Skip to content", first in the Tab order, shown when focused. */
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 8px 14px; border-radius: 10px; font-weight: 700;
+  background: var(--card); color: var(--accent); border: 2px solid var(--accent); box-shadow: var(--shadow-hover); text-decoration: none; }
+.skip-link:focus, .skip-link:focus-visible { top: 10px; }
+main:focus { outline: none; }
+
+/* F35: card grids without a lone card on the last row: the cards grow to fill each row (a last one alone spans it).
+   The save overview at most 4 per row (8 cards: 2 rows of 4); the wiki's fact cards (map, item, enemy pages). */
+.save-cards { display: flex; flex-wrap: wrap; }
+.save-cards > .save-card { flex: 1 1 max(168px, calc(25% - 10px)); }
+.facts { display: flex; flex-wrap: wrap; }
+.facts > div { flex: 1 1 160px; }
+@media (max-width: 600px) {
+  .save-cards > .save-card { flex-basis: calc(50% - 8px); }
+}
+
+/* F32: home, the frozen tools last and quieter. */
+.tools-other h2 { font-size: 1.05rem; color: var(--muted); margin-top: 36px; }
+.tools-other > p { margin: -6px 0 12px; }
+ul.cards-other { gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+ul.cards-other > li { padding: 14px 16px; box-shadow: none; background: color-mix(in srgb, var(--card) 70%, transparent); }
+ul.cards-other > li::before { height: 2px; opacity: 0.6; }
+ul.cards-other > li .icon { width: 32px; height: 32px; font-size: 1rem; margin-bottom: 4px; border-radius: 9px; }
+ul.cards-other > li h3 { font-size: 0.98rem; }
+ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
+
+/* F38: the one save help, under the drop zone. */
+.save-help { margin: 10px 0 8px; }
+
+/* F45: the save menu in groups (file, expansions, export folded), never taller than the window (fitMenu). */
+.save-menu { overflow-y: auto; overscroll-behavior: contain; max-height: calc(100vh - 80px); min-width: 250px; }
+.save-menu > * { flex-shrink: 0; }
+.save-menu .save-menu-head { margin: 0 4px 4px; }
+.save-menu-group { display: flex; flex-direction: column; }
+.save-menu-sep { height: 0; margin: 4px 2px; border-top: 1px solid var(--border); flex: none; }
+.save-menu .xp-menu { border-top: 0; margin-top: 0; padding-top: 0; }
+.save-menu-extras:not(:empty) { border-top: 0; margin-top: 0; padding-top: 0; }
+.save-menu .save-menu-fold { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; text-transform: uppercase;
+  letter-spacing: .05em; font-size: 0.7rem; font-weight: 700; color: var(--muted); }
+.save-menu-fold .fold-mark { transition: transform .15s; }
+.save-menu-fold[aria-expanded="true"] .fold-mark { transform: rotate(90deg); }
+.save-menu-sub { display: flex; flex-direction: column; }
+.save-menu-sub[hidden] { display: none; }
+/* end r1 global */

@@ -9,7 +9,9 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { itemName as englishItemName, rarity, sellValue } from "../tools/engine.ts";
-import { className as classNameOf, crafterName, enemyName, itemName as shownItemName, modItemName, prefixTag, suffixName } from "./names.ts";
+import {
+  className as classNameOf, crafterName, enemyName, itemName as shownItemName, itemTypeText, modItemName, prefixTag, suffixName,
+} from "./names.ts";
 import { type Game, gameFromData } from "../tools/gamedata.ts";
 import { mapEssence } from "../tools/profit.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
@@ -56,7 +58,7 @@ function itemRow(it: Any): Row {
   const amount = stackAmount(it);
   const unit = data ? sellValue(it.itemType, it.id, asc, mods) ?? null : null;
   return {
-    type: it.itemType, id: it.id, name: itemLabel(it), subtype: data?.subType ?? "",
+    type: it.itemType, id: it.id, name: itemLabel(it), subtype: itemTypeText(it.itemType, data?.subType), // "Essence", "Health", "Hood" (R1 F30)
     item_level: data?.itemLevel ?? "", asc, grade: gradeLabel(it.grade), prefix: pre, suffix: suf, mods,
     rarity: data ? rarity(it.itemType, it.id, mods) : "", amount,
     unit_sell: unit, total_sell: unit === null ? null : unit * amount,

@@ -1,12 +1,57 @@
 /** Small DOM helpers shared by the site's pages. */
-import { compareNames } from "./names.ts";
+import { compareNames, langTag } from "./names.ts";
 
 export type Cell = string | number | boolean | null | undefined;
 export type Row = Record<string, Cell>;
 
-export const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-export const fmt1 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+// ---------------------------------------------------------------- numbers, gold, time (R1 F28)
+/**
+ * Number formats in the visitor's language (the one picked in the top bar, names.ts langTag): "171,946" in English,
+ * "171 946" in French. `fmt` (whole numbers) and `fmt1` (one decimal) keep the Intl.NumberFormat call shape
+ * (`fmt.format(n)`), the formatter is rebuilt when the language changes.
+ */
+function localFormat(opts: Intl.NumberFormatOptions): { format: (n: number) => string } {
+  let tag = "", f: Intl.NumberFormat | null = null;
+  return {
+    format(n: number): string {
+      const t = langTag();
+      if (!f || t !== tag) {
+        tag = t;
+        try {
+          f = new Intl.NumberFormat(t, opts);
+        } catch {
+          f = new Intl.NumberFormat("en-US", opts); // a tag the runtime doesn't know
+        }
+      }
+      return f.format(n);
+    },
+  };
+}
+export const fmt = localFormat({ maximumFractionDigits: 0 });
+export const fmt1 = localFormat({ maximumFractionDigits: 1, minimumFractionDigits: 1 });
 export const pct = (x: number) => `${fmt1.format(x * 100)}%`;
+
+/** THE gold amount: "171,946 g" (whole gold; `decimals` 1 for a per-unit cost: "12.5 g"). "—" when not a number. */
+export function gold(n: number | null | undefined, decimals: 0 | 1 = 0): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  return `${(decimals ? fmt1 : fmt).format(n)} g`;
+}
+
+/**
+ * THE duration, from seconds: "15 s" under a minute, then whole minutes "4 min", "2 h 6 min" from an hour, "1 d 3 h"
+ * from a day. "?" when not a number. (Under a minute never reads "0 min".)
+ */
+export function duration(sec: number | null | undefined): string {
+  if (typeof sec !== "number" || !Number.isFinite(sec)) return "?";
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h < 24) return r ? `${h} h ${r} min` : `${h} h`;
+  const d = Math.floor(h / 24), rh = h % 24;
+  return rh ? `${d} d ${rh} h` : `${d} d`;
+}
 
 export const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -174,6 +219,36 @@ export function tabKeys(list: HTMLElement): void {
     ts[j].click();
   });
   queueMicrotask(sync);
+}
+
+// ---------------------------------------------------------------- toggles (R1 F27)
+/**
+ * The site's two toggle styles (CSS block "r1 global" at the end of style.css):
+ * - `.seg`: a segmented control, ONE choice out of a few (radio inputs in `label.seg-opt`, a radiogroup). The older
+ *   `.mode-switch` (labels with radios) and `.qxp-toggle` (buttons with aria-pressed) get the same look.
+ * - `.chip-toggle`: an on / off chip (a button with aria-pressed), for filters that combine.
+ */
+export interface SegOption { value: string; label: Node | string; title?: string }
+
+/** A segmented control: `name` groups the radios, `label` names the group; `onChange` gets the picked value. */
+export function segmented(name: string, label: string, options: SegOption[], value: string, onChange: (v: string) => void): HTMLElement {
+  return el("div", { class: "seg", role: "radiogroup", "aria-label": label }, ...options.map((o) => {
+    const input = el("input", { type: "radio", name, value: o.value }) as HTMLInputElement;
+    input.checked = o.value === value;
+    input.addEventListener("change", () => input.checked && onChange(o.value));
+    return el("label", { class: "seg-opt", ...(o.title ? { title: o.title } : {}) }, input, el("span", {}, o.label));
+  }));
+}
+
+/** An on / off chip (aria-pressed); `onToggle` gets the new state. */
+export function chipToggle(label: Node | string, on: boolean, onToggle: (on: boolean) => void, title = ""): HTMLButtonElement {
+  const b = el("button", { type: "button", class: "chip-toggle", "aria-pressed": String(on), ...(title ? { title } : {}) }, label);
+  b.addEventListener("click", () => {
+    const next = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", String(next));
+    onToggle(next);
+  });
+  return b;
 }
 
 /** <select> from [value, label] pairs, optionally grouped. */

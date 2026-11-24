@@ -80,6 +80,13 @@ export function expansionMenuSection(): HTMLElement {
   return box;
 }
 
+/** Keep an open top-bar menu inside the window: at most the height left under it, scrolling inside (R1 F45). */
+export function fitMenu(menu: HTMLElement): void {
+  menu.style.maxHeight = "";
+  const top = menu.getBoundingClientRect().top;
+  menu.style.maxHeight = `${Math.max(160, window.innerHeight - top - 12)}px`;
+}
+
 /** Up / Down move between a menu's items (wrapping), Escape closes it and gives the focus back to its button. */
 export function menuKeys(chip: HTMLElement, menu: HTMLElement, button: HTMLElement, close: () => void): void {
   chip.addEventListener("keydown", (e) => {
@@ -132,7 +139,10 @@ export function mountExpansionChip(): void {
   button.addEventListener("click", () => {
     menu.hidden = !menu.hidden;
     button.setAttribute("aria-expanded", String(!menu.hidden));
-    if (!menu.hidden) menu.querySelector<HTMLElement>(".xp-toggle")?.focus();
+    if (!menu.hidden) {
+      fitMenu(menu);
+      menu.querySelector<HTMLElement>(".xp-toggle")?.focus();
+    }
   });
   chip = el("div", { class: "save-chip xp-chip" }, button, menu);
   const mine = chip;

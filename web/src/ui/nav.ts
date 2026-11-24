@@ -420,8 +420,32 @@ export function mark(): void {
   document.querySelectorAll<HTMLElement>(".menu-item, .drawer-sec").forEach((x) => x.classList.toggle("is-current", x.dataset.section === section));
 }
 
+/** The id the skip link jumps to: the page's <main> (given this id when it has none). */
+export const MAIN_ID = "main";
+
+/**
+ * R1 F34: "Skip to content", the page's first focusable element (shown only when focused), jumping over the top bar
+ * and its menus to <main>. Main gets tabindex -1 so the focus really moves there (the next Tab is in the content).
+ */
+export function mountSkipLink(): void {
+  if (document.querySelector(".skip-link")) return;
+  const main = document.querySelector<HTMLElement>("main");
+  if (!main) return;
+  if (!main.id) main.id = MAIN_ID;
+  if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+  const a = h("a", { class: "skip-link", href: `#${main.id}` }, "Skip to content");
+  // A plain #main link would change the hash, which the save viewer and the wiki read as a route: move the focus instead.
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    main.focus({ preventScroll: true });
+    main.scrollIntoView();
+  });
+  document.body.prepend(a);
+}
+
 /** Builds the menus into the page's top bar (once). */
 export function mountNav(): void {
+  mountSkipLink();
   const bar = document.querySelector<HTMLElement>(".topbar");
   if (!bar || bar.querySelector(".mainnav")) return;
   bar.querySelector(".topnav")?.remove(); // a page still carrying the old static links
