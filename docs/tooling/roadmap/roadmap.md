@@ -101,6 +101,7 @@ Rules:
 | F1 | **Farming page, first batch** ([review-farming](./review-farming.md)): legal party per quest (size and required slot, like the Simulator), Battle locks kept, revive gold subtracted, quest-board quests only, worker kept alive, grade badges, shared helpers, no explanation sentences, Scribe-hidden maps, sortable Source / Essence, 30 runs per map. | review-farming | Done (1668383) |
 | R2-B | **Save viewer on phones** ([review-r2](./review-r2.md)): one-line inventory filter, compact hero stat grid with a folded radar, one-line passive, merged Basic turns, themed gear cards with outline legend, crafter headers Lv / Asc 1 / Asc 2, two-button no-save picker on every save page, tooltips instead of paragraphs, one-line empty states. | review-r2 | Done (1345f9b) |
 | F2 | **Farming page, second batch** ([review-farming](./review-farming.md)): random-offer tag on rare variants, Win and Grade beside Source, steps Party then Rank then sources with tick counts, event bosses grouped and unticked, stale results dimmed, craft time tooltip, game-mode note, even Scrolls row. | F1 | Done (7d2ccf3) |
+| R2-A | **Home, menus, footer and formats on phones** ([review-r2](./review-r2.md) F01–F05, F07–F12, F56–F58): compact Home (tool rows, Solver entry, older tools folded, quick links with a save), Save chip first with one format on every page, one-line dropdown head, Expansions folded, Save group in the drawer, one-line footer, shared percent / level formatters, scroll-row style, check-site breakpoint fix. | review-r2 | Done (acc3cbd) |
 
 ## UI lane
 
