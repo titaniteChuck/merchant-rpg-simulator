@@ -33,6 +33,14 @@ import { fitMenu, menuKeys, menuSep, placeChip, saveChipButton, savePagesGroup }
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
+import { helpTip } from "./wiki-help.ts";
+
+/** The no-save picker's "?" (R2 F19): what happens to the file, what the example is. */
+export const PICKER_HELP = [
+  "Your save file is read by your browser and kept there for the other pages. It is never uploaded.",
+  "No save at hand? The example save is an anonymised one from a real game.",
+  "On a computer you can also drop the file on the button.",
+];
 
 /** The example save, relative to the pages (site/data/example-save.txt). */
 export const EXAMPLE_URL = "data/example-save.txt";
@@ -96,12 +104,17 @@ export function initSaveSource(o: SaveSourceOptions): void {
   const dropBlock = (o.drop.closest("details") as HTMLElement | null) ?? o.drop;
   let chip: HTMLElement | null = null;
 
-  // "Try with an example save", right under the drop zone (outside its <label>, so it doesn't open the file dialog).
+  // R2 F19: the picker is two buttons side by side, "📂 Choose save file" (the drop <label>: a click opens the dialog,
+  // a file dropped on it still loads) and "🧪 Example save" (outside the label, so it doesn't open the dialog); the
+  // privacy and example sentences are in a "?" after them. The pages' own text in the label is replaced.
+  o.drop.replaceChildren(o.input, el("span", { class: "drop-title" }, "📂 Choose save file"));
+  o.drop.classList.add("drop-btn");
+  o.drop.title = "Choose your save file (PlayerData.txt, Slot2Data.txt …), or drop it here";
   const exampleBtn = el("button", { type: "button", class: "secondary example-btn",
-    title: "Load an anonymised real save, to try the tools without your own file" }, "🧪 Try with an example save");
-  const exampleRow = el("p", { class: "example-save" }, exampleBtn,
-    el("span", { class: "muted small" }, "No save at hand? Use an anonymised one from a real game."));
-  o.drop.after(exampleRow);
+    title: "Load an anonymised real save, to try the tools without your own file" }, "🧪 Example save");
+  const exampleRow = el("div", { class: "example-save save-picker" });
+  o.drop.before(exampleRow);
+  exampleRow.append(o.drop, exampleBtn, helpTip(PICKER_HELP, "the save file"));
   exampleBtn.addEventListener("click", () => useExample());
   // The one save help, under the example row (R1 F38).
   const help = saveHelp();

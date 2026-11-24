@@ -1931,3 +1931,40 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .farm-table tr.farm-row-blocked td { color: var(--muted); }
 .farm-table th .help-q { margin-left: 2px; }
 /* end farming f1 */
+/* r2-b */
+/* R2-B (mobile review R2, Save viewer and the no-save picker).
+   F19: the no-save picker is one row of two buttons (save-source.ts): the drop <label> drawn as a primary button
+   ("📂 Choose save file", a file dropped on it still loads) and "🧪 Example save", then a "?" with the privacy and
+   example sentences. */
+.save-picker { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 24px 0 0; }
+.drop.drop-btn { flex: 0 1 auto; display: inline-flex; flex-direction: row; gap: 0; margin: 0; padding: 9px 18px; border-radius: 10px;
+  border: 0; color: #fff; background: var(--gradient); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+.drop.drop-btn::before { content: none; }
+.drop.drop-btn:hover { transform: translateY(-1px); }
+.drop.drop-btn.over { outline: 2px dashed var(--accent); outline-offset: 3px; background: var(--gradient); }
+.drop.drop-btn .drop-title { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.save-picker .example-btn { padding: 9px 16px; }
+.save-picker + .save-help { text-align: center; }
+/* F14: the inventory filter: the search and the count on one line, the kind chips one row that scrolls sideways. */
+.inv-filter { flex-direction: column; align-items: stretch; gap: 8px; }
+.inv-search { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.inv-search input[type="search"] { flex: 1 1 120px; min-width: 0; }
+.inv-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inv-kinds { overflow-x: auto; scrollbar-width: none; }
+.inv-kinds::-webkit-scrollbar { display: none; }
+.inv-kinds .seg { flex-wrap: nowrap; }
+/* F15: the hero page's stats as a compact grid (4 per row), the radar folded under it (≤ 200 px on a phone), the
+   passive on one line. */
+.hero-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.hero-stat-grid > div { padding: 3px 6px; }
+.hero-stat-grid dd { font-size: 0.95rem; }
+.hero-radar > summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; font-weight: 650; }
+.hero-radar[open] > summary { margin-bottom: 6px; }
+.hero-passive { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; }
+.hero-passive .section-label { margin: 0; }
+@media (max-width: 760px) { .hero-detail .radar-fig { max-width: 200px; } }
+/* F16: the hero page's gear cards follow the theme (no light sand card in dark mode); the "?" explains the frames. */
+.hero-detail .gear-item { background: var(--card-2); color: var(--fg); }
+.hero-detail .gear-item .item, .hero-detail .gear-item a.wl { color: color-mix(in srgb, var(--r, var(--fg)) var(--ink), var(--fg)); }
+.section-label .help-tip { vertical-align: middle; }
+/* end r2-b */

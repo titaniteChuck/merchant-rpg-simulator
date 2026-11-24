@@ -101,6 +101,43 @@ export function rotationAp(skills: string[]): number {
   return skills.reduce((s, n) => s + (Number(G.abilityData?.[n]?.apCost) || 0), 0);
 }
 
+/** A run of the rotation shown as one row: turns `from`..`to` (1-based) all use `skill`. */
+export interface RotationGroup { from: number; to: number; skill: string }
+
+/**
+ * The rotation as display rows (R2 F15): consecutive Basic turns merge into one row ("3–5 Basic"); every other
+ * skill keeps its own row, even when repeated (each costs its AP).
+ */
+export function rotationGroups(skills: string[]): RotationGroup[] {
+  const out: RotationGroup[] = [];
+  skills.forEach((skill, i) => {
+    const last = out[out.length - 1];
+    if (skill === "Basic" && last?.skill === "Basic" && last.to === i) last.to = i + 1;
+    else out.push({ from: i + 1, to: i + 1, skill });
+  });
+  return out;
+}
+
+/** "3", or "3–5" for a merged run. */
+export const turnLabel = (g: RotationGroup): string => (g.from === g.to ? String(g.from) : `${g.from}–${g.to}`);
+
+/**
+ * R2 F15: the hero page's stat grid, four per row: HP Atk Matk Acc / Def Mdef Crit Crit damage, then Eva and Speed
+ * when not 0, and AP only when the rotation has no budget line (R1 F37).
+ */
+export const GRID_STATS = ["maxHP", "atk", "matk", "acc", "def", "mdef", "crit", "critMod", "eva", "speed", "maxActionPoints"];
+
+/** The stats shown in the hero page's grid, in order (GRID_STATS without the zero extras and the AP the budget shows). */
+export function gridStats(stats: Record<string, number>, hasApBudget: boolean): string[] {
+  return GRID_STATS.filter((k) => k in stats && ((k !== "eva" && k !== "speed") || stats[k]) && (k !== "maxActionPoints" || !hasApBudget));
+}
+
+/** A gear card's tooltip ends with its ascension and the outline that shows it (R2 F16); "" for ascension 0. */
+export function ascOutlineText(asc: unknown): string {
+  const n = Math.trunc(Number(asc) || 0);
+  return n === 1 ? " · Ascension 1 (silver outline)" : n >= 2 ? " · Ascension 2 (gold outline)" : "";
+}
+
 /** Heroes with their summary row, engine-computed combat stats and equipped items. */
 export function heroViews(sv: Save): HeroView[] {
   api.setMode(sv.raw.gameMode || "Standard");

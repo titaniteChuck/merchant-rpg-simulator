@@ -14,9 +14,10 @@ import {
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
 import { badgeFor } from "./expansion-state.ts";
+import { helpTip } from "./wiki-help.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv, withAllTables,
+  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, rotationGroups, summary, toCsv, turnLabel, withAllTables,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -54,10 +55,6 @@ function csvExports(): { label: string; hint: string; run: () => void }[] {
     hint: t.file === ALL_TABLES_FILE ? `Download every table in one file, ${t.file}.csv (its first column names the table)` : `Download ${t.file}.csv`,
     run: () => downloadCsv(t.file, t.rows()),
   }));
-}
-
-function toolbar(...kids: Node[]): HTMLElement {
-  return el("div", { class: "toolbar" }, ...kids);
 }
 
 /** Item name coloured by rarity, linked to its wiki page (summary on hover); `name` is "[Prefix] Item +N" (modItemName, U34). */
@@ -112,9 +109,9 @@ const STAT_LABELS: Record<string, string> = {
   maxHP: "HP", atk: "Atk", matk: "Matk", acc: "Acc", crit: "Crit", critMod: "Crit damage", def: "Def", mdef: "Mdef",
   eva: "Eva", speed: "Speed", maxActionPoints: "AP",
 };
-/** Radar axes (combat stats on a comparable scale); the rest is listed under the chart. */
+/** Radar axes (combat stats on a comparable scale). */
 const RADAR_STATS = ["maxHP", "atk", "matk", "def", "mdef", "acc", "crit"];
-const EXTRA_STATS = ["critMod", "maxActionPoints", "eva", "speed"];
+const GRID_LABELS: Record<string, string> = { critMod: "Crit dmg" };
 
 /** Strongest value of each radar stat among the save's heroes, and who holds it. */
 type Best = Record<string, { max: number; who: string }>;
@@ -133,16 +130,32 @@ export function statRadar(stats: Record<string, number>, best: Best, title: stri
 }
 const STATUS_TONE: Record<string, string> = { idle: "t-green", "on a map": "t-violet", "on a quest": "t-blue" };
 
+/** R2 F15: the combat stats as a compact number grid (4 per row); each radar stat's tooltip names the save's best. */
+function statGrid(stats: Record<string, number>, best: Best, hasApBudget: boolean): HTMLElement {
+  return el("dl", { class: "stats hero-stat-grid" }, ...gridStats(stats, hasApBudget).map((k) => {
+    const x = stats[k];
+    const b = best[k];
+    const attrs: Record<string, string> = b?.who ? { title: `${STAT_LABELS[k] ?? k}: best in this save ${fmt.format(b.max)} (${b.who})` } : {};
+    return el("div", attrs, el("dt", {}, GRID_LABELS[k] ?? STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `×${x.toFixed(2)}` : fmt.format(x)));
+  }));
+}
+
+/** The hero page's gear "?" (R2 F16): what the card's border and the outline around a name mean. */
+const GEAR_HELP = ["The card's border is the item's rarity colour.",
+  "A silver outline around the name marks an ascension-1 item, a gold one ascension 2."];
+
 /**
  * The rotation as the wiki class page's skill rows (table.ability-rows): turn, skill, AP badge, effect; the whole row
- * opens the skill's wiki page (Basic has none).
+ * opens the skill's wiki page (Basic has none). R2 F15: consecutive Basic turns are one row ("3–5").
  */
 export function rotationRows(skills: string[]): HTMLElement {
   const head = el("tr", {}, el("th", { scope: "col", class: "n" }, "#"), el("th", { scope: "col" }, "Skill"),
     el("th", { scope: "col", class: "ap-col" }, el("abbr", { title: "Action points" }, "AP")), el("th", { scope: "col" }, "Effect"));
-  const rows = skills.map((sk, i) => {
+  const rows = rotationGroups(skills).map((g) => {
+    const sk = g.skill;
     const link = skillLink(sk);
-    const tr = el("tr", {}, el("td", { class: "n" }, String(i + 1)), el("td", { class: "name" }, link),
+    const tr = el("tr", {}, el("td", { class: "n", ...(g.to > g.from ? { title: `Turns ${g.from} to ${g.to}` } : {}) }, turnLabel(g)),
+      el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, apBadge(sk === "Basic" ? 0 : skillAp(sk))),
       el("td", { class: "eff" }, sk === "Basic" ? "Basic attack" : skillDesc(sk) || "–"));
     clickableRow(tr, link);
@@ -152,14 +165,11 @@ export function rotationRows(skills: string[]): HTMLElement {
     el("thead", {}, head), el("tbody", {}, ...rows)));
 }
 
-/** The passive as one row of the same table style (name, bonus); the whole row opens its wiki page. */
-export function passiveRows(passive: string): HTMLElement {
-  const link = passiveLink(passive);
-  const tr = el("tr", {}, el("td", { class: "name" }, link),
-    el("td", { class: "eff" }, passive && passive !== "None" ? passiveText(passive) : "–"));
-  clickableRow(tr, link);
-  return el("div", { class: "table-wrap" }, el("table", { class: "ability-rows passive-rows hero-rows", "aria-label": "Passive" },
-    el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Passive"), el("th", { scope: "col" }, "Bonus"))), el("tbody", {}, tr)));
+/** R2 F15: the passive on one line, "PASSIVE Juggernaut · +25% HP" (the name opens its wiki page); "none" muted. */
+export function passiveLine(passive: string): HTMLElement {
+  const has = Boolean(passive) && passive !== "None";
+  return el("p", { class: "hero-passive" }, el("span", { class: "section-label" }, "Passive"),
+    ...(has ? [passiveLink(passive), el("span", { class: "muted" }, ` · ${passiveText(passive) || "–"}`)] : [el("span", { class: "muted" }, "none")]));
 }
 
 /**
@@ -189,19 +199,22 @@ function avatar(v: HeroView, size = ""): HTMLElement {
 function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLElement {
   const r = v.row;
   const name = String(r.name);
+  // R2 F15: the numbers first (a compact grid), the radar folded under them (open on wide screens, 200 px at most on
+  // a phone). R1 F37: AP only in the rotation's budget line when there is one; crit damage reads "×2.00".
+  const radarBox = (st: Record<string, number>) => {
+    const d = el("details", { class: "hero-radar" }, el("summary", {}, "Radar against the save's best"),
+      statRadar(st, best, `${name}'s combat stats`, 340));
+    d.open = typeof matchMedia === "function" && matchMedia("(min-width: 761px)").matches;
+    return d;
+  };
   const stats = v.stats
-    ? el("div", { class: "hero-stats" }, statRadar(v.stats, best, `${name}'s combat stats`, 340),
-      // R1 F37: AP only in the rotation's budget line when there is one; crit damage reads "×2.00" (no × in its label).
-      el("dl", { class: "stats extra" }, ...EXTRA_STATS.filter((k) => k in v.stats! && (k !== "speed" || v.stats![k]) && (k !== "eva" || v.stats![k])
-        && (k !== "maxActionPoints" || !v.ap))
-        .map((k) => {
-          const x = v.stats![k];
-          return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `×${x.toFixed(2)}` : fmt.format(x)));
-        })))
+    ? el("div", { class: "hero-stats" }, statGrid(v.stats, best, Boolean(v.ap)), radarBox(v.stats))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
   // Two columns: weapon, head, body | hands, feet, trinket (gearGrid in dom.ts).
-  const gear = gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
-    el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
+  // R2 F54: no gear at all is one muted line, not six empty slots.
+  const gear = !v.gear.length ? el("p", { class: "muted small" }, "No gear equipped.") : gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
+    el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`,
+      title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}${ascOutlineText(g.asc)}` },
       el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
       itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true }),
       el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
@@ -219,15 +232,16 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
         el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
         el("section", { class: "hero-detail-side" },
           // Passive first, then the rotation with its AP budget, then the gear.
-          el("div", {}, el("p", { class: "section-label" }, "Passive"), passiveRows(String(r.passive || ""))),
+          passiveLine(String(r.passive || "")),
           el("div", {}, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ...(v.ap ? [apBudget(v.ap)] : [])),
             rotationRows(v.rotation)),
-          el("div", {}, el("p", { class: "section-label" }, "Gear"), gear))),
+          el("div", {}, el("p", { class: "section-label" }, "Gear ", helpTip(GEAR_HELP, "the gear frames")), gear))),
       el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`))));
 }
 
 /** The heroes as a sortable table; each name opens the hero's page. */
 function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
+  if (!views.length) return el("p", { class: "muted" }, "No heroes in this save.");
   const rows: Cells[] = views.map((v) => ({
     k: views.indexOf(v), id: heroId(v, sv), name: String(v.row.name), cls: v.cls, class: String(v.row.class), level: Number(v.row.level),
     asc: heroAsc(v.row.asc), status: String(v.row.status), passive: String(v.row.passive || ""), quests: Number(v.row.quests), deaths: Number(v.row.deaths),
@@ -278,17 +292,27 @@ function renderInventory(sv: Save): HTMLElement {
       // U29: the shown name or the English one
       && (!q || `${r.name} ${englishItemName(String(r.type), Number(r.id))}`.toLowerCase().includes(q)));
   };
-  const total = el("span", { class: "muted small" });
+  // R2 F14: the count sits on the filter's line ("167 stacks · 2,004,759 g", the base value), its "?" holds what the
+  // value is (R2 F52) and what the outline around a name marks (R2 F17).
+  const total = el("span", { class: "muted small inv-count", title: "Stacks shown and their base value" });
   const update = () => {
     const rows = filtered();
-    total.textContent = `${fmt.format(rows.length)} stacks · ${gold(rows.reduce((s, r) => s + (Number(r.total_sell) || 0), 0))} base value`;
-    holder.replaceChildren(inventoryTable(rows));
+    total.textContent = `${fmt.format(rows.length)} stacks · ${gold(rows.reduce((s, r) => s + (Number(r.total_sell) || 0), 0))}`;
+    // R2 F54: nothing to show is one muted line, not an empty table.
+    holder.replaceChildren(rows.length ? inventoryTable(rows) : el("p", { class: "muted" }, "No item matches this filter."));
   };
   search.addEventListener("input", update);
   update();
-  return el("div", {}, toolbar(search, kinds, total), holder,
-    el("p", { class: "muted small" }, "Value = base customer price before haggling, preferences and counter bonuses."));
+  return el("div", {}, el("div", { class: "toolbar inv-filter" },
+    el("div", { class: "inv-search" }, search, total, helpTip(INVENTORY_HELP, "the inventory")),
+    // One chip row that scrolls sideways on a phone instead of wrapping (R2 F14).
+    el("div", { class: "inv-kinds" }, kinds)), holder);
 }
+
+/** The inventory's "?" (R2 F52 / F17): the value's meaning and the ascension outline. */
+const INVENTORY_HELP = ["Value: the base customer price, before haggling, preferences and counter bonuses.",
+  "A silver outline around an item's name marks ascension 1, a gold one ascension 2 (the Asc column gives the number).",
+  "\"On the counter\": the stack is on sale in the shop."];
 
 function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
@@ -309,6 +333,7 @@ function renderMaps(sv: Save): HTMLElement {
 
 function renderCrafters(sv: Save): HTMLElement {
   const rows = crafterRows(sv);
+  if (!rows.length) return el("p", { class: "muted" }, "No crafters in this save.");
   // The item each crafter works on (same order as crafterRows), linked and outlined for its ascension.
   const jobs = [...sv.crafters.entries()].sort(([x], [y]) => x - y)
     .map(([, c]) => (c.isCrafting && typeof c.isCrafting === "object" ? c.isCrafting : null));
@@ -319,14 +344,14 @@ function renderCrafters(sv: Save): HTMLElement {
     if (v === null || v === undefined || v === "") return el("span", { class: "muted", title: "Not reached yet: the crafter can't make items of this ascension." }, "—");
     return withAsc(el("span", { class: "nowrap" }, fmt.format(Number(v))), asc);
   };
-  /** "Level" and a small silver (ascension 1) or gold (ascension 2) bar, like the outlines of those items. */
+  /** R2 F18: "Asc 1" / "Asc 2" and a small silver or gold bar, like the outlines of those items. */
   const levelHeader = (asc: number): [(Node | string)[], string] => [
-    ["Level", el("span", { class: `lvl-asc asc-${asc}`, "aria-hidden": "true" })], `Level for ascension-${asc} items`];
+    [`Asc ${asc}`, el("span", { class: `lvl-asc asc-${asc}`, "aria-hidden": "true" })], `Level for ascension-${asc} items`];
   const cols: Column[] = [
     { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) },
-    { key: "level", label: "Level", num: true },
-    { key: "asc1_level", label: "Level (ascension 1)", num: true, render: levelCell("asc1_level", 1) },
-    { key: "asc2_level", label: "Level (ascension 2)", num: true, render: levelCell("asc2_level", 2) },
+    { key: "level", label: "Lv", num: true },
+    { key: "asc1_level", label: "Asc 1", num: true, render: levelCell("asc1_level", 1) },
+    { key: "asc2_level", label: "Asc 2", num: true, render: levelCell("asc2_level", 2) },
     { key: "crafting", label: "Working on", render: (r) => {
       const job = jobOf.get(String(r.crafter));
       if (!job) return el("span", { class: "muted" }, "idle");
@@ -334,11 +359,18 @@ function renderCrafters(sv: Save): HTMLElement {
         itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel, { always: true }));
     } },
   ];
-  return el("div", {},
-    iconHeaders(table(rows, cols), cols, { asc1_level: levelHeader(1), asc2_level: levelHeader(2) }),
-    el("p", { class: "muted small" }, "Each crafter has its own level per ascension: crafting items of its current ascension uses that level " +
-    "(it restarts at 1 when the crafter ascends), items of ascension 0 use the normal level. Above that level, it can only craft them one ascension lower."));
+  const wrap = iconHeaders(table(rows, cols), cols, { level: [["Lv"], "Level (ascension-0 items)"], asc1_level: levelHeader(1), asc2_level: levelHeader(2) });
+  // R2 F18 / F52: the explanation is a "?" on the header row, not a paragraph under the table.
+  wrap.querySelectorAll("th")[1]?.append(" ", helpTip(CRAFTER_HELP, "the crafter levels"));
+  return wrap;
 }
+
+/** The crafters' "?" (R2 F18): one level per ascension. */
+export const CRAFTER_HELP = [
+  "Lv: the crafter's level, used for items of ascension 0.",
+  "Asc 1, Asc 2: each crafter has its own level per ascension. Crafting items of its current ascension uses that level (it restarts at 1 when the crafter ascends).",
+  "Above that level, it can only craft them one ascension lower. \"—\": the crafter hasn't reached that ascension.",
+];
 
 // ---------------------------------------------------------------- page
 /**

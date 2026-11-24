@@ -77,7 +77,12 @@ flowchart LR
   items crafted, sales, heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
   outlines carry their own tooltip and screen-reader label.
 - Inventory: a kind filter (All, Equipment, Consumables, Materials, Maps, On the counter) as the shared segmented
-  control (R1 F27, [Shared page parts](#shared-page-parts)); a Type column with the item's subtype in one spelling
+  control (R1 F27, [Shared page parts](#shared-page-parts)), one row of chips that scrolls sideways on a phone instead
+  of wrapping (R2 F14, `.inv-kinds`); above it, one line holds the name filter, the count ("167 stacks · 2,004,759 g",
+  the base value) and a "?" with what the value is (the base customer price, before haggling, preferences and counter
+  bonuses), what a silver or gold outline around a name marks (ascension 1 or 2, R2 F17) and what "on the counter"
+  means: no sentence under the table (R2 F52). A filter that matches nothing shows one muted line, not an empty table
+  (R2 F54). A Type column with the item's subtype in one spelling
   ("Essence", "Health", "Hood": `itemTypeText` in `names.ts`, R1 F30); values as "15 g". One count column per grade, best first (S, A, B, C, D: `GRADES_BEST_FIRST` / `gradeCounts` in
   `save-tables.ts`), then Total (the stack size). A stack split by grade keeps its split; a single-grade item counts
   in its grade. Cells hold numbers only ("–" for 0; rows keep 0 so the columns sort as numbers). The header shows the
@@ -86,13 +91,21 @@ flowchart LR
 - Header icons: `iconHeaders` in `save-viewer.ts` swaps a sortable header's text for nodes (badge, bar) with an
   `aria-label` and tooltip, since `table()` in `dom.ts` takes text labels.
 - Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
-  name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): radar chart, then
-  passive, rotation and gear (U22).
+  name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): stat grid and
+  radar, then passive, rotation and gear (U22, R2 F15).
+- Empty sections (R2 F54): no heroes, no maps, no crafters, no gear on a hero: one muted line each.
 - Hero page (U22): rule everywhere in the save viewer: the passive comes before the rotation (hero page; the heroes
   CSV row already has `passive` before `rotation`).
-  - Passive and rotation use the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
+  - Combat stats (R2 F15): a compact number grid first, four per row (HP Atk Matk Acc / Def Mdef Crit, "Crit dmg
+    ×2.00"; then Eva and Speed when not 0; AP only when there is no budget line: `gridStats` in `save-tables.ts`);
+    each radar stat's tooltip names the save's best value and who holds it. The radar folds under the grid
+    ("Radar against the save's best", open above 760 px, closed on a phone, at most 200 px wide there).
+  - Passive (R2 F15): one line, "PASSIVE Juggernaut · +25% HP" (`passiveLine`; the name opens its wiki page;
+    "none" muted), no table.
+  - Rotation: the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
     (hover highlight, `clickableRow` in `dom.ts`), the AP shown with the same badge (`apBadge` in `dom.ts`); Basic
-    rows (0 AP) have no page. Passive row: name, bonus. Rotation rows: turn, skill, AP, effect.
+    rows (0 AP) have no page. Rows: turn, skill, AP, effect. Consecutive Basic turns are one row, "3–5 Basic"
+    (R2 F15, `rotationGroups` / `turnLabel` in `save-tables.ts`); a repeated real skill keeps its rows.
   - AP budget beside the "Rotation" label: "18 / 20 AP used · 2 left" and a bar, the page's only AP figure (R1 F37:
     the stats under the radar no longer list AP; crit damage reads "×2.00"); over budget it warns that
     the game plays the default rotation instead (`Hero.calculateAPRemainder`). `HeroView.ap` in `save-tables.ts`:
@@ -103,10 +116,16 @@ flowchart LR
     site: six equipment slots go in these two columns, except where a compact layout is intended (`compact: true`
     gives one column). `bySlot(items, slotOf)` keys items by slot name or itemSlot number 1-6; the battle page can
     adopt the same helper.
-  - Tests: `web/test/hero-page.test.ts` (AP budget against the formula for levels 10-60, rotation AP, slot order).
-- Crafters: Level (ascension 0), Level + a silver bar (ascension 1), Level + a gold bar (ascension 2), the bar being the
+  - Gear cards on the hero page follow the theme (R2 F16): the card is `--card-2` with the rarity-coloured name, not
+    the light sand inset in dark mode (the Battle page's gear cards are unchanged). The "?" by "Gear" says the border
+    is the rarity and a silver or gold outline around the name is ascension 1 or 2; each card's tooltip ends with
+    "Ascension 1 (silver outline)" (`ascOutlineText`). No gear at all is one muted line.
+  - Tests: `web/test/hero-page.test.ts` (AP budget against the formula for levels 10-60, rotation AP, slot order),
+    `web/test/save-r2b.test.ts` (R2-B: Basic merging, stat grid, picker, crafter headers, empty states).
+- Crafters: headers "Lv" (ascension 0), "Asc 1" + a silver bar, "Asc 2" + a gold bar (R2 F18), the bar being the
   ascension outline's gradient (`.lvl-asc`), named "Level for ascension-1 items" / "…-2 items" for screen readers
-  (`crafterLevelFor` in `save-tables.ts`). The save keeps `level`,
+  (`crafterLevelFor` in `save-tables.ts`). How the levels work is a "?" on the "Lv" header, not a paragraph under
+  the table. The save keeps `level`,
   `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each
   ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
   `prestigeLevel` and lower ascensions use `level`; an ascension not unlocked shows "—".
@@ -1187,7 +1206,14 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   the class in step: it is taken off when the store turns out empty or the stored save can't be read, and the picker
   then shows. With a save expected the expansions chip isn't mounted first either (the save chip replaces it). Storage
   blocked (reads throw, `try` / `catch`): no class, the picker shows as before.
-- Example save (U20): "🧪 Try with an example save", a button under the drop zone (outside its `<label>`, so it doesn't
+- No-save picker (R2 F19, `initSaveSource`): one row of two buttons, "📂 Choose save file" (the `#drop` label drawn
+  as a primary button, class `drop-btn`: a click opens the file dialog, a file dropped on it still loads) and
+  "🧪 Example save", then a "?" with the privacy sentence (read by the browser, kept there for the other pages, never
+  uploaded), what the example is and that a file can be dropped on the button (`PICKER_HELP`). `save-source.ts`
+  replaces the label's text on every page (Save, Simulator, Solver, Farming, Levelling), so the pages' HTML needs only
+  the `<label id="drop">` and its input; `save.html` already has the final label. The "Where is my save file?" help
+  stays under the row. CSS in the `/* r2-b */` block of `style.css`.
+- Example save (U20): "🧪 Example save", the second button of the no-save picker (outside the `<label>`, so it doesn't
   open the file dialog) on every page that uses `initSaveSource` (save viewer, battle, profit, farming, levelling), and
   "🧪 Try the example save" in the save menu. It fetches `data/example-save.txt` (`site/data/example-save.txt`: a real
   save anonymised by `web/scripts/make-example-save.ts`, userID "example", purchase flags false) and loads it exactly
