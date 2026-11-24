@@ -155,11 +155,12 @@
   });
 
   /*
-   * U20: on a phone the top bar's links, the wiki's section chips and the tabs scroll sideways on one line
-   * (style.css). Keep the current page / section / tab in view: on load, and whenever it changes (the wiki and the
-   * tabs set it from script). Only that row scrolls, never the page; a row that fits is left alone.
+   * U20: on a phone the tab rows (profit's result tables …) scroll sideways on one line (style.css). Keep the
+   * selected tab in view: on load, and whenever it changes. Only that row scrolls, never the page; a row that fits is
+   * left alone. The site's menus (top-bar links, wiki sections, save sections) are no longer such rows: since U35
+   * they are built by js/nav.js (web/src/ui/nav.ts), a burger and a left drawer on a phone.
    */
-  const ROWS = ".topnav, .wiki-nav, .tabs";
+  const ROWS = ".tabs";
   const CURRENT = '[aria-current="page"], [aria-selected="true"]';
   const reveal = (row) => {
     const cur = row.querySelector(CURRENT);

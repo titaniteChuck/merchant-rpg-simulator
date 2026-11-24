@@ -23,6 +23,7 @@ timestamp: 2026-11-24
 - [Expansions](#expansions)
 - [Languages](#languages)
 - [Shared page parts](#shared-page-parts)
+  - [Menus](#menus)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
@@ -60,10 +61,12 @@ flowchart LR
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export` (checked equal to its CSVs on a real
   save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
-- Tabs: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters. CSV downloads (heroes,
-  hero gear, inventory, maps, crafters; whole tables) are in the top-bar save menu, not on the tabs.
-  Each tab has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`); a click updates it with
-  `history.replaceState` (no re-render, no history entry). No hash or an unknown one opens Overview.
+- Sections: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters. CSV downloads (heroes,
+  hero gear, inventory, maps, crafters; whole tables) are in the top-bar save menu.
+  Each section has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`) and is reached from the site's
+  menus (U35, [Menus](#menus): the Save dropdown, the second row under the top bar once a save is loaded, the phone
+  drawer); the in-page tabs are gone. A section link is a normal hash link (`hashchange` re-renders, Back works). No
+  hash or an unknown one opens Overview.
 - Overview: small cards (`.save-cards`, about 80px tall, several per row, two per row on a phone), each with a label,
   a big number and an optional one-line hint: gold, inventory value and stacks, gold earned, items crafted, sales,
   heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
@@ -325,7 +328,7 @@ flowchart LR
   loot tables, items incl. equipment; shown as tables since U21, see below), and the maps
   (`enemyMapRoles`: room, boss, or treasure room for Treasure Bushes = `treasureId[ceil(mapLevel/10)]`) with the map's
   enemy multiplier and the ascension-1 one (×2, silver outline). Each variant card shows the 5-turn timeline strip (U11)
-  (U24: it replaces the rotation list, see below). Nav link "Enemies" after Maps, static in `wiki.html`.
+  (U24: it replaces the rotation list, see below). Menu link "Enemies" (World group, [Menus](#menus)).
 - Enemy links (`enemyLink`) everywhere: skills list, skill pages, map list Boss column, map pages' enemy tables, item
   "Where it drops" (now also for equipment), home search. Placeholders stay plain text.
 - Not enemies: `PLACEHOLDER_QUEST_IDS` in `wiki-data.ts` (was `NON_ENEMY_QUEST_IDS` until the U28 follow-up), a static,
@@ -420,8 +423,8 @@ flowchart LR
   "Basic attack only"; the tooltip gives the turn order; it sorts by the skill names (`rotationSummary`,
   `skillSummaryText`).
 - Reference pages (U25): **Stats** (`#/stats`, `web/src/ui/wiki-stats.ts`) says how every number is calculated, and
-  **Battle** (`#/battle`, `web/src/ui/wiki-battle.ts`) how a fight runs. Both are in the wiki nav (static in
-  `wiki.html`) and on the wiki home (`CATEGORIES`).
+  **Battle** (`#/battle`, `web/src/ui/wiki-battle.ts`) how a fight runs. Both are in the wiki menu (Reference group,
+  [Menus](#menus)) and on the wiki home (`CATEGORIES`).
   - One section per topic with a stable anchor, `#/stats/<topic>` and `#/battle/<topic>`; the page scrolls to it. The
     anchors are the keys of `STAT_TOPICS` and `BATTLE_TOPICS` in `web/src/ui/wiki-ref.ts`: hero-stats, max-hp, damage,
     defence, hit-chance, crit, ap, luck, grade, time, quest-size, xp, item-stats, sell, craft, essence, enchant,
@@ -679,7 +682,7 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
 - Per page:
   - Wiki: lists, home search and home counts filtered; classes columns of skills and passives without the hidden
     classes; class pages without the hidden ascension tier (levels 51–60; the radar's rims only compare visible classes
-    and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, nav link and home card):
+    and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, menu link and home card):
     your switches as checkboxes with the save's evidence, what the site does, then one section per group (Frozen
     Tome, Scribe, content behind both) with the store text, what it adds, details, and folded lists of every gated
     enemy, class, map, equipment, consumable and material (real links, `always`). Changing a switch re-renders the
@@ -773,22 +776,22 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   text: the former gradient text (background-clip: text) vanished on repaint in desktop Chrome / Edge.
 - Page headers (U23): only the home page (its cards describe each tool) and the wiki show a title and lead. Save,
   Battle, Profit, Farming, Levelling and Class balance start right under the top bar; each keeps a visually-hidden h1
-  (`.visually-hidden` in the "battle v3" block of `style.css`) for screen readers, the active top-bar link
+  (`.visually-hidden` in the "battle v3" block of `style.css`) for screen readers, the current menu entry
   (`aria-current="page"`) and its document `<title>`.
-- Top bar on every page: Save, Battle, Profit, Farming, Levelling, Balance, Wiki (short labels so it stays on one
-  line at 1280px; each link's title gives the long name), and the GitHub link (right). Favicon: `site/favicon.svg` (generic
-  coin on the site gradient, no game art), linked from every page.
-- Phone navs (U20, 600 px and less; block "phone navs + example save" at the end of `style.css`): the top bar and the
-  in-page navs (wiki section chips, the save viewer's and the profit page's tabs) are each ONE line. The top bar keeps
-  the coin (site name for screen readers only), the ☀ / ☾ switch, the save chip (📜 ▾, the file name in its tooltip
-  and menu) and the GitHub mark fixed; its page links scroll sideways. The in-page rows scroll sideways too. No
-  scrollbar: a 22 px fade marks the edge that has more (scroll-driven animation on `--fade-l` / `--fade-r`, so no fade
-  when the row fits; browsers without scroll timelines just show no fade). `theme.js` scrolls the current page,
-  section or tab into view on load and whenever it changes (only that row, never the page). Focus rings are drawn
-  inside the rows; links and tabs stay in the Tab order (the browser scrolls a focused one into view). Wider screens
-  are unchanged. The sweep fails when one of these rows wraps.
+- Top bar on every page: the site's menus (below) and, on the right, the ☀ / ☾ switch, the language picker, the save
+  or expansions chip and the GitHub link. Favicon: `site/favicon.svg` (generic coin on the site gradient, no game
+  art), linked from every page. Up to U34 the top bar held seven static links (U13 long-name titles, U18 Balance,
+  U20 one sideways-scrolling line on a phone); U35 replaced them with the menus.
+- Phone rows (U20, 600 px and less; block "phone navs + example save" at the end of `style.css`): the top bar and the
+  in-page tab rows (the profit page's result tables) are each ONE line. The top bar keeps the burger, the coin (site
+  name for screen readers only), the ☀ / ☾ switch, the language chip, the save chip (📜 ▾, the file name in its
+  tooltip and menu) and the GitHub mark. Tab rows scroll sideways with no scrollbar: a 22 px fade marks the edge
+  that has more (scroll-driven animation on `--fade-l` / `--fade-r`; no fade when the row fits or without scroll
+  timelines). `theme.js` scrolls the selected tab into view on load and whenever it changes (only that row, never the
+  page). The rules for the former `.topnav` / `.wiki-nav` rows are still in that block but match nothing since U35.
+  The sweep fails when one of these rows wraps.
 - Keyboard: `tabKeys` in `dom.ts` gives a tab list the WAI-ARIA tabs pattern (Left / Right / Home / End, only the
-  selected tab in the Tab order), for the save viewer's tabs (wired with U17); the save menu moves with Up / Down and closes with Escape;
+  selected tab in the Tab order; the save viewer used it until U35); the menus as in [Menus](#menus); the save menu moves with Up / Down and closes with Escape;
   mode cards and switches are radio groups; sortable table headers are buttons; every focusable element (links
   included) gets the accent focus ring. Colours never carry a value alone: win rates and heat cells print the number.
 - Numbers in tables are centred (U26): the `table()` helper of `dom.ts` marks a `num` column's cells and header with
@@ -800,8 +803,11 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   and the class-balance cells already were. Not tables, so unchanged: the wiki loot lists (`.loot-pct`), overview
   values and tiles.
 - Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
-  less it also checks that the top bar, its links, the wiki chips and the tab rows are one line high (U20). Without
-  `saves/snapshot/` it uses the example save for its "with save" runs.
+  less it also checks that the top bar and the tab rows are one line high (U20). Menus (U35): above 760 px the main
+  menu shows with a current entry and every dropdown opens on screen and closes with Escape; at 760 px and less only
+  the burger shows, it opens the drawer (on screen, current page marked, focus inside) and Escape closes it. Without
+  `saves/snapshot/` it uses the example save for its "with save" runs. The Linux Playwright Chromium builds under
+  `~/.cache/ms-playwright` don't start on this WSL (missing `libgbm`, headless shell crashes): it runs on Windows Chrome.
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
   (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
@@ -829,6 +835,57 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   shown: item links (inventory, counter, maps, hero gear, crafting jobs, wiki sell values), hero avatars (save viewer,
   battle slots), crafter levels per ascension, the sortable Asc columns (swatch with the number), the battle page's chosen map (options can't be
   outlined), and the wiki class growth table. Each outline also has a title and a screen-reader label ("ascension 1").
+
+### Menus
+
+U35, `web/src/ui/nav.ts` (bundled as `js/nav.js`, a module in every page's head; CSS block `/* menus + drawer */ …
+/* end menus + drawer */` at the end of `style.css`). One list, `NAV`, holds every page and sub-page; the desktop
+menu, its dropdowns, the second row and the phone drawer are all built from it, so the HTML pages carry no links of
+their own (only the brand and the GitHub link). `web/test/nav.test.ts` checks that every `site/*.html` is in `NAV`
+and loads `js/nav.js`, that the wiki links are routes of `wiki.ts` and the save links its `TABS`, and the current-item
+rules.
+
+```mermaid
+flowchart LR
+  N[NAV in nav.ts] --> D[Desktop menu + dropdowns]
+  N --> R[Second row: current section]
+  N --> M[Phone drawer]
+```
+
+| Section | Sub-pages |
+| --- | --- |
+| Home | – |
+| Save ▾ | Overview, Heroes, Inventory, Maps, Crafters |
+| Battle | – |
+| Wiki ▾ | Search; Items: Equipment, Consumables, Materials; World: Maps, Enemies; Heroes: Classes, Skills, Passives; Reference: Stats, Battle, Expansions |
+| More ▾ | Other tools: Profit, Farming, Levelling, Balance (frozen tools) |
+
+- Desktop (above 760 px): `<nav class="mainnav" aria-label="Site">` in the top bar after the brand. A section with
+  sub-pages is its link plus a ▾ button (`aria-expanded`, `aria-controls`) that opens its dropdown (disclosure
+  pattern, not an ARIA menu); More is a ▾ button only. The wiki dropdown shows its groups in four columns under a
+  Search row. A mouse opens a dropdown on hover too; a click elsewhere, Tab out of it or Escape (focus back on ▾)
+  closes it; Down / Up on ▾ open it on the current (or last) link; Up / Down / Home / End move inside; Left / Right
+  move between the top entries. A dropdown that would pass the right edge shifts left. The current section gets
+  `.is-current` (darker, gold underline); its own link `aria-current="true"` when a sub-page is current.
+- Second row (desktop): the current section's sub-pages as chips under the top bar (`nav.subnav`, the former wiki
+  chips' look; groups split by a thin bar). It replaces the wiki's static chip row and the save viewer's tabs; the
+  save row only shows once a save is loaded (`save-viewer.ts` sets `data-save-loaded` on `<html>`). Between 761 and
+  1100 px the top bar stays one line: "GitHub" and the save file name give way to the icons, and below 960 px the
+  site name to the coin.
+- Phone (760 px and less): the menu and the second row are hidden; a burger (`.nav-burger`, `aria-expanded`,
+  `aria-controls="nav-drawer"`) at the left of the top bar opens a left drawer, `dialog#nav-drawer` opened with
+  `showModal()` (the page behind is inert; Tab and Shift+Tab also wrap inside it): a banner head with the coin, the
+  site name and a close button, then every section, its sub-pages as nested lists behind a ▾ toggle (the current
+  section unfolded, the others folded), the current page highlighted and focused. Escape, the close button, a tap on
+  the backdrop or on a link close it (focus back on the burger); widening past 760 px closes it; the page doesn't
+  scroll behind it (`html.drawer-open`). It slides in from the left (0.2 s), not with reduced motion.
+- Current page: `currentNav(path, hash)`: the page's file name picks the section (More for the frozen tools); in the
+  save viewer the hash picks the section (`#hero=<id>` is Heroes, no or an unknown hash Overview); in the wiki the
+  route's first part, a detail route counting for its list (`#/enemy/97` → Enemies, `#/item/material/12` →
+  Materials, `#/stats/hit-chance` → Stats). Marked on load and on every `hashchange` / `popstate`
+  (`aria-current="page"` in the menu, the second row and the drawer).
+- The right-side controls are not built here: `theme.js` (theme, language), `save-source.ts` (save chip) and
+  `expansion-menu.ts` (expansions chip) insert them before the GitHub link, as before.
 
 ## What can run in the browser
 

@@ -592,13 +592,7 @@ function paint(top: boolean): void {
     main.replaceChildren(route());
     const h1 = main.querySelector("h1");
     document.title = `${h1?.textContent?.replace(/^[^\w]+/, "") || "Wiki"} · Merchant RPG Simulator`;
-    document.querySelectorAll(".wiki-nav a").forEach((x) => {
-      const cat = (x as HTMLAnchorElement).getAttribute("href")!;
-      // a detail route is the list's singular: #/enemies → #/enemy/ID, #/maps → #/map/ID
-      const on = location.hash === cat || location.hash.startsWith(cat.replace(/ies$/, "y").replace(/s$/, "")) && cat !== "#/";
-      if (on) x.setAttribute("aria-current", "page");
-      else x.removeAttribute("aria-current");
-    });
+    // The menus (nav.ts, U35) mark the current section from the hash themselves.
     window.scrollTo(0, top ? 0 : y);
   }
 }

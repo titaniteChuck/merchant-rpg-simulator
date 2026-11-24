@@ -9,7 +9,7 @@ import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts"
 import { itemName as shownItemName } from "./names.ts";
 import {
   $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gradeBadge, heroAsc, pill,
-  type Row as Cells, table, tabKeys, withAsc,
+  type Row as Cells, table, withAsc,
 } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource } from "./save-source.ts";
@@ -320,7 +320,10 @@ function renderCrafters(sv: Save): HTMLElement {
 }
 
 // ---------------------------------------------------------------- page
-/** Tabs in order; the first is the default. Each has a hash (save.html#inventory …). */
+/**
+ * Sections in order; the first is the default. Each has a hash (save.html#inventory …), linked from the site's menus
+ * (nav.ts: the Save dropdown, the second row under the top bar, the phone drawer; U35), which replace the tabs.
+ */
 const TABS = ["Overview", "Heroes", "Inventory", "Maps", "Crafters"] as const;
 type Tab = typeof TABS[number];
 const tabHash = (t: Tab) => `#${t.toLowerCase()}`;
@@ -328,15 +331,22 @@ const tabOf = (hash: string): Tab => TABS.find((t) => tabHash(t) === hash.toLowe
 
 let current: { sv: Save; views: HeroView[] } | null = null;
 
+/** U35: the menus' save sections (second row) only show once a save is loaded (style.css "menus + drawer"). */
+const markLoaded = (on: boolean) => {
+  if (on) document.documentElement.dataset.saveLoaded = "";
+  else delete document.documentElement.dataset.saveLoaded;
+};
+
 function render(sv: Save, fileName: string): void {
   void fileName;
   current = { sv, views: heroViews(sv) };
+  markLoaded(true);
   route();
 }
 
 /**
- * save.html#hero=<id> shows one hero; #overview, #heroes, #inventory, #maps, #crafters a tab;
- * anything else (no hash) the Overview tab.
+ * save.html#hero=<id> shows one hero; #overview, #heroes, #inventory, #maps, #crafters a section;
+ * anything else (no hash) the Overview.
  */
 function route(): void {
   if (!current) return;
@@ -354,24 +364,8 @@ function route(): void {
     Overview: () => renderOverview(sv), Heroes: () => renderHeroes(views, sv), Inventory: () => renderInventory(sv),
     Maps: () => renderMaps(sv), Crafters: () => renderCrafters(sv),
   };
-  const tabList = el("div", { role: "tablist", class: "tabs", "aria-label": "Save sections" });
-  const panel = el("div", { role: "tabpanel", class: "panel" });
-  const select = (name: Tab) => {
-    tabList.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.textContent === name)));
-    panel.replaceChildren(panels[name]());
-  };
-  for (const name of TABS) {
-    const b = el("button", { role: "tab", type: "button", "aria-selected": "false" }, name);
-    b.addEventListener("click", () => {
-      // replaceState: keeps the tab in the URL without a hashchange (no re-render) or a history entry.
-      history.replaceState(null, "", name === TABS[0] ? location.pathname + location.search : tabHash(name));
-      select(name);
-    });
-    tabList.append(b);
-  }
-  tabKeys(tabList);
-  $("#result").replaceChildren(tabList, panel);
-  select(tabOf(location.hash));
+  const name = tabOf(location.hash);
+  $("#result").replaceChildren(el("section", { class: "panel", "aria-label": name }, panels[name]()));
 }
 window.addEventListener("hashchange", route);
 
@@ -395,7 +389,10 @@ async function loadSave(text: string, name: string): Promise<void> {
 function init(): void {
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: loadSave,
-    onForget: () => $("#result").replaceChildren(),
+    onForget: () => {
+      $("#result").replaceChildren();
+      markLoaded(false);
+    },
     menuExtras: () => ({ title: "Export (CSV)", items: csvExports() }),
   });
   loadWikiText();

@@ -1,8 +1,10 @@
 /**
  * Local regression sweep of the built site (not in CI: it needs a browser). Opens every page at 1280 and 375 px,
  * light and dark, with and without a save loaded, and fails on console errors, uncaught errors, failed requests
- * (404s, favicon included), a page wider than the viewport, or (600 px and less, U20) a nav row that wraps: the top
- * bar, its page links, the wiki's section chips and the tab rows must each be ONE line.
+ * (404s, favicon included), a page wider than the viewport, (600 px and less, U20) a row that wraps: the top bar and
+ * the tab rows must each be ONE line, or (U35) broken menus: above 760 px the main menu shows, marks the current page
+ * and each dropdown opens on screen and closes with Escape; at 760 px and less only the burger shows, and it opens the
+ * left drawer (on screen, current page marked, focus inside) that Escape closes.
  *
  *   cd web && npm run site && node scripts/check-site.ts            # all pages, all variants
  *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt --widths 414
@@ -43,7 +45,8 @@ const PAGES: Record<string, string> = {
   expansions: "wiki.html#/expansions",
   balance: "class-balance.html",
 };
-const ONE_LINE_ROWS = ".topbar, .topnav, .wiki-nav, .tabs";
+/** U20 one-line rows, at 600 px and less. Since U35 the site menus are a burger and a drawer there (checked apart). */
+const ONE_LINE_ROWS = ".topbar, .tabs";
 const THEMES = ["light", "dark"] as const;
 
 // ---------------------------------------------------------------- arguments
@@ -104,7 +107,42 @@ const PROBE = `(() => {
       const lines = boxes.some((a) => boxes.some((b) => b.top >= a.bottom - 1)) ? 2 : 1;
       return lines > 1 ? [row.className.trim().split(/\\s+/).join(".") + " (" + Math.round(row.getBoundingClientRect().height) + "px high)"] : [];
     });
-    return { errors, warnings, width: cw, scrollWidth: d.scrollWidth, wide, wrapped };
+    // Menus (U35): desktop menu + dropdowns above 760 px; burger + drawer at 760 px and less. Leaves them closed.
+    const nav = [];
+    const shown = (el) => !!el && !!el.offsetParent;
+    const key = (el, k) => el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+    const onScreen = (el, what) => { const r = el.getBoundingClientRect(); if (r.left < -1 || r.right > cw + 1) nav.push(what + " off screen (" + Math.round(r.left) + "–" + Math.round(r.right) + "px)"); };
+    const burger = document.querySelector(".nav-burger"), main = document.querySelector(".mainnav"), drawer = document.querySelector("#nav-drawer");
+    if (!burger || !main || !drawer) nav.push("menus not built (js/nav.js)");
+    else if (cw > 760) {
+      if (!shown(main)) nav.push("main menu hidden");
+      if (shown(burger)) nav.push("burger shown");
+      if (!main.querySelector('[aria-current="page"], .is-current')) nav.push("no current section in the main menu");
+      for (const b of main.querySelectorAll(".menu-caret")) {
+        b.click();
+        const pop = document.getElementById(b.getAttribute("aria-controls"));
+        if (b.getAttribute("aria-expanded") !== "true" || !shown(pop)) nav.push("dropdown " + b.getAttribute("aria-controls") + " does not open");
+        else onScreen(pop, "dropdown " + pop.id);
+        key(b, "Escape");
+        if (b.getAttribute("aria-expanded") !== "false" || shown(pop)) nav.push("dropdown " + b.getAttribute("aria-controls") + " does not close on Escape");
+      }
+    } else {
+      if (shown(main)) nav.push("main menu shown on a phone");
+      if (!shown(burger)) nav.push("burger hidden on a phone");
+      else {
+        burger.click();
+        drawer.getAnimations({ subtree: true }).forEach((a) => a.finish());
+        if (!drawer.open || burger.getAttribute("aria-expanded") !== "true") nav.push("the burger does not open the drawer");
+        else {
+          onScreen(drawer, "drawer");
+          if (!drawer.querySelector('[aria-current="page"], .is-current')) nav.push("no current page in the drawer");
+          if (!drawer.contains(document.activeElement)) nav.push("focus not in the open drawer");
+          key(drawer, "Escape");
+          if (drawer.open || burger.getAttribute("aria-expanded") !== "false") nav.push("the drawer does not close on Escape");
+        }
+      }
+    }
+    return { errors, warnings, width: cw, scrollWidth: d.scrollWidth, wide, wrapped, nav };
   };
 })();`;
 
@@ -184,7 +222,7 @@ const server = http.createServer((req, res) => {
 
 // ---------------------------------------------------------------- runs
 interface Run { page: string; width: number; theme: (typeof THEMES)[number]; save: boolean; id: string }
-interface Result extends Run { errors: string[]; warnings: string[]; wide: string[]; overflow: boolean; wrapped: string[]; notFound: string[]; failed: boolean }
+interface Result extends Run { errors: string[]; warnings: string[]; wide: string[]; overflow: boolean; wrapped: string[]; nav: string[]; notFound: string[]; failed: boolean }
 
 /** A fresh browser profile per run (a closing browser may still hold the previous one); all removed at the end. */
 const profiles: string[] = [];
@@ -235,7 +273,7 @@ async function runOne(base: string, r: Run): Promise<Result> {
     res = await runOnce(base, r);
   } catch (e) {
     // A run that can't even start (profile folder) fails alone instead of stopping the sweep.
-    return { ...r, errors: [`run not started: ${e instanceof Error ? e.message : e}`], warnings: [], wide: [], overflow: false, wrapped: [], notFound: [], failed: true };
+    return { ...r, errors: [`run not started: ${e instanceof Error ? e.message : e}`], warnings: [], wide: [], overflow: false, wrapped: [], nav: [], notFound: [], failed: true };
   }
   if (res.errors.some((e) => e.startsWith("no report (browser exited"))) {
     notFound.delete(r.id);
@@ -262,7 +300,7 @@ function runOnce(base: string, r: Run): Promise<Result> {
       reports.delete(r.id);
       chrome.kill();
       stopBrowsers(`mrs-check-${process.pid}-${r.id}`);
-      let rep: { errors?: string[]; warnings?: string[]; wide?: string[]; wrapped?: string[]; width?: number; scrollWidth?: number };
+      let rep: { errors?: string[]; warnings?: string[]; wide?: string[]; wrapped?: string[]; nav?: string[]; width?: number; scrollWidth?: number };
       try {
         rep = body ? JSON.parse(body) : { errors: [`no report (${why})`] };
       } catch {
@@ -272,8 +310,9 @@ function runOnce(base: string, r: Run): Promise<Result> {
       const overflow = (rep.scrollWidth ?? 0) > (rep.width ?? 0) + 1;
       const errors = rep.errors ?? [];
       const wrapped = rep.wrapped ?? [];
-      done({ ...r, errors, warnings: rep.warnings ?? [], wide: rep.wide ?? [], overflow, wrapped, notFound: nf,
-        failed: errors.length > 0 || overflow || wrapped.length > 0 || nf.length > 0 });
+      const nav = rep.nav ?? [];
+      done({ ...r, errors, warnings: rep.warnings ?? [], wide: rep.wide ?? [], overflow, wrapped, nav, notFound: nf,
+        failed: errors.length > 0 || overflow || wrapped.length > 0 || nav.length > 0 || nf.length > 0 });
     };
     reports.set(r.id, (body) => finish(body));
     const timer = setTimeout(() => finish(null, "timed out"), settleMs + 60000);
@@ -314,6 +353,7 @@ async function main(): Promise<void> {
       for (const p of res.notFound) console.log(`       404: ${p}`);
       if (res.overflow) console.log(`       page wider than ${res.width}px: ${res.wide.join(", ") || "(no single element found)"}`);
       for (const w of res.wrapped) console.log(`       more than one line: ${w}`);
+      for (const n of res.nav) console.log(`       menus: ${n}`);
     }
   }));
   server.close();
