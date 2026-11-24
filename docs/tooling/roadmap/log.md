@@ -72,3 +72,4 @@
 - **Update**: R2-B done (1345f9b): Save viewer on phones (review-r2); the no-save picker label is the same in the static HTML of every save page.
 - **Update**: F2 done (7d2ccf3): Farming page second batch (review-farming).
 - **Update**: R2-A done (acc3cbd): Home, menus, footer and formats on phones (review-r2).
+- **Update**: R2-C done (c30d660): Simulator and Solver on phones (review-r2). Its room-bar fade script is kept beside R2-A's CSS-only .scroll-row fades (works without scroll timelines; tested).
