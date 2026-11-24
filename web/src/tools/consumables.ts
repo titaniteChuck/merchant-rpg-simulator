@@ -2,8 +2,10 @@
  * Potions and permanent hero enchants in combat: which ones help a hero most in a given fight, and per class.
  *
  * Game rules (obj.Hero, scene.hero.HeroPotionOverlay, data.Default):
- * - A potion ("Boost" consumable) adds flat stats for `duration` quests (default 3; one map run counts as one, through
- *   Campaign -> reduceBoost); one potion at a time, the same one again extends it. A hero can drink it from level
+ * - A potion ("Boost" consumable) adds flat stats for `duration` fights (default 3): one charge per quest, and one per
+ *   map ROOM fought (Campaign -> resetHero -> reduceBoost after every combat), so a 3-charge potion covers the first 3
+ *   rooms of a map run, which the map simulation reproduces; one potion at a time, the same one again extends it. A
+ *   hero can drink it from level
  *   itemLevel - 5 - 4 x (prestige - 1) (default.heroBoostLevelReq).
  * - An enchant ("Enchant" consumable) is permanent: flat stats (+3 atk...) or growth per level ("Plv": +0.1 atk per
  *   level). A hero holds 8 + 4 x (prestige - 1) of them (maxEnchants).

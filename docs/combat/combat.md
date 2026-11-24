@@ -53,8 +53,11 @@ flowchart LR
 - Enemy default attack (`getDamageRatio`): split evenly over the living front row (each takes 1/n of the damage);
   back row only once the front row is dead. Not random, not by HP, no threat.
 - Skills can target `front` / `back` (full damage to each hero of that row, the other row if it is empty), `mid`
-  (location 4), `aoe` (all, full damage), a fixed location, or the lowest-HP hero (Execute, `getHeroByStat`).
-  `midline` is not a known string to `Party`: such attacks hit everyone.
+  (location 4), `midline` (locations 3 and 4: back 2 and front 2, `obj.Combatant.lua:156`; Fatal Gaze, Shadow
+  Strike), `aoe` (all, full damage), a fixed location, or the lowest-HP hero (Execute, `getHeroByStat`). An empty
+  targeted slot is not hit (no fallback, unlike `front` / `back`).
+- Party *effects* (`Party:addEffect`) know only `front`, `back`, `mid` and `aoe`: any other string, `midline`
+  included, puts the effect on every hero.
 - Taunt: puts an `OnAttack` effect on the enemy that redirects its next attack (whatever its ratio) to the taunter
   only, then ends.
 - Hero skills always target the single enemy. Heals: Lesser Heal heals the front hero of the caster's column (a
@@ -66,6 +69,11 @@ flowchart LR
 2. Hit chance = `round(200 × acc / (acc + eva))`, capped 100. DoTs always hit.
 3. Crit if `random(1, 100) ≤ crit` → × `critMod` (2 base). Else luck: ≤ `1.6 × luck` → × 1.35 ("lucky hit").
 4. Reduction = `100 / (100 + def × (100 − defPen)%)` for atk; same with mdef for matk. `dmg` is true damage.
+   A skill's own `defPen` / `mdefPen` never applies:
+   - `sendAttack` keeps the LOWER of the skill's value and the attacker's own (`obj.Combatant.lua:111`–`114`).
+   - Nothing gives an attacker penetration: heroes reset it to 0 (`obj.Hero.lua:195`–`196`), and no item, prefix or enemy sets it. So it stays 0, e.g. Pulverize's 45 is lost.
+   - Only Magic Missile II's after-effect works: it writes `mdefPen = 60` on the next attack itself (`data.AbilityFunc.lua:324`).
+   - The port does the same, and the schedule score and skill probe credit no penetration.
 5. Defender effects (`OnDamage`, `DamageReceived`) scale the result.
 
 ## Effects

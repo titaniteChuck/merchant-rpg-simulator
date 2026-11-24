@@ -78,8 +78,9 @@ Max level 50 / 50 / 60 at tier 1 / 2 / 3 (`maxHeroLevel`); XP per level in `hero
 ## Potions and enchants
 
 - **Potion** ("Boost" consumable, 28): flat stats (Atk Boost +1: +120 atk, HP Boost: +500 HP, Crit Boost: +10 crit,
-  Speed/XP/Luck boosts) for `duration` quests (3; Witch's Brew 6). One map run counts as one (`Campaign` calls
-  `reduceBoost`). One potion at a time; the same potion again extends it (`Hero:applyBoost`).
+  Speed/XP/Luck boosts) for `duration` fights (3; Witch's Brew 6): one charge per quest (`obj.Quest.lua:225`) and one
+  per map ROOM fought, not per run (`obj.combat.Campaign.lua:127`, in `resetHero` after every combat). A 3-charge
+  potion lasts the first 3 rooms of a map. One potion at a time; the same potion again extends it (`Hero:applyBoost`).
   Usable from hero level `itemLevel − 5 − 4 × (tier − 1)` (`default.heroBoostLevelReq`).
 - **Enchant** ("Enchant" consumable, 10): permanent, flat (+3 atk/matk/acc/def/mdef) or per level ("Plv": +0.1 growth,
   so +6 atk at level 60). Up to `8 + 4 × (tier − 1)` per hero. Enchant bonuses to luck, XP, AP, crit multiplier and

@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-23
+- **Party search (E17)**: [party-search](./party-search.md): `searchParties` grows parties by beam search and returns the smallest that win, with rows, order, rotations (map runs tuned on the boss fight) and scrolls.
 - **Deaths and revives (E16)**: the schedule score's HP race runs cycle by cycle (deaths redirect targeted damage, revives at 50 %, taunt sends the next attack to the taunter, def buffs and shields priced in the damage formula) and is scored like `evaluate`; Demon Mage ×5 Cleric correlation 0.88, pre-filter within 0.5 turns of the full search.
 - **Warm start, scorer v2 (E15)**: [warm-start](./warm-start.md) table (3,807 entries) tried by `searchSkills`; schedule score with real heal sizes, enemy hits priced per hero (mix, def/mdef cuts, split shared), HP race; pre-filter adds the best ordering of the top skill sets.
 - **Pre-filter, seeds, lost-fight score (E14b)**: `searchSkills` and `optimiseFight` rank rotations with the schedule score and simulate the top ones; fight seeds go through `fightSeed` (no more first roll of 1); lost fights rank by lowest enemy HP, total damage and survival (no turn penalty); the current rotation is always a skill-search finalist; E14a's gear workaround dropped.

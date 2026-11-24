@@ -244,6 +244,9 @@ function enemySkillCast(sim: Sim, quest: number, rare: boolean, slot: number, na
   for (const h of heroes) seed(h);
   seed(battle.enemy);
   battle.enemy.questHP = Math.round(battle.enemy.maxHP / 2); // room for self-heals
+  // the heroes deal no damage: an action an enemy skill forces on them (Drown: Basic) must not kill the probe enemy,
+  // which would cut its later windows short (the damage filter test sends its own hits through the prototype)
+  for (const h of heroes) h.sendAttack = () => undefined;
   battle.enemy.attackList[slot] = name;
   const all = () => [...heroes, battle.enemy];
   return { battle, rec: run(battle, battle.enemy, slot, slot, after, all), caster: battle.enemy, heroes, castTurn: slot };
@@ -305,7 +308,7 @@ function damageTest(make: (after: number | "cast") => Cast, ownerIsEnemy: boolea
         params.damageRatio = [0, 0, 0, 0, 0, 0, 0];
         params.damageRatio[owner.partyLocation] = 1;
       }
-      attacker.sendAttack(params);
+      Combatant.prototype.sendAttack.call(attacker, params);
       taken += hpOwner - owner.questHP;
       back += hpAttacker - attacker.questHP;
     }
@@ -547,7 +550,7 @@ export interface TimelinesData {
   timelines: Record<string, EnemyTimeline>;
 }
 
-export const TIMELINES_VERSION = 4;
+export const TIMELINES_VERSION = 5;
 
 export const timelineKey = (quest: number, rare = false) => `${quest}${rare ? "B" : ""}`;
 

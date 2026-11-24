@@ -1,5 +1,5 @@
 {
- "version": 4,
+ "version": 5,
  "heroSkills": {
   "Ambush": {
    "name": "Ambush",
@@ -5266,7 +5266,8 @@
       2
      ],
      "facingTurns": [
-      1
+      1,
+      2
      ],
      "removable": true
     }
@@ -17514,7 +17515,8 @@
         2
        ],
        "facingTurns": [
-        1
+        1,
+        2
        ],
        "removable": true
       }
