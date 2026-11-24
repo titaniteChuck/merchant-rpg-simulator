@@ -1416,3 +1416,32 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .help-more a.ref-link:hover, .help-more a.ref-link:focus-visible { border-bottom: 1px solid currentColor; }
 .facts dt a.ref-link, .cls-cards dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, legend a.ref-link { color: inherit; }
 /* end wiki cross-links */
+/* quest xp */
+/* U33. Enemy pages' "XP and time" section (wiki-enemies.ts: questXpBlock, mapXpBlock): grade / party / ascension
+   toggles, then a small table; the battle results' XP tiles reuse .tiles and add only the links line (.qxp-refs). */
+.qxp-controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 4px 0 10px; }
+.qxp-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.qxp-toggle-label { margin-right: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 0.72rem; }
+.qxp-toggle button { padding: 3px 9px; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; background: var(--card-2); color: var(--muted); }
+.qxp-toggle button:hover { border-color: var(--accent); }
+.qxp-toggle button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg);
+  background: color-mix(in srgb, var(--accent) 18%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent); }
+.qxp-toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.qxp-toggle button .grade { min-width: 18px; height: 18px; }
+.qxp-wrap { max-width: 720px; }
+.qxp-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.qxp-table th, .qxp-table td { padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); text-align: left; }
+.qxp-table th { color: var(--muted); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.qxp-table th.num, .qxp-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.qxp-table th a.ref-link { color: inherit; }
+.qxp-table tr.rare td { background: color-mix(in srgb, #ec4899 7%, transparent); }
+.qxp-where { margin: 0 0 8px; }
+/* battle results: the XP row keeps the outcome tiles' size (auto-fill: empty columns stay) and sits close under them */
+.tiles:has(+ .qxp-tiles), .tiles + .qxp-tiles { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
+.tiles + .qxp-tiles { margin-top: -12px; margin-bottom: 8px; }
+.qxp-refs { margin: 0 0 18px; }
+@media (max-width: 600px) {
+  .qxp-table th, .qxp-table td { padding: 5px 6px; }
+  .qxp-controls { gap: 8px 12px; }
+}
+/* end quest xp */

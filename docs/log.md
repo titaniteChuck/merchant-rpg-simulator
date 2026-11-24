@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-24
+- **Website**: Quest XP and time (U33): enemy pages show XP per hero, time and XP / min (quests by size, grade and party; map-only enemies through their maps' craft + run time); battle results show XP and quest / run time; the levelling plan names map steps by their map.
 - **Website**: Battle page (U27): one "Best party" solver on `searchParties` replaces Best party, Best rotation and Best scrolls: min / max party size, include scrolls (maps), 60 / 120 s budget, a top-10 table with Load and undo, Cancel keeps the partial results; hidden behind a spoiler guard ("Show me the solver anyway", remembered, with a warning line and "Hide it again").
 - **Website**: Battle page (U32): the 5-turn plan shows what the enemy does to the heroes (Drown strikes the planned skill out for Basic, stuns, debuffs) and says each enemy effect in plain words; "Clear all" for the party slots with undo; party setup rules on the slots (required Front 2, solo quests, size cap) from the engine's E21 `partyRules` / `partyProblem`.
 

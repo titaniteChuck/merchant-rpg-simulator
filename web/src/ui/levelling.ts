@@ -8,11 +8,11 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { availableQuests, type LevellingPlan, maxLevel, type PrestigePayoff } from "../tools/levelling.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, ascText, bar, el, EXPANSION_LABEL, expansionBadge, fmt, fmt1, heroAsc, pct, pill, rateTone, select, table, tile, withAsc } from "./dom.ts";
+import { $, ascText, bar, el, EXPANSION_LABEL, expansionBadge, fmt, fmt1, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import type { LevelRequest, LevelResponse } from "./levelling-worker.ts";
 import { initSaveSource } from "./save-source.ts";
-import { enemyLink, isEnemy, loadWikiText } from "./wiki-data.ts";
+import { enemyLink, isEnemy, itemLink, loadWikiText } from "./wiki-data.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { className as classNameOf, enemyName, markName } from "./names.ts";
 
@@ -50,6 +50,17 @@ function hours(h: number): string {
 function questCell(id: number): HTMLElement {
   if (isGathering(id)) return markName(el("span", { class: "nowrap" }, enemyName(id) ?? `quest ${id}`, " ", pill("gathering", "t-green")), "enemy", id);
   return isEnemy(id) ? enemyLink({ id }) : markName(el("span", {}, enemyName(id) ?? `quest ${id}`), "enemy", id);
+}
+
+/**
+ * U33: a step's source. A map step names the map (source.label; source.quest is only its boss): the map's link in the
+ * visitor's language with its ascension, or the label itself; a quest step stays the quest's cell.
+ */
+function sourceCell(r: Row): HTMLElement {
+  if (r.kind !== "map") return questCell(Number(r.quest));
+  const map = r.map === null || r.map === undefined ? undefined : Number(r.map);
+  const name = map !== undefined && G.itemData.map?.[map] ? itemLink("map", map, undefined, undefined, r.asc) : el("span", {}, String(r.label ?? `quest ${r.quest}`));
+  return el("span", { class: "nowrap" }, name, " ", pill("map run", "t-gold"));
 }
 
 // ---------------------------------------------------------------- step 1: hero and companions
@@ -150,12 +161,13 @@ function run(req: LevelRequest, out: HTMLElement, button: HTMLButtonElement, ren
 // ---------------------------------------------------------------- step 2: the plan
 function planTable(plan: LevellingPlan): HTMLElement {
   const rows = plan.steps.map((s) => ({
-    levels: `${s.fromLevel} → ${s.toLevel}`, quest: s.source.quest, amount: s.source.amount, win: s.source.win,
+    levels: `${s.fromLevel} → ${s.toLevel}`, kind: s.source.kind, quest: s.source.quest, map: s.source.map ?? null, asc: s.source.asc ?? 0,
+    label: s.source.label ?? null, amount: s.source.amount, win: s.source.win,
     xpRun: s.source.xpPerRun, runs: s.runs, hours: s.hours, xph: s.source.xpPerHour, revive: s.reviveGold,
   }));
   return table(rows, [
     { key: "levels", label: "Levels" },
-    { key: "quest", label: "Best quest", render: (r) => questCell(Number(r.quest)) },
+    { key: "quest", label: "Best quest", render: sourceCell },
     { key: "amount", label: "Size", num: true, show: (v) => `×${v}` },
     { key: "win", label: "Win", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.win))}`, style: "color: var(--c)" }, pct(Number(r.win))) },
     { key: "xpRun", label: "XP / run", num: true, show: (v) => fmt.format(Number(v)) },

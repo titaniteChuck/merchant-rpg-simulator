@@ -17,6 +17,8 @@ import { hiddenNote } from "./expansion-menu.ts";
 import { rarityChip } from "./wiki-items.ts";
 import { enemyName, itemName, skillName } from "./names.ts";
 import { amountOddsText, amountRange, BASE_GRADE, fixedAmounts, LOOT_GRADES, lootTable, pctText } from "./wiki-loot.ts";
+import { isBoardQuest, isMapOnlyQuest } from "../tools/quest-stats.ts";
+import { mapXpRows, partySizes, questXpRows, timeText, XP_DEFAULT_GRADE, xpText } from "./quest-xp.ts";
 
 /** [quest key (the rare variant adds "B"), label]. */
 export const ENEMY_STATS: [string, string][] = [["enemyHp", "HP"], ["enemyAtk", "Atk"], ["enemyMatk", "Matk"], ["enemyDef", "Def"], ["enemyMdef", "Mdef"], ["enemyEva", "Eva"]];
@@ -273,6 +275,114 @@ function bushDrops(id: number): HTMLElement | undefined {
   return el("span", {}, ...fixed.flatMap((n, i) => [...(i ? [", "] : []), n]), el("span", { class: "muted small" }, ` · ${what}`));
 }
 
+// ---------------------------------------------------------------- XP and time (U33)
+/**
+ * A row of toggle buttons (one pressed): grade D–S, party size, map ascension. `label` names the group for screen
+ * readers; `onPick` gets the picked value.
+ */
+function toggleGroup(label: string, options: [number, Node | string][], value: number, onPick: (v: number) => void): HTMLElement {
+  const group = el("div", { class: "qxp-toggle", role: "group", "aria-label": label },
+    el("span", { class: "qxp-toggle-label muted small", "aria-hidden": "true" }, label));
+  for (const [v, text] of options) {
+    const b = el("button", { type: "button", "aria-pressed": String(v === value) }, text);
+    b.addEventListener("click", () => onPick(v));
+    group.append(b);
+  }
+  return group;
+}
+
+/** Redraw a block after a toggle, keeping the keyboard focus on the toggle group that was used. */
+function redraw(box: HTMLElement, draw: () => void): void {
+  const group = (document.activeElement as HTMLElement | null)?.closest(".qxp-toggle")?.getAttribute("aria-label");
+  draw();
+  if (group) box.querySelector<HTMLElement>(`.qxp-toggle[aria-label="${group}"] button[aria-pressed="true"]`)?.focus();
+}
+
+const gradeToggle = (grade: number, onPick: (v: number) => void) =>
+  toggleGroup("Grade", GRADE_LETTERS.map((l, i): [number, Node] => [i + 1, gradeBadge(l)]), grade, onPick);
+const partyToggle = (sizes: number[], heroes: number, onPick: (v: number) => void) =>
+  toggleGroup("Party", sizes.map((n): [number, string] => [n, `${n} ${n === 1 ? "hero" : "heroes"}`]), heroes, onPick);
+
+/** A small table with linked headers ([label, numeric]). */
+function xpTable(head: [Node | string, boolean][], rows: HTMLTableRowElement[]): HTMLElement {
+  return el("div", { class: "table-wrap qxp-wrap" }, el("table", { class: "qxp-table" },
+    el("thead", {}, el("tr", {}, ...head.map(([h, num]) => el("th", { scope: "col", class: num ? "num" : "" }, h)))),
+    el("tbody", {}, ...rows)));
+}
+const numCell = (text: string, title?: string) => el("td", { class: "num", ...(title ? { title } : {}) }, text);
+
+const QUEST_XP_HELP = [
+  "Fought on its own from the region's quest board. XP is split between the heroes of the party; each living hero of a won quest gets this share.",
+  "Time is the quest's own time at the chosen grade; the fight itself adds to it (the Battle page simulates it). Without XP or speed bonuses.",
+  "×3 and ×5 need a tier-2 and a tier-3 hero; the rare variant is always ×1.",
+];
+const MAP_XP_HELP = [
+  "Never on the quest board: you meet it by crafting one of these maps and running it room by room, so each fight costs a whole map.",
+  "Craft: the crafter's time for the map (and the lower maps its recipe uses). Run: the walk through the map; the fights add to it. "
+    + "XP per hero: the whole run with every room won. XP / min counts craft and run.",
+  "The map's grade is its craft grade: it sets the rooms, the craft speed and the Treasure Bush odds.",
+];
+
+/** Quest-board quest: XP per hero, time and XP / min per quest size, at a grade and party size picked on the page. */
+function questXpBlock(id: number): HTMLElement {
+  const sizes = partySizes(id);
+  let grade = XP_DEFAULT_GRADE, heroes = sizes[0];
+  const box = el("div", { class: "qxp" });
+  const draw = () => {
+    const rows = questXpRows(id, { grade, heroes }).map((r) => el("tr", r.rare ? { class: "rare" } : {},
+      el("td", {}, el("span", { class: "nowrap" }, `×${r.amount}`, ...(r.rare ? [" ", pill("rare", "t-pink")]
+        : r.tier > 1 ? [el("span", { class: "muted small" }, ` · tier ${r.tier}`)] : []))),
+      numCell(xpText(r.xpPerHero)), numCell(timeText(r.seconds), `${fmt.format(r.seconds)} s`), numCell(xpText(r.xpPerMin))));
+    box.replaceChildren(
+      el("div", { class: "qxp-controls" }, gradeToggle(grade, (v) => (grade = v, redraw(box, draw))),
+        ...(sizes.length > 1 ? [partyToggle(sizes, heroes, (v) => (heroes = v, redraw(box, draw)))] : [el("span", { class: "muted small" }, "Solo quest: 1 hero")])),
+      xpTable([[statLink("quest-size", "Size"), false], [statLink("xp", "XP per hero"), true], [statLink("time", "Time"), true], ["XP / min", true]], rows));
+  };
+  draw();
+  return box;
+}
+
+const pctOfRuns = (p: number) => `${p >= 0.1 ? fmt.format(p * 100) : (p * 100).toFixed(1)}% of runs`;
+
+/** Map-only enemy: the maps it is fought in, each with craft time, run time and XP per hero for the run. */
+function mapXpBlock(id: number): HTMLElement {
+  let grade = XP_DEFAULT_GRADE, heroes = 1, asc = 0;
+  const box = el("div", { class: "qxp" });
+  const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
+  const roleCell = (role: string, perRun: number) => el("span", { class: "nowrap" }, pill(role, tone[role]),
+    ...(perRun < 0.999 ? [el("span", { class: "muted small" }, ` · ${pctOfRuns(perRun)}`)] : []));
+  const draw = () => {
+    const { rows, hidden } = mapXpRows(id, { grade, heroes, asc });
+    const maps = [...new Set(rows.map((r) => r.map))];
+    const where = maps.length
+      ? el("p", { class: "qxp-where" }, el("strong", {}, "Fought in: "),
+        ...maps.flatMap((m, i) => [...(i ? [", "] : []), itemLink("map", m, undefined, undefined, asc)]))
+      : el("p", { class: "qxp-where muted" }, hidden ? ""
+        : isTreasureBush(id) && grade < 3 ? "Not at map grade D or C: a Treasure Bush needs grade B or better."
+        : "In no map a crafter can make (level 60 at most).");
+    const note = hiddenNote(hidden, hidden === 1 ? "map" : "maps");
+    box.replaceChildren(
+      el("div", { class: "qxp-controls" }, gradeToggle(grade, (v) => (grade = v, redraw(box, draw))),
+        partyToggle([1, 6], heroes, (v) => (heroes = v, redraw(box, draw))),
+        toggleGroup("Ascension", [[0, "0"], [1, "1"]], asc, (v) => (asc = v, redraw(box, draw)))),
+      ...(maps.length || !hidden ? [where] : []),
+      ...(rows.length ? [xpTable([["Map", false], ["As", false], [statLink("craft", "Craft"), true], [statLink("time", "Run"), true],
+        [statLink("xp", "XP per hero / run"), true], ["XP / min", true]], rows.map((r) => el("tr", {},
+        el("td", {}, itemLink("map", r.map, undefined, undefined, asc)), el("td", {}, roleCell(r.role, r.perRun)),
+        numCell(timeText(r.craftSeconds)), numCell(timeText(r.runSeconds)), numCell(xpText(r.xpPerHero)), numCell(xpText(r.xpPerMin)))))] : []),
+      ...(note ? [note] : []));
+  };
+  draw();
+  return box;
+}
+
+/** The enemy page's "XP and time" section: a quest-board quest or a map run; none for anything else. */
+function xpSection(id: number, section: Section): HTMLElement | null {
+  if (isBoardQuest(id)) return sectionHelp(section("XP and time", questXpBlock(id)), QUEST_XP_HELP, [statLink("xp"), statLink("time"), statLink("quest-size")]);
+  if (isMapOnlyQuest(id)) return sectionHelp(section("XP and time", mapXpBlock(id)), MAP_XP_HELP, [statLink("xp"), statLink("time"), statLink("craft")]);
+  return null;
+}
+
 type Facts = (pairs: [string | Node, Node | string | number | undefined | null][]) => HTMLElement;
 type Section = (title: string, ...kids: (Node | string)[]) => HTMLElement;
 
@@ -291,6 +401,7 @@ export function enemyBody(id: number, facts: Facts, section: Section): HTMLEleme
       ["Party", q.party ? `${q.questSize ?? "?"} heroes` : "solo"], ["Acts", first ? battleLink("turn-order", "before the heroes, every turn") : undefined],
       ["Rare variant", rare ? el("span", {}, enemyLink({ id, rare: true }), q.abRand ? el("span", { class: "muted small" }, ` · about ${q.abRand}% of its map rooms`) : "") : undefined],
       ["Maps", roles.length ? `${roles.length}${bossOf ? ` (boss in ${bossOf})` : ""}` : "none"]]),
+    ...((x) => (x ? [x] : []))(xpSection(id, section)),
     sectionHelp(section("Stats", statsTable(id)), "Quest stats, before any map multiplier, grade or game mode.",
       [statLink("hit-chance", "Eva: hit chance"), statLink("defence", "Def, Mdef: defence"), statLink("quest-size", "HP: quest size ×N")]),
     section("Timeline and drops",

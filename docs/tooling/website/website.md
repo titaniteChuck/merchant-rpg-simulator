@@ -155,8 +155,21 @@ flowchart LR
 - The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n (common random numbers:
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
   map 22, 20 runs).
-- Results: win rate, turns, grade, enemy HP removed, party HP left; for maps progress, time, loot value, essence,
+- Results: win rate, turns, grade, enemy HP removed, party HP left; for maps progress, loot value, essence,
   where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
+- XP and time (U33, `ui/quest-xp.ts`): a second row of tiles under the outcome (`.qxp-tiles`, the same tile size), then
+  a line linking Stats › Experience / Quest and map time (/ Craft). Quest: XP per hero (`questStats`, the party's size,
+  no XP bonus), quest time = the simulated fight + the quest's own time at the average grade when won (else B), with
+  the party's speed, and XP / min (e.g. Maexna ×3, two heroes, won in 1 turn at S: 600 XP, 15 s + 3 min 45 s = 4 min,
+  150 XP / min). The fight's seconds come from the result's averages (`fightBattleSeconds`: the heroes' skill uses +
+  one enemy action a turn, minus its last one in a win unless it acts first, × 5 s, + 5 s a turn): FightEval has no
+  action count. Map: craft time (the map and the lower maps of its recipe, `mapRunStats`), the simulated run time,
+  XP per hero per run (every room won) and XP / min over craft + run (Murlok Madness Map at B, two heroes: 13 min +
+  2 h 4 min, 15,015 XP, 110 / min). What the result is about (quest, size, rare, party size and speed; map, grade,
+  ascension) is taken when the run starts (`runContext`), so changing the opponent afterwards doesn't change it.
+- Party check fix (U33): `partyProblem` in `battle.ts` passes the filled slots as objects; it passed hero indices, and
+  the engine's check (`partyProblem` in `tools/combat.ts`, a falsy test) read the save's first hero (index 0) as an
+  empty slot ("needs a hero in front 2").
 - Bundles: `js/battle.js` (page, ~100 KB) and `js/battle-worker.js` (~115 KB); `node:*` imports (Node-only scripts such as the data exporter)
   are external.
 - The Run button of step 1 runs the mode: Simulate, or one search of the search API of `web/src/tools/combat.ts`
@@ -480,6 +493,22 @@ flowchart LR
     Enemies, Maps, Equipment, Consumables and Materials lists, which open sorted by region, group (region, event, map
     boss), then level; the Region column sorts the same way and a gold rule marks where the region changes
     (`tr.reg-N`, any sort). Region fact (with the reason) on enemy, map and item pages; the enemy lead line names it.
+- XP and time on enemy pages (U33, `questXpBlock` / `mapXpBlock` in `wiki-enemies.ts` on `ui/quest-xp.ts`): a section
+  right under the facts, with toggles (grade D–S, default B; party size; map ascension 0 / 1) and a small table. No
+  formula on the page: the column headers link to Stats › Quest size, Experience, Quest and map time, Craft, and the
+  "?" says what the numbers include.
+  - Quest-board quests (`isBoardQuest`): one row per quest size, ×1, ×3 (tier 2) and ×5 (tier 3) from the engine's
+    cap (`maxQuestAmount`), plus the rare variant at ×1: XP per hero, the quest's own time at that grade (the fight
+    adds to it: the Battle page simulates it) and XP / min. Party sizes from `partyRules`: 1 hero, and the quest's
+    size for a party quest ("Solo quest: 1 hero" otherwise). Maexna at B, one hero: ×1 400 XP, 1 min 40 s,
+    240 / min; ×3 1,200, 5 min; ×5 2,000, 8 min 20 s; rare 500, 300 / min (two heroes: half the XP).
+  - Map-only enemies (`isMapOnlyQuest`: map bosses 91–98, Treasure Bushes 99–104): "Fought in: <maps>", then per map
+    (`mapsWithQuest`, craftable maps only) its role (boss, treasure, with the share of runs when below 1), craft time,
+    run time (the walk; the fights add to it), XP per hero for the whole run (every room won) and XP / min over craft
+    + run (`mapRunStats`). Murlok Monarch at B, one hero: Murlok Madness Map 13 min + 2 h, 30,030 XP, 226 / min;
+    Goons of Evil Map (boss in 33% of runs) 57 min + 3 h, 26,472, 112 / min. Maps hidden by the expansion settings
+    are left out with the "N hidden" note; a Treasure Bush at grade D or C says it needs B or better.
+  - CSS: the `quest xp` block at the end of `site/style.css`. Tests: `test/quest-xp.test.ts`.
 
 ## Profit page
 
@@ -531,7 +560,8 @@ flowchart LR
   Result: time, quest runs and revive gold, then one row per step: best quest by XP per hour among those won often
   enough, size, win rate, XP per run, runs, hours, XP per hour, revive gold. Gathering quests (questType 1, e.g.
   Forest Gathering) are included and labelled "gathering" (the best early XP; the wiki hides them from Enemies).
-  "Stuck at level N" when no quest is won often enough.
+  "Stuck at level N" when no quest is won often enough. A map step (`source.kind` "map", E20) shows the map, linked in
+  the visitor's language with its ascension and a "map run" tag (U33; it showed `source.quest`, the map's boss).
 - Step 3, next ascension (none at the last tier): a reference quest (default: the plan's last quest, else the
   toughest quest at or below the tier's max level). Now vs after: max level, enchant slots, quest size cap, stats at
   max level, solo win and enemy HP removed on the reference quest; costs: level required (reached or not), gold,

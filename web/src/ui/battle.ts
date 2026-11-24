@@ -26,6 +26,8 @@ import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } 
 import { initSaveSource } from "./save-source.ts";
 import { enemyLevelSort, enemyLevelText, enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
+import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, timeText, xpText } from "./quest-xp.ts";
+import { statLink } from "./wiki-ref.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
@@ -337,7 +339,12 @@ function pageTarget(): PageTarget | null {
 }
 /** Why the six slots can't fight the opponent (battle-rules.ts), or null. */
 function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): string | null {
-  const key = (row: "front" | "back") => [0, 1, 2].map((i) => state.slots[slotKey(row, i)] ?? null);
+  // U33 fix: the slots hold hero indices and the engine's check reads an empty slot as falsy, so hero 0 (the save's
+  // first hero) looked missing; each filled slot is passed as an object.
+  const key = (row: "front" | "back") => [0, 1, 2].map((i) => {
+    const v = state.slots[slotKey(row, i)];
+    return v === null || v === undefined ? null : { hero: v };
+  });
   return problemOf(pageTarget(), front ?? key("front"), back ?? key("back"));
 }
 
@@ -609,22 +616,48 @@ function request(): BattleRequest {
   return { gameMode: sv.raw.gameMode || "Standard", front, back, skills, n, ...targetOf() };
 }
 
-/** The last simulation shown (drawn again in another language, U29). */
-let lastResult: Extract<BattleResponse, { ok: true }> | null = null;
+/**
+ * What XP and time a result is about (U33), taken when the run starts (the page may change before it ends): the quest
+ * (size, rare, party size and speed) or the map (id, grade, ascension, party size).
+ */
+type RunContext = { quest: QuestRunContext } | { map: MapRunContext };
+function runContext(req: BattleRequest): RunContext {
+  const members = partyOf().members;
+  const mode = req.gameMode || "Standard";
+  if (req.quest) {
+    const speed = members.reduce((s, m) => s + (Number(api.heroStats(api.newHero(m.raw)).speed) || 0), 0);
+    return { quest: { quest: req.quest.id, rare: req.quest.rare, amount: req.quest.amount, heroes: members.length, speed, mode } };
+  }
+  const v = $<HTMLSelectElement>("#map").value;
+  const own: Any = v.startsWith("own:") ? state.sv?.mapInventory[Number(v.slice(4))] : null;
+  return { map: own ? { map: Number(own.id), grade: own.grade ?? 3, asc: own.prestigeLevel ?? 0, heroes: members.length, mode }
+    : { map: Number(v.slice(4)), grade: Number($<HTMLSelectElement>("#map-grade").value), asc: Number($<HTMLSelectElement>("#map-asc").value), heroes: members.length, mode } };
+}
+
+/** The last simulation shown (drawn again in another language, U29), with its run context. */
+let lastResult: (Extract<BattleResponse, { ok: true }> & { ctx: RunContext | null }) | null = null;
 function drawResult(): void {
   const r = lastResult;
   if (!r) return;
-  $("#results").replaceChildren(...(r.kind === "quest" ? questResults(r.result, r.ms) : mapResults(r.result, r.ms)));
+  $("#results").replaceChildren(...(r.kind === "quest"
+    ? questResults(r.result, r.ms, r.ctx && "quest" in r.ctx ? r.ctx.quest : null)
+    : mapResults(r.result, r.ms, r.ctx && "map" in r.ctx ? r.ctx.map : null)));
 }
 
 function run(): void {
   const out = $("#results");
   lastResult = null;
   let req: BattleRequest;
+  let ctx: RunContext | null = null;
   try {
     req = request();
     const problem = partyProblem();
     if (problem) throw new Error(problem);
+    try {
+      ctx = runContext(req);
+    } catch {
+      ctx = null; // the XP tiles are left out, the result still shows
+    }
   } catch (e) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, (e as Error).message));
     return;
@@ -651,7 +684,7 @@ function run(): void {
     const r = e.data;
     if (!r.ok) out.replaceChildren(el("p", { class: "error", role: "alert" }, r.error));
     else {
-      lastResult = r;
+      lastResult = { ...r, ctx };
       drawResult();
     }
   };
@@ -684,7 +717,41 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string): HTMLElement 
   ]);
 }
 
-function questResults(ev: FightEval, ms: number): HTMLElement[] {
+/**
+ * U33: the XP and time tiles, a second row under the outcome tiles (same tile size), then a line linking to the Stats
+ * sections (Experience, Quest and map time, Craft).
+ */
+const xpRow = (tiles: HTMLElement[], lead: string, craft = false): HTMLElement[] => (tiles.length ? [
+  el("div", { class: "tiles qxp-tiles", role: "group", "aria-label": "XP and time" }, ...tiles),
+  el("p", { class: "muted small qxp-refs" }, lead, " ", statLink("xp", "XP"), " · ", statLink("time", "time"),
+    ...(craft ? [" · ", statLink("craft", "craft")] : [])),
+] : []);
+
+/** U33: XP per hero, quest time (simulated fight + the quest's own time) and XP / min of a quest result. */
+function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
+  if (!c) return [];
+  const x = questResultXp(ev, c);
+  const at = `at grade ${GRADES[x.grade - 1]}${ev.win ? "" : " (never won)"}`;
+  return [
+    tile("XP per hero", xpText(x.xpPerHero), `each hero alive after a win, ${c.heroes} in the party`, { icon: "🎓", tone: "t-violet" }),
+    tile("Quest time", timeText(x.seconds), `fight ${timeText(x.battleSeconds)} + quest ${timeText(x.questSeconds)}, ${at}`, { icon: "⌛", tone: "t-blue" }),
+    tile("XP / min", xpText(x.xpPerMin), "per hero, over the quest time", { icon: "📈", tone: "t-green" }),
+  ];
+}
+
+/** U33: craft time, run time, XP per hero per run and XP / min (craft + run) of a map result. */
+function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
+  if (!c) return [];
+  const x = mapResultXp(ev, c);
+  return [
+    tile("Craft time", timeText(x.craftSeconds), "the map, and the lower maps its recipe uses", { icon: "🔨", tone: "t-slate" }),
+    tile("Run time", timeText(x.runSeconds), "per run, simulated", { icon: "⏱️", tone: "t-blue" }),
+    tile("XP per hero", xpText(x.xpPerHero), `per run, every room won, ${c.heroes} in the party`, { icon: "🎓", tone: "t-violet" }),
+    tile("XP / min", xpText(x.xpPerMin), "per hero, over craft + run", { icon: "📈", tone: "t-green" }),
+  ];
+}
+
+function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): HTMLElement[] {
   return [
     el("div", { class: "tiles" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
@@ -694,12 +761,13 @@ function questResults(ev: FightEval, ms: number): HTMLElement[] {
         ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
+    ...xpRow(questXpTiles(ev, ctx), "XP before XP bonuses; time with the party's speed. How they work:"),
     heroTable(ev.heroes, "fight"),
     el("p", { class: "muted small" }, `${ev.n} fights in ${fmt.format(ms)} ms, seeds 1–${ev.n}: every setting is tested on the same rolls.`),
   ];
 }
 
-function mapResults(ev: MapEval, ms: number): HTMLElement[] {
+function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): HTMLElement[] {
   const ess = Object.entries(ev.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", ") || "none";
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
   const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
@@ -708,10 +776,11 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
       tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
       tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
-      tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" }),
+      ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" })]),
       tile("Loot value", `${fmt.format(ev.loot_value)} g`, "base sell value per run", { icon: "💰", tone: "t-orange" }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
+    ...xpRow(mapXpTiles(ev, ctx), "XP before XP bonuses, every room won; craft time at the map's grade. How they work:", true),
     el("p", { class: "result-note" }, el("strong", {}, "✨ Essence per run: "), ess),
     ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
     ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
