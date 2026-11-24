@@ -309,14 +309,14 @@ function mapRegion(id: number): Region | null {
   return m ? mkRegion(mapRegionId(m), "region", () => `Map Lv ${m.itemLevel ?? 0}`) : null;
 }
 
-let sourcesOf: Map<string, { fixed: number[]; loot: number[] }> | null = null;
-/** Regions where each item drops: every-win rewards and map essence ("fixed"), loot rolls ("loot"). */
-function itemSources(): Map<string, { fixed: number[]; loot: number[] }> {
+let sourcesOf: Map<string, { fixed: number[]; loot: number[]; essence: number[] }> | null = null;
+/** Regions where each item drops: every-win rewards ("fixed"), map essence ("essence", R1 F39), loot rolls ("loot"). */
+function itemSources(): Map<string, { fixed: number[]; loot: number[]; essence: number[] }> {
   if (sourcesOf) return sourcesOf;
-  const out = new Map<string, { fixed: number[]; loot: number[] }>();
-  const add = (type: string, id: number, region: number, how: "fixed" | "loot") => {
+  const out = new Map<string, { fixed: number[]; loot: number[]; essence: number[] }>();
+  const add = (type: string, id: number, region: number, how: "fixed" | "loot" | "essence") => {
     const k = `${type}:${id}`;
-    if (!out.has(k)) out.set(k, { fixed: [], loot: [] });
+    if (!out.has(k)) out.set(k, { fixed: [], loot: [], essence: [] });
     out.get(k)![how].push(region);
   };
   for (const qid of Object.keys(G.questData ?? {}).map(Number)) {
@@ -331,7 +331,7 @@ function itemSources(): Map<string, { fixed: number[]; loot: number[] }> {
   }
   for (const [, m] of items("map")) {
     const br = seq<number>(m.baseReward ?? {});
-    for (let i = 0; i < Math.floor(br.length / 2); i++) add("material", br[i], mapRegionId(m), "fixed");
+    for (let i = 0; i < Math.floor(br.length / 2); i++) add("material", br[i], mapRegionId(m), "essence");
   }
   sourcesOf = out;
   return out;
@@ -341,7 +341,11 @@ function itemRegion(type: string, id: number): Region | null {
   const it = item(type, id);
   if (!it) return null;
   const src = itemSources().get(`${type}:${id}`);
-  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", () => "Where it drops every win");
+  if (src && src.fixed.length + src.essence.length) {
+    const lo = Math.min(...src.fixed, ...src.essence);
+    // R1 F39: an essence comes from map runs, not from a quest win
+    return mkRegion(lo, "region", () => (src.fixed.includes(lo) ? "Where it drops every win" : "Where a map run gives it"));
+  }
   if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", () => "Where it drops");
   const band = regionOfLevel(it.itemLevel ?? 0);
   const counts = new Map<number, number>();
@@ -434,14 +438,15 @@ export function dropSources(id: number, type = "material"): { kind: "quest" | "m
   for (const [qid, q] of Object.entries<Any>(G.questData ?? {})) {
     for (const rare of [false, true]) {
       if (rare && !q.nameB) continue;
-      const label = rare ? q.nameB : q.name, note = rare ? " (rare)" : "";
+      // R1 F11: no " (rare)" in the detail: the page shows the rare variant's own name and the rare pill
+      const label = rare ? q.nameB : q.name;
       const drops = enemyDrops(Number(qid), rare);
       if (type === "material") {
-        for (const r of drops.fixed) if (r[0] === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${r[1]}–${r[2]} per win${note}` });
+        for (const r of drops.fixed) if (r[0] === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${r[1]}–${r[2]} per win` });
       }
       for (const p of drops.rolls) {
         for (const e of parcelRoll(p)?.entries ?? []) {
-          if (e.type === type && e.id === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${fmt.format(e.pct)}% loot roll${note}` });
+          if (e.type === type && e.id === id) out.push({ kind: "quest", id: Number(qid), rare, label, detail: `${fmt.format(e.pct)}% loot roll` });
         }
       }
     }

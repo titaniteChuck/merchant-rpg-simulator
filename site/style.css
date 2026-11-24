@@ -1741,3 +1741,20 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .save-menu-sub { display: flex; flex-direction: column; }
 .save-menu-sub[hidden] { display: none; }
 /* end r1 global */
+/* r1 wiki ref */
+/* R1 F26: Expansions tab as cards (wiki-expansions.ts); the long lists span the whole row. */
+.xp-cards { margin-top: 10px; }
+.xp-cards > .xp-wide { grid-column: 1 / -1; }
+.xp-cards dd { font-weight: 500; }
+.xp-cards .xp-store { display: block; margin-top: 2px; }
+.xp-cards .xp-lines { margin: 2px 0 0; }
+.xp-cards .xp-lines li + li { margin-top: 3px; }
+/* R1 F25: the expansion badge in a reference section heading (wiki-ref.ts xpBadge) */
+.ref-kind h3 .xp-badge { margin-left: 6px; }
+/* R1 F43: the data's sell pair beside a stackable's sell value (wiki-items.ts sellNode) */
+.sell-val .sell-range { margin-left: 6px; color: var(--muted); font-size: 0.8em; font-weight: 500; }
+.sell-val .sell-range::before { content: "("; } .sell-val .sell-range::after { content: ")"; }
+/* R1 F33: unused skills, collapsed under the Skills list (wiki.ts patch) */
+.skills-unused { margin-top: 18px; }
+.skills-unused > summary { cursor: pointer; font-weight: 650; padding: 4px 0; }
+/* end r1 wiki ref */

@@ -18,8 +18,17 @@
  */
 import type { EffectInfo, EnemyTimeline, SkillProfile } from "../tools/schedule.ts";
 import { enemyTimeline, skillProfile } from "../tools/schedule.ts";
-import { enemyIds, hasRare } from "./wiki-data.ts";
+import { classesWith, enemiesWith, enemyIds, hasRare } from "./wiki-data.ts";
 import { skillName } from "./names.ts";
+
+/**
+ * R1 F33: a skill no hero class learns and no enemy (normal or rare) plays, such as Absorb All or Titanic Clap (46 of
+ * the 235 abilityData rows, passives' names included). The Skills list groups them under a collapsed "Unused".
+ */
+export const isUnusedSkill = (name: string): boolean => !classesWith("skill", name).length && !enemiesWith(name).length;
+
+/** A hero skill no enemy plays: its page drops the empty "Enemies with this skill" section. */
+export const isHeroOnlySkill = (name: string): boolean => classesWith("skill", name).length > 0 && !enemiesWith(name).length;
 
 export interface Matchup {
   quest: number;

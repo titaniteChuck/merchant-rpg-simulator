@@ -66,7 +66,8 @@ const heroExample = (): string => {
   if (!w) return "";
   const L = 50;
   const hp = w.hp + w.hpPlv[1] * L, def = w.def + w.defPlv[1] * L, atk = w.atk + w.atkPlv[1] * L;
-  return example(`A tier-1 ${className(1) ?? w.name} at level ${L}, no gear, no passive: max HP = ${w.hp} + ${w.hpPlv[1]} × ${L} = <b>${hp}</b>,
+  // R1 F40: the class name stands alone (no English glue around it in another language)
+  return example(`${className(1) ?? w.name} · ascension 0 · level ${L}, no gear, no passive: max HP = ${w.hp} + ${w.hpPlv[1]} × ${L} = <b>${hp}</b>,
     def = ${w.def} + ${w.defPlv[1]} × ${L} = <b>${def}</b>, atk = ${w.atk} + ${w.atkPlv[1]} × ${L} = <b>${atk}</b>.
     With 20 Str from gear: atk + 20 × ${w.strMod[1]} = <b>${atk + 20 * w.strMod[1]}</b>; with Might (+10 % atk) on top: <b>${luaRound((atk + 20 * w.strMod[1]) * 1.1, 1)}</b>.`);
 };

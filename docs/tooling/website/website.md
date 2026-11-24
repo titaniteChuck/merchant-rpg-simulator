@@ -618,6 +618,31 @@ flowchart LR
   - A wiki list whose every row is hidden expansion content (the Maps list without Scribe) shows one empty state:
     "All 32 maps are expansion content you don't own…", a link to the Expansions page and "Show expansion content"
     (no filter, "0 of 0", badge line or empty table) (F15). The home Enemies card says the quest bushes are included (F08).
+- Live-site review fixes (R1-B2, [review](../roadmap/review-r1.md)). CSS: the `r1 wiki ref` block at the end of
+  `site/style.css`; tests `test/wiki-r1b2.test.ts` (helpers) and `test/wiki-r1b2-patch.test.ts` (the `wiki-data.ts`
+  part). Pages wired in `wiki.ts`, `wiki-data.ts` and `expansion-menu.ts`.
+  - Durations (`durationText`, `wiki-items.ts`): under a minute in seconds ("15 s", never "0 min"), under 10 minutes
+    with the seconds ("1 min 30 s"), then "12 min", "1 h 57 min", "2 d 3 h". The recipe line under a Recipe list
+    (`craftLine`, `recipe-chain.ts`: crafter · cost · time · XP, cost and time linked to Stats › Craft) and the
+    crafting-chain boxes use it.
+  - Sell value of a material or consumable: the game's value, round((sell[1] + sell[2]) / 2) × 2 × ascension
+    (`obj.Item:getSellValue`; Minor Potion 15–20 sells for 18, 35, 70), with the data's pair beside it, muted, and in
+    the tooltip (`sellNode`, `sellRange`). Equipment and maps have one value × rarityMod, no pair.
+  - Rarity 10 and 11 chips keep their number and the colour the game draws them in (rarity 3 / 4); the tooltip says
+    so (`rarityTip`). An essence's region reason is "where a map run gives it" (map essence is its own source kind in
+    `itemSources`), not "where it drops every win".
+  - No emoji before a detail page title (skills, passives, Expansions; enemy pages are another lane's), no lead line
+    that a card repeats: a skill's effect is an "Effect" card, a passive has only its Bonuses card, a consumable with
+    an Effect card has no description lead; the class radar's caption no longer repeats the level and ascension line.
+  - Skills list: skills no class learns and no enemy plays (`isUnusedSkill`: Absorb All, Titanic Clap…, 46 rows with
+    the passives' names) sit in a collapsed "Unused (N)" table under the list; a hero skill no enemy plays has no
+    "Enemies with this skill" section (`isHeroOnlySkill`).
+  - Item "Where it drops": a rare variant is its own name + the rare pill (no "(rare)" in the detail).
+  - Battle reference: the Maps card carries the Scribe badge (`xpBadge` in `wiki-ref.ts`: a placeholder in the
+    section's HTML string that `refPage` swaps for `expansionBadge`); quest bushes drop mainly herbs (a moss and a
+    root every win), Treasure Bushes crystals and gems (plus runes from their loot rolls), not "leaves" or "stones".
+  - FR (F40): names stand alone in neutral formats ("Crafting chain · <name> · …", "×2 → <name>", radar title
+    "<class> · level 50 · ascension 0", the Stats example "<class> · ascension 0 · level 50").
 
 ## Profit page
 
@@ -734,14 +759,16 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
   - "Where it drops", "Used in", an enemy's Maps, "Enemies with this skill", "Good against": hidden entries counted in
     a note, not listed;
   - a hidden item, map, enemy or class page: its name and badge, why it's hidden, "Show expansion content" and
-    "I own …" buttons.
+    "I own …" buttons. R1 F31: the reason follows the source (`notOwnedWhy` in `expansion-why.ts`): "you set it to
+    not owned", "your save shows no sign of it" or "no save loaded".
 - Per page:
   - Wiki: lists, home search and home counts filtered; classes columns of skills and passives without the hidden
     classes; class pages without the hidden ascension tier (levels 51–60; the radar's rims only compare visible classes
     and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, menu link and home card):
-    your switches as checkboxes with the save's evidence, what the site does, then one section per group (Frozen
-    Tome, Scribe, content behind both) with the store text, what it adds, details, and folded lists of every gated
-    enemy, class, map, equipment, consumable and material (real links, `always`). Changing a switch re-renders the
+    no visible title or intro, like the other tabs (R1 F26): "Your expansions" with the switches as checkboxes and the
+    save's evidence (what the site does is behind its "?"), then one section per group (Frozen Tome, Scribe, content
+    behind both) as cards: status, store text, what it adds, details, and folded lists of every gated enemy, class,
+    map, equipment, consumable and material (real links, `always`). Changing a switch re-renders the
     current page in place (no jump to the top).
   - Battle: enemy picker, catalog maps and scrolls filtered (options of expansion content end with ❄ / ✒); the save's
     maps stay; "Map run" disappears when no map can be picked. Best gear: catalog ascension options 1–2 need Scribe and

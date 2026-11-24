@@ -11,7 +11,7 @@
  * (formula, variables, example, note). Section bodies are trusted static HTML strings (no user input). The pages cite
  * no game code: the decompiled-source references behind each section live in test/wiki-ref.test.ts (`SOURCES`).
  */
-import { el } from "./dom.ts";
+import { el, expansionBadge, type ExpansionId } from "./dom.ts";
 
 // ---------------------------------------------------------------- topics
 /** Stats page topics: anchor → [title, one-line summary for link tooltips]. */
@@ -99,6 +99,12 @@ export const tbl = (head: string[], rows: (string | number)[][]): string =>
     rows.map((r) => `<tr>${r.map((c, i) => (i ? `<td>${c}</td>` : `<th scope="row">${c}</th>`)).join("")}</tr>`).join("")}</tbody></table></div>`;
 /** A variable name. */
 export const v = (name: string): string => `<var>${name}</var>`;
+/**
+ * R1 F25: the expansion badge (dom.ts expansionBadge, the quill / snowflake icon linked to Wiki › Expansions) in a
+ * section body. Bodies are strings (also built in node tests, without a DOM), so this is a placeholder that refPage
+ * swaps for the real badge once the section is on the page.
+ */
+export const xpBadge = (...needs: ExpansionId[]): string => `<span data-xp-badge="${needs.join(" ")}"></span>`;
 
 // ---------------------------------------------------------------- sections and pages
 /**
@@ -147,6 +153,9 @@ export function refPage(page: "stats" | "battle", title: string,
       el("a", { class: "ref-anchor", href: href(s.id), "data-topic": s.id, "aria-label": `Link to “${topics[s.id][0]}”`, title: "Link to this section" }, "#"));
     const content = el("div", { class: "ref-body" });
     content.innerHTML = s.html();
+    for (const p of content.querySelectorAll<HTMLElement>("[data-xp-badge]")) {
+      p.replaceWith(expansionBadge((p.dataset.xpBadge ?? "").split(" ").filter(Boolean) as ExpansionId[], { link: true }));
+    }
     sec.append(h2, content);
     return sec;
   });

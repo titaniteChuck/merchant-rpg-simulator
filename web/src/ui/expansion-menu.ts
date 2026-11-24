@@ -5,6 +5,7 @@
  * Also the "N hidden" notes the pages put under a filtered list. State: expansion-state.ts.
  */
 import { EXPANSIONS } from "../tools/expansions.ts";
+import { notOwnedWhy } from "./expansion-why.ts";
 import { el, EXPANSION_LABEL, expansionBadge, EXPANSIONS_HREF } from "./dom.ts";
 import {
   type Expansion, inferredState, overrideOf, owns, setOverride, setOwned, setShowAll, showAll, subscribe,
@@ -192,7 +193,7 @@ export function hiddenBody(needs: Expansion[]): HTMLElement {
   });
   return el("div", { class: "xp-hidden-page" },
     el("p", {}, "This is content of the ", ...needs.flatMap((x, i) => [...(i ? [" and the "] : []), el("strong", {}, EXPANSION_LABEL[x])]),
-      `, which you don't own${inferredState().source ? " (as far as your save shows)" : " (no save loaded)"}, so the site hides it. `,
+      `, which you don't own ${notOwnedWhy(needs)}, so the site hides it. `, // R1 F31: worded per source
       el("a", { href: EXPANSIONS_HREF }, "What the expansions add"), "."),
     el("div", { class: "toolbar" }, show, ...ownBtns));
 }

@@ -11,6 +11,7 @@ import {
   type Expansion, inferredState, needsOf, overrideOf, owns, setOverride, setOwned, setShowAll, showAll,
 } from "./expansion-state.ts";
 import { classes, classLink, enemyIds, enemyLink, ITEM_TYPES, itemLink, items, itemTypeLabel, quest } from "./wiki-data.ts";
+import { sectionHelp } from "./wiki-help.ts";
 
 const XP: Expansion[] = ["Frozen", "Scribe"];
 type Group = "frozen" | "scribe" | "both";
@@ -82,14 +83,18 @@ function groupSection(g: Group, needs: Expansion[], title: string): HTMLElement 
     ...(["map", "equipment", "consumable", "material"] as const).map((t) => listBlock(plural[t] ?? itemTypeLabel[t], c.items[t].map((id) => itemLink(t, id, undefined, undefined, undefined, { always: true })))),
   ].filter((x): x is HTMLElement => x !== null);
   const own = needs.every((x) => owns(x));
+  // R1 F26: laid out like the other wiki pages, as cards (no lead paragraph, no free-standing bullets and headings).
+  const card = (term: string, ...body: (Node | string)[]) => el("div", {}, el("dt", {}, term), el("dd", {}, ...body));
+  const list = (lines: readonly string[]) => el("ul", { class: "plain-list xp-lines" }, ...lines.map((a) => el("li", {}, a)));
   return el("section", { class: "wiki-section xp-section", id: `xp-${g}` },
     el("h2", { class: "wiki-banner" }, expansionBadge(needs), ` ${title}`),
-    ...(info ? [el("p", { class: "lead" }, el("strong", {}, `${info.storeTitle}. `), info.description)] : []),
-    el("p", { class: "muted small" }, own ? "✓ You own it: its content is shown." : showAll() ? "Not owned, shown because “Show expansion content” is on." : "Not owned: its content is hidden on the site."),
-    ...(info ? [el("h3", { class: "sub" }, "What it adds"), el("ul", {}, ...info.adds.map((a) => el("li", {}, a)))] : []),
-    el("h3", { class: "sub" }, info ? "In detail" : "What it is"), el("ul", {}, ...DETAILS[g].map((d) => el("li", {}, d))),
-    el("h3", { class: "sub" }, "Content behind it"),
-    lists.length ? el("div", { class: "xp-lists" }, ...lists) : el("p", { class: "muted" }, "Nothing listed."));
+    el("dl", { class: "facts xp-cards" },
+      card("Status", own ? "✓ Owned: its content is shown" : showAll() ? "Not owned, shown (“Show expansion content” is on)" : "Not owned: its content is hidden"),
+      ...(info ? [card("In the store", el("strong", {}, info.storeTitle), el("span", { class: "xp-store" }, info.description)),
+        card("What it adds", list(info.adds))] : []),
+      el("div", { class: "xp-wide" }, el("dt", {}, info ? "In detail" : "What it is"), el("dd", {}, list(DETAILS[g]))),
+      el("div", { class: "xp-wide" }, el("dt", {}, "Content behind it"),
+        el("dd", {}, lists.length ? el("div", { class: "xp-lists" }, ...lists) : "Nothing listed."))));
 }
 
 /** The visitor's switches, as plain checkboxes (the same state as the expansions menu in the top bar). */
@@ -123,21 +128,20 @@ export function expansionsPage(topic?: string): HTMLElement {
   const bushes = [99, 100, 101, 102, 103, 104].filter((id) => quest(id)).length;
   return el("div", { class: "xp-page" },
     el("p", { class: "crumbs small" }, el("a", { href: "#/" }, "Wiki"), el("span", { "aria-hidden": "true" }, " › "), el("span", {}, "Expansions")),
-    el("h1", {}, "🧩 Expansions"),
-    el("p", { class: "lead" }, "Merchant has two paid expansions, the ", el("strong", {}, "Frozen Tome"), " and ", el("strong", {}, "Scribe"),
-      " (the “everything” bundle has both; boost potions are a separate purchase, not an expansion). Everything that needs one carries its icon next to its name, everywhere on the site: ",
-      expansionBadge(["Frozen"]), ` ${EXPANSION_LABEL.Frozen}, `, expansionBadge(["Scribe"]), ` ${EXPANSION_LABEL.Scribe}; content behind both shows both.`),
-    el("section", { class: "wiki-section", id: "xp-site" }, el("h2", { class: "wiki-banner" }, "Your expansions"),
-      controls(),
-      el("ul", { class: "small" },
-        el("li", {}, "Content of an expansion you don't own is hidden on every page: wiki lists, the battle pickers, the searches' candidates, "
-          + "the farming and levelling choices, the class balance. Where a table refers to it (a drop table, a recipe), it shows as a greyed "
-          + "“expansion content” entry, so the numbers still add up."),
-        el("li", {}, "Ownership is a guess from your save. The game keeps your purchases in another file (UserInfo.usr), which the site never "
-          + "reads, so the save can only prove you own an expansion (a Bard, a hero above level 50 or in Frentir, maps, ascended items, essences, "
-          + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand here or in the expansions menu of the top bar "
-          + "(the save menu once a save is loaded)."),
-        el("li", {}, `Where the content comes from: an item counts as expansion content when none of its sources (quest drops, loot, crafts, map `
-          + `essences) can be reached without the expansion. The ${bushes} Treasure Bushes and the map bosses follow their maps.`))),
+    // R1 F26: like the other wiki tabs, no visible title or intro (the wiki home card describes the page); the
+    // explanations sit behind the section's "?".
+    el("h1", { class: "sr-only" }, "Expansions"),
+    sectionHelp(el("section", { class: "wiki-section", id: "xp-site" }, el("h2", { class: "wiki-banner" }, "Your expansions"), controls()), [
+      `Merchant has two paid expansions, the Frozen Tome and Scribe (the “everything” bundle has both; boost potions are a separate `
+        + `purchase). Content that needs one carries its icon everywhere on the site: ❄ ${EXPANSION_LABEL.Frozen}, ✒ ${EXPANSION_LABEL.Scribe}.`,
+      "Content of an expansion you don't own is hidden on every page: wiki lists, the battle pickers, the searches' candidates, "
+        + "the farming and levelling choices, the class balance. Where a table refers to it (a drop table, a recipe), it shows as a greyed "
+        + "“expansion content” entry, so the numbers still add up.",
+      "Ownership is a guess from your save. The game keeps your purchases in another file (UserInfo.usr), which the site never "
+        + "reads, so the save can only prove you own an expansion (a Bard, a hero above level 50 or in Frentir, maps, ascended items, essences, "
+        + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand here or in the expansions menu of the top bar.",
+      `An item counts as expansion content when none of its sources (quest drops, loot, crafts, map essences) can be reached without the `
+        + `expansion. The ${bushes} Treasure Bushes and the map bosses follow their maps.`,
+    ]),
     ...GROUPS.map(([g, needs, title]) => groupSection(g, needs, title)));
 }

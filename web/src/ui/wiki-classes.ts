@@ -129,9 +129,10 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     const layers = tiers.filter((p) => p - 1 !== sel.asc).map((p) => ({
       values: CHARTED.map((g) => statAt(c, g, p, at(p))), cls: `tier-${p - 1}`, label: `${ascName(p - 1)}, level ${at(p)}`,
     }));
-    const fig = radar(axes, { title: `${className(id) ?? c.name} at level ${at(sel.asc + 1)}, ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
-    radarCap.textContent = `Level ${sel.level} (each ascension capped at its max level), no gear or passive. `
-      + `Values: ${ascText(sel.asc)}. Rim = best class at that level.`;
+    const fig = radar(axes, { title: `${className(id) ?? c.name} · level ${at(sel.asc + 1)} · ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
+    // R1 F18: the level, ascension and "no gear" are in the line above the cards; the caption only says what the
+    // chart adds (the other ascensions' shapes and the rim).
+    radarCap.textContent = "Other ascensions capped at their max level. Rim = best class at that level.";
     fig.append(radarCap);
     radarHolder.replaceChildren(fig);
   };

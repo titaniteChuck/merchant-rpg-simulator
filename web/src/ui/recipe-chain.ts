@@ -6,16 +6,31 @@
  * HTML + CSS only (style.css "wiki v3"): each node is a row "[its ingredients' column] → [box]", the connectors are
  * borders, so the frame scrolls sideways on a phone.
  */
+import { G } from "../sim/data.ts";
 import { el, fmt } from "./dom.ts";
 import { itemLink } from "./wiki-data.ts";
 import { durationText, type RecipeNode, recipeTree } from "./wiki-items.ts";
 import { crafterName as crafterOf, itemName } from "./names.ts";
+import { statLink } from "./wiki-ref.ts";
 
 const crafterName = (id: number): string => crafterOf(id) ?? "";
 
-/** "4 × Adaman Ingot (1 min each)". */
+/** "4 × Adaman Ingot · 1 min each" (R1 F40: no English glue around a translated name). */
 const hiddenText = (n: RecipeNode) =>
-  n.hidden.map((h) => `${h.amount} × ${itemName(h.type, h.id) ?? `${h.type} #${h.id}`} (${durationText(h.time)} each)`).join(", ");
+  n.hidden.map((h) => `${h.amount} × ${itemName(h.type, h.id) ?? `${h.type} #${h.id}`} · ${durationText(h.time)} each`).join(", ");
+
+/**
+ * The line under a recipe: "Alchemist · 10 g · 15 s · 8 XP", cost and time a link to Stats › Craft. R1 F07: the time
+ * goes through durationText (15 s, not "0 min"). Empty when the item has no crafter, cost, time or XP.
+ */
+export function craftLine(type: string, id: number): (Node | string)[] {
+  const it = G.itemData?.[type]?.[id];
+  if (!it) return [];
+  const costTime = [it.cost ? `${fmt.format(it.cost)} g` : "", it.runTime ? durationText(it.runTime) : ""].filter(Boolean).join(" · ");
+  const parts: (Node | string)[] = [crafterName(it.crafterID ?? 0), costTime ? statLink("craft", costTime) : "",
+    it.experience ? `${fmt.format(it.experience)} XP` : ""].filter((x) => x !== "");
+  return parts.flatMap((p, i) => (i ? [" · ", p] : [p]));
+}
 
 function totalTip(n: RecipeNode): string {
   const what = [n.kids.length ? "the equipment ingredients on its left" : "", n.hidden.length ? `the crafted materials, not drawn: ${hiddenText(n)}` : ""]
@@ -38,7 +53,7 @@ function box(n: RecipeNode, root: boolean): HTMLElement {
 function node(n: RecipeNode, root = false): HTMLElement {
   if (!n.kids.length) return el("div", { class: "rc-node" }, box(n, root));
   const kids = n.kids.map((k) => el("div", { class: "rc-kid" }, node(k),
-    el("span", { class: "rc-amt", title: `${k.amount} needed per ${itemName(n.type, n.id) ?? n.name}` }, `×${k.amount}`)));
+    el("span", { class: "rc-amt", title: `×${k.amount} → ${itemName(n.type, n.id) ?? n.name}` }, `×${k.amount}`)));
   return el("div", { class: "rc-node" }, el("div", { class: `rc-kids${kids.length === 1 ? " rc-one" : ""}` }, ...kids), box(n, root));
 }
 
@@ -47,7 +62,7 @@ export function recipeChain(type: string, id: number): HTMLElement | null {
   if (type !== "equipment") return null;
   const t = recipeTree(type, id);
   if (!t || !t.time) return null;
-  const label = `Crafting chain of ${itemName(t.type, t.id) ?? t.name}: ${t.depth} equipment step${t.depth > 1 ? "s" : ""}, ${durationText(t.totalTime)} and ${fmt.format(t.totalCost)} gold in all`;
+  const label = `Crafting chain · ${itemName(t.type, t.id) ?? t.name} · ${t.depth} equipment step${t.depth > 1 ? "s" : ""}, ${durationText(t.totalTime)} and ${fmt.format(t.totalCost)} gold in all`;
   return el("div", {},
     el("div", { class: "rc-frame", role: "group", "aria-label": label, tabindex: "0" }, el("div", { class: "rc-tree" }, node(t, true))),
     el("p", { class: "muted small" },

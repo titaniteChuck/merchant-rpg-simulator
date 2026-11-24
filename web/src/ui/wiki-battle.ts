@@ -3,7 +3,7 @@
  * BATTLE_TOPICS), with links to the Stats page wherever a formula is involved. Read from the decompiled game (the
  * references in test/wiki-ref.test.ts `SOURCES`, not shown on the page); the port in web/src/sim does the same (400/400 Lua-parity map runs).
  */
-import { BATTLE_TOPICS, type BattleTopic, bl, example, formula, note, refPage, type RefSection, sl, tbl, unsure, v } from "./wiki-ref.ts";
+import { BATTLE_TOPICS, type BattleTopic, bl, example, formula, note, refPage, type RefSection, sl, tbl, unsure, v, xpBadge } from "./wiki-ref.ts";
 
 /** The six party places as the game numbers them, beside the enemy. */
 const placesFigure = `<figure class="ref-places" aria-label="Party places: back row 1, 3, 5; front row 2, 4, 6; the enemy faces the front row">
@@ -28,15 +28,15 @@ export const BATTLE_SECTIONS: RefSection<BattleTopic>[] = [
 <li>One <b>single enemy</b> per quest, from the region's first bush (its gathering quest) up to its bosses, fought one at a time by the quest's party (up to 6 heroes).</li>
 <li><b>Quest size ×${v("N")}</b>: up to ×1, ×3 or ×5 by hero tier (1, 2, 3). Still one enemy, with ${v("N")} × its HP, and ${v("N")} × the loot and the time: ${bl("quest-size", "quest size")}.</li>
 <li>Win or lose in one fight; the heroes keep the lower of their battle HP and their HP before the quest.</li>
-<li>Bushes (gathering quests) drop mainly <b>leaves</b>, the ingredients of potions.</li>
+<li>Bushes (gathering quests) drop mainly <b>herbs</b> (a moss and a root every win), the ingredients of potions.</li>
 </ul>
 </div>
 <div class="ref-kind">
-<h3>🗺️ Maps <span class="ref-kind-tag">Scribe expansion</span></h3>
+<h3>🗺️ Maps ${xpBadge("Scribe")}</h3>
 <ul>
 <li>A <b>run of rooms</b>, one enemy per room, the last one the boss. The party must clear <b>every</b> room for the run to succeed (and pay its essence).</li>
 <li><b>HP carries over</b> from room to room: no refill between fights.</li>
-<li>Random <b>Treasure Bushes</b> can appear as extra rooms (more likely at a high map grade); they drop special materials such as <b>stones</b>.</li>
+<li>Random <b>Treasure Bushes</b> can appear as extra rooms (more likely at a high map grade); they drop <b>crystals and gems</b> (plus runes from their loot rolls).</li>
 <li><b>Scrolls</b> taken into the run (used up when it starts) act between rooms or for the whole run: healing, revive, escape, swap, Str / Int / Dex and speed.</li>
 <li><b>Exit HP rule</b>: each hero leaves with the lower of its HP at the end of the run and its HP on entering.</li>
 </ul>

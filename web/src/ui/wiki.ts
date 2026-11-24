@@ -18,11 +18,11 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
 import { $, type Column, el, expansionBadge, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
-import { recipeChain } from "./recipe-chain.ts";
+import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, tiersOf } from "./wiki-classes.ts";
-import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
-import { goodAgainst, removesEffects, turnMarks } from "./wiki-skills.ts";
+import { bonusLabel, bonusLines, bonusRange, rarityChip, sellNode } from "./wiki-items.ts";
+import { goodAgainst, isHeroOnlySkill, isUnusedSkill, removesEffects, turnMarks } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import { enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
 import { sectionHelp } from "./wiki-help.ts";
@@ -192,17 +192,28 @@ function enemyCell(skill: string): HTMLElement {
 }
 
 function skillsPage(): HTMLElement {
-  const rows: Row[] = skillNames().map((n) => ({
+  // R1 F33: skills no class and no enemy uses (Absorb All…) go to a collapsed "Unused" table under the list.
+  const toRow = (n: string): Row => ({
     name: skillName(n), key: n, ap: skillAp(n) ?? null, classes: visibleClassesWith("skill", n).map(([id]) => className(id)).join(", "),
     // sorts by count; the cell shows the names (the enemies the visitor hides left out)
     ...((list) => ({ enemies: list.length, enemyNames: list.map((e) => e.name).join(" ") }))(enemyNamesWith(n).filter((e) => isVisible("enemy", e.id))),
     effect: skillDesc(n),
-  }));
-  return listPage("Skills", rows, [
+  });
+  const cols: Column[] = [
     { key: "name", label: "Skill", render: (r) => skillLink(String(r.key)) }, { key: "ap", label: "AP", num: true },
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("skill", String(r.key)).map(([id]) => classLink(id)))) },
     { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.key)) }, { key: "effect", label: "Effect" },
-  ], (r) => `${searchText(String(r.name), String(r.key))} ${r.effect} ${r.classes} ${r.enemyNames}`);
+  ];
+  const names = skillNames();
+  const unused = names.filter(isUnusedSkill);
+  const page = listPage("Skills", names.filter((n) => !isUnusedSkill(n)).map(toRow), cols,
+    (r) => `${searchText(String(r.name), String(r.key))} ${r.effect} ${r.classes} ${r.enemyNames}`);
+  if (unused.length) {
+    page.append(el("details", { class: "skills-unused" }, el("summary", {}, `Unused (${unused.length})`),
+      el("p", { class: "muted small" }, "In the game's data, but no hero class learns them and no enemy plays them."),
+      table(unused.map(toRow), [cols[0], cols[1], cols[4]])));
+  }
+  return page;
 }
 
 const GOOD_HELP = "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): debuffs it can "
@@ -244,14 +255,16 @@ function skillPage(name: string): HTMLElement {
   const users = visibleClassesWith("skill", name);
   const { shown: enemies, hidden } = partitionVisible(enemiesWith(name), (e) => isVisible("enemy", e.id));
   const good = classesWith("skill", name).length ? goodAgainstSection(name) : null;
-  return el("div", {}, crumbs(["Skills", "#/skills"], skillName(name)), el("h1", {}, "⚡ ", skillName(name)),
-    el("p", { class: "lead" }, skillDesc(name) || "No description in the game data."),
-    facts([[statLink("ap", "AP cost"), skillAp(name)], ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
+  // R1 F18 / F26: no emoji before the title, the effect in a card (no lead line); F33: a hero skill no enemy plays
+  // has no empty "Enemies" section.
+  return el("div", {}, crumbs(["Skills", "#/skills"], skillName(name)), el("h1", {}, skillName(name)),
+    facts([["Effect", skillDesc(name) || "No description in the game data."], [statLink("ap", "AP cost"), skillAp(name)],
+      ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     ...(good ? [good] : []),
-    section(`Enemies with this skill (${enemies.length})`, enemies.length
+    ...(isHeroOnlySkill(name) ? [] : [section(`Enemies with this skill (${enemies.length})`, enemies.length
       ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, enemyLink(e), e.rare ? pill("rare", "t-pink") : "",
         el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)}`))))
-      : none(hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."), ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null)));
+      : none(hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."), ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null))]));
 }
 
 function passivesPage(): HTMLElement {
@@ -266,7 +279,8 @@ function passivePage(name: string): HTMLElement {
   const p = G.passiveData?.[name];
   if (!p) return notFound(`passive “${name}”`);
   const users = visibleClassesWith("passive", name);
-  return el("div", {}, crumbs(["Passives", "#/passives"], passiveName(name)), el("h1", {}, "✨ ", passiveName(name)), el("p", { class: "lead" }, passiveText(name)),
+  // R1 F18 / F26: no emoji before the title, no lead line (the Bonuses card says it)
+  return el("div", {}, crumbs(["Passives", "#/passives"], passiveName(name)), el("h1", {}, passiveName(name)),
     facts([["Bonuses", el("ul", { class: "plain-list" }, ...Object.entries<number>(p.stats ?? {}).map(([k, v]) => el("li", {}, statText(k, v))))],
       ["Classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]));
 }
@@ -298,7 +312,7 @@ function itemsPage(type: string): HTMLElement {
     { key: "rarity", label: "Rarity", num: true, render: (r) => rarityChip(r.rarity) },
     ...(eq ? [{ key: "bonus", label: "Bonus stats", render: (r: Row) => el("span", { class: "bonus-cell" }, String(r.bonus || "–")) },
       { key: "made", label: "Made by" }] : []),
-    { key: "value", label: "Sell value", num: true },
+    { key: "value", label: "Sell value", num: true, render: (r) => (r.value === null ? "–" : sellNode(type, Number(r.id), Number(r.value))) },
     ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
   return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols,
@@ -315,14 +329,11 @@ function safeSell(type: string, id: number, asc: number): number | null {
 
 function recipeList(type: string, id: number): HTMLElement {
   const rec = recipe(type, id);
-  const it = item(type, id);
   if (!rec.length) return none("Not craftable.");
   return el("div", {},
     el("ul", { class: "plain-list" }, ...rec.map(([t, mid, amt]) => el("li", {}, `${amt} × `, itemLink(t, mid)))),
-    // U30: cost and time link to Stats › Craft (× count, grade speed)
-    el("p", { class: "muted small" }, ...joinNodes([crafterName(it.crafterID) ? `${crafterName(it.crafterID)}` : "",
-      it.cost || it.runTime ? statLink("craft", [it.cost ? `${fmt.format(it.cost)} g` : "", it.runTime ? `${fmt.format(it.runTime / 60)} min` : ""].filter(Boolean).join(" · ")) : "",
-      it.experience ? `${fmt.format(it.experience)} XP` : ""].filter((x) => x !== ""), " · ")));
+    // U30: cost and time link to Stats › Craft (× count, grade speed); R1 F07: "15 s", not "0 min" (recipe-chain.ts)
+    el("p", { class: "muted small" }, ...craftLine(type, id)));
 }
 
 /** Recipes that use the item; the ones the visitor hides (expansion content) are counted in a note, not listed. */
@@ -396,7 +407,9 @@ function itemPage(type: string, id: number): HTMLElement {
   if (!isVisible(type as ContentKind, id)) {
     return hiddenPage([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name, "", needsOf(type as ContentKind, id));
   }
-  const desc = itemText(type, id);
+  // R1 F18: no lead line when the Effect card says the same ("Restores 40 health" beside "+40 HP")
+  const effect = type === "consumable" && Object.keys(it.stat ?? {}).length > 0;
+  const desc = effect ? "" : itemText(type, id);
   const kids: (Node | string)[] = [
     crumbs([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name),
     el("h1", {}, itemLink(type, id)),
@@ -407,11 +420,11 @@ function itemPage(type: string, id: number): HTMLElement {
       [statLink("sell", "Sell value"), [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
         : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => (type !== "material" || a === 0) && (!a || isVisible(type as ContentKind, id, { ascension: a }))).map((a) => {
           const v = safeSell(type, id, a);
-          // ascension shown as the value's outline (silver 1, gold 2), not as text
-          return withAsc(el("span", { class: "nowrap" }, `${fmt.format(v ?? 0)} g`), a);
+          // ascension shown as the value's outline (silver 1, gold 2), not as text; R1 F43: the data's pair beside it
+          return withAsc(sellNode(type, id, v ?? 0, a), a);
         }))],
       [statLink("item-stats", "Bonus stats"), type === "equipment" && bonusLines(it).length ? bonusLines(it).join(", ") : undefined],
-      ["Effect", type === "consumable" && Object.keys(it.stat ?? {}).length ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
+      ["Effect", effect ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
     ]),
   ];
   if (type === "equipment") kids.push(sectionHelp(section("Stats by grade", gradeTable(id)), GRADE_HELP, [statLink("item-stats")]));
@@ -421,7 +434,9 @@ function itemPage(type: string, id: number): HTMLElement {
   if (type === "material" || allSrc.length) {
     const note = hiddenNote(hiddenSrc, hiddenSrc === 1 ? "source" : "sources");
     kids.push(section(`Where it drops (${src.length})`, src.length
+      // R1 F11: a rare variant is its own name + the small rare pill, as in the lists
       ? el("ul", { class: "plain-list" }, ...src.map((s) => el("li", {}, s.kind === "map" ? itemLink("map", s.id) : enemyLink({ id: s.id, name: s.label, rare: s.rare }),
+        s.rare ? pill("rare", "t-pink") : "",
         el("span", { class: "muted small" }, ` · ${s.detail}`))))
       : none(hiddenSrc ? "Not dropped by anything you can reach." : "Not dropped by quests or maps (crafted, bought or event only)."), ...(note ? [note] : [])));
   }

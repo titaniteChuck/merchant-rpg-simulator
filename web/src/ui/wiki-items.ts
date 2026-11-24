@@ -5,7 +5,7 @@
 import { G } from "../sim/data.ts";
 import { D, getBonusPrestige, getStatRange } from "../sim/defaults.ts";
 import { seq } from "../sim/lua.ts";
-import { el, fmt } from "./dom.ts";
+import { duration, el, fmt } from "./dom.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -38,11 +38,21 @@ export const RARITY_COLOURS: Record<number, string> = {
 };
 export const rarityLabel = (r: unknown): string => `Rarity ${typeof r === "number" ? r : "?"}`;
 
+/** Rarities the game draws in another rarity's colour (UI.rarityColor[10] = [3], [11] = [4]); essences are rarity 10. */
+export const RARITY_SAME_COLOUR: Record<number, number> = { 10: 3, 11: 4 };
+
+/** The chip's tooltip: the rarity and (R1 F39) for 10 and 11, that the game reuses the colour of rarity 3 / 4. */
+export function rarityTip(r: unknown): string {
+  const n = typeof r === "number" ? r : NaN;
+  const same = RARITY_SAME_COLOUR[n];
+  return same ? `${rarityLabel(r)}: the game draws it in the colour of rarity ${same}` : `${rarityLabel(r)} (the game's colour for it)`;
+}
+
 /** A chip in the game's own rarity colour (dark text and a thin outline keep white and yellow readable on light pages). */
 export function rarityChip(r: unknown): HTMLElement {
   const n = typeof r === "number" ? r : NaN;
   const colour = RARITY_COLOURS[n];
-  const s = el("span", { class: `rar-chip rar-${Number.isFinite(n) ? n : "x"}`, title: `${rarityLabel(r)} (the game's colour for it)` }, rarityLabel(r));
+  const s = el("span", { class: `rar-chip rar-${Number.isFinite(n) ? n : "x"}`, title: rarityTip(r) }, rarityLabel(r));
   if (colour) s.style.setProperty("--rar-game", colour);
   return s;
 }
@@ -190,14 +200,42 @@ export function recipeTree(type: string, id: number, amount = 1, seen: Set<strin
   };
 }
 
-/** "1 h 57 min", "12 min", "45 s". */
+/**
+ * "15 s", "1 min 30 s", "12 min", "1 h 57 min", "2 d 3 h". R1 F07: the site's duration (dom.ts `duration`, R1-C), except
+ * that under 10 minutes the seconds stay.
+ */
 export function durationText(sec: number): string {
-  const s = Math.round(sec);
-  if (s < 60) return `${s} s`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60), r = m % 60;
-  if (h < 24) return r ? `${h} h ${r} min` : `${h} h`;
-  const d = Math.floor(h / 24), rh = h % 24;
-  return rh ? `${d} d ${rh} h` : `${d} d`;
+  const s = Math.max(0, Math.round(sec));
+  if (s >= 60 && s < 600 && s % 60) return `${Math.floor(s / 60)} min ${s % 60} s`;
+  return duration(s);
+}
+
+// ---------------------------------------------------------------- selling
+/**
+ * R1 F43. The game's sell value of a stackable (obj.Item getSellValue) is round((sell[1] + sell[2]) / 2) × amount, the
+ * pair first × 2 × ascension (default.itemSellValue): Minor Potion's 15–20 sells for 18, 35 and 70. So the value the
+ * wiki shows (tools/engine.ts sellValue) is the game's; this gives the data's pair behind it, for materials and
+ * consumables (equipment and maps have one value × rarityMod, no pair).
+ */
+export function sellRange(type: string, id: number, asc = 0): [number, number] | null {
+  if (type !== "material" && type !== "consumable") return null;
+  const p = bonusPair(G.itemData?.[type]?.[id]?.sell);
+  if (!p) return null;
+  const mult = asc > 0 ? asc * 2 : 1;
+  return [p[0] * mult, p[1] * mult];
+}
+
+/** Tooltip of a stackable's sell value ("" without a pair): the data's pair and how the game turns it into one price. */
+export function sellTip(type: string, id: number, asc = 0): string {
+  const r = sellRange(type, id, asc);
+  if (!r || r[0] === r[1]) return "";
+  return `${fmt.format(r[0])}–${fmt.format(r[1])} g in the game's data; the game sells at the average, rounded (× the amount).`;
+}
+
+/** A sell value: "18 g", with the data's pair beside it ("15–20") and in its tooltip for materials and consumables. */
+export function sellNode(type: string, id: number, value: number, asc = 0): HTMLElement {
+  const r = sellRange(type, id, asc);
+  const tip = sellTip(type, id, asc);
+  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, `${fmt.format(value)} g`,
+    ...(r && tip ? [el("span", { class: "sell-range" }, `${fmt.format(r[0])}–${fmt.format(r[1])}`)] : []));
 }
