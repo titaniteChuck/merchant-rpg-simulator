@@ -2,6 +2,9 @@
 
 [Root](../../index.md) > [Tooling](../index.md) > [Profit Calculator](./index.md) > Update Log
 
+## 2026-11-24
+- **Map-only content (E20)**: map bosses and Treasure Bushes (`questType` 8) are no longer quest sources; map-only loot costs run cost / drops per run (Khan's Horn 350 → 47,390 g); `Solver.hoursPerUnit` (craft + run hours per unit), `crafterHourCost`; map essence × (1 + luck / 100); farming map rows add craft time, `map_only` drops and their unit cost, and run a map-only quest source as its map. Snapshots updated (see [map-only content](./profit-calculator.md#map-only-content)).
+
 ## 2026-11-23
 - **Essence pricing (E11)**: forced sources that need their own essence solved as a fixed point (no more dropped rows; explicit error when impossible); free by-product essences kept at 0 and flagged (`free_byproduct`).
 - **Enchant rules (E7)**: enchant order (before/after ascending), Reset before enchanting and modded-ingredient boosts modelled as opt-in options and tables; findings: enchanting after ascending always cheaper, Reset helps some prefixes (~3%), modded ingredients almost never pay.

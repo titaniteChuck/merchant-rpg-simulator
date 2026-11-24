@@ -2,7 +2,7 @@
 type: Mechanic
 title: Maps
 description: Maps are crafted by the Scribe, consumed when run, and yield essence plus room loot.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Maps
@@ -16,6 +16,8 @@ timestamp: 2026-11-23
 - [Crafting a map](#crafting-a-map)
 - [Running a map](#running-a-map)
   - [Rooms](#rooms)
+  - [Map-only enemies](#map-only-enemies)
+  - [Experience](#experience)
   - [Essence](#essence)
   - [Loot](#loot)
 - [Prefix and suffix](#prefix-and-suffix)
@@ -42,6 +44,32 @@ timestamp: 2026-11-23
 - Each enemy can be rare with chance `abRand`%. `isRareBoss` makes the boss rare.
 - Treasure rooms: chance per room by grade 0, 0, 1, 8, 10 %. Treasure Bush quest by tier (ids 99–104).
   Maps above level 60 get no treasure (index out of range).
+
+### Map-only enemies
+
+- `questType` 8: the map bosses 91–98 and the Treasure Bushes 99–104. The quest board draws a quest only when
+  `quest.region == currentRegion and quest.questType ~= 8` (`scene.QuestMenu.lua:175`), so they are never a quest.
+- Where: Goblin Warlord (91) ends Goblin's Feast Map, Murlok Monarch (92) Murlok Madness Map, Gnoll Khan (93) Gnoll
+  Vendetta Map, Beast King (94) Beastly Burden Map; Goons of Evil Map draws one of 91–93 (1 in 3 each).
+  Protector of the Forest (95) and King of the Mountain (96) end Treant / Golem Revenge Map, Archon (97) Archon's
+  Reality Map; The Mighty Bush (98) only the uncraftable level-70 map 32. Treasure Bushes: treasure rooms of the tier.
+- Getting anything they drop (trophies 265–272) means crafting the whole map and running it room by room to the boss:
+  the site prices one at (map cost) / (drops per run) and (craft + run time) / (drops per run)
+  ([profit calculator](../../tooling/profit-calculator/profit-calculator.md#map-only-content)).
+- A hero below level 10 can't join a map (`scene.maps.MapAssignHeroMenu.lua:235`); there is no other level
+  requirement, only a "low chance" warning when the party's score is below `round((itemLevel / 4 + 8) ^ 1.2)`
+  (`scene.maps.mapFlowState.lua`).
+
+### Experience
+
+- Every room won gives each living hero round(exp × mapEnemyMod × 0.2 / heroes) (`obj.combat.Campaign.lua`,
+  `runCombat`), then × (1 + expMod / 100) × questXpMod. mapEnemyMod = `enemyMod` (× 2 at asc 1) + `mapGradeMod[grade]`
+  (−0.2, 0, 0, +0.1, +0.25). A lost run keeps the XP of the rooms won before.
+- Example: Murlok Madness Map (enemyMod 10, grade 3): the Monarch room alone gives 12,000 × 10 × 0.2 = 24,000 XP
+  solo; the full run ~33,300.
+- Craft time (`obj.Craft:startCrafting`): ceil(floor(runTime × craftGradeSpeed[grade]) × craftTimeMod) s, the map's
+  grade being its craft grade; a recipe that needs a lower map adds that map's craft (Murlok Madness = Yarsol Map +
+  …: 675 + 90 s at grade 3). Helpers: `web/src/tools/quest-stats.ts` (`mapRunStats`, `mapCraftSeconds`).
 
 ### Essence
 
@@ -101,6 +129,7 @@ Up to 3 scroll slots per map run (duplicates allowed), consumed at the start (`G
 ## Code
 
 - `decompiled/obj.Map.lua`, `decompiled/obj.combat.Campaign.lua`, `decompiled/obj.Player.lua` (`useMap`).
+- Quest board filter: `decompiled/scene.QuestMenu.lua:175`; craft time: `decompiled/obj.Craft.lua:82`, `data.GameModsData.lua`.
 - Scrolls: `decompiled/obj.combat.ScrollsComponent.lua`, `decompiled/data.ScrollsData.lua`, `decompiled/obj.GameClass.lua` (`startMap`).
 - `decompiled/data.Default.lua`: `mapRoomQuantity`, `mapEssenceReward`, `mapEnemyMod`.
 - Data: `decompiled/data.MapData.lua`.

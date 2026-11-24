@@ -2,7 +2,7 @@
 type: Tool
 title: Profit calculator
 description: The profit calculator (profit.ts) ranks every item and ascension level by sell value against its cheapest full production cost.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Profit calculator
@@ -18,6 +18,7 @@ timestamp: 2026-11-23
 - [Enchanting](#enchanting)
   - [Map enchanting](#map-enchanting)
 - [Shared run cost](#shared-run-cost)
+- [Map-only content](#map-only-content)
 - [Solving the loop](#solving-the-loop)
 - [Options](#options)
 - [Outputs](#outputs)
@@ -32,10 +33,11 @@ Each (item, asc) gets the cheapest of:
 
 | Source | Unit cost |
 |---|---|
-| Quest | Share of `gold` (+ hero time) over expected drops |
+| Quest | Share of `gold` (+ hero time) over expected drops; quest-board quests only (not `questType` 8) |
 | Rare quest | Same with `goldB` and `rewardB*` |
 | Map run | Map cost − loot credit, divided by essence amount; floored at 0 (see below) |
-| Map-only loot | Its sell value (the gold given up by not selling it) |
+| Map-only loot | Whole run cost / expected drops per run (see [map-only content](#map-only-content)) |
+| Other map loot | Its sell value (a by-product of the run; quests also give it) |
 | Craft | Craft gold + ingredients at same asc + 1× essence if asc > 0 |
 | Ascend | Item at asc − 1 + 4× essence |
 
@@ -85,6 +87,38 @@ A run drops several things. `--alloc` decides who pays:
   Map loot credited at sell value; the rest is the essence cost.
 - `full`: every drop carries the whole run cost. No loot credit. Pessimistic: "I farm this only for X".
 
+## Map-only content
+
+Map bosses (quests 91–98) and Treasure Bushes (99–104) have `questType` 8: the quest board never draws them
+(`scene.QuestMenu:drawEnemyLocations`), they are only fought inside a map run, room by room to the boss. So:
+
+- They are not quest sources (before E20 they were, e.g. Khan's Horn "from quest Gnoll Khan, 1,200 g", Fire Rune and
+  Oblivion Rune from the Treasure Bushes at 1,000 g).
+- **Map-only loot** (an item no quest-board quest drops and no recipe makes: the bosses' trophies 265–272) costs a whole
+  run per expected drop: `unit = run cost / drops per run`, the cheapest map that holds the enemy. Run cost = the map at
+  Solver cost (craft gold + materials, lower maps included) + run hours × `heroHourCost` + craft hours ×
+  `crafterHourCost`. No loot credit: the run is made for that item.
+- **Time**: `Solver.hoursPerUnit` gives the hours per unit of essences and map-only loot: (craft hours + run hours) /
+  amount per run. Craft hours = `mapCraftSeconds` (quest-stats.ts): ceil(floor(runTime × craftGradeSpeed[grade]) ×
+  craftTimeMod) for the map and every lower map its recipe consumes, at the map's craft grade
+  (`craftGrade(crafterLevel, itemLevel, grade)`). Run hours = `sourceStats` time or `baseMapTime`.
+
+Before → after (default options, grade 3):
+
+| Item | Before | After | Source after |
+|---|---|---|---|
+| Warlord's Edge (Goblin Warlord) | 150 g (sell value) | 20,007 g, 5.4 h | Goblin's Feast Map: 0.30/run, run 6,002 g, 1.62 h |
+| Tidal Hilt (Murlok Monarch) | 250 g | 31,483 g, 7.3 h | Murlok Madness Map: 0.30/run, run 9,445 g, 2.19 h |
+| Khan's Horn (Gnoll Khan) | 350 g | 47,390 g, 9.2 h | Gnoll Vendetta Map: 0.30/run, run 14,217 g, 2.77 h |
+| Beastly Fang (Beast King) | 600 g | 118,034 g, 15.4 h | Beastly Burden Map |
+| Eternity Stone | 750 g | 99,782 g, 7.7 h | Treant Revenge Map (1 per run) |
+| Aeon Soul (Archon) | 1,500 g | 1,452,983 g | Archon's Reality Map (needs 3 Eternity Stones) |
+| Forest / Glacial Essence | 4.04 / 113.07 g | 4.04 / 113.07 g | unchanged (time now reported: 0.004 / 0.04 h each) |
+
+Essence luck: `mapEssence` multiplies by (1 + luck / 100) inside the rounding (`default.mapEssenceReward`,
+`data.Default.lua:757`); the Solver passes its `luck`. At the default luck 0 nothing changes; at luck 50 Forest and
+Water Essence become free by-products and Glacial Essence drops from 113 to 49 g.
+
 ## Solving the loop
 
 - Maps cost essence, and essence costs maps.
@@ -116,6 +150,7 @@ A run drops several things. `--alloc` decides who pays:
 | `--alloc` | value | See above |
 | `--essence-from` | cheapest | Force an essence source (repeatable) |
 | `--hero-hour-cost` | 0 | Gold per hour of quest/map time |
+| `crafterHourCost` | 0 | Gold per hour of Scribe time (crafting the map of a run) |
 | `--crafter-level` | 60 | Crafter level for modifier odds and craft grade |
 | `--no-map-mods` | off | Ignore map modifiers in essence yield |
 | `--enchanter-level` | 60 | Enchanter level; 0 disables enchant strategies |
@@ -152,7 +187,10 @@ flowchart LR
 | Field | Meaning |
 |---|---|
 | `win`, `grade`, `grades` | Won share; average won grade; share of runs at each grade 1..5 |
-| `time_h`, `runs_per_hour` | Hours per run (lost runs included) |
+| `time_h`, `runs_per_hour` | Hours per run (lost runs included); a map: craft + run |
+| `craft_h`, `run_h` | Map: the Scribe's hours for the map (lower maps included) and the run's hours |
+| `note` | A map-only quest source replaced by its map ("Murlok Monarch: only in map runs, farmed with …") |
+| `map_only`, `map_only_unit_cost` | Map-only drops per run (trophies) and their cost each = run cost / drops per run |
 | `cost` | Quest gold, or the map + every scroll equipped (the game removes them when the map starts) at Solver cost |
 | `loot_value` | Base sell value of the loot per run, essence excluded |
 | `essence`, `essence_total`, `essence_value` | Essence per run by name, total, and value at the Solver's unit cost |
@@ -166,7 +204,9 @@ flowchart LR
   time = battles + walking. Checked equal to `evaluateMap` on win, grade, time and essence.
 - Map essence in the game is paid at the run's performance grade (`Campaign:getGrade`), not the map's crafted grade:
   that's why `sourceStats` replaces only the run grade.
-- Not modelled: hero revive cost after a lost quest, hero XP.
+- A quest source naming a map-only enemy (`questType` 8) is run as its map (`mapSourceFor`: the craftable map
+  where it is fought most per run, lowest level on ties): Murlok Monarch → Murlok Madness Map.
+- `sourceStatsFrom` passes the run hours (`run_h`); the Solver adds the craft time itself.
 
 ## Implementation
 
@@ -208,6 +248,7 @@ Off by default (the report doesn't change); each has its own table for pages.
 - Stronger enemies from map suffixes (grade kept at `--grade`).
 - Customer preference and haggle bonuses; buying from customers.
 - Events, weekly shop, purchases.
-- Crafter level, unlocks and crafter time as a bottleneck (only reported per craft-hour).
+- Crafter level, unlocks and crafter time as a bottleneck (reported per craft-hour; map craft time in `hoursPerUnit`).
+- Level-70 maps (27–32) are still priced as if craftable (a Scribe caps at 60); they are never the cheapest source.
 - Battle time on quests; asc-1 map's stronger enemies lowering grade.
 - 136 ids have no source: placeholders, event/weekly items, random maps.

@@ -12,6 +12,7 @@
 import { addPrefix, addSuffix, band, type Climb, enchantEssence, PREFIX_GEM, resetPath, type StepResult, suffixClimb, maxSuffixFor }
   from "./enchant.ts";
 import { clamp, Game, KeyError, luaRound, PRESTIGE_TYPES, pyRound } from "./gamedata.ts";
+import { MAP_ONLY_QUEST_TYPE, mapCraftSeconds } from "./quest-stats.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -130,8 +131,12 @@ export function mapLoot(g: Game, mid: number, grade: number, luck: number): Map<
 /** [prob, prefix id | 0, suffix id | 0] */
 export type Outcome = [number, number, number];
 
-/** Expected essence of one run; `outcomes` = modifier roll distribution of the map. */
-export function mapEssence(g: Game, mid: number, prestige: number, grade: number, outcomes: Outcome[] = [[1.0, 0, 0]]): Map<string, number> {
+/**
+ * Expected essence of one run; `outcomes` = modifier roll distribution of the map. default.mapEssenceReward:
+ * round(gradeBonus[grade] x amount x essenceBase x (1 + partyLuck / 100)) per essence (data.Default.lua:757).
+ */
+export function mapEssence(g: Game, mid: number, prestige: number, grade: number, outcomes: Outcome[] = [[1.0, 0, 0]],
+  luck = 0): Map<string, number> {
   const br: number[] = g.items.map.get(mid).baseReward ?? [];
   const half = Math.floor(br.length / 2);
   const out = new Map<string, number>();
@@ -139,7 +144,7 @@ export function mapEssence(g: Game, mid: number, prestige: number, grade: number
     const eid = g.prestigedEssence(br[i], prestige);
     if (eid === undefined) continue;
     out.set(k2("material", eid), sumOf(outcomes.map(([prob, pf, sf]) =>
-      prob * luaRound(g.gradeBonus.get(grade)! * br[i + half] * mapEssenceMultiplier(g, pf, sf)))));
+      prob * luaRound(g.gradeBonus.get(grade)! * br[i + half] * mapEssenceMultiplier(g, pf, sf) * (1 + luck / 100)))));
   }
   return out;
 }
@@ -251,6 +256,8 @@ export interface SolverOptions {
   luck?: number;
   alloc?: "value" | "full";
   heroHourCost?: number;
+  /** Gold per hour of Scribe time (crafting the map of a run); default 0: craft time only shows in hoursPerUnit. */
+  crafterHourCost?: number;
   /** essence id -> [map id, prestige] */
   essenceFrom?: Map<number, [number, number]>;
   crafterLevel?: number;
@@ -275,6 +282,7 @@ export class Solver {
   readonly mapEnchant: boolean;
   readonly mapSuffixMax: number | null;
   readonly heroHourCost: number;
+  readonly crafterHourCost: number;
   readonly essenceFrom: Map<number, [number, number]>;
   readonly sourceStats: { quest?: Map<string, SourceStat>; map?: Map<string, SourceStat> };
   readonly resetBeforeEnchant: boolean;
@@ -285,6 +293,11 @@ export class Solver {
   /** Whether Python holds the cost as a float (ints come only from integer sell values and gold costs). */
   costFloat = new Map<string, boolean>();
   essenceSources = new Map<number, EssenceSource[]>();
+  /**
+   * Hours per unit of what comes from map runs ("type|id|0"): (map craft hours + run hours) / amount per run, for
+   * essences and map-only loot (items no quest-board quest drops and no recipe makes).
+   */
+  hoursPerUnit = new Map<string, number>();
   /** Forced essence sources (essenceFrom) that can't price their essence, with the reason (the essence stays unpriced). */
   errors: string[] = [];
   private enchantCache = new Map<string, StepResult | null>();
@@ -301,6 +314,7 @@ export class Solver {
     this.mapEnchant = (o.mapEnchant ?? true) && this.enchanterLevel > 0;
     this.mapSuffixMax = o.mapSuffixMax ?? null;
     this.heroHourCost = o.heroHourCost ?? 0;
+    this.crafterHourCost = o.crafterHourCost ?? 0;
     this.essenceFrom = o.essenceFrom ?? new Map();
     this.sourceStats = o.sourceStats ?? {};
     this.resetBeforeEnchant = o.resetBeforeEnchant ?? false;
@@ -331,12 +345,16 @@ export class Solver {
     return this.sv(...un2(key));
   }
 
-  /** Quests have a fixed gold cost, so their unit costs are computed once. */
+  /**
+   * Quests have a fixed gold cost, so their unit costs are computed once. Quest-board quests only: map bosses and
+   * Treasure Bushes (questType 8, never on the board) are paid with a whole map run (see solve()).
+   */
   private buildQuestSources(): Map<string, [number, string][]> {
     const src = new Map<string, [number, string][]>();
-    const variants: [number, boolean][] = [...this.g.quests.keys()].map((qid) => [qid, false]);
+    const board = [...this.g.quests].filter(([, q]) => q.questType !== MAP_ONLY_QUEST_TYPE);
+    const variants: [number, boolean][] = board.map(([qid]) => [qid, false]);
     // Rare variant (nameB/goldB, rewardB*): only offered at random, but the only quest source of boss trophies.
-    for (const [qid, q] of this.g.quests) if (q.rewardB1 || q.rewardB3) variants.push([qid, true]);
+    for (const [qid, q] of board) if (q.rewardB1 || q.rewardB3) variants.push([qid, true]);
     for (const [qid, rare] of variants) {
       const q = this.g.quests.get(qid);
       const gold = (rare ? (q.goldB !== undefined ? q.goldB : q.gold) : (q.gold ?? 0)) || 0;
@@ -473,8 +491,16 @@ export class Solver {
         const st = mapStat(mid, p);
         mapVariants.set(`${mid}|${p}`, this.mapVariants(mid, p)
           .map(([label, extraFn, outcomes, secs]) => [label, extraFn,
-            st ? mixByGrade(st.grades, (gr) => mapEssence(g, mid, p, gr, outcomes)) : mapEssence(g, mid, p, this.grade, outcomes), secs]));
+            st ? mixByGrade(st.grades, (gr) => mapEssence(g, mid, p, gr, outcomes, this.luck))
+              : mapEssence(g, mid, p, this.grade, outcomes, this.luck), secs]));
       }
+    }
+    // Loot that no quest-board quest drops and no recipe makes: only a whole map run gives it (map bosses' trophies...).
+    const mapOnly = (t: string, i: number) => !this.questSources.has(k2(t, i)) && !g.recipe(t, i);
+    // Scribe hours of one map (the map and the lower maps its recipe consumes) at its craft grade: obj.Craft.
+    const craftH = new Map<number, number>();
+    for (const [mid, m] of g.items.map) {
+      craftH.set(mid, mapCraftSeconds(mid, craftGrade(this.crafterLevel, m.itemLevel ?? 1, this.grade)) / 3600);
     }
     for (let iter = 0; iter < maxIter; iter++) {
       let changed = false;
@@ -523,18 +549,29 @@ export class Solver {
         for (const p of ascLevels("map")) {
           const mapCost = this.get("map", mid, p);
           if (mapCost === INF) continue;
-          const runCost = mapCost + (mapStat(mid, p)?.timeH ?? (m.baseMapTime ?? 0) / 3600) * this.heroHourCost;
+          const runH = mapStat(mid, p)?.timeH ?? (m.baseMapTime ?? 0) / 3600, mapH = craftH.get(mid) ?? 0;
+          // one run: the map (crafted: gold + materials at their cost), the heroes' run time, the Scribe's craft time
+          const runCost = mapCost + runH * this.heroHourCost + mapH * this.crafterHourCost;
           const loot = mapLootCache.get(`${mid}|${p}`)!;
           const credit = this.alloc === "full" ? 0 : sumOf([...loot].map(([k, a]) => a * this.svKey(k)));
-          // loot found only in maps is priced at its sell value (the gold you give up by using it)
           for (const [lkey, lamt] of loot) {
             const [lt, li] = un2(lkey);
-            if (g.items[lt]?.has(li) && lamt > 0) {
+            if (!g.items[lt]?.has(li) || lamt <= 0) continue;
+            if (mapOnly(lt, li)) {
+              // map-only loot (a map boss's trophy): one unit costs a whole run / the expected drops per run
+              const key = k3(lt, li, 0);
+              if (this.try(key, runCost / lamt, `map run ${m.name}${p ? ` asc${p}` : ""} (${f(lamt, 3)}/run; ` +
+                `run cost ${f(runCost, 0)} g, ${f(mapH + runH, 2)} h craft + run)`)) {
+                changed = true;
+                this.hoursPerUnit.set(key, (mapH + runH) / lamt);
+              }
+            } else {
+              // by-product of a run that quests also give: worth its sell value (the gold you give up by using it)
               changed = this.try(k3(lt, li, 0), this.sv(lt, li), `map loot ${m.name} (valued at sell price)`, false) || changed;
             }
           }
           const essValueOf = (ess: Map<string, number>) => sumOf([...ess].map(([k, a]) => a * this.svKey(k))) || 1;
-          const bestPerEssence = new Map<string, [number, number, string, number]>();
+          const bestPerEssence = new Map<string, [number, number, string, number, number]>();
           for (const [label, extraFn, ess, secs] of mapVariants.get(`${mid}|${p}`)!) {
             if (!ess.size) continue;
             const extra = extraFn();
@@ -547,11 +584,11 @@ export class Solver {
               const cur = bestPerEssence.get(key);
               if (label === "as crafted" || cur === undefined || unit < cur[0]) {
                 if (label === "as crafted") addSource(un2(key)[1], [mid, p, unit, amt, runCost, credit, label]);
-                if (cur === undefined || unit < cur[0]) bestPerEssence.set(key, [unit, amt, label, runCost + extra]);
+                if (cur === undefined || unit < cur[0]) bestPerEssence.set(key, [unit, amt, label, runCost + extra, secs]);
               }
             }
           }
-          for (const [key, [unit, amt, label, totalCost]] of bestPerEssence) {
+          for (const [key, [unit, amt, label, totalCost, encSecs]] of bestPerEssence) {
             const [kt, eid] = un2(key);
             if (label !== "as crafted") addSource(eid, [mid, p, unit, amt, totalCost, credit, label]);
             const forced = this.essenceFrom.get(eid);
@@ -561,6 +598,7 @@ export class Solver {
               (unit === 0 ? ", free by-product: the run's other loot pays for the map" : ""))) {
               changed = true;
               this.essenceChoice.set(eid, [mid, p, label]);
+              this.hoursPerUnit.set(k3(kt, eid, 0), (mapH + runH + encSecs / 3600) / amt);
             }
           }
         }

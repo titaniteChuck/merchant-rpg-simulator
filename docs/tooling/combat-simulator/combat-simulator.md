@@ -296,24 +296,43 @@ summarizeByClass(rows, threshold = 0.9): ClassSummary[]
 
 ```ts
 xpBetween(tier, from, to): number          // XP from level `from` to `to`
-availableQuests(level, tier): number[]      // quests with an enemy the hero may take
+availableQuests(level, tier): number[]      // quest-board quests (not questType 8) the hero may take
+availableMaps(level, crafterLevel = 60): number[]   // craftable maps, from hero level 10
 questXpRate(sim, hero, front, back, quest, amount = 1, n = 30): XpSource   // win, xpPerRun, hoursPerRun, reviveGold, xpPerHour
-levellingPlan(sim, raw, { from, to, band = 5, companions, n, quests, amounts, minWin = 0.5, expModBonus }, ctl): LevellingPlan
+mapXpRate(sim, hero, front, back, map, { asc, grade, n, stopBelow }): XpSource   // whole runs: craftHours + runHours
+levellingPlan(sim, raw, { from, to, band = 5, companions, n, quests, amounts, minWin = 0.5, expModBonus,
+  maps, mapRuns = 10, mapGrade = 3, crafterLevel = 60, solver }, ctl): LevellingPlan
+mergeSteps(steps): LevelStep[]              // consecutive bands with the same source -> one step
 prestigePayoff(sim, raw, { quest, n }, levellingOptions, ctl): PrestigePayoff
 ```
 
 - **XP rate**: the hero's own share over seeds 1..n, wins only, nothing at max level; hours = quest time.
-- **Plan**: every `band` levels the hero is rebuilt at that level and the quest × amount (1 and the party's max by
-  default) with the best XP/h among those won at least `minWin` is kept; runs = XP needed / XP per run. `stuckAt`
-  marks a band with no usable source.
+  `questXpRate` refuses a map-only enemy (`questType` 8: map bosses 91–98, Treasure Bushes 99–104).
+- **Map runs** (`mapXpRate`): XP of every room won while alive (round(exp × mapEnemyMod × 0.2 / heroes) per room,
+  `Campaign:runCombat`; a lost run keeps the rooms won), hours = the map's craft time (`mapCraftSeconds`, lower maps
+  included) + the run, win = whole runs won. A step on a map also carries `mapGold` (maps at Solver cost).
+- **Plan**: every `band` levels the hero is rebuilt at that level; candidates are the quest-board quests × amount (1
+  and the party's max by default) and, from level 10, every craftable map run. A map is skipped when even every room
+  won (solo share, 1.5 × the expected rooms) over its shortest time (craft + a quarter of the walk) can't beat the best
+  source. The best XP/h among those won at least `minWin` is kept; runs = XP needed / XP per run. Consecutive bands
+  with the same source (same quest and amount, or same map) are merged into one step (`bands` counts them).
+  `stuckAt` marks a band with no usable source.
+- **Why the plan said "Murlok Monarch 23 times, then 12 times"** (before E20): `availableQuests` took every quest with
+  an enemy, so the map bosses 91–94 counted as 1v1 quests the hero could chain (Monarch: 12,000 XP, quest time
+  1,400 s); and each 5-level band was its own step, so the same pick in two bands printed twice. The Monarch only
+  appears at the end of Murlok Madness Map, whose full run a solo level-41 Cleric loses every time.
 - **Prestige payoff**: stats, enchant slots, amount cap and a solo reference fight at each tier's max level (the next
   tier without enchants), plus level required, gold, enchants lost and the hours to level back up (`relevel`).
 - **Farming report**: rows add `xp_per_run` and `xp_per_hour` (per hero) and `revive_gold`; map runs report the XP
   each hero earned (`heroes[].xp`, TypeScript only, ignored by the Lua difftest).
-- Example (real save, tier-3 Berserker, solo 1 → 60): 34 h, 334 quests, from Forest Gathering ×5 (~6k XP/h) to
-  Murlok Monarch ×5 (~41k XP/h). Prestige 2 → 3 for that hero: HP 823 → 1183, atk 919 → 1159, enchant slots 12 → 16,
+- Example (real save, tier-3 Cleric, solo 1 → 60, n = 20): before E20 33 h in 12 steps, ending with
+  "Murlok Monarch" ×5 then ×1 over four bands (~44k XP/h); now 57.5 h in 3 steps: Forest Gathering ×5 (1 → 16),
+  Maexna ×1 (16 → 41), Maexna ×5 (41 → 60, ~19k XP/h). Murlok Madness Map runs: 0 % won at level 41; won at 46+
+  (33k XP per run) but 13–14k XP/h once its 0.21 h craft and 2.2 h run are counted. Earlier example (tier-3 Berserker,
+  before E20): 34 h ending on Murlok Monarch ×5. Prestige 2 → 3 for that hero: HP 823 → 1183, atk 919 → 1159, enchant slots 12 → 16,
   amount cap 3 → 5, for 50,000 g and 34 h of levelling.
-- Limits: quests only (map runs are not candidates); a fixed party per plan; gear is kept as is, whatever its level.
+- Limits: a fixed party per plan; gear is kept as is, whatever its level; map runs at ascension 0 without scrolls;
+  craft time counts as the hero's time (the Scribe could craft the next map during a run).
 
 ## Validation
 

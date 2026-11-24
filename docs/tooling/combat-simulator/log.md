@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-24
+- **Map-only enemies (E20)**: levelling candidates are quest-board quests (single fights) and whole map runs (from level 10; room XP, craft + run time, map gold); map bosses and Treasure Bushes are never standalone quests; consecutive bands with the same source merge into one step; `quest-stats.ts` adds `questStats` / `mapRunStats` (XP, time, XP/min) for the UI.
 - **Tidy-up after E13-E21**: one consistent reference. Reports listed as `cmd*` functions with their options (no CLI flags); Search API adds `searchParties`, targets (`mapRoom`), `searchSkills` options and result fields, `searchParty` `lock`; party setup rules in the search methods, optimiser and limits; validation lists the Lua parity counts (3,000 fights, 400 map runs, 1,949 item rolls) and snapshots; code and test lists complete; warm start, schedule (Drown probe fix) and party search pages aligned.
 - **Party setup rules (E21)**: `partyRules`, `requiredSlots`, `partyProblem`, `checkParty`, `soloRows` in `combat.ts`; `evaluate` / `evaluateMap` refuse layouts the game would not start; `searchParty`, `searchParties` and `optimiseFight` (party, order, swap) keep a party quest's front 2 filled and its size; `QuestTarget.mapRoom` for a map's boss fight; one-hero tools use the game's slot; warm start rebuilt with it.
 
