@@ -54,3 +54,4 @@
 - **Update**: U34, U34b, E24 done; U35, U36 built and merging.
 - **Update**: User scheduled the whole R1 backlog: four parallel agents (R1-A battle, R1-B1 wiki world, R1-B2 wiki reference, R1-C shared UI).
 - **Update**: E22, R1-A done; R1-B1, R1-C merging; R1-D (adopt shared helpers) queued.
+- **Update**: R1-D done (a539f2e); the R1 backlog is complete. Open checks: a visual check of the battle plan TURN column, and a full browser sweep (check-site) once Windows Chrome is healthy.
