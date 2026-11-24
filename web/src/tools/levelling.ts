@@ -20,7 +20,7 @@
  */
 import { G } from "../sim/data.ts";
 import { D } from "../sim/defaults.ts";
-import { fightSeed, maxQuestAmount, SearchCancelled, type SearchControl } from "./combat.ts";
+import { fightSeed, maxQuestAmount, partyRules, SearchCancelled, soloRows, type SearchControl } from "./combat.ts";
 import type { FightResult, Hero, Row, Sim } from "./engine.ts";
 import { reviveGold } from "./farming.ts";
 import { gameFromData } from "./gamedata.ts";
@@ -242,9 +242,18 @@ export function levellingPlan(sim: Sim, raw: Any, o: LevellingOptions & { from?:
     const hero = sim.hero({ ...structuredClone(raw), level: l, exp: 0 });
     if (o.expModBonus) hero.expMod = (hero.expMod ?? 0) + o.expModBonus;
     const companions = (o.companions ?? []).map((c) => sim.hero(structuredClone(c)));
-    // TODO(E21): a solo hero on a party quest stands in front 1 here; the game needs front 2 (combat.ts partyRules).
-    // Build the layout with soloRows(target, hero) / partyRules once E21 is on main.
+    // Map runs have no required slot: the hero in front 1, the companions after it.
     const front: Row = [hero, ...companions.slice(0, 2)], back: Row = companions.slice(2, 5);
+    // Quests follow the game's party rules (combat.ts partyRules): a solo quest takes the hero alone in front 1; a party
+    // quest has the hero in front 2 (soloRows) and the companions in the other slots, up to the quest's size.
+    const questRows = (q: number): [Row, Row] => {
+      const [f, b] = soloRows({ quest: q }, hero);
+      const rules = partyRules({ quest: q });
+      if (rules.kind === "solo") return [f, b];
+      const free: [Row, number][] = [[f, 0], [f, 2], [b, 0], [b, 1], [b, 2]];
+      companions.slice(0, Math.max(0, rules.maxSize - 1)).forEach((c, k) => { const [row, i] = free[k]; row[i] = c; });
+      return [f, b];
+    };
     const maxAmt = maxQuestAmount([...front, ...back], false, sim.mode);
     const amounts = o.amounts === "one" ? [1] : o.amounts === "max" ? [maxAmt] : [...new Set([1, maxAmt])];
     let best: XpSource | null = null;
@@ -252,7 +261,7 @@ export function levellingPlan(sim: Sim, raw: Any, o: LevellingOptions & { from?:
     for (const q of quests) {
       for (const a of amounts) {
         if (ctl.shouldStop?.()) throw new SearchCancelled();
-        const s = questXpRate(sim, hero, front, back, q, a, n);
+        const s = questXpRate(sim, hero, ...questRows(q), q, a, n);
         if (s.win >= minWin && (!best || s.xpPerHour > best.xpPerHour)) best = s;
       }
     }
@@ -324,8 +333,8 @@ export function prestigePayoff(sim: Sim, raw: Any, ref: { quest: number; n?: num
     let wins = 0, peak = 0, score = 0;
     const n = ref.n ?? 50;
     for (let k = 0; k < n; k++) {
-      // TODO(E21): use soloRows(ref.quest, h) (combat.ts): a party quest needs the hero in front 2.
-      const res = sim.fight(ref.quest, [h], [], { seed: fightSeed(1, k) });
+      // The hero alone where the game puts it: front 1 in a solo quest, front 2 in a party quest (combat.ts soloRows).
+      const res = sim.fight(ref.quest, ...soloRows({ quest: ref.quest }, h), { seed: fightSeed(1, k) });
       if (res.won) wins++;
       peak += 1 - Math.max(res.enemyMinHP ?? res.enemyHP, 0) / res.enemyMaxHP;
     }
