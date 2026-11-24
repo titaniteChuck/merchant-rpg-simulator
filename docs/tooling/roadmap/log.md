@@ -64,3 +64,6 @@
 - **Update**: U42 (solver layout) and U43 (compact simulator results) scheduled.
 - **Update**: U44 (menus: Save dropdown merged, CSV All first, Battle entry dropdown-only, no chip row on Battle pages) scheduled.
 - **Update**: U45 done (452dd93): dropdowns kept on screen on phones, Save pages mark the Save button current. Browser check of save and hero pages pending (Chrome in use by R2).
+- **Update**: Farming page reopened: code review written ([review-farming](./review-farming.md)), 23 findings, 8 feature ideas, 14-item first batch, 7 design choices.
+- **Update**: Profit page review written ([review-profit](./review-profit.md)): 22 findings, 8 feature ideas, first batch B1–B12, design choices D1–D7.
+- **Update**: Levelling page review written ([review-levelling](./review-levelling.md)): 26 findings, 10 feature ideas, 16-item first batch, 7 design choices; Murlok Monarch chaining covered (map runs 4× below the best quest).
