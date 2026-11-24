@@ -61,3 +61,5 @@
 - **Update**: U37, U38, U39 live. User round 2 on the Battle Flow scheduled as U40, solver scroll ranking as E25.
 - **Update**: U40 add-ons (AP limit refusal, dead-party rooms); U41 (solver on its own page) queued after U40.
 - **Update**: U40 done (03da3d5); U41 done (dcb1948): the Solver has its own page (solver.html, Battle menu: Simulator, Solver), old Solve links redirect.
+- **Update**: U42 (solver layout) and U43 (compact simulator results) scheduled.
+- **Update**: U44 (menus: Save dropdown merged, CSV All first, Battle entry dropdown-only, no chip row on Battle pages) scheduled.
