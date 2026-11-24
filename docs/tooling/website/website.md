@@ -116,17 +116,20 @@ flowchart LR
   the heading is off screen, one smooth scroll puts it at the top (instant with reduced motion). Only at the start:
   progress updates and the result never scroll, so a user who scrolls away stays there. No page title or lead
   paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
-- Step 1, mode (U8; U27 merged Best party, Best rotation and Best scrolls into one Best party): Simulate, Best gear, Best party, Best potion / enchant (U9), Optimise everything (`MODES` in
-  `battle.ts`: per mode, whether step 2 asks for the party, which opponents it accepts, and its search panel). A new mode
-  is one row there plus, for a search, one panel in `battle-search.ts`. The chosen mode is remembered (localStorage
+- Step 1, mode (U8; U27 merged Best party, Best rotation and Best scrolls into one Best party; U36 kept two): Simulate
+  and Solve (the solver, Best party until U36) (`MODES` in `battle.ts`: per mode, whether step 3 asks for the party,
+  which opponents it accepts, and its search panel). Best gear, Best potion / enchant and Optimise everything left the
+  page in U36; their engine code (`searchGear`, `rankConsumables`, `optimiseFight`) and the worker's handlers stay (the
+  history below describes them as they were). A new mode is one row there plus, for a search, one panel in
+  `battle-search.ts`. The chosen mode is remembered (localStorage
   `battle-mode`; a remembered mode that no longer exists falls back to Simulate). Under 560px the modes are two compact columns (hint in the title). Under the mode cards, one box
   (`.run-box`, U23; was a separate step 3) holds the chosen mode's options and its Run button: Runs and ▶ Simulate, or
   the search's panel and 🔎 Search. The output goes to the Results section, step 2 (`#results` for Simulate,
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
   opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
-- Step 3, party and opponent (U15, reworked in U23; step 2 until U26), the same arrangement in every mode: the six hero slots on the left (back row 1-3 |
-  front row 1-3), the opponent card on the right (stacked below 960px, party first), then the 5-turn plan across the
-  full width. Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
+- Step 3, party, opponent and plan (U15, reworked in U23 and U36; step 2 until U26), the same arrangement in every
+  mode, three columns (U36): the six hero slots (back row 1-3 | front row 1-3), the opponent card, then the 5-turn plan;
+  up to 1200 px the plan goes under the party and opponent, below 960 px everything stacks (party, opponent, plan). Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
   Mdef, Acc, Crit), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
   whole row opens the wiki page via `clickableRow`, AP via `apBadge`): passive row (name, bonus), rotation rows (turn,
@@ -136,6 +139,13 @@ flowchart LR
   the same control. Gear is not shown in the slots. In Best party and Optimise everything the slots are the search's:
   empty ones read "to be found", and a filled slot has a 🔒 toggle (a hero picked by hand is locked; locked heroes stay
   in the party and follow their hero when the search moves it).
+  - Include box (U36): a checkbox at the top right of each filled card. Unticked, the hero stays in its slot but doesn't
+    fight (dimmed card, "left out"; `state.excluded`, remembered with the party). When more heroes are ticked in than
+    the opponent takes (`partyRules` maxSize, e.g. after switching to Desolation Wolf, 3), the first ones in the game's
+    slot order are kept (the required slot first, then back 1, front 1, back 2, front 2, back 3, front 3) and the rest are
+    left out automatically: their box is unticked and disabled ("over the limit"), and a note names them
+    (`includedSlots` in `ui/battle-setup.ts`). Simulate, the plan, the quest-size cap and the party check
+    (`partyProblem`, so the required Front 2 rule) use the included heroes only; the solver's locks skip the others.
   - Clear all (U32): a button above the slots empties every slot (and its lock; edited rotations are kept), then shows
     "↩ Put back the previous party" until it is used or a slot is changed by hand.
   - Party setup rules (game 3.18, the engine's E21 `partyRules` / `partyProblem` in `combat.ts`, wrapped for the page by
@@ -147,13 +157,23 @@ flowchart LR
     party from fighting (`partyProblem`'s text, e.g. "quest 81 (Desolation Wolf) takes at most 3 heroes, not 4") is shown
     inline and stops ▶ Simulate before the worker runs.
   - The opponent:
-  - Quest enemy: enemy link to its wiki page, level, rare and "attacks first" pills, radar of the base stats (rims =
-    strongest enemy of the same kind and level band, 0-9, 10-19 ...), the 5-turn skill rotation. Gathering quests and
-    placeholders are not offered (`isEnemy`).
+  - Quest enemy: enemy link to its wiki page (the only link: no "Enemy page in the wiki →" line since U36), level, rare
+    and "attacks first" pills, radar of the base stats. Placeholders are not offered (`isEnemy`).
+    - Picker (U36): grouped by region and kind, region by region: "<Region>", "<Region> – Event", "<Region> – Map"
+      (`enemyGroups` in `ui/battle-setup.ts` on the wiki's `regionOf`); the Map group holds only map-exclusive
+      monsters (map bosses and the map Treasure Bushes); each group by level. No level bands.
+    - Radar (U36): every axis scaled to the highest value of that stat among all enemies, rare variants included
+      (`enemyStatMax`, computed once), so shapes compare across the whole game; the HP axis follows the quest size
+      (×N: one enemy with N× HP, label "HP ×N"), redrawn when the size changes. Before U36: rims per kind and level band.
+    - No timeline strip in the card (U36): the turns are in the plan; without timeline data the card lists the rotation.
+    - Remembered (U36): the opponent (quest or map run, enemy, rare, size, map, grade, ascension, scrolls) is kept in
+      localStorage `battle-opponent` (try/catch) and put back when the page is opened again; switching quest ⇄ map
+      brings back the other kind's last choice. A remembered size the party can't take falls back to ×1.
   - Quest size ×1 to ×max: one enemy with N× HP, N× loot and N× quest time, max = `maxQuestAmount` of the party
     (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything allow up to the
     strongest hero of the save; the searches skip parties that can't take the size.
-  - Map run: owned map from the save (prefix, suffix, grade, ascension outline) or any catalog map with ascension 0/1
+  - Map run: owned map from the save (prefix, suffix, grade, ascension outline; a modded map is named
+    "[Prefix] Map +N" from its translated parts by `modItemName`, U34, in the picker and the card since U36) or any catalog map with ascension 0/1
     and grade; card with level, grade, rooms, time, enemy power ×, boss links, modifiers, and up to 3 scrolls.
 - The worker runs `evaluate` / `evaluateMap` from `web/src/tools/combat.ts` with seeds 1..n (common random numbers:
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
@@ -197,7 +217,11 @@ flowchart LR
       revokes a blob: URL that the worker's `shouldStop` reads with a synchronous request (at most every 250 ms;
       `SearchRequest.stopUrl`, `stopSignal` in `battle-worker.ts`), and the configurations found so far come back as a
       normal result ("Stopped early"); a worker that doesn't answer within 10 s is terminated.
-    - Results: a table of up to 10 setups, # · Heroes · Party (hero chips in the class colours, 🏹 back row then 🛡️
+    - Shortlist (U36, `solveShortlist` in `ui/battle-setup.ts`): of the search's configurations (up to 10), the table
+      shows only those worth trying: never a 0 % win, only within 25 % of the best one found (win ≥ 0.75 × best win and
+      ranking score ≥ 0.75 × best score), at most 5, in the solver's order; a line says how many weaker ones were left
+      out. None left: "No setup won a single fight …" with what to change.
+    - Results: a table of up to 5 setups (10 before U36), # · Heroes · Party (hero chips in the class colours, 🏹 back row then 🛡️
       front row, a "rough" tag when `tuned` is false: only screened) · Scrolls (maps: links, "—" if none) · Win ·
       Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load.
     - Load fills the six slots, every hero's rotation and passive and (with scrolls) the map's scrolls, marks the row
@@ -233,7 +257,7 @@ flowchart LR
 - Enemy timeline (U11, `web/src/ui/timeline.ts` on `web/src/tools/schedule.ts`, data `data/timelines.json` =
   `inventory/timelines.json`): what the enemy does on each of its 5 turns and how long each effect lasts; time
   cleanses, heals and big hits around it.
-  - Strip (opponent card and wiki enemy pages): one cell per turn (skill link, tag icons: hits one / split / row /
+  - Strip (wiki enemy pages; on the battle page's opponent card until U36): one cell per turn (skill link, tag icons: hits one / split / row /
     everyone, heal, buff, debuff, stun, shield, reflect …), and one bar per effect over the turns the heroes act while
     it is on: an effect on the enemy covers `facingTurns`, an effect on the heroes their `ownerTurns`, offsets from the
     cast turn, wrapping from T5 to T1 (Soul Barrier cast on T4 covers T5 and T1). Tooltips: duration, stats, cleanse /
@@ -253,7 +277,30 @@ flowchart LR
     cells say each effect in plain words: "Drown → all heroes: abilities disabled (Basic only), for their next 2
     actions (T4, T5)", or "→ itself" for its buffs. Murlok Monarch (quest 92): Drown on T3 disables the heroes' T4
     and T5. The ✓ / ⚠ notes are `scoreSchedule`'s, which doesn't model forced actions yet (an engine follow-up).
-  - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only).
+  - 5-turn plan v4 (U36, replaces the two items above; `planGrid` in `ui/battle-plan.ts`, drawn by `partyPlan` in
+    `timeline.ts`): the third column of step 3, a grid whose COLUMNS are the heroes in action order (by party location)
+    plus the enemy (first on questType 6) and whose ROWS are turns 1-5; the enemy column alone while the party is empty.
+    - Compact words in the cells ("dmg", "AoE", "heal", "atk −50%", "def", "eva", "crit", "→ Basic", "stun", "DoT",
+      "dispel", "taunt" …), the full words and sentence in the tooltip (`title`). A skill's effect isn't re-explained
+      beyond that: the skill link's own tooltip has its description.
+    - Hero cells: the planned skill (struck out with "→ Basic" under a forced action, "stun" under a stun), what the
+      skill does in compact words, and each enemy effect on that hero for that turn with its SOURCE skill:
+      "[Tidal Wave] atk −50%", "[Drown] → Basic" (windows from `ownerTurns` as in U32; the latest cast of an effect wins).
+    - Enemy cells: its skill and a compact summary ("AoE · atk −50%"), its own buffs still on from earlier turns
+      ("[Ancient Mist] eva +50%", over `facingTurns`), and the maluses the heroes put on it, each with its source:
+      debuffs and damage over time ("[Sunder II] def −49%", "[Ambush II] atk −60%"), "[Taunt] taunt", "[Silence] dispel",
+      "[Cleanse] cleanse". A hero's effect counts only when it really plays the skill (not when stunned or forced to
+      Basic). Windows: `ownerTurns` from the hero-skill probe (enemy last; shifted one turn when the enemy acts first),
+      `facingTurns` for defensive maluses (def, mdef, eva, damage taken); a "next attack" effect (Taunt) covers one turn.
+    - Durations in tooltips (U36 on E24, timelines.json v6): from `lastsHeroActions` / `lastsEnemyActions`, never the
+      game's description: an effect on the heroes "for 4 hero turns", one on the enemy "for 3 enemy turns (covers 4
+      hero turns)" (Ancient Mist Eva↑). The wiki strip's bar tooltips use the same text.
+    - No schedule score any more (no per-turn score, no ✓ / ⚠ notes), and no effect-window bars under the grid.
+    - Names: every skill name in the grid, the marks and the tooltips goes through `names.ts` (`skillName`, `skillLink`),
+      so it follows the language picker ("[Raz-de-Marée] atk −50%" in French). The wiki strip's effect bars translate the
+      skill part of an effect's name too (`effectLabel`: "Ancient Mist Eva↑" → "Brume Ancienne Eva↑").
+  - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only; gone with
+    Optimise everything in U36).
   - Without the timeline data the pages fall back to the plain rotation list.
 
 ## Wiki
