@@ -67,3 +67,4 @@
 - **Update**: Farming page reopened: code review written ([review-farming](./review-farming.md)), 23 findings, 8 feature ideas, 14-item first batch, 7 design choices.
 - **Update**: Profit page review written ([review-profit](./review-profit.md)): 22 findings, 8 feature ideas, first batch B1–B12, design choices D1–D7.
 - **Update**: Levelling page review written ([review-levelling](./review-levelling.md)): 26 findings, 10 feature ideas, 16-item first batch, 7 design choices; Murlok Monarch chaining covered (map runs 4× below the best quest).
+- **Update**: P1 done (11e2b36): Profit page first batch (review-profit B1–B12).

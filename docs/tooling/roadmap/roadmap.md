@@ -97,6 +97,7 @@ Rules:
 | U43 | **Simulator results, compact**: first only win % and average grade, then a "Show details" button for the rest; smaller stat cards; essence per run placed properly; "before XP bonuses" removed; the summary table adds each hero's HP left at the end; average and worst-case turn count (worst room for maps) against the game's turn cap. | U41 | Done (022fca9) |
 | U44 | **Menus**: the Save sub-pages move into the same dropdown as the save selection; Export CSV lists "All" first; the "Battle" menu entry only opens its dropdown (like More), no page; no sub-page chip row on the Battle pages. | U41 | Done (4457f1c) |
 | U45 | **Menu fixes after the U44 browser check**: top-bar dropdowns stay 8 px inside the screen at every width (the save menu was 38 px off the left edge on phones); on the Save pages the top-bar Save button is marked current; check-site accepts that mark. | U44 | Done (452dd93) |
+| P1 | **Profit page, first batch** ([review-profit](./review-profit.md) B1–B12): no level-70 content, shared formatters and toggles, Scribe-hidden orb UI, explanation sentences removed, translated names, phone layout with a sticky first column, Only gains in Enchanting, no in-page save panel. | review-profit | Done (11e2b36) |
 
 ## UI lane
 
