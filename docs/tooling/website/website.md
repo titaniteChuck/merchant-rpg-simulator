@@ -396,8 +396,32 @@ flowchart LR
   search (equipment with itemSlot 0 or subType "None": "Region 5 Item", "Extra Item", "Event Item", "New Item",
   "Break", "10+ Items", the second "Grok's Trinket", headers like "Bison"…; materials and consumables with an empty
   subType). No crafter, recipe, image or stat formula, and nothing references them. Columns: Slot, Kind, Level,
-  Rarity, Bonus stats, Made by (crafter or "drop"), Sell value. No class restriction exists in the game (any hero
-  wears any item of the slot from the item's level: `scene.HeroEquipOverlay`); items have no region field.
+  Rarity, Bonus stats, Origin (crafter or "drop"; was "Made by"), Cost, Total cost, Sell value (U37, see below). No
+  class restriction exists in the game (any hero wears any item of the slot from the item's level:
+  `scene.HeroEquipOverlay`); items have no region field.
+- Item and map prices (U37): the Equipment, Consumables, Materials and Maps lists end with Cost, Total cost and Sell
+  value. Each cell holds one value per ascension variant (`ascValues` in `dom.ts`): plain numbers (`goldNumber`, the
+  number part of `gold()`, no "g"), each in a small box outlined in its tier colour (`--v3-asc0/1/2`, the class page's
+  accent / silver / gold; `.asc-vals`, `.av` in `site/style.css`), the full values in the cell's tooltip. Equipment and
+  consumables have three slots (asc 0/1/2), maps two (asc 0/1), materials one; a variant the item doesn't have
+  (`lockPrestige`, or asc 1–2 the visitor hides without Scribe) is a dashed "–" slot, an item that isn't crafted a
+  single "–". The columns sort by the asc-0 value; a legend above the table names the boxes. Helpers in
+  `wiki-items.ts`:
+  - `itemAscLevels` (the type's variants from `ascLevels` in `tools/profit.ts`, minus `lockPrestige`), `sellAt`
+    (`sellValue` of `tools/engine.ts`, the game's price: stackables at the rounded average of the data's pair).
+  - `craftCost`: one craft's gold, `cost` (not scaled by ascension), plus for an ascended craft the essence it
+    consumes (`Game.essenceForAscension`, `default.prestigeItemMaterial`) at the essence's sell value.
+  - `totalCost`: `craftCost` + amount × each ingredient's own total for crafted ones (equipment, consumables and maps
+    at the same ascension, as the game requires; crafted materials such as bars and lumber plain) + amount × sell
+    value per unit for uncrafted ones (ores, logs, drops), memoised per game data.
+  - Before U37 the only total was the crafting chain's (`recipeTree`): own gold + each crafted ingredient's total,
+    hidden ingot / lumber crafts included, but the raw materials added nothing (Iron Ingot 5 g instead of 5 + 2 × 3 g of
+    Iron Ore; Orous Spear 6,921 g instead of 7,761 g). `recipeTree` now has `rawCost` (the uncrafted ingredients at
+    their sell value) inside `totalCost`, so a chain's total equals the table's asc-0 Total cost, and the box tooltip
+    names the raw-material gold.
+- List columns (U37): no Description column on the Consumables and Materials lists (the item's hover card has it,
+  the filter still matches it); the data's sell pair ("15–20") is no longer shown beside a sell value, only in the
+  detail page's tooltip (`sellNode`).
 - Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
   Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
   "Stats by grade" table (with an ascension 0/1/2 switch) shows base stats and each bonus range per grade from
@@ -411,7 +435,8 @@ flowchart LR
   ingredients on the left, the item on the right); raw materials and crafted materials such as ingots or lumber stay in
   the recipe list, and maps and consumables have no chain. An item whose crafted ingredients are all materials shows as
   a single box. Each box: linked name, gold cost, own craft time (`runTime`), Total (own + amount × each crafted
-  ingredient's total, one after the other, the hidden material crafts included; the box's tooltip lists them), crafter
+  ingredient's total, one after the other, the hidden material crafts included; the box's tooltip lists them; the
+  gold total also counts the raw materials at their sell value since U37), crafter
   and level needed. Rules (`obj.Craft`, `obj.Crafter`): time = floor(runTime × craftGradeSpeed[grade]) × amount ×
   craftTimeMod (standard: 1.1, 1, 0.9, 0.8, 0.75 for D..S); the crafter level only changes the start grade, not the
   time; cost = `cost` × amount.
@@ -581,6 +606,13 @@ flowchart LR
     Enemies, Maps, Equipment, Consumables and Materials lists, which open sorted by region, group (region, event, map
     boss), then level; the Region column sorts the same way and a gold rule marks where the region changes
     (`tr.reg-N`, any sort). Region fact (with the reason) on enemy, map and item pages; the enemy lead line names it.
+    U37: the Enemies list's Region column is the chip alone (`regionChip(…, { tag: false })`), since its Kind column
+    already says event / map boss; the Maps column (how many maps hold the enemy) is gone.
+- Skill pages (U37): "Enemies with this skill" shows one line per enemy, its rare variant beside the base name when
+  both play the skill ("Wild Boar · Hogger" + rare pill; a rare variant alone keeps its own line), with level and
+  region chip, ordered by the game's region order, then level (`enemyLines` in `wiki-data.ts`). "Good against" merges
+  a rare variant into its base enemy's row when their turn marks are the same; that table keeps its best-match order
+  (its # rank).
 - XP and time on enemy pages (U33, `questXpBlock` / `mapXpBlock` in `wiki-enemies.ts` on `ui/quest-xp.ts`): a section
   right under the facts, with toggles (grade D–S, default B; party size; map ascension 0 / 1) and a small table. No
   formula on the page: the column headers link to Stats › Quest size, Experience, Quest and map time, Craft, and the
@@ -632,8 +664,8 @@ flowchart LR
     (`craftLine`, `recipe-chain.ts`: crafter · cost · time · XP, cost and time linked to Stats › Craft) and the
     crafting-chain boxes use it.
   - Sell value of a material or consumable: the game's value, round((sell[1] + sell[2]) / 2) × 2 × ascension
-    (`obj.Item:getSellValue`; Minor Potion 15–20 sells for 18, 35, 70), with the data's pair beside it, muted, and in
-    the tooltip (`sellNode`, `sellRange`). Equipment and maps have one value × rarityMod, no pair.
+    (`obj.Item:getSellValue`; Minor Potion 15–20 sells for 18, 35, 70), the data's pair in the tooltip only since U37
+    (`sellNode`, `sellRange`). Equipment and maps have one value × rarityMod, no pair.
   - Rarity 10 and 11 chips keep their number and the colour the game draws them in (rarity 3 / 4); the tooltip says
     so (`rarityTip`). An essence's region reason is "where a map run gives it" (map essence is its own source kind in
     `itemSources`), not "where it drops every win".

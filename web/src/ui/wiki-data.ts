@@ -133,6 +133,25 @@ export function enemiesWith(skill: string): { id: number; name: string; rare: bo
   return out;
 }
 
+/** An enemy and its rare variant on one line: the names of the variants in the list (base, rare or both). */
+export interface EnemyLine { id: number; base?: string; rare?: string }
+
+/**
+ * U37: base and rare variants of one enemy merged into one line (they share the same attacks), in the game's region
+ * order (Tuvale … Frentir; regular, then event, then map bosses), then level, then quest.
+ */
+export function enemyLines(list: { id: number; name: string; rare: boolean }[]): EnemyLine[] {
+  const by = new Map<number, EnemyLine>();
+  for (const e of list) {
+    const line = by.get(e.id) ?? { id: e.id };
+    if (e.rare) line.rare = e.name;
+    else line.base = e.name;
+    by.set(e.id, line);
+  }
+  const key = (id: number) => regionSortKey(regionOf("enemy", id), enemyLevelSort(id));
+  return [...by.values()].sort((a, b) => key(a.id) - key(b.id) || a.id - b.id);
+}
+
 /** One entry per distinct enemy name (a quest reused under the same name counts once), in quest order. */
 export function enemyNamesWith(skill: string): { id: number; name: string; rare: boolean }[] {
   const seen = new Set<string>();

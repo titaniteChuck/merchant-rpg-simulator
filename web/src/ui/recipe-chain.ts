@@ -35,13 +35,17 @@ export function craftLine(type: string, id: number): (Node | string)[] {
 function totalTip(n: RecipeNode): string {
   const what = [n.kids.length ? "the equipment ingredients on its left" : "", n.hidden.length ? `the crafted materials, not drawn: ${hiddenText(n)}` : ""]
     .filter(Boolean).join(", and ");
-  return `${duration(n.totalTime)} and ${gold(n.totalCost)} for one: its own craft plus ${what}, made first, one after the other.`;
+  // U37: the gold also counts the uncrafted materials (ores, logs, drops) at their sell value
+  const raw = n.rawCost ? ` The gold includes ${gold(n.rawCost)} of raw materials at their sell value.` : "";
+  return what
+    ? `${duration(n.totalTime)} and ${gold(n.totalCost)} for one: its own craft plus ${what}, made first, one after the other.${raw}`
+    : `${gold(n.totalCost)} for one: its own craft plus ${gold(n.rawCost)} of raw materials at their sell value.`;
 }
 
 function box(n: RecipeNode, root: boolean): HTMLElement {
   const crafter = crafterName(n.crafterID);
   const hasTotal = n.totalTime > n.time;
-  return el("div", { class: `rc-box rar-${n.rarity}${root ? " rc-root" : ""}`, ...(hasTotal ? { title: totalTip(n) } : {}) },
+  return el("div", { class: `rc-box rar-${n.rarity}${root ? " rc-root" : ""}`, ...(hasTotal || n.totalCost > n.cost ? { title: totalTip(n) } : {}) },
     el("div", { class: "rc-name" }, itemLink(n.type, n.id)),
     el("dl", { class: "rc-facts" },
       el("div", {}, el("dt", {}, "Cost"), el("dd", {}, gold(n.cost))),
@@ -67,6 +71,7 @@ export function recipeChain(type: string, id: number): HTMLElement | null {
     el("div", { class: "rc-frame", role: "group", "aria-label": label, tabindex: "0" }, el("div", { class: "rc-tree" }, node(t, true))),
     el("p", { class: "muted small" },
       "Only equipment is drawn. Total = its own craft plus every crafted ingredient (× the amount needed) made first, one after the other, "
-      + `crafted materials such as ingots included (hover a box for the breakdown): ${duration(t.totalTime)} and ${gold(t.totalCost)} for one. `
+      + "crafted materials such as ingots included, and the gold also counts the raw materials at their sell value "
+      + `(hover a box for the breakdown): ${duration(t.totalTime)} and ${gold(t.totalCost)} for one. `
       + "Base times (grade C); a craft takes ×1.1 at grade D down to ×0.75 at grade S, × the number made. Materials are in the recipe below."));
 }

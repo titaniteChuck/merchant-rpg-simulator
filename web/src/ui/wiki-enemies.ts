@@ -104,7 +104,7 @@ export function enemyListRows(): Row[] {
   return enemyIds().map((id): Row => {
     const reg = regionOf("enemy", id);
     return {
-      ...enemyRow(id, false), kind: enemyKind(id), rareName: hasRare(id) ? enemyName(id, true) ?? quest(id).nameB : "", maps: enemyMapRoles(id).length,
+      ...enemyRow(id, false), kind: enemyKind(id), rareName: hasRare(id) ? enemyName(id, true) ?? quest(id).nameB : "",
       // U29: the filter also matches the English names
       en: [quest(id).name, hasRare(id) ? quest(id).nameB : ""].filter(Boolean).join(" "),
       region: regionSortKey(reg, enemyLevelSort(id)), regionId: reg?.id ?? 0, regionName: regionText(reg),
@@ -120,10 +120,10 @@ export const enemyListColumns = [
   { key: "name", label: "Enemy", render: (r: Row) => enemyLink({ id: Number(r.id), name: String(r.name) }) },
   // R1 F11: a rare variant reads the same everywhere in the wiki: its own name, then a small "rare" pill.
   { key: "rareName", label: "Rare variant", render: (r: Row) => (r.rareName ? nameCell({ id: r.id, name: r.rareName, rare: true }) : el("span", { class: "muted" }, "–")) },
-  { key: "region", label: "Region", render: (r: Row) => regionChip(regionOf("enemy", Number(r.id))) },
+  // U37: the region alone (the Kind column says event / map boss); no Maps count column
+  { key: "region", label: "Region", render: (r: Row) => regionChip(regionOf("enemy", Number(r.id)), false, { tag: false }) },
   { key: "kind", label: "Kind" }, { key: "level", label: "Level", num: true, render: levelCell },
   ...ENEMY_STATS.map(([, l]) => ({ key: l, label: l, num: true })),
-  { key: "maps", label: "Maps", num: true },
 ];
 
 // ---------------------------------------------------------------- page

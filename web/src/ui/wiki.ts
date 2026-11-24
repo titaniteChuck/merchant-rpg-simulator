@@ -17,11 +17,12 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { ascLevels } from "../tools/profit.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, tiersOf } from "./wiki-classes.ts";
-import { bonusLabel, bonusLines, bonusRange, rarityChip, sellNode } from "./wiki-items.ts";
+import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, rarityChip, sellAt, sellNode, totalCost } from "./wiki-items.ts";
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, removesEffects, turnMarks } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import { enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
@@ -37,7 +38,7 @@ import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
   recipe, regionChip, regionOf, regionSortKey, regionText, skillAp, skillDesc, skillLink, skillNames, statText,
-  treasureBushOf, usedInRecipes, enemyLevelText, isGathering, mapFlavour,
+  treasureBushOf, usedInRecipes, enemyLevelText, enemyLines, type EnemyLine, isGathering, mapFlavour,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -114,7 +115,8 @@ function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInput
  * A filterable table page: crumbs, filter, table. The title is for screen readers only; the description is on the home.
  * `rowClass`: a class per row (U24: `reg-N`, so region-sorted lists rule a line where the region changes).
  */
-function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name), rowClass?: (r: Row) => string, hidden = 0): HTMLElement {
+function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name), rowClass?: (r: Row) => string, hidden = 0,
+  legend?: HTMLElement): HTMLElement {
   // R1 F15: everything hidden (the Maps list without Scribe): one empty state, no filter, count or empty table.
   if (!rows.length && hidden) return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title), emptyList(title, hidden));
   const holder = el("div");
@@ -127,7 +129,7 @@ function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) 
   show("");
   const note = hiddenNote(hidden, title.toLowerCase());
   return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
-    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count), ...(note ? [note] : []), holder);
+    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count), ...(note ? [note] : []), ...(legend ? [legend] : []), holder);
 }
 
 /** A list whose every row is expansion content the visitor hides: what hides it and the one action that shows it. */
@@ -227,7 +229,16 @@ const goodRefs = (name: string) => [battleLink("rotation", "Rotation"), battleLi
 
 function goodAgainstSection(name: string): HTMLElement | null {
   // Quest bushes never hit back (no attack): nothing for a skill to answer, so they are left out.
-  const list = goodAgainst(name).filter((m) => isVisible("enemy", m.quest) && !isGathering(m.quest));
+  const all = goodAgainst(name).filter((m) => isVisible("enemy", m.quest) && !isGathering(m.quest));
+  // U37: a rare variant with the same marks as its base enemy shares the base's row ("Wild Boar · Hogger" + rare pill)
+  const same = (a: typeof all[number], b: typeof all[number]) => JSON.stringify(turnMarks(a)) === JSON.stringify(turnMarks(b));
+  const rareOf = new Map<typeof all[number], typeof all[number]>();
+  const list = all.filter((m) => {
+    if (!m.rare) return true;
+    const base = all.find((b) => !b.rare && b.quest === m.quest && same(b, m));
+    if (base) rareOf.set(base, m);
+    return !base;
+  });
   if (!list.length) return sectionHelp(section("Good against", none(G.abilityData?.[name] && classesWith("skill", name).length
     ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill.")), GOOD_HELP, goodRefs(name));
   // U21: a table, one row per enemy (ranked), a ✓ on the enemy turns the skill answers; the reasons are the cell's
@@ -239,7 +250,8 @@ function goodAgainstSection(name: string): HTMLElement | null {
     : el("td", { class: "good-mark empty" });
   const tbody = el("tbody", {}, ...list.map((m, i) => el("tr", {},
     el("td", { class: "num muted" }, String(i + 1)),
-    el("td", {}, el("span", { class: "good-name" }, enemyLink({ id: m.quest, name: m.name, rare: m.rare }), m.rare ? pill("rare", "t-pink") : "")),
+    el("td", {}, el("span", { class: "good-name" }, ...(m.rare ? variantNames({ id: m.quest, rare: m.name })
+      : variantNames({ id: m.quest, base: m.name, rare: rareOf.get(m)?.name })))),
     ...marks[i].turns.map((why, t) => mark(why, `Turn ${t + 1}`)),
     ...(withAll ? [mark(marks[i].all, "Whole fight")] : []))));
   const th = (t: string, title = "") => el("th", { scope: "col", class: "good-mark", ...(title ? { title } : {}) }, t);
@@ -254,6 +266,7 @@ function skillPage(name: string): HTMLElement {
   if (!G.abilityData?.[name]) return notFound(`skill “${name}”`);
   const users = visibleClassesWith("skill", name);
   const { shown: enemies, hidden } = partitionVisible(enemiesWith(name), (e) => isVisible("enemy", e.id));
+  const lines = enemyLines(enemies);
   const good = classesWith("skill", name).length ? goodAgainstSection(name) : null;
   // R1 F18 / F26: no emoji before the title, the effect in a card (no lead line); F33: a hero skill no enemy plays
   // has no empty "Enemies" section.
@@ -261,10 +274,16 @@ function skillPage(name: string): HTMLElement {
     facts([["Effect", skillDesc(name) || "No description in the game data."], [statLink("ap", "AP cost"), skillAp(name)],
       ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     ...(good ? [good] : []),
-    ...(isHeroOnlySkill(name) ? [] : [section(`Enemies with this skill (${enemies.length})`, enemies.length
-      ? el("ul", { class: "plain-list" }, ...enemies.map((e) => el("li", {}, enemyLink(e), e.rare ? pill("rare", "t-pink") : "",
-        el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)}`))))
+    ...(isHeroOnlySkill(name) ? [] : [section(`Enemies with this skill (${lines.length})`, lines.length
+      ? el("ul", { class: "plain-list" }, ...lines.map((e) => el("li", {}, ...variantNames(e),
+        el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)} · `), regionChip(regionOf("enemy", e.id), false, { tag: false }))))
       : none(hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."), ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null))]));
+}
+
+/** "Wild Boar · Hogger [rare]": the base name, then the rare variant's own name with the rare pill (as everywhere). */
+function variantNames(e: EnemyLine): (Node | string)[] {
+  const rare = e.rare !== undefined ? [el("span", { class: "nowrap" }, enemyLink({ id: e.id, name: e.rare, rare: true }), " ", pill("rare", "t-pink"))] : [];
+  return e.base !== undefined ? [enemyLink({ id: e.id, name: e.base }), ...(rare.length ? [" · ", ...rare] : [])] : rare;
 }
 
 function passivesPage(): HTMLElement {
@@ -297,12 +316,13 @@ function itemsPage(type: string): HTMLElement {
     const reg = regionOf(type as "equipment", id);
     return {
       id, name: itemName(type, id) ?? it.name, en: it.name, kind: eq ? slotName(it.itemSlot) ?? "" : itemTypeText(type, it.subType), sub: subtypeLabel(it.subType),
-      level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
+      level: it.itemLevel ?? null, rarity: it.rarity ?? null, ...priceSorts(type, id),
       made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
       summary: eq ? it.subType ?? "" : itemText(type, id),
       region: regionSortKey(reg, it.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg),
     };
   }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id)); // region, then level
+  // U37: no Description column (an item's hover card has it, and the filter still matches it)
   const cols: Column[] = [
     { key: "name", label: "Item", render: (r) => itemLink(type, Number(r.id)) },
     { key: "region", label: "Region", render: (r) => regionChip(regionOf(type as "equipment", Number(r.id))) },
@@ -311,12 +331,48 @@ function itemsPage(type: string): HTMLElement {
     { key: "level", label: "Level", num: true },
     { key: "rarity", label: "Rarity", num: true, render: (r) => rarityChip(r.rarity) },
     ...(eq ? [{ key: "bonus", label: "Bonus stats", render: (r: Row) => el("span", { class: "bonus-cell" }, String(r.bonus || "–")) },
-      { key: "made", label: "Made by" }] : []),
-    { key: "value", label: "Sell value", num: true, render: (r) => (r.value === null ? "–" : sellNode(type, Number(r.id), Number(r.value))) },
-    ...(!eq ? [{ key: "summary", label: "Description" }] : []),
+      { key: "made", label: "Origin" }] : []),
+    ...priceColumns(type, shown.map(([id]) => id)),
   ];
   return listPage(ITEM_TYPE_PLURALS[type], rows, cols,
-    (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length);
+    (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length,
+    ascLegend(priceLevels(type, shown.map(([id]) => id))));
+}
+
+// ---------------------------------------------------------------- prices by ascension (U37)
+/** Whether the visitor sees an item's ascension variant (asc 1–2 are Scribe content, U28). */
+const ascShown = (type: string, id: number, a: number) => !a || isVisible(type as ContentKind, id, { ascension: a });
+
+/** The ascension variants a list shows: the type's (maps 0–1, materials 0 only), those some listed item has and the visitor sees. */
+function priceLevels(type: string, ids: number[]): number[] {
+  return ascLevels(type).filter((a) => !a || ids.some((id) => itemAscLevels(type, id).includes(a) && ascShown(type, id, a)));
+}
+
+/** Sort values of the price columns: the plain (asc 0) item's. */
+const priceSorts = (type: string, id: number): Row => ({ cost: craftCost(type, id, 0), total: totalCost(type, id, 0), value: sellAt(type, id, 0) });
+
+/** One price cell: a box per ascension shown, or a single dash when the item has none of them (not crafted). */
+function priceCell(type: string, id: number, levels: number[], fn: (a: number) => number | null, what: string): HTMLElement | string {
+  const vals = levels.map((a): [number, number | null] => [a, ascShown(type, id, a) ? fn(a) : null]);
+  return vals.every(([, v]) => v === null) ? "–" : ascValues(vals, what);
+}
+
+/** Cost, Total cost and Sell value, each with a value per ascension variant (asc 0 / 1 / 2; maps 0 / 1). */
+function priceColumns(type: string, ids: number[]): Column[] {
+  const levels = priceLevels(type, ids);
+  return [
+    { key: "cost", label: "Cost", num: true, render: (r) => priceCell(type, Number(r.id), levels, (a) => craftCost(type, Number(r.id), a), "Crafting cost") },
+    { key: "total", label: "Total cost", num: true, render: (r) => priceCell(type, Number(r.id), levels, (a) => totalCost(type, Number(r.id), a), "Total cost, every ingredient included") },
+    { key: "value", label: "Sell value", num: true, render: (r) => priceCell(type, Number(r.id), levels, (a) => sellAt(type, Number(r.id), a), "Sell value") },
+  ];
+}
+
+/** The key above a priced list: which outline is which ascension, and what the three gold columns hold. */
+function ascLegend(levels: number[]): HTMLElement {
+  return el("p", { class: "muted small asc-legend" },
+    ...levels.map((a) => el("span", { class: `av tier-${a}` }, `asc ${a}`)),
+    " Gold per ascension variant. Cost: one craft (an ascended craft also uses orbs). Total cost: the whole recipe, "
+    + "materials at their sell value. Sell value: the game's price.");
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -459,16 +515,19 @@ function mapsPage(): HTMLElement {
     return {
       id, name: itemName("map", id) ?? m.name, en: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
       mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => searchText(enemyName(b), quest(b)?.name)).filter(Boolean).join(", "),
-      region: regionSortKey(reg, m.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg),
+      region: regionSortKey(reg, m.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg), ...priceSorts("map", id),
     };
   }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id));
+  const ids = rows.map((r) => Number(r.id));
   return listPage("Maps", rows, [
     { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) },
     { key: "region", label: "Region", render: (r) => regionChip(regionOf("map", Number(r.id))) }, { key: "level", label: "Level", num: true },
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Base time", num: true, show: (v) => (typeof v === "number" ? duration(v * 60) : "") }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
     { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
-  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length);
+    ...priceColumns("map", ids), // U37: maps go up to asc 1, so two values per cell
+  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length,
+  ascLegend(priceLevels("map", ids)));
 }
 
 function mapPage(id: number): HTMLElement {

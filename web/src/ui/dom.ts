@@ -35,8 +35,14 @@ export const pct = (x: number) => `${fmt1.format(x * 100)}%`;
 
 /** THE gold amount: "171,946 g" (whole gold; `decimals` 1 for a per-unit cost: "12.5 g"). "—" when not a number. */
 export function gold(n: number | null | undefined, decimals: 0 | 1 = 0): string {
+  const num = goldNumber(n, decimals);
+  return num === "—" ? num : `${num} g`;
+}
+
+/** gold() without the " g" (U37: a tight table cell whose header says it is gold): "171,946", "—". */
+export function goldNumber(n: number | null | undefined, decimals: 0 | 1 = 0): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  return `${(decimals ? fmt1 : fmt).format(n)} g`;
+  return (decimals ? fmt1 : fmt).format(n);
 }
 
 /**
@@ -142,6 +148,19 @@ export function ascSwatch(v: unknown): HTMLElement {
   return n
     ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) }, String(n))
     : el("span", { class: "muted", "aria-label": ascText(0) }, "–");
+}
+
+/**
+ * U37: one table cell holding a value per ascension variant (asc 0/1/2; maps 0/1), each a small box outlined in its
+ * ascension's tier colour (the class page's asc 0 / silver / gold), as plain numbers (goldNumber, no "g"). A slot
+ * with no value is a dash, so the boxes line up down a column.
+ */
+export function ascValues(values: [asc: number, value: number | null][], what = "Gold"): HTMLElement {
+  const label = values.map(([a, v]) => `${ascText(a)}: ${v === null ? "none" : gold(v)}`).join(", ");
+  return el("span", { class: "asc-vals", title: `${what} by ascension · ${label}`, "aria-label": `${what}, ${label}` },
+    ...values.map(([a, v]) => v === null
+      ? el("span", { class: `av av-none tier-${ascLevel(a)}`, "aria-hidden": "true" }, "–")
+      : el("span", { class: `av tier-${ascLevel(a)}`, "aria-hidden": "true" }, goldNumber(v))));
 }
 
 /** An item name coloured by rarity (the game's rarity colours). */

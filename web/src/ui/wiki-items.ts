@@ -5,6 +5,9 @@
 import { G } from "../sim/data.ts";
 import { D, getBonusPrestige, getStatRange } from "../sim/defaults.ts";
 import { seq } from "../sim/lua.ts";
+import { sellValue } from "../tools/engine.ts";
+import { type Game, gameFromData, PRESTIGE_TYPES } from "../tools/gamedata.ts";
+import { ascLevels } from "../tools/profit.ts";
 import { el, fmt, gold } from "./dom.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -153,12 +156,14 @@ export interface RecipeNode {
   raw: [string, number, number][];
   /** crafted non-equipment ingredients (part of raw): their crafting counts in the totals, but they get no box */
   hidden: { type: string; id: number; amount: number; time: number; cost: number }[];
+  /** gold of the uncrafted ingredients (ores, logs, drops), each at its sell value per unit (U37) */
+  rawCost: number;
   /**
    * One of this item, everything crafted one after the other: own time + amount × each crafted ingredient's total,
    * hidden material crafts (ingots…) included.
    */
   totalTime: number;
-  /** gold for one, every crafted ingredient included (hidden ones too) */
+  /** gold for one, every ingredient included: crafted ones (hidden ones too) and uncrafted ones at their sell value */
   totalCost: number;
   /** longest chain of equipment crafts below and including this one */
   depth: number;
@@ -191,13 +196,100 @@ export function recipeTree(type: string, id: number, amount = 1, seen: Set<strin
   const own = ingredients.length ? it.runTime ?? 0 : 0;
   const ownCost = ingredients.length ? it.cost ?? 0 : 0;
   const parts = [...kids.map((k) => ({ amount: k.amount, time: k.totalTime, cost: k.totalCost })), ...hidden];
+  // U37: the uncrafted ingredients count too, each at its sell value per unit (they used to add nothing)
+  const rawCost = raw.filter(([t, mid]) => !isCraftable(t, mid)).reduce((s, [t, mid, amt]) => s + amt * (unitPrice(t, mid, 0) ?? 0), 0);
   return {
     type, id, name: it.name ?? `${type} #${id}`, rarity: it.rarity ?? 1, amount, crafterID: it.crafterID ?? 0, level: it.itemLevel ?? 0,
-    cost: ownCost, time: own, kids, raw, hidden,
+    cost: ownCost, time: own, kids, raw, hidden, rawCost,
     totalTime: own + parts.reduce((s, k) => s + k.amount * k.time, 0),
-    totalCost: ownCost + parts.reduce((s, k) => s + k.amount * k.cost, 0),
+    totalCost: ownCost + rawCost + parts.reduce((s, k) => s + k.amount * k.cost, 0),
     depth: 1 + Math.max(0, ...kids.map((k) => k.depth)),
   };
+}
+
+// ---------------------------------------------------------------- costs by ascension (U37)
+/** The tools' Game view of the data (for the essence an ascended craft takes), rebuilt when other data is loaded. */
+let gameCache: { data: unknown; g: Game } | null = null;
+function game(): Game {
+  if (!gameCache || gameCache.data !== G.itemData) gameCache = { data: G.itemData, g: gameFromData() };
+  return gameCache.g;
+}
+
+/**
+ * Ascension variants of an item (tools/profit.ts ascLevels): 0–2 for equipment and consumables, 0–1 for maps, 0 for
+ * materials; an item with lockPrestige only 0. [] for an unknown item.
+ */
+export function itemAscLevels(type: string, id: number): number[] {
+  const it = G.itemData?.[type]?.[id];
+  if (!it) return [];
+  return ascLevels(type).filter((p) => !p || !it.lockPrestige);
+}
+
+/** The game's sell value of one unit (stackables: the rounded average of the data's pair), or null. */
+export function unitPrice(type: string, id: number, asc = 0): number | null {
+  try {
+    return sellValue(type, id, asc) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Sell value of one at an ascension, or null when the item has no such variant. */
+export function sellAt(type: string, id: number, asc: number): number | null {
+  return itemAscLevels(type, id).includes(asc) ? unitPrice(type, id, asc) : null;
+}
+
+/**
+ * Gold one craft costs at an ascension: the crafter's gold (not scaled by ascension) plus, for an ascended craft, the
+ * essence it consumes (default.prestigeItemMaterial) at the essence's sell value. Null when the item isn't crafted or
+ * has no such variant.
+ */
+export function craftCost(type: string, id: number, asc = 0): number | null {
+  if (!isCraftable(type, id) || !itemAscLevels(type, id).includes(asc)) return null;
+  let cost: number = G.itemData[type][id].cost ?? 0;
+  if (asc > 0) {
+    try {
+      const [eid, amount] = game().essenceForAscension(type, id, asc, false);
+      const price = unitPrice("material", eid, 0);
+      if (price === null) return null;
+      cost += amount * price;
+    } catch {
+      return null;
+    }
+  }
+  return cost;
+}
+
+const totalsByData = new WeakMap<object, Map<string, number | null>>();
+
+/**
+ * Gold for one with the whole recipe tree: its own craft (craftCost), each crafted ingredient's own total (equipment,
+ * consumables and maps at the same ascension, crafted materials such as bars plain) and each uncrafted ingredient at
+ * its sell value per unit (ores, logs, drops), × the amounts. Null when the item isn't crafted, has no such variant or
+ * an ingredient has no price.
+ */
+export function totalCost(type: string, id: number, asc = 0, seen: Set<string> = new Set()): number | null {
+  const data = G.itemData as object | undefined;
+  if (!data) return null;
+  let memo = totalsByData.get(data);
+  if (!memo) totalsByData.set(data, memo = new Map());
+  const key = `${type}:${id}:${asc}`;
+  if (memo.has(key)) return memo.get(key)!;
+  const own = craftCost(type, id, asc);
+  if (own === null || seen.has(key)) return own; // a loop (none in the data) stops here
+  const inner = new Set(seen).add(key);
+  let sum: number | null = own;
+  for (const [t, mid, amt] of recipeOf(type, id)) {
+    const a = PRESTIGE_TYPES.has(t) ? asc : 0;
+    const part = isCraftable(t, mid) ? totalCost(t, mid, a, inner) : sellAt(t, mid, a);
+    if (part === null) {
+      sum = null;
+      break;
+    }
+    sum += amt * part;
+  }
+  memo.set(key, sum);
+  return sum;
 }
 
 // ---------------------------------------------------------------- selling
@@ -222,10 +314,8 @@ export function sellTip(type: string, id: number, asc = 0): string {
   return `${fmt.format(r[0])}–${fmt.format(r[1])} g in the game's data; the game sells at the average, rounded (× the amount).`;
 }
 
-/** A sell value: "18 g", with the data's pair beside it ("15–20") and in its tooltip for materials and consumables. */
+/** A sell value: "18 g"; for materials and consumables the data's pair is in its tooltip only (U37). */
 export function sellNode(type: string, id: number, value: number, asc = 0): HTMLElement {
-  const r = sellRange(type, id, asc);
   const tip = sellTip(type, id, asc);
-  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, gold(value),
-    ...(r && tip ? [el("span", { class: "sell-range" }, `${fmt.format(r[0])}–${fmt.format(r[1])}`)] : []));
+  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, gold(value));
 }

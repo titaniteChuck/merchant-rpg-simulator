@@ -1756,9 +1756,15 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .xp-cards .xp-lines li + li { margin-top: 3px; }
 /* R1 F25: the expansion badge in a reference section heading (wiki-ref.ts xpBadge) */
 .ref-kind h3 .xp-badge { margin-left: 6px; }
-/* R1 F43: the data's sell pair beside a stackable's sell value (wiki-items.ts sellNode) */
-.sell-val .sell-range { margin-left: 6px; color: var(--muted); font-size: 0.8em; font-weight: 500; }
-.sell-val .sell-range::before { content: "("; } .sell-val .sell-range::after { content: ")"; }
+/* U37: a value per ascension variant in one cell (dom.ts ascValues), each box outlined in its tier colour (asc 0 /
+   silver / gold, as on the class page); the legend above a priced list uses the same boxes */
+.asc-vals { display: inline-flex; flex-wrap: nowrap; gap: 3px; justify-content: center; }
+.av { display: inline-block; min-width: 3ch; padding: 0 4px; border: 1.5px solid var(--lc, var(--border)); border-radius: 5px;
+  font-size: 0.8rem; line-height: 1.45; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.av.tier-0 { --lc: var(--v3-asc0); } .av.tier-1 { --lc: var(--v3-asc1); } .av.tier-2 { --lc: var(--v3-asc2); }
+.av.av-none { color: var(--muted); text-align: center; border-style: dashed; opacity: .6; }
+.asc-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 8px; }
+.asc-legend .av { text-align: center; }
 /* R1 F33: unused skills, collapsed under the Skills list (wiki.ts patch) */
 .skills-unused { margin-top: 18px; }
 .skills-unused > summary { cursor: pointer; font-weight: 650; padding: 4px 0; }

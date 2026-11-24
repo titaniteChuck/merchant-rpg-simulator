@@ -66,7 +66,8 @@ test("recipe chain: equipment boxes only, crafted materials hidden but counted i
   const sum = (n: typeof t): void => {
     const parts = [...n.kids.map((k) => [k.amount, k.totalTime, k.totalCost]), ...n.hidden.map((h) => [h.amount, h.time, h.cost])];
     assert.equal(n.totalTime, n.time + parts.reduce((s, [a, tm]) => s + a * tm, 0));
-    assert.equal(n.totalCost, n.cost + parts.reduce((s, [a, , c]) => s + a * c, 0));
+    // U37: the uncrafted ingredients count too (rawCost, at their sell value)
+    assert.equal(n.totalCost, n.cost + n.rawCost + parts.reduce((s, [a, , c]) => s + a * c, 0));
     for (const k of n.kids) assert.ok(k.type === "equipment" && recipeOf(k.type, k.id).length > 0, `${k.name} is crafted equipment`);
     for (const [rt, rid] of n.raw) assert.ok(rt !== "equipment" || recipeOf(rt, rid).length === 0, `${rid} should be a box`);
     for (const h of n.hidden) assert.ok(h.type !== "equipment" && recipeOf(h.type, h.id).length > 0);
