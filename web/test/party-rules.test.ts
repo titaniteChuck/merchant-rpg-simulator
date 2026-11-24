@@ -69,3 +69,17 @@ test("searchParty and optimiseFight keep a party quest's front 2 filled and its 
     steps: { ...steps, party: true } });
   assert.ok(fixed.config.party.front[1] !== null && ids(fixed.config.party).length <= 2, JSON.stringify(fixed.config.party));
 });
+
+test("E23: a hero id of 0 is a hero, not an empty slot (only null / undefined are empty)", () => {
+  // party quest: hero id 0 in front 2 is valid
+  assert.equal(partyProblem({ quest: 81 }, [null, 0, null], [null, null, null]), null);
+  assert.equal(partyProblem({ quest: 81 }, [1, 0, null], [2, null, null]), null);
+  // solo quest: hero id 0 alone in front 1 is valid
+  assert.equal(partyProblem({ quest: 3 }, [0, null, null], [null, null, null]), null);
+  assert.match(partyProblem({ quest: 3 }, [0, null, null], [1, null, null]) ?? "", /solo quest/);
+  // an empty front 2 is still invalid, whether null or undefined
+  assert.match(partyProblem({ quest: 81 }, [0, null, null], [1, null, null]) ?? "", /needs a hero in front 2/);
+  assert.match(partyProblem({ quest: 81 }, [0, undefined, 2], []) ?? "", /needs a hero in front 2/);
+  assert.match(partyProblem({ quest: 3 }, [null, 0, null], []) ?? "", /solo quest/);
+  assert.match(partyProblem({ quest: 81 }, [null, null, null], [null, null, null]) ?? "", /the party is empty/);
+});

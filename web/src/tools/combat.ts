@@ -502,14 +502,16 @@ export function requiredSlots(t: QuestTarget | MapTarget): PartySlot[] {
 /** Why the game would not start this layout (rows of heroes or ids, null = empty), or null when it would. */
 export function partyProblem(t: QuestTarget | MapTarget, front: readonly unknown[], back: readonly unknown[]): string | null {
   const r = partyRules(t);
-  const size = [...front, ...back].filter((x) => x !== null && x !== undefined).length;
+  // empty means null / undefined only: a hero id or index of 0 is a hero
+  const empty = (x: unknown) => x === null || x === undefined;
+  const size = [...front, ...back].filter((x) => !empty(x)).length;
   const what = "map" in t ? `map ${typeof t.map === "string" ? t.map : t.map.id}` : `quest ${t.quest}${G.questData[t.quest]?.name ? ` (${G.questData[t.quest].name})` : ""}`;
   if (size === 0) return `${what}: the party is empty`;
-  if (r.kind === "solo" && (size > 1 || !front[0])) return `${what} is a solo quest: one hero, in front 1`;
+  if (r.kind === "solo" && (size > 1 || empty(front[0]))) return `${what} is a solo quest: one hero, in front 1`;
   if (size > r.maxSize) return `${what} takes at most ${r.maxSize} heroes, not ${size}`;
   for (const s of r.required) {
     const row = s.row === "front" ? front : back;
-    if (!row[s.i]) {
+    if (empty(row[s.i])) {
       return `${what} needs a hero in ${s.row} ${s.i + 1}: the game starts the party there with the hero the quest is ` +
         `opened from, and never lets that slot be emptied`;
     }
