@@ -208,6 +208,10 @@ ul.cards > li .tag { align-self: flex-start; }
 .drop.over { background: linear-gradient(color-mix(in srgb, var(--accent) 8%, var(--card)), color-mix(in srgb, var(--accent) 8%, var(--card))) padding-box, var(--gradient) border-box; }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .drop-title { font-weight: 700; font-size: 1.05rem; }
+/* U38: a save is kept in this browser (theme.js sets the class in the head from a localStorage hint): the picker, the
+   example row and the save help stay hidden while it loads, instead of flashing (save-source.ts takes the class off
+   when there turns out to be no save). The profit page's drop zone sits in a <details>, hidden with it. */
+html.has-save #drop, html.has-save details:has(> #drop), html.has-save .example-save, html.has-save .save-help { display: none !important; }
 .help { margin: 16px 0 8px; color: var(--muted); font-size: 0.9rem; }
 .help summary { cursor: pointer; font-weight: 600; }
 .help ul { padding-left: 20px; }

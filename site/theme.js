@@ -9,6 +9,15 @@
     if (localStorage.getItem("theme") === "light") theme = "light";
   } catch { /* storage blocked: dark */ }
   root.dataset.theme = theme;
+
+  /*
+   * U38: a save is kept in this browser (localStorage "merchant:has-save", web/src/ui/save-store.ts SAVE_FLAG, kept in
+   * step with the IndexedDB save): <html class="has-save"> before the first paint, so style.css hides the save picker
+   * while the stored save loads instead of flashing it. save-source.ts takes the class off when there is no save.
+   */
+  try {
+    if (localStorage.getItem("merchant:has-save") === "1") root.classList.add("has-save");
+  } catch { /* storage blocked: no save either, the picker shows */ }
   addEventListener("DOMContentLoaded", () => {
     const bar = document.querySelector(".topbar");
     if (!bar) return;

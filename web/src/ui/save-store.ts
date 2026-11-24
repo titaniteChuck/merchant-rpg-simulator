@@ -7,6 +7,32 @@
  */
 
 const DB = "merchant-rpg-simulator";
+
+/**
+ * U38: a synchronous hint that a save is kept (IndexedDB is async). theme.js reads it in the head, before the page
+ * paints, and sets <html class="has-save">: the drop zone stays hidden while the stored save loads (no flash of the
+ * picker). Kept in step by putSave / forgetSave and by every page start (setSaveFlag after getSave).
+ */
+export const SAVE_FLAG = "merchant:has-save";
+/** The <html> class theme.js sets from SAVE_FLAG; save-source.ts takes it off once it knows there is no save. */
+export const HAS_SAVE_CLASS = "has-save";
+
+/** Remember (or not) that a save is kept. Storage can throw (blocked site data): then the picker just shows. */
+export function setSaveFlag(on: boolean, storage: Pick<Storage, "setItem" | "removeItem"> | undefined = globalThis.localStorage): void {
+  try {
+    if (on) storage?.setItem(SAVE_FLAG, "1");
+    else storage?.removeItem(SAVE_FLAG);
+  } catch { /* not remembered */ }
+}
+
+/** The hint as theme.js reads it: true only when the flag is set and storage answers. */
+export function readSaveFlag(storage: Pick<Storage, "getItem"> | undefined = globalThis.localStorage): boolean {
+  try {
+    return storage?.getItem(SAVE_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
 const STORE = "kv";
 
 export interface StoredSave {
@@ -60,11 +86,13 @@ export const getHandle = () => safe(() => tx<SaveHandle | undefined>("readonly",
 
 export async function putSave(save: StoredSave, handle?: SaveHandle | null): Promise<void> {
   await safe(() => tx("readwrite", (s) => s.put(save, "save")), undefined);
+  setSaveFlag(true);
   if (handle) await safe(() => tx("readwrite", (s) => s.put(handle, "handle")), undefined);
   else await safe(() => tx("readwrite", (s) => s.delete("handle")), undefined);
 }
 
 export async function forgetSave(): Promise<void> {
+  setSaveFlag(false);
   await safe(() => tx("readwrite", (s) => s.delete("save")), undefined);
   await safe(() => tx("readwrite", (s) => s.delete("handle")), undefined);
 }

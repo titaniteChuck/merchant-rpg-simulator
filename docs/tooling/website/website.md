@@ -24,6 +24,7 @@ timestamp: 2026-11-24
 - [Languages](#languages)
 - [Shared page parts](#shared-page-parts)
   - [Menus](#menus)
+  - [Scroll position](#scroll-position)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
 - [TypeScript combat engine](#typescript-combat-engine)
@@ -948,6 +949,15 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   menu: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser and brings
   the drop zone back). Dropping a file anywhere on the page still loads it.
+- No flash of the picker (U38): IndexedDB answers asynchronously, so a page used to show its drop zone for a moment
+  before hiding it. `save-store.ts` now also keeps a synchronous hint, localStorage `merchant:has-save` = "1"
+  (`SAVE_FLAG`, set by `putSave`, removed by `forgetSave`, and brought in step with the store on every page start, so
+  a save kept before U38 gets it on the first visit). `theme.js`, a classic script in every page's head, reads it
+  before the first paint and sets `<html class="has-save">`; one rule in `style.css` hides `#drop` (the profit page's
+  `<details>` around it too), the example row and the save help under that class. `initSaveSource`'s `setLoaded` keeps
+  the class in step: it is taken off when the store turns out empty or the stored save can't be read, and the picker
+  then shows. With a save expected the expansions chip isn't mounted first either (the save chip replaces it). Storage
+  blocked (reads throw, `try` / `catch`): no class, the picker shows as before.
 - Example save (U20): "🧪 Try with an example save", a button under the drop zone (outside its `<label>`, so it doesn't
   open the file dialog) on every page that uses `initSaveSource` (save viewer, battle, profit, farming, levelling), and
   "🧪 Try the example save" in the save menu. It fetches `data/example-save.txt` (`site/data/example-save.txt`: a real
@@ -1020,6 +1030,28 @@ flowchart LR
   (`aria-current="page"` in the menu, the second row and the drawer).
 - The right-side controls are not built here: `theme.js` (theme, language), `save-source.ts` (save chip) and
   `expansion-menu.ts` (expansions chip) insert them before the GitHub link, as before.
+
+### Scroll position
+
+U38, `web/src/ui/scroll-memory.ts`, mounted by `nav.ts` on every page as soon as `js/nav.js` runs:
+
+- Kept per URL (path, query and hash: one entry per wiki route or save viewer section) in sessionStorage, key
+  `scroll:<path><query><hash>` (`scrollKey`, `ScrollStore`; storage missing or throwing: nothing kept, nothing
+  breaks). Written on every scroll event and on `pagehide`, never while a restore is pending.
+- `history.scrollRestoration = "manual"`: the browser's own restore runs before the pages have drawn (they build their
+  content after loading data) and would land short.
+- Restore: on every page load (Back / Forward, reload, a menu link back to the page, any link from another page) and on
+  an in-page route change (`hashchange` / `popstate`, deduplicated by URL), the saved position is read, then after two
+  frames (the page redraws its route and may scroll to the top itself) retried every frame until the page is tall
+  enough (`tallEnough`), then scrolled to. It gives up after 15 s (`RESTORE_TIMEOUT`) and as soon as the visitor
+  scrolls, taps, clicks or presses a key. A page kept whole by the browser (bfcache) is left as it is.
+- In-page links: a link in the content to another route of the same page (a wiki entry, a hero in the save viewer)
+  opens it at the top; the menus (top bar, second row, drawer) and the breadcrumbs restore the target's position, so
+  going back to a list you scrolled lands where you were. The wiki reference pages' topic links (`pushState`, no
+  event) keep their own scroll to the topic.
+- Tests: `web/test/u38-load.test.ts` (store keyed by URL, blocked storage, the tall-enough rule, the mount in `nav.ts`,
+  and the picker hint: `theme.js` run with a fake storage, every page with a drop zone loading it in the head, the CSS
+  rule).
 
 ## What can run in the browser
 

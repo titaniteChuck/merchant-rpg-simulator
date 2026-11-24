@@ -12,7 +12,10 @@
  * The current page and sub-page (hash routes: wiki #/…, save #heroes, #hero=<id> …) are marked aria-current
  * everywhere, on load and at every hashchange. The right side of the top bar (theme, language, save / expansions
  * chips, GitHub) is not built here: theme.js, save-source.ts and expansion-menu.ts insert it before the GitHub link.
+ *
+ * U38: this module also mounts the scroll memory of every page (scroll-memory.ts), as soon as it runs.
  */
+import { mountScrollMemory } from "./scroll-memory.ts";
 
 export interface NavItem { label: string; href: string; title?: string }
 /** A run of sub-pages, with an optional heading ("Items"). */
@@ -472,6 +475,7 @@ export function mountNav(): void {
 }
 
 if (typeof document !== "undefined") {
+  mountScrollMemory(); // before the page's own script draws anything (U38)
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountNav);
   else mountNav();
 }

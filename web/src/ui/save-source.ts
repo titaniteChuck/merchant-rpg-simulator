@@ -18,12 +18,17 @@
  * save viewer's "Export (CSV)", folded under their title) and never taller than the window (it scrolls inside). The
  * "Where is my save file?" help is one component (saveHelp), put under the drop zone of every page that calls
  * initSaveSource (the pages' HTML has none of its own).
+ *
+ * U38, no flash of the picker: when this browser keeps a save, theme.js (in the head, before the first paint) sets
+ * <html class="has-save"> from a localStorage hint (save-store.ts SAVE_FLAG) and style.css hides the drop zone, the
+ * example row and the help from the start. setLoaded keeps the class in step: it goes once the page knows there is no
+ * save (none stored, or the stored one can't be read), and the picker then shows.
  */
 import { el } from "./dom.ts";
 import { expansionMenuSection, fitMenu, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
-import { forgetSave, getHandle, getSave, putSave, rereadHandle, type SaveHandle } from "./save-store.ts";
+import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
 
 /** The example save, relative to the pages (site/data/example-save.txt). */
 export const EXAMPLE_URL = "data/example-save.txt";
@@ -99,6 +104,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
   exampleRow.after(help);
 
   const setLoaded = (loaded: boolean) => {
+    document.documentElement.classList.toggle(HAS_SAVE_CLASS, loaded);
     dropBlock.hidden = loaded;
     exampleRow.hidden = loaded;
     help.hidden = loaded;
@@ -247,15 +253,22 @@ export function initSaveSource(o: SaveSourceOptions): void {
     accept(f);
   });
 
-  // The save opened on any page before: use it right away.
-  mountExpansionChip();
+  // The save opened on any page before: use it right away. U38: theme.js already hid the picker when it expects one
+  // (<html class="has-save">); without a save the expansions button stands in for the save menu from the start.
+  const expected = document.documentElement.classList.contains(HAS_SAVE_CLASS);
+  if (!expected) mountExpansionChip();
   getSave().then(async (s) => {
-    if (!s) return void noteSave(null);
+    setSaveFlag(Boolean(s)); // a save kept before U38, or site data cleared in part: the hint follows the store
+    if (!s) {
+      if (expected) setLoaded(false);
+      return void noteSave(null);
+    }
     try {
       await o.load(s.text, s.name);
       void noteSave(s.text, s.name);
       await loaded(s.name, s.savedAt);
     } catch (e) {
+      setLoaded(false); // the picker back, to choose a file that works
       showError(`The stored save ${s.name} could not be read: ${e instanceof Error ? e.message : e}`);
     }
   });
