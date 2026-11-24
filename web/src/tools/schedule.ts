@@ -73,6 +73,11 @@ export interface ScheduleScore {
   perTurn: number[];
   notes: ScoreNote[];
   /**
+   * By party location: the 5 skills each hero really plays in the scored cycle, a forced action (Drown) in place of the
+   * planned skill. Rotations that play the same are the same rotation for the score (the pre-filter keeps one).
+   */
+  played: Record<number, string[]>;
+  /**
    * With stats (ctx): the HP race over the scored cycle. Enemy HP dealt (%), cycles to kill it; per hero, HP taken and
    * healed (%) and cycles until it dies (Infinity when healing keeps up); ratio = first death / kill (>= 1: in time).
    */
@@ -209,6 +214,7 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
   const order = ORDER.filter((l) => byLoc.has(l));
   const perTurn = [0, 0, 0, 0, 0];
   const notes: ScoreNote[] = [];
+  const played: Record<number, string[]> = Object.fromEntries(party.map((m) => [m.location, [...m.rotation]]));
   let heroFx: Active[] = []; // hero-applied effects on heroes (self or party)
   let enemyFx: Active[] = []; // hero-applied effects on the enemy
   const cleansed = new Map<string, number>(); // "slot:location" -> turn that hero's debuff from that slot was cleansed
@@ -346,14 +352,21 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
     if (tl.enemyFirst) enemyAct(t);
     for (const loc of order) {
       const m = byLoc.get(loc)!;
-      const name = m.rotation[slot - 1] ?? "Basic";
-      const p = skillProfile(name, "hero");
+      const planned = m.rotation[slot - 1] ?? "Basic";
       let v = 0;
       const why: string[] = [];
       // enemy-cast effects on this hero now (not cleansed)
       const onMe = enemyWindow(t, (e) => e.ownerTurns, (e) => e.on === "heroes").filter((x) =>
         (x.e.locations ?? ORDER).includes(loc) && !isRemoved(`${x.k}:${loc}`, t, cleansed));
       const stunned = onMe.find((x) => x.e.kind === "stun");
+      // a forced action (Drown: the hero's next 2 actions, Combatant:determineAction's OnDetermineAction trigger)
+      // replaces the planned skill: the hero plays Basic, so the planned skill's damage, heal, cleanse or buff is lost.
+      // Drown is the only one in the game, and it forces Basic (data.AbilityFunc.lua:2247).
+      const forced = stunned ? undefined : onMe.find((x) => x.e.kind === "force-action");
+      const name = forced ? "Basic" : planned;
+      if (score) played[loc][slot - 1] = name;
+      if (forced && planned !== "Basic") why.push(`forced to Basic by ${tl.slots[forced.k - 1].name} (planned ${planned})`);
+      const p = skillProfile(name, "hero");
       const mine = onHero(loc, t);
       if (stunned) {
         why.push(`stunned by ${tl.slots[stunned.k - 1].name}`);
@@ -505,7 +518,7 @@ export function scoreSchedule(party: PartyMember[], tl: EnemyTimeline, w: Partia
       outcome: { won: outcome.won, cycles: outcome.cycles, enemyLeft: outcome.enemyLeft, deaths: outcome.deaths, revives: outcome.revives } };
     if (W.race > 0) total = W.race * (simLike / 100) + 0.1 * total;
   }
-  return { total, perTurn, notes, ...(race ? { race } : {}) };
+  return { total, perTurn, notes, played, ...(race ? { race } : {}) };
 }
 
 /** The race simulated in steps of 1/20 cycle (see scoreSchedule). Rates are per 5-turn cycle, in % HP. */

@@ -69,7 +69,7 @@ loadTimelines(json); enemyTimeline(quest, rare); skillProfile(name, side); skill
 ## Counter-schedule score
 
 ```ts
-scoreSchedule(party: { location, rotation }[], timeline, weights?, ctx?): { total, perTurn[5], notes }
+scoreSchedule(party: { location, rotation }[], timeline, weights?, ctx?): { total, perTurn[5], notes, played, race? }
 scheduleContext(quest, front, back, { rare, amount }): ScheduleContext   // units from real stats
 ```
 
@@ -85,6 +85,10 @@ probe's windows. For each hero action it counts:
 - **Defence:** shields and def buffs active when the enemy hits, × the enemy's power on that turn.
 - **Heals:** what the party lost since the last heal. A heal gives back at most its real size, from the probe's `healScaling` on the caster (Greater Heal = 0.11 × (matk + acc) + level per hero); without stats, at most 25 % HP per hero.
 - **Stuns:** a stunned action scores 0.
+- **Forced actions:** in a forced-action window (Drown, Murlok Monarch's slot 3: every hero's next 2 actions), the
+  hero plays Basic, whatever it planned, as `Combatant:determineAction` does (`data.AbilityFunc.lua:2247`). The
+  planned skill's damage, heal, cleanse and effects don't count; Basic is scored instead (E22; before, only the
+  battle page showed it). `played` gives, per location, the 5 skills each hero really plays in the scored cycle.
 
 With `ctx`, damage is in % of the enemy's HP and protection is in % of a hero's HP. Both use the real stats and
 defences, so the two sides weigh the same. Without it, both are in Basic-attack units. `notes` explains every
@@ -171,6 +175,9 @@ the warm-start rotation ([warm start](./warm-start.md)); then the usual finalist
 
 - the top 15 orderings;
 - the best ordering of each of the top 15 skill sets. Many orderings of one set tie, so without this the top 15 can cover a single set.
+- Orderings that play the same (`played`: a skill in a slot where Drown forces Basic) count once, by the one that plans
+  Basic there. Without this (forced actions scored, no merge), against Murlok Monarch the top 15 were all one opening with 15 different (lost) turn-4
+  and turn-5 skills; a level-50 Berserker's search then kept all Basic (2.6 turns) instead of an opening that wins in 1.7.
 
 Real save, `searchSkills` with nQuick 30, nFinal 150, top 8. The best rotation of each search is re-scored on 300
 other fights, so luck in the search's own fights doesn't count. On fights the current rotation wins under 50 %,

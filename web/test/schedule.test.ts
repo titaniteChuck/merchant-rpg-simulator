@@ -8,7 +8,7 @@ import { hooks } from "../src/sim/combatant.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { buildTimelines, probeHeroSkill } from "../src/tools/skill-probe.ts";
 import {
-  enemyTimeline, loadTimelines, raceOutcome, scheduleContext, scoreSchedule, skillProfile, skillTags, spearman,
+  DAMAGE_ONLY, enemyTimeline, loadTimelines, raceOutcome, scheduleContext, scoreSchedule, skillProfile, skillTags, spearman,
 } from "../src/tools/schedule.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -212,4 +212,47 @@ test("taunt: the next enemy attack hits the taunter alone", () => {
   assert.ok(s.notes.some((n) => n.why.startsWith("taunted") && n.location === 2));
   const inc = (l: number) => s.race!.heroes.find((x) => x.location === l)!.incoming;
   assert.ok(inc(2) > inc(4), "the taunter takes more");
+});
+
+test("forced actions: Drown turns the planned skill into Basic in the score itself, not just the notes", () => {
+  // Murlok Monarch slot 3: Drown (acting last) forces every hero's next 2 actions to Basic: turns 4 and 5
+  const mm = enemyTimeline(92);
+  const drown = mm.slots[2];
+  assert.deepEqual([drown.name, drown.effects[0].kind, drown.effects[0].ownerTurns], ["Drown", "force-action", [1, 2]]);
+  const mage = (rot: string[]) => [{ location: 1, rotation: rot }];
+  const basic = scoreSchedule(mage(["Basic", "Basic", "Basic", "Basic", "Basic"]), mm, DAMAGE_ONLY);
+  const drowned = scoreSchedule(mage(["Basic", "Basic", "Basic", "Mind Blast II", "Mind Blast II"]), mm, DAMAGE_ONLY);
+  const free = scoreSchedule(mage(["Mind Blast II", "Mind Blast II", "Basic", "Basic", "Basic"]), mm, DAMAGE_ONLY);
+  // the drowned turns score as Basic (the same as all Basic); the same skills before Drown score more
+  assert.deepEqual(drowned.perTurn, basic.perTurn);
+  assert.ok(free.total > drowned.total, `${free.total} > ${drowned.total}`);
+  assert.ok(drowned.notes.some((n) => n.turn === 4 && n.skill === "Basic" && n.why.includes("forced to Basic by Drown (planned Mind Blast II)")));
+  // with stats (the HP race): the hero's damage on turns 4 and 5 is a Basic's
+  const h = sim.hero({
+    id: 1, heroID: 1, name: "T", class: 3, level: 40, exp: 0, prestigeLevel: 1, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  });
+  const ctx = scheduleContext(92, [], [h]);
+  const dealt = (rot: string[]) => scoreSchedule(mage(rot), mm, {}, ctx).race!.dealt;
+  assert.equal(dealt(["Basic", "Basic", "Basic", "Mind Blast II", "Basic"]), dealt(["Basic", "Basic", "Basic", "Basic", "Basic"]));
+  assert.ok(dealt(["Mind Blast II", "Basic", "Basic", "Basic", "Basic"]) > dealt(["Basic", "Basic", "Basic", "Mind Blast II", "Basic"]));
+  assert.deepEqual(scoreSchedule(mage(["Slash", "Basic", "Basic", "Mind Blast II", "Slash"]), mm).played[1], ["Slash", "Basic", "Basic", "Basic", "Basic"]);
+});
+
+test("pre-filter: orderings that play the same under Drown count once (the one planning Basic there)", async () => {
+  const { prefilterRotations, rotations, soloRows } = await import("../src/tools/combat.ts");
+  const h = sim.hero({
+    id: 1, heroID: 1, name: "T", class: 4, level: 50, exp: 0, prestigeLevel: 2, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  });
+  const [front, back] = soloRows({ quest: 92 }, h);
+  const info = sim.skillInfo(h);
+  const sk = info.skills.slice(0, info.unlocked);
+  const combos = [...rotations(sk.map((x) => x.name), sk.map((x) => x.ap), info.maxAP)];
+  const pre = prefilterRotations(sim, h, front, back, { quest: 92 }, combos, 15)!;
+  // Drown forces turns 4 and 5: every pick plans Basic there, and no two picks open the same way
+  assert.ok(pre.picked.length > 1);
+  for (const p of pre.picked) assert.deepEqual(p.slice(3), ["Basic", "Basic"], p.join());
+  const openings = pre.picked.map((p) => p.slice(0, 3).join());
+  assert.equal(new Set(openings).size, openings.length);
 });

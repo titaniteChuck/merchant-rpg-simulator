@@ -821,20 +821,26 @@ export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: 
     }
   }
   // the top k orderings, plus the best ordering of each of the top k skill sets: many orderings of one set tie, and
-  // without the second list the top k can be a single set
+  // without the second list the top k can be a single set. Orderings that play the same (a skill in a slot where an
+  // enemy forces Basic, Drown) count once, by the one that plans what it plays: otherwise their ties fill the top k.
+  const loc = [...front.map((x, i) => [x, 2 * i + 2] as const), ...back.map((x, i) => [x, 2 * i + 1] as const)].find(([x]) => x === h)![1];
   const rank = (w: Partial<ScoreWeights>) => {
-    // stop is polled every 64 orderings (a few ms): thousands of orderings take seconds
-    const scored = all.map((p, i) => {
+    const byPlay = new Map<string, { sc: number; p: string[]; plays: string[] }>();
+    all.forEach((p, i) => {
+      // stop is polled every 64 orderings (a few ms): thousands of orderings take seconds
       if (i % 64 === 0 && stop?.()) throw new SearchCancelled();
-      return [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const;
-    }).sort((a, b) => b[0] - a[0]);
+      const r = scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx);
+      const plays = r.played[loc], key = plays.join("|"), old = byPlay.get(key);
+      if (!old || (p.join("|") === key && old.p.join("|") !== key)) byPlay.set(key, { sc: r.total, p, plays });
+    });
+    const scored = [...byPlay.values()].sort((a, b) => b.sc - a.sc);
     const bySet = new Map<string, string[]>();
-    for (const [, p] of scored) {
-      const set = [...p].sort().join("|");
+    for (const { p, plays } of scored) {
+      const set = [...plays].sort().join("|");
       if (!bySet.has(set)) bySet.set(set, p);
       if (bySet.size >= k) break;
     }
-    return [...scored.slice(0, k).map(([, p]) => p), ...bySet.values()];
+    return [...scored.slice(0, k).map(({ p }) => p), ...bySet.values()];
   };
   const picked = new Map<string, string[]>();
   for (const p of [...rank({}), ...rank(DAMAGE_ONLY)]) picked.set(p.join("|"), p);
