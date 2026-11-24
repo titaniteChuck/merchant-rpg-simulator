@@ -1920,3 +1920,14 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
   .pf-table tbody tr:hover td:first-child { background: color-mix(in srgb, var(--accent) 5%, var(--card)); }
 }
 /* end profit p1 */
+/* farming f1 */
+/* Farming planner (review F01, F13, F14, F16): the results live in #farm-results (not #results, so the Battle
+   results rules no longer apply); party row labels, ticked-out slots, can't-start rows, no inline styles. */
+.farm-row-label { min-width: 5.5em; }
+.farm-slot { display: inline-flex; align-items: center; gap: 4px; }
+.farm-best .farm-best-name { font-size: 1.15rem; }
+.farm-table .rate { color: var(--c); }
+.farm-table .farm-blocked { display: block; font-weight: 600; white-space: normal; }
+.farm-table tr.farm-row-blocked td { color: var(--muted); }
+.farm-table th .help-q { margin-left: 2px; }
+/* end farming f1 */

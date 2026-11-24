@@ -11,11 +11,15 @@
  * loot, craft time and cost. A map row's time is the Scribe's craft time + the run; map-only drops get a unit cost of
  * (run cost) / (drops per run).
  *
+ * Party rules (F01): each source is fought only by a party the game would start (partyProblem: a solo quest's one hero in
+ * front 1, a party quest's front 2 filled and its size cap). `partyFor` picks each source's heroes; a source whose party
+ * breaks the rules comes back as a `blocked` row (the reason, no figures). Revives (F03) are part of a run's cost.
+ *
  * Pure: no output, no Node APIs; progress and cancel through SearchControl (as the searches in combat.ts).
  */
 import { G } from "../sim/data.ts";
 import { D } from "../sim/defaults.ts";
-import { checkAmount, fightSeed, SearchCancelled, type SearchControl } from "./combat.ts";
+import { checkAmount, fightSeed, partyProblem, SearchCancelled, type SearchControl } from "./combat.ts";
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 import { type Game, gameFromData } from "./gamedata.ts";
 import { craftGrade, questLoot, Solver, type SourceStat } from "./profit.ts";
@@ -36,6 +40,8 @@ export interface FarmRow {
   /** Map ascension (0 for quests). */
   asc: number;
   label: string;
+  /** Why the game wouldn't start this source with its party (F01): set on a row that was not simulated (all figures 0). */
+  blocked?: string;
   /** Runs simulated (map runs that failed inside the game's own code are left out and counted in `errors`). */
   n: number;
   errors: number;
@@ -55,8 +61,9 @@ export interface FarmRow {
   map_only: Record<string, number>;
   map_only_unit_cost: Record<string, number>;
   runs_per_hour: number;
-  /** Cost of one run: quest gold, the map consumed, every scroll equipped (all consumed when the map starts). */
-  cost: { gold: number; map: number; scrolls: number; total: number };
+  /** Cost of one run: quest gold, the map consumed, every scroll equipped (all consumed when the map starts), and the
+   * gold to revive the heroes who died (revive_gold). */
+  cost: { gold: number; map: number; scrolls: number; revive: number; total: number };
   /** Base sell value of the loot per run, essence excluded. */
   loot_value: number;
   /** Essence per run by name, its total, and its value at the Solver's unit cost (what it would cost otherwise). */
@@ -71,7 +78,7 @@ export interface FarmRow {
   xp_per_hour: number;
   /** Gold per run to revive dead heroes (level x 10 x tier each; a lost quest kills the whole party). */
   revive_gold: number;
-  /** Per hour: gold (loot value - cost), essence, and both together (essence at its unit cost). */
+  /** Per hour: gold (loot value - cost, revives included), essence, and both together (essence at its unit cost). */
   gold_per_hour: number;
   essence_per_hour: number;
   value_per_hour: number;
@@ -87,6 +94,11 @@ export interface FarmingOptions {
   /** Grade of the maps run for a map-only quest source (default 3) and the Scribe level (default 60) for craft time. */
   mapGrade?: number;
   crafterLevel?: number;
+  /**
+   * The heroes that fight source `i` (default: the whole party), or why the game wouldn't start it (a `blocked` row).
+   * The result is checked against the game's party rules either way.
+   */
+  partyFor?: (src: FarmSource, i: number) => { front: Row; back: Row } | string;
 }
 
 /**
@@ -125,6 +137,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
   const mapGrade = o.mapGrade ?? 3, crafterLevel = o.crafterLevel ?? 60;
   // A map-only enemy is farmed with the map that holds it, never as a standalone quest.
   const notes = new Map<number, string>();
+  const original = sources;
   sources = sources.map((s, i) => {
     if (s.kind !== "quest" || !isMapOnlyQuest(s.quest)) return s;
     const name = G.questData[s.quest]?.name ?? `quest ${s.quest}`;
@@ -133,7 +146,13 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
     notes.set(i, `${name}: only in map runs, farmed with ${G.itemData.map[via.map].name} (${via.perRun.toFixed(2)} per run)`);
     return { kind: "map", map: { id: via.map, prestigeLevel: 0, grade: mapGrade } };
   });
-  const total = sources.reduce((acc, s) => acc + (s.kind === "quest" ? (o.n ?? 100) : (o.mapRuns ?? 30)), 0);
+  // F01: each source's party under the game's rules (a map-only quest source is fought as its map)
+  const parties = sources.map((s, i): { front: Row; back: Row } | string => {
+    const p = o.partyFor ? o.partyFor(original[i], i) : party;
+    if (typeof p === "string") return p;
+    return partyProblem(s.kind === "quest" ? { quest: s.quest, rare: s.rare } : { map: s.map }, p.front, p.back) ?? p;
+  });
+  const total = sources.reduce((acc, s, i) => acc + (typeof parties[i] === "string" ? 0 : s.kind === "quest" ? (o.n ?? 100) : (o.mapRuns ?? 30)), 0);
   let done = 0;
   ctl.onProgress?.(0, total, "farming");
   const step = () => {
@@ -142,7 +161,13 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
   const tick = () => ctl.onProgress?.(++done, total, "farming");
   const rows: FarmRow[] = [];
 
-  for (const src of sources) {
+  for (const [si, src] of sources.entries()) {
+    const fighting = parties[si];
+    if (typeof fighting === "string") {
+      rows.push(blockedRow(original[si], fighting));
+      continue;
+    }
+    const party = fighting;
     if (src.kind === "quest") {
       const n = o.n ?? 100, amount = src.amount ?? 1;
       const q = G.questData[src.quest];
@@ -188,8 +213,8 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         kind: "quest", id: src.quest, asc: 0, craft_h: 0,
         label: `${src.rare ? (q.nameB || q.name) + " [rare]" : q.name}${amount > 1 ? ` x${amount}` : ""}`,
         n, errors: 0, wins, grades, gradeCount, time_h: mean(times), death_rate: mean(deaths),
-        xp: xp / n / Math.max(members.length, 1), revive: revive / n,
-        cost: { gold, map: 0, scrolls: 0 },
+        xp: xp / n / Math.max(members.length, 1),
+        cost: { gold, map: 0, scrolls: 0, revive: revive / n },
         rewards: [...loot].map(([key, amt]) => {
           const [itype, iid] = key.split("|");
           return { itemType: itype, itemID: Number(iid), amount: amt / n, prestigeLevel: 0 };
@@ -238,8 +263,8 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
         kind: "map", id: mapId, asc,
         label: `${m.name}${asc ? ` asc ${asc}` : ""}${scrolls ? ` + ${scrolls.map((x) => G.itemData.consumable[x.id]?.name ?? x.id).join(", ")}` : ""}`,
         n: ok, errors, wins, grades, gradeCount, time_h: mean(times), craft_h: craftHours, death_rate: mean(deaths),
-        xp: ok ? xp / ok : 0, revive: ok ? revive / ok : 0, note: notes.get(rows.length),
-        cost: { gold: 0, map: unit("map", mapId, asc), scrolls: scrollCost },
+        xp: ok ? xp / ok : 0, note: notes.get(rows.length),
+        cost: { gold: 0, map: unit("map", mapId, asc), scrolls: scrollCost, revive: ok ? revive / ok : 0 },
         rewards: ok ? [...rewards].map(([key, amt]) => {
           const [itype, iid, p] = key.split("|");
           return { itemType: itype, itemID: Number(iid), amount: amt / ok, prestigeLevel: Number(p) };
@@ -248,6 +273,22 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
     }
   }
   return rows;
+}
+
+/** A source the game wouldn't start with its party (F01): its name and the reason, no figures. */
+function blockedRow(src: FarmSource, reason: string): FarmRow {
+  const q = src.kind === "quest" ? G.questData[src.quest] : undefined;
+  const m = src.kind === "map" && typeof src.map !== "string" ? src.map : undefined;
+  const label = q ? (src.kind === "quest" && src.rare ? `${q.nameB || q.name} [rare]` : q.name)
+    : m ? `${G.itemData.map[m.id]?.name ?? `map ${m.id}`}${m.prestigeLevel ? ` asc ${m.prestigeLevel}` : ""}` : "map";
+  return {
+    kind: src.kind, id: src.kind === "quest" ? src.quest : m?.id ?? 0, asc: m?.prestigeLevel ?? 0, label, blocked: reason,
+    n: 0, errors: 0, win: 0, grade: 0, grades: [1, 2, 3, 4, 5].map((gr): [number, number] => [gr, 0]),
+    time_h: 0, craft_h: 0, run_h: 0, map_only: {}, map_only_unit_cost: {}, runs_per_hour: 0,
+    cost: { gold: 0, map: 0, scrolls: 0, revive: 0, total: 0 }, loot_value: 0, essence: {}, essence_total: 0,
+    essence_value: 0, death_rate: 0, xp_per_run: 0, xp_per_hour: 0, revive_gold: 0,
+    gold_per_hour: 0, essence_per_hour: 0, value_per_hour: 0,
+  };
 }
 
 interface Partial_ {
@@ -266,8 +307,7 @@ interface Partial_ {
   note?: string;
   death_rate: number;
   xp: number;
-  revive: number;
-  cost: { gold: number; map: number; scrolls: number };
+  cost: { gold: number; map: number; scrolls: number; revive: number };
   /** Expected amount per run of each reward. */
   rewards: { itemType: string; itemID: number; amount: number; prestigeLevel: number }[];
 }
@@ -275,7 +315,7 @@ interface Partial_ {
 function finish(g: Game, unit: (t: string, i: number, p?: number) => number, x: Partial_, solver?: Solver): FarmRow {
   let lootValue = 0, essTotal = 0, essValue = 0;
   const essence: Record<string, number> = {};
-  const costTotal = x.cost.gold + x.cost.map + x.cost.scrolls;
+  const costTotal = x.cost.gold + x.cost.map + x.cost.scrolls + x.cost.revive; // F03: revives are paid in gold
   const mapOnly: Record<string, number> = {}, mapOnlyUnit: Record<string, number> = {};
   for (const r of x.rewards) {
     if (x.kind === "map" && solver?.how.get(`${r.itemType}|${r.itemID}|0`)?.startsWith("map run") && r.amount > 0) {
@@ -307,7 +347,7 @@ function finish(g: Game, unit: (t: string, i: number, p?: number) => number, x: 
     cost: { ...x.cost, total: costTotal },
     loot_value: lootValue, essence, essence_total: essTotal, essence_value: essValue,
     death_rate: x.death_rate,
-    xp_per_run: x.xp, xp_per_hour: perHour(x.xp), revive_gold: x.revive,
+    xp_per_run: x.xp, xp_per_hour: perHour(x.xp), revive_gold: x.cost.revive,
     gold_per_hour: perHour(lootValue - costTotal),
     essence_per_hour: perHour(essTotal),
     value_per_hour: perHour(lootValue + essValue - costTotal),
@@ -325,6 +365,7 @@ export function sourceStatsFrom(rows: FarmRow[], sources: FarmSource[]): { quest
   const quest = new Map<string, SourceStat>(), map = new Map<string, SourceStat>();
   rows.forEach((r, i) => {
     const s = sources[i];
+    if (r.blocked) return;
     const stat: SourceStat = { grades: r.grades, timeH: r.run_h }; // the Solver adds the map's craft time itself
     if (s.kind === "quest" && r.kind === "map" && !map.has(`${r.id}|${r.asc}`)) map.set(`${r.id}|${r.asc}`, stat);
     else if (s.kind === "quest" && (s.amount ?? 1) === 1) quest.set(s.rare ? `${r.id}|rare` : `${r.id}`, stat);

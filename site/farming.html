@@ -28,7 +28,7 @@
 
     <div id="setup" hidden>
       <section>
-        <h2><span class="step">1</span> Party</h2>
+        <h2 title="Shared with the Battle Simulator: rotations, locks and ticked-out heroes too"><span class="step">1</span> Party</h2>
         <div id="party"></div>
       </section>
 
@@ -42,12 +42,11 @@
         <div class="simulate">
           <div class="toolbar">
             <label class="check">Fights per quest <input id="n" type="number" min="1" max="1000" value="40" inputmode="numeric"></label>
-            <label class="check">Runs per map <input id="map-runs" type="number" min="1" max="200" value="10" inputmode="numeric"></label>
+            <label class="check">Runs per map <input id="map-runs" type="number" min="1" max="200" value="30" inputmode="numeric"></label>
             <button id="run" type="button" class="primary">▶ Rank sources</button>
-            <span class="muted small">Fewer runs is faster; map runs are the slow part.</span>
           </div>
         </div>
-        <section id="results" aria-live="polite"></section>
+        <section id="farm-results" aria-live="polite"></section>
       </section>
     </div>
   </main>

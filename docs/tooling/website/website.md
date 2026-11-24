@@ -890,15 +890,31 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 
 `site/farming.html` + `web/src/ui/farming.ts` (page) + `web/src/ui/farming-worker.ts` (web worker).
 
-- Party: the one picked on the battle page (same browser storage, edited rotations included), editable here; without
-  one, the six highest-level heroes.
-- Sources: quests (preselected around the heroes' level, rare variants optional), owned maps, catalog maps at
-  ascension 0/1 (grade S), up to 3 scrolls on every map run.
-- `farmingReport` (`web/src/tools/farming.ts`) simulates each source with the party (common seeds) and prices it with
-  the profit `Solver` (grade 3), solved once per worker (~3 s) and reused.
-- Ranked by value per hour (loot sell value minus the run's cost, plus essence at its production cost); headline
-  "best use of your heroes' time", or a warning when every source costs more than it earns. Tests:
-  `web/test/farming-worker.test.ts`.
+- Party: the one picked on the battle page (`battle-party:<save>`, edited rotations included), editable here; without
+  one, the six highest-level heroes. The stored party is read and written whole (`readStoredParty`,
+  `storedPartyWith` in `web/src/ui/farming-party.ts`): the Simulator's locks and ticked-out heroes are kept, and a
+  ticked-out hero shows "left out" and doesn't fight.
+- Legal party per source (game 3.18 rules, as the Battle page): `fightingSlots` takes the filled slots not ticked out,
+  the required slot first (Front 2 on a party quest, Front 1 on a solo quest), then the game's slot order (Back 1,
+  Front 1, Back 2, Front 2, Back 3, Front 3), capped at the quest's size (`includedSlots`, `rulesOf`). Glacial Goliath
+  (size 2) with a full party: Front 2 and Back 1; a solo quest: the Front 1 hero. When the rules still fail
+  (`problemOf`: Front 2 or Front 1 empty, all ticked out) the row reads "Can't start" with the reason, no figures,
+  ranked last. `farmingReport` checks every source's party with `partyProblem` (option `partyFor`, row `blocked`).
+- Sources: quest-board quests up to level 60 without placeholders (`farmQuestIds`: `isFightable`, `isBoardQuest`;
+  no map bosses or Treasure Bushes, the map lists cover them), ticked around the heroes' level, rare variants
+  optional; owned maps, catalog maps at ascension 0/1 (grade S), up to 3 scrolls on every map run. With Scribe hidden,
+  or no map to pick, no map block and no scroll selects.
+- `farmingReport` (`web/src/tools/farming.ts`) simulates each source with its party (common seeds) and prices it with
+  the profit `Solver` (grade 3); the page keeps its worker between runs, so the Solver is solved once (~3 s) and
+  reused; Cancel, or a new run while one is busy, ends the worker. Defaults: 40 fights per quest, 30 runs per map.
+- Cost per run: quest gold, the map, the scrolls and the revive gold of the heroes who died (`cost.revive`; a lost
+  quest kills the whole party), in the cell's tooltip; it comes off gold/h and value/h.
+- Ranked by value per hour (loot sell value minus the run's cost, plus essence at its production cost; the formula in
+  the column's "?"); headline "best use of your heroes' time", or "every source here loses gold". Grade as the
+  nearest letter badge (the average in its tooltip), time per run with `duration()`, sortable Source (shown name) and
+  Essence / run (total); a map row with runs the game's own code failed on shows "N of M runs". Results in
+  `#farm-results` (the Battle `#results` tile rules don't apply). Tests: `web/test/farming-worker.test.ts`,
+  `web/test/farming-f1.test.ts`. Review and open design choices: [review-farming](../roadmap/review-farming.md).
 
 ## Levelling page
 

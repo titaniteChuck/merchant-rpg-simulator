@@ -33,3 +33,17 @@ test("an empty party is an error message", async () => {
   await runFarming({ gameMode: "Standard", front: [null, null, null], back: [null, null, null], n: 1, mapRuns: 1, sources: [{ kind: "quest", quest: 1 }] }, (m) => msgs.push(m));
   assert.ok(msgs.some((m) => m.type === "error"));
 });
+
+test("F01: each source is fought by its own heroes; a source the page says can't start comes back blocked", async () => {
+  const msgs: Msg[] = [];
+  await runFarming({
+    gameMode: "Standard", front: [HERO, null, null], back: [null, null, null], n: 2, mapRuns: 1,
+    sources: [{ kind: "quest", quest: 1 }, { kind: "quest", quest: 1 }], fight: [["front0"], "Put a hero in Front 1."],
+  }, (m) => msgs.push(m));
+  const done = msgs.find((m) => m.type === "done");
+  assert.ok(done && done.type === "done");
+  assert.equal(done.rows[0].blocked, undefined);
+  assert.equal(done.rows[0].n, 2);
+  assert.equal(done.rows[1].blocked, "Put a hero in Front 1.");
+  assert.equal(done.rows[1].n, 0);
+});

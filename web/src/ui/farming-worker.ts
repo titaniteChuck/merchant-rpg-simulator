@@ -1,7 +1,8 @@
 /**
  * Web worker for the farming planner (site/farming.html): runs farmingReport (web/src/tools/farming.ts) off the
  * main thread. The profit Solver that prices costs and essence takes a few seconds to solve, so it is solved once
- * per grade and kept for the next runs. Progress is posted ~10 times per second; the page cancels by terminating.
+ * per grade and kept for the next runs (the page keeps the worker between runs, F06). Progress is posted ~10 times per
+ * second; the page cancels by terminating.
  */
 import * as api from "../sim/api.ts";
 import { type FarmRow, type FarmSource, farmingReport } from "../tools/farming.ts";
@@ -19,6 +20,8 @@ export interface FarmRequest {
   back: (Any | null)[];
   skills?: { front: ({ attackList: string[]; passive?: string } | null)[]; back: ({ attackList: string[]; passive?: string } | null)[] };
   sources: FarmSource[];
+  /** Per source (F01): the slot keys that fight it ("front1"), or why the game wouldn't start it. Default: every hero. */
+  fight?: (string[] | string)[];
   /** Fights per quest, runs per map. */
   n: number;
   mapRuns: number;
@@ -62,7 +65,13 @@ export async function runFarming(req: FarmRequest, post: (m: FarmResponse) => vo
     const front = build(req.front, req.skills?.front), back = build(req.back, req.skills?.back);
     if (![...front, ...back].some(Boolean)) throw new Error("Put at least one hero in the party.");
     let last = 0;
-    const rows = farmingReport(sim, { front, back }, req.sources, { n: req.n, mapRuns: req.mapRuns, solver: solvers.get(grade) }, {
+    const only = (row: typeof front, name: string, keys: string[]) => row.map((h, i) => (keys.includes(`${name}${i}`) ? h : null));
+    const partyFor = (_s: FarmSource, i: number) => {
+      const f = req.fight?.[i];
+      if (f === undefined) return { front, back };
+      return typeof f === "string" ? f : { front: only(front, "front", f), back: only(back, "back", f) };
+    };
+    const rows = farmingReport(sim, { front, back }, req.sources, { n: req.n, mapRuns: req.mapRuns, solver: solvers.get(grade), partyFor }, {
       onProgress: (done, total, stage) => {
         const now = performance.now();
         if (done === 0 || done === total || now - last > 100) {
