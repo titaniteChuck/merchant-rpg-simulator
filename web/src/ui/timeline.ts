@@ -46,7 +46,6 @@ export function loadTimelineData(): Promise<void> {
   });
   return ready;
 }
-export const timelinesLoaded = () => loaded;
 
 /** The enemy's timeline, or null (not loaded, or no timeline for this quest). */
 export function timelineOf(quest: number, rare = false): EnemyTimeline | null {

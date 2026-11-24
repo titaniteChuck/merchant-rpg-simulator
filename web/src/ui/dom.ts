@@ -142,7 +142,6 @@ export function gradeBadge(label: string): HTMLElement {
  * heroes store prestigeLevel 1–3 (1 = not ascended), see heroAsc().
  */
 export const ascLevel = (v: unknown): number => Math.max(0, Math.min(2, Math.trunc(Number(v) || 0)));
-export const ascClass = (v: unknown): string => (ascLevel(v) ? `asc asc-${ascLevel(v)}` : "");
 export const ascText = (v: unknown): string => `ascension ${ascLevel(v)}`;
 /** Hero prestigeLevel (1–3) as an ascension count (0–2). */
 export const heroAsc = (prestigeLevel: unknown): number => ascLevel((Number(prestigeLevel) || 1) - 1);
@@ -266,7 +265,7 @@ export function tabKeys(list: HTMLElement): void {
 /**
  * The site's two toggle styles (CSS block "r1 global" at the end of style.css):
  * - `.seg`: a segmented control, ONE choice out of a few (radio inputs in `label.seg-opt`, a radiogroup), with
- *   `segField` when it has a visible name beside it. (The frozen Profit page keeps its static `.mode-switch`, same look.)
+ *   `segField` when it has a visible name beside it. (Profit uses it too since P1; the old `.mode-switch` is gone.)
  * - `.chip-toggle`: an on / off chip (a button with aria-pressed), for filters that combine.
  */
 export interface SegOption { value: string; label: Node | string; title?: string; /** extra class of the option */ cls?: string }

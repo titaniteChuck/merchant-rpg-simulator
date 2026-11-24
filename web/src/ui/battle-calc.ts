@@ -342,8 +342,3 @@ export function healFormula(c: CalcHeal, name: Names): CalcView {
 export function calcView(c: TraceCalc, name: Names): CalcView {
   return c.kind === "dmg" ? attackFormula(c, name) : healFormula(c, name);
 }
-
-/** The number a hit's records add up to on the page: damage dealt while standing, HP really healed. */
-export function shownTotal(calc: TraceCalc[], kind: "dmg" | "heal"): number {
-  return calc.filter((c) => c.kind === kind && !(c.kind === "dmg" && c.missed)).reduce((s, c) => s + calcView(c, () => "").shown, 0);
-}

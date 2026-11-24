@@ -167,7 +167,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .pill.plain { --c: var(--muted); }
 .tag { display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
   color: var(--good); background: color-mix(in srgb, var(--good) var(--tint), transparent); }
-.tag.soon { color: var(--muted); background: var(--card-2); }
 .grade { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; color: #fff; }
 .grade-D { background: #8a8fa3; } .grade-C { background: #22a35a; } .grade-B { background: #3b7ddd; }
 .grade-A { background: #a64fd6; } .grade-S { background: linear-gradient(135deg, #f59e0b, #e8458b); }
@@ -286,8 +285,7 @@ table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th { position: sticky; top: 0; background: var(--card-2); }
 th button { border: 0; background: none; padding: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-th button:hover { color: var(--accent); }
-th[aria-sort] button { color: var(--accent); }
+th button:hover, th[aria-sort] button { color: var(--accent); }
 th[aria-sort="ascending"] button::after { content: " ▲"; font-size: 0.7em; }
 th[aria-sort="descending"] button::after { content: " ▼"; font-size: 0.7em; }
 tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
@@ -313,16 +311,10 @@ section > h2:first-child { margin-top: 36px; }
 .slot-name { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .slot-name .avatar { width: 26px; height: 26px; border-radius: 8px; font-size: 0.8rem; }
 .slot select { width: 100%; }
-.slot-details p { margin: 0; }
 .slot details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .skills { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .turns { display: grid; gap: 6px; grid-template-columns: 1fr; }
 .turn { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); align-items: center; gap: 8px; }
-.mode-switch { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); }
-.mode-switch label { padding: 6px 14px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
-.mode-switch input { position: absolute; opacity: 0; pointer-events: none; }
-.mode-switch label:has(input:checked) { color: #fff; background: var(--gradient); }
-.mode-switch label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 #target .toolbar select { flex: 1 1 220px; }
 .enemy { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); font-size: 0.88rem; }
 .enemy strong { font-size: 1rem; }
@@ -352,8 +344,7 @@ section > h2:first-child { margin-top: 36px; }
 .topbar .save-chip-btn[aria-current] { background: rgba(0, 0, 0, 0.30); box-shadow: inset 0 -2px 0 var(--trim); }
 .topbar .save-chip-btn[aria-current]:hover { background: rgba(0, 0, 0, 0.35); }
 .theme-btn { padding: 4px 10px; border-radius: 999px; font-size: 0.95rem; line-height: 1.2; cursor: pointer; }
-.topbar .save-chip { margin-left: auto; }
-.topbar .theme-btn { margin-left: auto; }
+.topbar .save-chip, .topbar .theme-btn { margin-left: auto; }
 .topbar .theme-btn + .save-chip { margin-left: 0; }
 .topbar :focus-visible { outline-color: #ffe08a; }
 .card-wiki { --c: #14b8a6; } .card-farming { --c: #22c55e; } .card-levelling { --c: #0ea5e9; } .card-balance { --c: #a855f7; }
@@ -415,20 +406,14 @@ a.wl[class*="cls-"] { color: color-mix(in srgb, var(--c) var(--ink), var(--fg));
 .radar-value { fill: var(--fg); font-size: 12.5px; font-weight: 750; font-variant-numeric: tabular-nums; }
 .hero-stats { display: flex; flex-direction: column; gap: 8px; }
 .stats.extra { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
-.slot-details .radar-fig { max-width: 240px; }
 
 /* ------------------------------------------------------------------ wiki */
-.wiki-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: -12px 0 22px; }
-.wiki-nav a { text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--muted); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); }
-.wiki-nav a:hover { color: var(--fg); border-color: var(--accent); }
-.wiki-nav a[aria-current="page"] { color: #fff; background: var(--gradient); border-color: transparent; }
 .crumbs { color: var(--muted); margin: 0 0 6px; }
 .crumbs a { color: var(--muted); }
 #wiki h1 a.wl { border: 0; -webkit-text-fill-color: currentColor; }
 #wiki h1:has(a.wl) { background: none; color: var(--fg); }
 .big-search { width: 100%; font-size: 1.05rem; padding: 11px 14px; margin: 18px 0 8px; }
 ul.hits { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 4px 18px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-ul.wiki-cats { margin-top: 22px; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 18px 0 0; }
 .facts > div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; min-width: 0; }
 .facts dt { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
@@ -456,22 +441,12 @@ a.wl.asc { border-bottom: 0; }
 .avatar.asc::before { inset: -4px; padding: 2px; border-radius: 17px; }
 .slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
 .asc-swatch { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; vertical-align: middle; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 1; }
-.chosen-map { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 0.92rem; }
 
 /* ------------------------------------------------------------------ battle page: search tabs */
-#sim-tabs .tabs { margin-bottom: 14px; flex-wrap: wrap; }
 .search-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
 .search-form { margin: 10px 0 0; }
 .search-out { margin-top: 14px; }
 .search-progress { display: flex; flex-direction: column; gap: 8px; }
-.search-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 12px; }
-.search-card { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.search-card header { display: flex; flex-direction: column; gap: 2px; }
-.ev-line { font-size: 0.86rem; color: var(--muted); }
-.ev-line strong { color: color-mix(in srgb, var(--c, var(--fg)) var(--ink), var(--fg)); }
-.party-result { display: grid; gap: 6px; }
-.party-result > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.party-result .muted { min-width: 60px; }
 
 /* ------------------------------------------------------------------ profit page */
 .pf-options { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-items: end;
@@ -479,7 +454,6 @@ a.wl.asc { border-bottom: 0; }
 .pf-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .pf-field > span, .pf-field > legend { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 0; }
 .pf-field select, .pf-field input[type="number"] { width: 100%; }
-.pf-field .mode-switch { box-shadow: none; }
 .pf-check { min-height: 38px; }
 .pf-orbs { grid-column: 1 / -1; margin: 0; }
 .pf-orb-grid { display: grid; gap: 10px 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
@@ -492,7 +466,6 @@ a.wl.asc { border-bottom: 0; }
 #result.pf-busy { opacity: .55; pointer-events: none; transition: opacity .2s; }
 .pf-filters input[type="number"] { width: 4.5em; }
 .pf-range { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.9rem; }
-.pf-count { margin: -6px 0 8px; }
 .pf-more { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pf-h3 { margin: 22px 0 10px; }
 .pf-money { font-variant-numeric: tabular-nums; }
@@ -570,15 +543,8 @@ tr.row-link:hover td.name a.wl { border-bottom-style: solid; }
 
 /* Enemy pages (U6c): one card per variant (rotation, drops), maps with their multiplier. */
 .wl.enemy-link.rare { color: color-mix(in srgb, #ec4899 75%, var(--fg)); }
-.enemy-variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
-.enemy-variant { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; min-width: 0; }
-.enemy-variant.rare { border-top: 3px solid #ec4899; }
-.enemy-variant h3 { margin: 0 0 4px; font-size: 1.05rem; }
-.enemy-variant h4 { margin: 14px 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.enemy-variant h4 .muted { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .plain-list.loot { padding-left: 0; }
 .plain-list.loot li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
-.loot-pct { min-width: 3.2em; text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
 .mod-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
 .mod-asc { padding: 0 5px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 /* end wiki review */
@@ -606,15 +572,13 @@ a.secondary-link:hover { text-decoration: underline; }
 .party-cols { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 560px) { .party-cols { grid-template-columns: minmax(0, 1fr); } }
 .party-cols .party-row h3 { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
-.slot-details .radar-fig { max-width: 210px; margin-inline: auto; }
 .col-title { margin: 0 0 10px; font-size: 1rem; }
 .opp-col { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
 @media (max-width: 960px) { .opp-col { position: static; } }
 .opp-col .seg { align-self: flex-start; }
 .opp-controls { display: flex; flex-direction: column; gap: 8px; }
 .opp-controls > select { width: 100%; }
-.opp-controls .toolbar { margin: 0; }
-.opp-controls p { margin: 0; }
+.opp-controls .toolbar, .opp-controls p { margin: 0; }
 .opp-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .opp-card.rare { border-top: 3px solid #ec4899; }
 .opp-card header { display: flex; gap: 12px; align-items: center; }
@@ -632,25 +596,11 @@ a.secondary-link:hover { text-decoration: underline; }
 .chip-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-width: 760px; }
 .chip-check { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; cursor: pointer; }
 .chip-check:has(input:checked) { text-decoration: line-through; color: var(--muted); }
-.search-card.best { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
 h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 
 /* save overview */
-.save-overview { margin: 0; max-width: 760px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.save-overview > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 12px;
-  padding: 8px 14px; border-bottom: 1px solid var(--border); }
-.save-overview dt { display: flex; align-items: baseline; gap: 8px; color: var(--muted); font-size: 0.85rem; font-weight: 600; min-width: 0; }
-.save-overview dd { margin: 0; text-align: right; min-width: 0; }
-.save-overview .ov-value { font-weight: 750; font-variant-numeric: tabular-nums; }
-.save-overview .ov-hint { display: block; color: var(--muted); font-size: 0.72rem; }
 #result > .tabs { margin-top: 14px; flex-wrap: wrap; }
 /* end save overview */
-.enchant-slots { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; padding: 10px 14px; border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--card-2)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); }
-.enchant-slots:empty { display: none; }
-.enchant-slots .slots-big { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
-.enchant-slots.none-free .slots-big { color: var(--muted); }
 
 /* ------------------------------------------------------------------ levelling page (U12) */
 .lv-hero { display: flex; gap: 14px; align-items: center; margin: 12px 0; }
@@ -699,9 +649,6 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .tl-cell.hero.warn { border-color: color-mix(in srgb, #f59e0b 70%, var(--border)); }
 .tl-skill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .tl-tags { display: flex; flex-wrap: wrap; gap: 2px; font-size: 0.9rem; line-height: 1; min-height: 1em; }
-.tl-actor { display: flex; flex-direction: column; justify-content: center; font-size: 0.82rem; min-width: 0; padding-left: 8px; border-left: 3px solid var(--c, var(--border)); }
-.tl-actor.enemy { border-left-color: #ec4899; }
-.tl-actor strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-win { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; font-weight: 600;
   padding: 2px 6px; border-radius: 999px; cursor: help; }
 .tl-win.on-enemy { background: color-mix(in srgb, #ec4899 22%, transparent); color: var(--fg); }
@@ -710,17 +657,9 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .tl-win.k-stun { background: color-mix(in srgb, #ef4444 28%, transparent); }
 .tl-win:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tl-note { margin: 2px 0 0; }
-.tl-noteline { font-size: 0.72rem; line-height: 1.25; white-space: normal; }
-.tl-noteline.good { color: var(--good); }
-.tl-noteline.bad { color: color-mix(in srgb, #f59e0b 85%, var(--fg)); }
-.tl-why { display: flex; flex-direction: column; gap: 2px; }
-.tl-plan { margin-top: 18px; overflow-x: auto; }
-.tl-plan .tl-grid, .tl-plan .tl-winrow { min-width: 620px; }
 .opp-card .tl { margin-top: 2px; }
-.enemy-variant .tl { margin-bottom: 4px; }
 .pickers { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .chip-check.lock:has(input:checked) { text-decoration: none; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.search-card .tl-why { border-top: 1px dashed var(--border); padding-top: 6px; }
 
 /* ------------------------------------------------------------------ class balance page (U4) */
 :root, :root[data-theme="dark"] { --heat: #0f766e; }
@@ -767,8 +706,6 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 .slot .lock { border: 1px solid var(--border); background: var(--card-2); border-radius: 8px; padding: 2px 7px; font-size: 0.85rem; line-height: 1.4; cursor: pointer; }
 .slot .lock.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--card-2)); }
 .slot.locked { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow); }
-.slot-hint { margin: 0; }
-.party-note { margin: 0 0 10px; }
 /* Hero card stats: each column as wide as its value (auto layout, no wrap), the spare width shared out, at least 6px
    between two values, so "1,183" and "1,159" never run together; battle.ts shortens five-digit values. */
 .stat-strip { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; table-layout: auto; }
@@ -778,18 +715,6 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 .stat-strip th { color: var(--muted); font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; padding-block: 0; }
 .stat-strip td { font-weight: 650; }
 .chips { display: flex; flex-direction: column; gap: 5px; }
-.skill-chips { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
-.skill-chip { position: relative; min-width: 0; padding: 3px 13px 3px 5px; border-radius: 6px; border: 1px solid var(--trim); background: var(--inset); color: var(--inset-fg);
-  font-size: 0.72rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.skill-chip.basic { color: color-mix(in srgb, var(--inset-fg) 70%, var(--inset)); }
-.skill-chip a.wl.skill { color: var(--inset-fg); }
-/* The AP number: white, outlined, bottom-right, as on the game's slots. */
-.skill-chip .ap { position: absolute; right: 2px; bottom: 0; font-size: 0.62rem; font-weight: 800; color: #fff;
-  text-shadow: -1px -1px 0 #2a2018, 1px -1px 0 #2a2018, -1px 1px 0 #2a2018, 1px 1px 0 #2a2018; }
-.skill-chip a { text-decoration: none; }
-.passive-chip { align-self: flex-start; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--gold-2, #f59e0b) 45%, var(--border));
-  background: color-mix(in srgb, #f59e0b 10%, var(--card-2)); }
-.slot-edit summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 
 /* ------------------------------------------------------------------ game palette components (U16) */
 /* Item cells (hero gear): sand inset framed in the item's rarity colour, dark text. */
@@ -859,22 +784,12 @@ h2, h3 { color: var(--fg); }
 .cls-v3 .seg .asc-opt.tier-1:has(input:checked), .cls-v3 .seg .asc-opt.tier-2:has(input:checked) { color: #14161f; }
 .cls-v3 .seg .asc-opt.tier-1:has(input:checked) { background: linear-gradient(135deg, var(--silver-hi), var(--silver-mid) 45%, var(--silver-lo)); }
 .cls-v3 .seg .asc-opt.tier-2:has(input:checked) { background: linear-gradient(135deg, var(--gold-hi), var(--gold-mid) 45%, var(--gold-lo)); }
-.cls-cards-wrap { margin-top: 18px; }
-.cls-cards-head { margin: 0 0 -10px; }
-.cls-cards { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
-.cls-cards dd { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .item-asc { justify-content: flex-start; margin-bottom: 8px; }
 
 /* Skill pages: "Good against" (wiki-skills.ts). */
-.good-list { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; }
-.good-list li { padding-left: 2px; }
-.good-list li::marker { color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
 .good-name { font-weight: 650; margin-right: 8px; }
 .good-name .pill { margin-left: 6px; }
-.good-why { color: var(--muted); font-size: 0.9rem; }
-.show-all { margin-top: 10px; }
 @media (max-width: 520px) {
-  .good-why { display: block; font-size: 0.85rem; }
   .rc-box { min-width: 150px; }
 }
 /* end wiki v3 */
@@ -902,16 +817,16 @@ h2, h3 { color: var(--fg); }
 
 @media (max-width: 600px) {
   /* Sideways rows: one line, no scrollbar, a fade at the edge with more. */
-  .topnav, .wiki-nav, .tabs, #result > .tabs {
+  .topnav, .tabs, #result > .tabs {
     flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
     -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
     mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
     animation: row-fade linear both; animation-timeline: scroll(self inline);
   }
-  .topnav::-webkit-scrollbar, .wiki-nav::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
-  .topnav > a, .wiki-nav > a, .tabs > button { flex: none; white-space: nowrap; }
+  .topnav::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+  .topnav > a, .tabs > button { flex: none; white-space: nowrap; }
   /* The rows clip what sticks out: focus rings inside. */
-  .topnav a:focus-visible, .wiki-nav a:focus-visible, .tabs button:focus-visible { outline-offset: -2px; }
+  .topnav a:focus-visible, .tabs button:focus-visible { outline-offset: -2px; }
 
   /* Top bar: one line. */
   .topbar { flex-wrap: nowrap; gap: 8px; padding: 6px 8px; margin-bottom: 22px; }
@@ -926,8 +841,6 @@ h2, h3 { color: var(--fg); }
   .topbar .gh span, .topbar .save-chip-name {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
-
-  .wiki-nav { margin: -6px 0 18px; }
 }
 /* end phone navs + example save */
 
@@ -985,7 +898,6 @@ h2, h3 { color: var(--fg); }
   font-size: 0.78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--wiki-banner-fg);
 }
 .wiki-banner .muted { color: rgba(255, 255, 255, 0.82); }
-.enemy-variant h4.wiki-banner { color: var(--wiki-banner-fg); }
 .cls-growth .wiki-banner.sub { margin-left: 0; margin-right: 0; border-radius: 6px 6px 2px 2px; }
 
 /* Drop tables (U21, wiki-enemies.ts): every-win rewards and each loot roll, "Nothing" as a row, one column per grade. */
@@ -1002,8 +914,6 @@ h2, h3 { color: var(--fg); }
 .loot-table tbody tr:last-child td { border-bottom: 0; }
 .loot-item { display: inline-flex; align-items: center; gap: 6px; }
 .loot-item .rar-chip { font-size: 0.68rem; padding: 0 6px; }
-.loot-nothing td { color: var(--muted); font-style: italic; background: color-mix(in srgb, var(--card-2) 60%, transparent); }
-.loot-nothing td.base { background: color-mix(in srgb, var(--trim) 14%, var(--card-2)); }
 /* Phones: the item cell wraps (chip under the name) and cells tighten; the frame still scrolls sideways if needed. */
 @media (max-width: 520px) {
   .loot-table th, .loot-table td { padding: 5px 5px; }
@@ -1014,8 +924,6 @@ h2, h3 { color: var(--fg); }
 
 /* Wiki list pages (U21): no visible title or intro (the h1 stays for screen readers); the descriptions are on the home cards. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-ul.wiki-cats > li p.wiki-cat-about { margin: 0 0 8px; color: var(--fg); font-size: 0.9rem; }
-ul.wiki-cats > li p.wiki-cat-count { margin: 0; flex: 0; }
 
 /* Skill pages, "Good against" as a table (U21): enemies ranked, a ✓ on the enemy turns it answers, the reason in the tooltip. */
 .good-wrap { box-shadow: none; width: fit-content; max-width: 100%; }
@@ -1033,17 +941,10 @@ ul.wiki-cats > li p.wiki-cat-count { margin: 0; flex: 0; }
 /* Step 1: the Simulator's Simulate box (runs, Run button); the Solver's options and Solve button (U41). */
 .run-box { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
   border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
-.run-title { margin: 0; font-size: 1rem; }
 .run-box .toolbar { margin: 0; }
 .run-box .search-panel, .run-box .simulate { background: none; border: 0; padding: 0; box-shadow: none; }
 .run-box .search-panel > p:first-child { margin-top: 0; }
 .run-box .search-form { margin-bottom: 0; }
-/* Step 2: the party on the left, the opponent on the right; stacked below 960px, party first. */
-.setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
-@media (max-width: 960px) { .setup-grid.b3-grid { grid-template-columns: minmax(0, 1fr); } }
-.b3-plan:not(:empty) { margin-top: 20px; }
-.b3-results #results-empty { margin: 0; }
-.b3-results:has(#results:not([hidden]) > *, #search-results > .search-out > *) #results-empty { display: none; }
 .b3-results .search-out { margin-top: 0; }
 /* Hero slots: the same skeleton filled or empty (stats, passive, rotation), so every slot has the same size. */
 .b3-slot { gap: 7px; padding: 12px; }
@@ -1078,21 +979,14 @@ table.slot-rows td.eff { min-width: 0; font-size: 0.78rem; }
 .ap-mini.over, .ap-mini.over strong { color: var(--bad); font-weight: 700; }
 /* Gear in search results: the two-column gearGrid; changed slots outlined. */
 .search-out .gear-grid { margin: 4px 0 6px; }
-.search-card .gear-grid { font-size: 0.8rem; }
 /* "change" on the sand inset: white on dark green (the pill's own green text is too light there). */
 .gear-item .meta .pill.t-green { background: #2f6b34; color: #fff; border-color: #2f6b34; }
-.gear-from { margin: 0 0 10px; padding-left: 18px; }
 /* end battle v3 */
 
 /* wiki reference pages */
 /* U25: Stats (#/stats) and Battle (#/battle), wiki-ref.ts. One <section class="ref-section"> per topic; formulas in
-   .formula (fractions as .frac), variables in .ref-vars, worked examples in .ref-example, the source note .ref-src. */
+   .formula (fractions as .frac), variables in .ref-vars, worked examples in .ref-example. */
 .ref-page .lead { max-width: 75ch; }
-.ref-toc { margin: 18px 0 8px; }
-.ref-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px 14px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); counter-reset: ref; }
-.ref-toc li { counter-increment: ref; min-width: 0; }
-.ref-toc li::before { content: counter(ref) "."; color: var(--muted); font-variant-numeric: tabular-nums; display: inline-block; min-width: 1.8em; font-size: 0.85rem; }
-.ref-toc a { font-weight: 600; }
 .ref-section { scroll-margin-top: 12px; }
 .ref-section h2.wiki-banner { justify-content: space-between; flex-wrap: nowrap; }
 .ref-anchor { color: rgba(255, 255, 255, 0.7); text-decoration: none; font-weight: 700; padding: 0 4px; border-radius: 6px; flex: none; }
@@ -1123,8 +1017,6 @@ table.slot-rows td.eff { min-width: 0; font-size: 0.78rem; }
 .ref-table { font-size: 0.9rem; }
 .ref-table th[scope="row"] { text-align: left; font-weight: 650; white-space: nowrap; }
 .ref-table td { font-variant-numeric: tabular-nums; }
-.ref-src { margin: 8px 0 0; opacity: 0.85; }
-.ref-src code { font-size: 0.78rem; padding: 0 4px; }
 a.ref-link { color: color-mix(in srgb, var(--accent) var(--ink), var(--fg)); }
 /* Battle: the party places and the turn order */
 .ref-places { margin: 12px 0; }
@@ -1382,9 +1274,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .solver-scrolls { font-size: 0.82rem; }
 .solver-table .no-scrolls { font-size: 0.7rem; white-space: nowrap; cursor: help; }
 .solver-loaded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.party-tools { margin: 0 0 8px; }
-.party-rules { margin: 0 0 6px; }
-.party-problem { margin: 0 0 8px; }
+.party-tools, .party-problem { margin: 0 0 8px; }
 .slot.required { outline: 2px dashed color-mix(in srgb, #f97316 70%, transparent); outline-offset: 2px; }
 .slot.required.filled { outline-style: solid; outline-color: color-mix(in srgb, #f97316 40%, transparent); }
 .req-badge { font-size: 0.66rem; letter-spacing: .04em; }
@@ -1395,14 +1285,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .tl-planned { opacity: 0.7; text-decoration: line-through; text-decoration-thickness: 2px; }
 .tl-planned a, .tl-planned span { text-decoration: line-through; text-decoration-thickness: 2px; }
 .tl-forced { font-weight: 750; color: color-mix(in srgb, #ef4444 70%, var(--fg)); }
-.tl-hit { display: block; font-size: 0.72rem; line-height: 1.25; white-space: normal; padding: 1px 5px; border-radius: 6px; cursor: help;
-  background: color-mix(in srgb, #f59e0b 20%, transparent); }
-.tl-hit.k-force-action, .tl-hit.k-stun { background: color-mix(in srgb, #ef4444 22%, transparent); }
-.tl-cast { display: block; font-size: 0.72rem; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; color: var(--muted); }
-.tl-cast strong, .tl-cell .tl-cast strong { color: var(--fg); font-weight: 650; font-size: 0.74rem; }
-.tl-cast.on-heroes { border-left: 2px solid #f59e0b; padding-left: 5px; }
-.tl-cast.on-heroes.k-force-action, .tl-cast.on-heroes.k-stun { border-left-color: #ef4444; }
-.tl-cast.on-enemy { border-left: 2px solid #ec4899; padding-left: 5px; }
 @media (max-width: 600px) {
   .solver-table th, .solver-table td { padding: 4px 5px; }
   .spoiler-guard { padding: 12px; }
@@ -1414,11 +1296,11 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .help-more { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 0.8rem; }
 .help-more a.ref-link { color: var(--accent); font-weight: 600; border-bottom-color: transparent; }
 .help-more a.ref-link:hover, .help-more a.ref-link:focus-visible { border-bottom: 1px solid currentColor; }
-.facts dt a.ref-link, .cls-cards dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, .seg-label a.ref-link { color: inherit; }
+.facts dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, .seg-label a.ref-link { color: inherit; }
 /* end wiki cross-links */
 /* quest xp */
 /* U33. Enemy pages' "XP and time" section (wiki-enemies.ts: questXpBlock, mapXpBlock): grade / party / ascension
-   toggles, then a small table; the battle results' XP tiles reuse .tiles and add only the links line (.qxp-refs). */
+   toggles, then a small table. */
 .qxp-controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 4px 0 10px; }
 .qxp-controls .seg-opt .grade { min-width: 18px; height: 18px; }
 .qxp-wrap { max-width: 720px; }
@@ -1429,10 +1311,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .qxp-table th a.ref-link { color: inherit; }
 .qxp-table tr.rare td { background: color-mix(in srgb, #ec4899 7%, transparent); }
 .qxp-where { margin: 0 0 8px; }
-/* battle results: the XP row keeps the outcome tiles' size (auto-fill: empty columns stay) and sits close under them */
-.tiles:has(+ .qxp-tiles), .tiles + .qxp-tiles { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
-.tiles + .qxp-tiles { margin-top: -12px; margin-bottom: 8px; }
-.qxp-refs { margin: 0 0 18px; }
 @media (max-width: 600px) {
   .qxp-table th, .qxp-table td { padding: 5px 6px; }
   .qxp-controls { gap: 8px 12px; }
@@ -1488,7 +1366,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
    (.mainnav: Home, Save ▾, Battle, Wiki ▾, More ▾) with dropdowns (.menu-pop, the wiki's in columns) and the current
    section's sub-pages as a compact second row under the top bar (.subnav). 760 px and less: a burger (.nav-burger)
    opens a left drawer (dialog.nav-drawer) with the same links as nested lists; the menu, the second row and the
-   former one-line rows (U20 .topnav, .wiki-nav: no longer in the pages) are gone from the top bar. */
+   former one-line rows (U20 .topnav: no longer in the pages) are gone from the top bar. */
 .nav-burger { display: none; }
 .mainnav { flex: 1 1 auto; min-width: 0; }
 .menu-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; list-style: none; margin: 0; padding: 0; }
@@ -1622,8 +1500,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 #results .tile .bar { margin-top: 5px; height: 4px; }
 #results .tile-lines { display: flex; flex-direction: column; font-size: 0.85rem; font-weight: 700; line-height: 1.3; }
 #results .tiles.result-summary { margin-bottom: 8px; grid-template-columns: repeat(2, minmax(0, 220px)); }
-#results .tiles + .qxp-tiles { margin-top: -4px; margin-bottom: 4px; }
-#results .qxp-refs { margin: 0 0 12px; }
 .result-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 6px; }
 .result-toggle .run-line { margin: 0; }
 .details-toggle { padding: 4px 12px; font-size: 0.85rem; }
@@ -1668,29 +1544,29 @@ thead th .grade, thead th .xp-badge { letter-spacing: 0; text-transform: none; }
 thead th abbr { text-decoration: none; }
 
 /* F27: ONE segmented control (one choice out of a few) and ONE on / off chip.
-   Segmented: .seg > .seg-opt (radio in a label, dom.ts segmented()), named by .seg-field / .seg-label (segField());
-   the frozen Profit page's static .mode-switch shares the look: joined options, the picked one gold-edged on a gold tint. */
+   Segmented: .seg > .seg-opt (radio in a label, dom.ts segmented()), named by .seg-field / .seg-label (segField()):
+   joined options, the picked one gold-edged on a gold tint. */
 .seg-field { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .seg-label { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 0.72rem; }
-.seg, .mode-switch { display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 0; border: 0; border-radius: 0;
+.seg { display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 0; border: 0; border-radius: 0;
   background: none; box-shadow: none; max-width: 100%; }
-.seg-opt, .mode-switch > label {
+.seg-opt {
   position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 -1px; padding: 5px 12px;
   border: 1px solid var(--border); border-radius: 0; background: var(--card-2); color: var(--muted);
   font: inherit; font-size: 0.88rem; font-weight: 650; line-height: 1.3; cursor: pointer; white-space: nowrap; }
-/* .mode-switch: one row, an option's text wraps inside it in a narrow box. */
-.seg-opt, .mode-switch > label { flex: 0 1 auto; min-width: 0; white-space: normal; text-align: center; justify-content: center; }
+/* One row, an option's text wraps inside it in a narrow box. */
+.seg-opt { flex: 0 1 auto; min-width: 0; white-space: normal; text-align: center; justify-content: center; }
 /* A long .seg (six kinds) may still wrap on a phone, as whole options. */
 .seg { flex-wrap: wrap; row-gap: 4px; }
 .seg-opt { white-space: nowrap; }
-.seg-opt:first-of-type, .mode-switch > label:first-of-type { margin-left: 0; border-radius: 9px 0 0 9px; }
-.seg-opt:last-of-type, .mode-switch > label:last-of-type { border-radius: 0 9px 9px 0; }
-.seg-opt:only-of-type, .mode-switch > label:only-of-type { border-radius: 9px; }
-.seg-opt:hover, .mode-switch > label:hover { color: var(--fg); z-index: 1; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
-.seg-opt input, .mode-switch input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-.seg-opt:has(input:checked), .mode-switch > label:has(input:checked) {
+.seg-opt:first-of-type { margin-left: 0; border-radius: 9px 0 0 9px; }
+.seg-opt:last-of-type { border-radius: 0 9px 9px 0; }
+.seg-opt:only-of-type { border-radius: 9px; }
+.seg-opt:hover { color: var(--fg); z-index: 1; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.seg-opt input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.seg-opt:has(input:checked) {
   z-index: 2; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
-.seg-opt:has(input:focus-visible), .mode-switch > label:has(input:focus-visible) {
+.seg-opt:has(input:focus-visible) {
   z-index: 3; outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The class page's ascension picker keeps its tier colour (standard / silver / gold) as the picked option's edge. */
 .cls-v3 .seg .asc-opt:has(input:checked),
@@ -1738,8 +1614,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .save-menu .save-menu-head { margin: 0 4px 4px; }
 .save-menu-group { display: flex; flex-direction: column; }
 .save-menu-sep { height: 0; margin: 4px 2px; border-top: 1px solid var(--border); flex: none; }
-.save-menu .xp-menu { border-top: 0; margin-top: 0; padding-top: 0; }
-.save-menu-extras:not(:empty) { border-top: 0; margin-top: 0; padding-top: 0; }
+.save-menu .xp-menu, .save-menu-extras:not(:empty) { border-top: 0; margin-top: 0; padding-top: 0; }
 .save-menu .save-menu-fold { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; text-transform: uppercase;
   letter-spacing: .05em; font-size: 0.7rem; font-weight: 700; color: var(--muted); }
 .save-menu-fold .fold-mark { transition: transform .15s; }
@@ -1829,8 +1704,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .cf-block.void { opacity: .7; }
 .cf-head { font-weight: 700; font-size: 0.66rem; color: var(--muted); }
 .cf-line { font-variant-numeric: tabular-nums; }
-.cf-label { color: var(--muted); }
-.cf-op { color: var(--muted); }
+.cf-label, .cf-op { color: var(--muted); }
 .cf-term { cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
 .cf-term:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cf-stat { font-weight: 650; }
@@ -1840,14 +1714,11 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .cf-result { font-weight: 800; border-bottom: 0; }
 .cf-note, .cf-sum { color: var(--muted); font-size: 0.66rem; }
 .cf-sum { margin-top: 4px; font-weight: 700; color: var(--fg); }
-.tc-planned .pg-cell { opacity: .8; }
-.tc-end { margin: 6px 0 2px; text-align: center; }
 /* Step 3's two views: Party (the cards; first, U40) and Flow (the fight, turn by turn). */
 .b3-tabs { margin: 0 0 12px; }
 .flow-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .flow-head .col-title { display: inline-flex; align-items: center; gap: 6px; }
 .flow-opp { font-size: 0.9rem; }
-.flow-note { margin: 0 0 8px; }
 /* The flow's edits: a small ▾ over a transparent select, faint until the cell or head is hovered or the ▾ focused. */
 .fl-edit { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 2px; vertical-align: middle;
   border-radius: 5px; color: var(--muted); opacity: .45; flex: none; }
@@ -1898,8 +1769,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* U40: the flow when a map run's party fell in an earlier room: one centred line. */
 .flow-skipped { margin: 24px 0; text-align: center; color: var(--muted); font-weight: 650; }
 /* u41 battle */
-/* U41: the Simulator's one-line hint above its Run box. */
-.run-hint { margin: 0; }
 /* After a Show: "Open in Simulator" beside the heading. */
 .party-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 44px 0 14px; }
 .party-box-head h2 { margin: 0; }

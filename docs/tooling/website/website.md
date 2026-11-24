@@ -338,7 +338,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Tile grids (R1 F35; R2 F24 replaces it in the Simulator with `tileColumns`, see the R2-C list): `tiles()` in `battle.ts` sets `data-n`; above 1100 px the U33 grid, narrower 5 or 6 tiles in
     3 columns, on a phone 2 columns with an odd count's first tile across both: never a lone tile on the last row. The
     two mode cards always share one row. The run line is short ("200 fights · 1,159 ms", seeds in its tooltip).
-- XP and time (U33, `ui/quest-xp.ts`): tiles after the outcome ones (R2 F24: in the same grid; `.qxp-tiles` and its link line before), then
+- XP and time (U33, `ui/quest-xp.ts`): tiles after the outcome ones (R2 F24: in the same grid), then
   a line linking Stats › Experience / Quest and map time (/ Craft). Quest: XP per hero (`questStats`, the party's size,
   no XP bonus), quest time = the simulated fight + the quest's own time at the average grade when won (else B), with
   the party's speed, and XP / min (e.g. Maexna ×3, two heroes, won in 1 turn at S: 600 XP, 15 s + 3 min 45 s = 4 min,
@@ -642,7 +642,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     names the raw-material gold.
 - List columns (U37): no Description column on the Consumables and Materials lists (the item's hover card has it,
   the filter still matches it); the data's sell pair ("15–20") is no longer shown beside a sell value, only in the
-  detail page's tooltip (`sellNode`).
+  detail page's tooltip (`sellTip`; `sellBoxes` since R2-D).
 - Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
   Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
   "Stats by grade" table (with an ascension 0/1/2 switch) shows base stats and each bonus range per grade from
@@ -737,8 +737,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     the lower of the skill's and the attacker's own, which is 0); a potion charge is used per map room, not per map;
     map grade 1 adds 0 to the enemy modifier (not −0.2); heroes have 0 evasion, so enemy hits always land; luck also
     raises map essence (× (1 + luck / 100)).
-  - CSS: the `wiki reference pages` block of `site/style.css` (U25; its `.ref-toc` and `.ref-src` rules are unused
-    since U31), then the `wiki reference v2` block at the end (side panel, Topics dropdown, `.ref-kinds` cards).
+  - CSS: the `wiki reference pages` block of `site/style.css` (U25; its `.ref-toc` and `.ref-src` rules were removed
+    in the cleanup of 2026-11-25), then the `wiki reference v2` block at the end (side panel, Topics dropdown, `.ref-kinds` cards).
 - Timeline cards (U24, `timeline.ts`): enemy pages have no Rotation section any more; each turn card of the timeline
   strip holds the skill's effect (`skillDesc`) under its name, and the whole card opens the skill page (the skill name
   stays the one real link; CSS stretches its click area over the card, `.tl-cell.tl-link`, with a hover and a focus
@@ -886,7 +886,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     crafting-chain boxes use it.
   - Sell value of a material or consumable: the game's value, round((sell[1] + sell[2]) / 2) × 2 × ascension
     (`obj.Item:getSellValue`; Minor Potion 15–20 sells for 18, 35, 70), the data's pair in the tooltip only since U37
-    (`sellNode`, `sellRange`). Equipment and maps have one value × rarityMod, no pair.
+    (`sellTip`, `sellRange`). Equipment and maps have one value × rarityMod, no pair.
   - Rarity 10 and 11 chips keep their number and the colour the game draws them in (rarity 3 / 4); the tooltip says
     so (`rarityTip`). An essence's region reason is "where a map run gives it" (map essence is its own source kind in
     `itemSources`), not "where it drops every win".
@@ -1268,7 +1268,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   tooltip and menu) and the GitHub mark. Tab rows scroll sideways with no scrollbar: a 22 px fade marks the edge
   that has more (scroll-driven animation on `--fade-l` / `--fade-r`; no fade when the row fits or without scroll
   timelines). `theme.js` scrolls the selected tab into view on load and whenever it changes (only that row, never the
-  page). The rules for the former `.topnav` / `.wiki-nav` rows are still in that block but match nothing since U35.
+  page). The `.topnav` rules are still in that block (`nav.ts` removes a leftover `.topnav`); `.wiki-nav` is gone.
   The sweep fails when one of these rows wraps.
 - Keyboard: `tabKeys` in `dom.ts` gives a tab list the WAI-ARIA tabs pattern (Left / Right / Home / End, only the
   selected tab in the Tab order; the save viewer used it until U35); the menus as in [Menus](#menus); the save menu moves with Up / Down and closes with Escape;
@@ -1280,7 +1280,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   tables that already mark numbers with `.num` (profit's best sources, levelling's prestige table, the wiki drop tables
   and the "Good against" rank). Also centred from CSS: the row numbers of the ability rows (save viewer, wiki class
   pages, battle slots) and the class-balance matrix headers; the battle stat strips, the "Good against" T1–T5 marks
-  and the class-balance cells already were. Not tables, so unchanged: the wiki loot lists (`.loot-pct`), overview
+  and the class-balance cells already were. Not tables, so unchanged: the wiki loot lists, overview
   values and tiles.
 - Site-wide consistency (R1, the live-site review; CSS block `/* r1 global */ … /* end r1 global */` at the end of
   `style.css`, tests `web/test/r1-global.test.ts`):
@@ -1395,7 +1395,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
   effect); grade stacks read "14 C" (count, then the grade letter in its colour).
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
-- Ascension is an outline, not text: silver for 1, gold for 2 (`ascClass` / `withAsc` / `ascSwatch` in
+- Ascension is an outline, not text: silver for 1, gold for 2 (`withAsc` / `ascSwatch` in
   `dom.ts`, tokens `--silver-*` / `--gold-*` in `style.css`, a masked gradient ring so it looks metallic on any surface).
   Items and maps count 0–2; heroes store `prestigeLevel` 1–3, shown as ascensions = level − 1 (`heroAsc`). Applied wherever an item-like object is
   shown: item links (inventory, counter, maps, hero gear, crafting jobs, wiki sell values), hero avatars (save viewer,

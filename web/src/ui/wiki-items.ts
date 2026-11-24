@@ -134,9 +134,6 @@ export function recipeOf(type: string, id: number): [string, number, number][] {
 
 export const isCraftable = (type: string, id: number): boolean => recipeOf(type, id).length > 0;
 
-/** default.craftGradeSpeed (standard mode): a craft takes floor(runTime × speed[grade]) × amount seconds (obj.Craft). */
-export const CRAFT_GRADE_SPEED = [1.1, 1, 0.9, 0.8, 0.75];
-
 export interface RecipeNode {
   type: string;
   id: number;
@@ -313,12 +310,6 @@ export function sellTip(type: string, id: number, asc = 0): string {
   const r = sellRange(type, id, asc);
   if (!r || r[0] === r[1]) return "";
   return `${fmt.format(r[0])}–${fmt.format(r[1])} g in the game's data; the game sells at the average, rounded (× the amount).`;
-}
-
-/** A sell value: "18 g"; for materials and consumables the data's pair is in its tooltip only (U37). */
-export function sellNode(type: string, id: number, value: number, asc = 0): HTMLElement {
-  const tip = sellTip(type, id, asc);
-  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, gold(value));
 }
 
 /**
