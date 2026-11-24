@@ -28,7 +28,7 @@ import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, toast, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast, withAsc } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
@@ -785,18 +785,10 @@ function showTab(tab: Tab, remember = true): void {
   $("#setup-grid").hidden = tab !== "party";
 }
 function initTabs(): void {
-  const tabs = [...document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")];
-  for (const b of tabs) {
-    b.addEventListener("click", () => showTab(b.dataset.tab as Tab));
-    // The arrow keys move between the tabs (the tablist pattern).
-    b.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      const next = tabs[(tabs.indexOf(b) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-      showTab(next.dataset.tab as Tab);
-      next.focus();
-      e.preventDefault();
-    });
-  }
+  for (const b of document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")) b.addEventListener("click", () => showTab(b.dataset.tab as Tab));
+  // The arrow keys, Home and End move between the tabs (the tablist pattern, dom.ts tabKeys).
+  const list = document.querySelector<HTMLElement>(".b3-tabs[role=tablist]");
+  if (list) tabKeys(list);
   showTab(storedTab(), false);
 }
 
@@ -1008,13 +1000,14 @@ function renderPlan(): void {
   }
   const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
   let at = Math.min(storedRoom(), rooms.length - 1);
-  const view = el("div", { class: "flow-room" });
+  const view = el("div", { class: "flow-room", id: "flow-room", role: "tabpanel" });
   const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
   const draw = () => {
     bar.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b, k) => {
       b.setAttribute("aria-selected", String(k === at));
       b.tabIndex = k === at ? 0 : -1;
     });
+    view.setAttribute("aria-labelledby", `room-tab-${at}`);
     const r = rooms[at];
     // U40: after the room where the party died there is no battle: one centred line, no timeline.
     if (tabs[at].skipped) {
@@ -1029,7 +1022,7 @@ function renderPlan(): void {
     help?.replaceChildren(helpTip([MAP_FLOW_NOTE, planNote({ id: r.questId, rare: r.isRare })], "the flow"));
   };
   tabs.forEach((x, k) => {
-    const b = el("button", { type: "button", role: "tab", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
+    const b = el("button", { type: "button", role: "tab", id: `room-tab-${k}`, "aria-controls": "flow-room", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
       title: `${x.label}: ${x.skipped ? "skipped, the party died before" : ["not reached in this run", "won", "lost"][x.status] ?? ""}` }, x.label,
       ...(x.status === 2 ? [el("span", { "aria-hidden": "true" }, " 💀")] : []));
     b.addEventListener("click", () => {
@@ -1037,16 +1030,10 @@ function renderPlan(): void {
       setRoom(k);
       draw();
     });
-    b.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      at = (k + (e.key === "ArrowRight" ? 1 : rooms.length - 1)) % rooms.length;
-      setRoom(at);
-      draw();
-      bar.querySelectorAll<HTMLButtonElement>("[role=tab]")[at]?.focus();
-      e.preventDefault();
-    });
     bar.append(b);
   });
+  // The arrow keys, Home and End move between the rooms (the tablist pattern, dom.ts tabKeys).
+  tabKeys(bar);
   box.append(bar, view);
   // R2 F29: the room bar scrolls sideways on a phone; edge fades say more rooms are there.
   edgeFades(bar);

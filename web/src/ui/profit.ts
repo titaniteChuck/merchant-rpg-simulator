@@ -8,7 +8,7 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
-import { $, chipToggle, el, fmt1, gold, segField, segmented, tile } from "./dom.ts";
+import { $, chipToggle, el, fmt1, gold, segField, segmented, tabKeys, tile } from "./dom.ts";
 import { isDefaultRequest, type Orb, type ProfitRequest, type ProfitResponse, type Row } from "./profit-worker.ts";
 import {
   enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, MORE_STEP, type ProfitTab, profitTabs, rankedTable, type SortState,
@@ -388,17 +388,27 @@ function render(): void {
   const tabs = profitTabs(orbsHidden());
   if (!tabs.includes(state.tab)) state.tab = "Items";
   const tabList = el("div", { role: "tablist", class: "tabs", "aria-label": "Result tables" });
+  const panel = el("div", { role: "tabpanel", class: "panel", id: "panel", "aria-labelledby": `pf-tab-${state.tab}` });
   const select = (name: ProfitTab) => {
     state.tab = name;
-    tabList.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+    tabList.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b) => {
+      const on = b.dataset.tab === name;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    panel.setAttribute("aria-labelledby", `pf-tab-${name}`);
     renderPanel();
   };
   for (const name of tabs) {
-    const b = el("button", { role: "tab", type: "button", "aria-selected": String(name === state.tab), "data-tab": name }, TAB_LABELS[name]);
+    const on = name === state.tab;
+    const b = el("button", { role: "tab", type: "button", id: `pf-tab-${name}`, "aria-selected": String(on), "aria-controls": "panel",
+      tabindex: on ? "0" : "-1", "data-tab": name }, TAB_LABELS[name]);
     b.addEventListener("click", () => select(name));
     tabList.append(b);
   }
-  $("#result").replaceChildren(summaryTiles(r), tabList, el("div", { role: "tabpanel", class: "panel", id: "panel" }));
+  // The arrow keys, Home and End move between the tables (the tablist pattern, dom.ts tabKeys).
+  tabKeys(tabList);
+  $("#result").replaceChildren(summaryTiles(r), tabList, panel);
   renderPanel();
 }
 
