@@ -55,3 +55,4 @@
 - **Update**: User scheduled the whole R1 backlog: four parallel agents (R1-A battle, R1-B1 wiki world, R1-B2 wiki reference, R1-C shared UI).
 - **Update**: E22, R1-A done; R1-B1, R1-C merging; R1-D (adopt shared helpers) queued.
 - **Update**: R1-D done (a539f2e); the R1 backlog is complete. Full browser sweep on f646849 passed (check-site, all 15 pages, 120 of 120 runs); the battle plan TURN column checked on screenshots at 1280 and 375 px.
+- **Update**: R1-E done (a6abccb): battle hero card stats kept apart, long stats shortened with a tooltip, plan enemy header shows the full name.

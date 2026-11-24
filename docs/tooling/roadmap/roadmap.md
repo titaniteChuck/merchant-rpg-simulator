@@ -86,6 +86,7 @@ Rules:
 | R1-B2 | **Review fixes, wiki items/skills/classes/reference/expansions**: F07, F11 (skills/items), F18, F25, F26, F31, F33, F39, F40 (their pages), F43, F44 (Battle page). | R1 | Done (27bda45) |
 | R1-C | **Review fixes, shared UI**: F05 grade contrast, F13 table headers, F27 one toggle style, F28 gold/time formats, F30 type labels, F32 home cards, F34 skip link, F35 orphan cards, F37 hero page AP, F38 save help, F45 save menu. | R1 | Done (6091280) |
 | R1-D | **Adopt the shared helpers** (follow-up of R1-C): wiki and battle use `gold()`, `duration()`, `itemTypeText`, `segmented()` / `chip-toggle`; one set of slot names (Chest/Bracers/Talisman vs Body/Hands/Trinket); delete the old `data-save-help` markup; plan "TURN" label overlap; map "Essence per run" icon spill; the Expansions wiki page stops re-explaining the switches. Also: Treasure Bush enemy pages say "crystals and gems" (not "crystals, stones and other special materials"); map base time uses `duration()`; drop the unused `.ref-kind-tag` style. | R1-B2, R1-C | Done (a539f2e) |
+| R1-E | **Battle page stat overlap and enemy header** (found after R1): hero card stat values never run together ("1,183 1,159"), stats of 5+ digits shortened with the full value in a tooltip; the plan's enemy column header shows the full name. | R1-A | Done (a6abccb) |
 
 ## UI lane
 
