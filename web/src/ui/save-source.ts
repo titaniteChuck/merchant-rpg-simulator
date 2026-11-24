@@ -28,8 +28,10 @@
  * save (none stored, or the stored one can't be read), and the picker then shows.
  */
 import { el } from "./dom.ts";
-import { expansionMenuSection, mountExpansionChip, type SaveAction, unmountExpansionChip } from "./expansion-menu.ts";
-import { fitMenu, menuKeys, menuSep, placeChip, saveChipButton, savePagesGroup } from "./save-menu.ts";
+import { expansionsFold, mountExpansionChip, type SaveAction, unmountExpansionChip } from "./expansion-menu.ts";
+import {
+  fitMenu, foldGroup, menuHead, menuKeys, menuSep, openedAt, placeChip, rememberSaveName, saveChipButton, savePagesGroup,
+} from "./save-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
@@ -92,10 +94,8 @@ export function saveHelp(): HTMLElement {
 }
 
 function age(ms: number): string {
-  const d = new Date(ms);
-  const sameDay = new Date().toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return sameDay ? `today ${time}` : `${d.toLocaleDateString()} ${time}`;
+  const short = openedAt(ms);
+  return new Date().toDateString() === new Date(ms).toDateString() ? `today ${short}` : short;
 }
 
 export function initSaveSource(o: SaveSourceOptions): void {
@@ -132,6 +132,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     exampleRow.hidden = loaded;
     help.hidden = loaded;
     if (!loaded) {
+      rememberSaveName(null); // the other pages' chips and the drawer say "Save" again (R2-A F10, F11)
       chip?.remove();
       chip = null;
       mountExpansionChip(noSaveActions()); // no save: the Save dropdown without one (U44)
@@ -165,29 +166,19 @@ export function initSaveSource(o: SaveSourceOptions): void {
       item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
       ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
       item("🗑 Forget", "Remove the save from this browser", forget));
-    const extras = el("div", { class: "save-menu-extras save-menu-group", role: "group" });
+    const extras = el("div", { class: "save-menu-extras" });
     const extrasSep = menuSep();
+    // R2-A F09: the head on one line ("PlayerData.txt · 11:45 PM"), the rest in its tooltip; the expansions folded.
     menu.append(
-      el("p", { class: "muted small save-menu-head" }, el("strong", {}, name), el("br"),
-        isExample ? `an anonymised real save · opened ${age(savedAt)}` : `opened ${age(savedAt)} · kept in this browser only`),
-      fileGroup, extrasSep, extras, menuSep(), savePagesGroup(close), menuSep(), expansionMenuSection());
+      menuHead(name, savedAt, isExample ? `${name}: an anonymised real save, opened ${age(savedAt)}` : `${name}: opened ${age(savedAt)}, kept in this browser only`),
+      fileGroup, extrasSep, extras, menuSep(), savePagesGroup(close), menuSep(), expansionsFold(menu));
     /** The page's own entries (folded under their title), rebuilt on every opening: they follow what the page shows. */
     const fillExtras = () => {
       const x = o.menuExtras?.();
       const has = Boolean(x && x.items.length);
       extrasSep.hidden = !has;
       if (!x || !has) return void extras.replaceChildren();
-      const list = el("div", { class: "save-menu-sub", id: "save-menu-extras-list", hidden: "" }, ...x.items.map((e) => item(e.label, e.hint, e.run)));
-      const fold = el("button", { type: "button", role: "menuitem", class: "save-menu-fold", "aria-expanded": "false", "aria-controls": list.id },
-        el("span", {}, x.title), el("span", { class: "fold-mark", "aria-hidden": "true" }, "▸"));
-      fold.addEventListener("click", (e) => {
-        e.stopPropagation();
-        list.hidden = !list.hidden;
-        fold.setAttribute("aria-expanded", String(!list.hidden));
-        fitMenu(menu);
-      });
-      extras.replaceChildren(fold, list);
-      extras.setAttribute("aria-label", x.title);
+      extras.replaceChildren(foldGroup(x.title, menu, ...x.items.map((e) => item(e.label, e.hint, e.run))));
     };
     button.addEventListener("click", () => {
       if (menu.hidden) fillExtras();
@@ -211,6 +202,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
   const loaded = async (name: string, savedAt: number) => {
     o.status.replaceChildren();
     setLoaded(true);
+    rememberSaveName({ name, savedAt }); // for the plain chips and the drawer of every page (R2-A F10, F11)
     await showChip(name, savedAt);
   };
 

@@ -12,15 +12,14 @@ const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const src = (f: string) => read(`web/src/ui/${f}`);
 
-test("Save: its pages live in the Save dropdown, not in the main menu nor the drawer", () => {
+test("Save: its pages live in the Save dropdown, not in the main menu (R2-A: the drawer has them again)", () => {
   const save = NAV.find((s) => s.id === "save")!;
   assert.equal(save.inSaveMenu, true);
   assert.equal(NAV.filter((s) => s.inSaveMenu).length, 1);
   const nav = src("nav.ts");
-  // Both builders skip it.
-  assert.equal(nav.match(/if \(s\.inSaveMenu\) continue;/g)?.length, 2);
+  // The main menu skips it; the drawer keeps it as a group (R2-A F08, web/test/nav-r2a.test.ts).
+  assert.equal(nav.match(/if \(s\.inSaveMenu\) continue;/g)?.length, 1);
   assert.match(nav, /function buildMenuBar[\s\S]*?if \(s\.inSaveMenu\) continue;/);
-  assert.match(nav, /function buildDrawer[\s\S]*?if \(s\.inSaveMenu\) continue;/);
   // The Save pages group is the save viewer's sections, from the same list.
   assert.deepEqual(savePages().map((i) => i.href), itemsOf(save).map((i) => i.href));
   assert.deepEqual(savePages().map((i) => i.label), ["Overview", "Heroes", "Inventory", "Maps", "Crafters"]);
@@ -35,14 +34,14 @@ test("Save: one dropdown on every page, in its three forms, each with the Save p
   assert.match(menu, /if \(!bar \|\| bar\.querySelector\("\.save-chip"\)\) return;/);
   // A save loaded: the file's actions, the page's exports, the Save pages, then the expansions, in that order.
   const source = src("save-source.ts");
-  assert.match(source, /fileGroup, extrasSep, extras, menuSep\(\), savePagesGroup\(close\), menuSep\(\), expansionMenuSection\(\)\);/);
+  assert.match(source, /fileGroup, extrasSep, extras, menuSep\(\), savePagesGroup\(close\), menuSep\(\), expansionsFold\(menu\)\);/);
   assert.match(source, /if \(!placeChip\(chip\)\)/);
   // No save: open your save / the example save as its file actions, then the Save pages and the expansions.
   assert.match(source, /mountExpansionChip\(noSaveActions\(\)\)/);
   assert.match(source, /"📂 Open your save"[\s\S]*?"🧪 Try the example save"/);
   const xp = src("expansion-menu.ts");
-  assert.match(xp, /savePagesGroup\(close\), menuSep\(\), expansionMenuSection\(\)\);/);
-  assert.match(xp, /saveChipButton\("Save"/);
+  assert.match(xp, /savePagesGroup\(close\), menuSep\(\), expansionsFold\(menu\)\);/);
+  assert.match(xp, /saveChipButton\(kept\?\.name \?\? "Save"/);
   assert.match(xp, /placeChip\(chip\);/);
   // nav.js bundles save-menu.ts: it must not pull a page's modules (their state would be duplicated).
   for (const m of menu.matchAll(/from "\.\/([\w-]+)\.ts"/g)) assert.equal(m[1], "nav-data", m[0]);

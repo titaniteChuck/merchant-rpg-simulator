@@ -31,7 +31,25 @@ export const fmt = localFormat({ maximumFractionDigits: 0 });
 export const fmt1 = localFormat({ maximumFractionDigits: 1, minimumFractionDigits: 1 });
 /** Short form for a tight spot: "12k", "1.2M" (give the full `fmt` value in a tooltip beside it). */
 export const fmtCompact = localFormat({ notation: "compact", maximumFractionDigits: 1 });
-export const pct = (x: number) => `${fmt1.format(x * 100)}%`;
+const fmt2 = localFormat({ maximumFractionDigits: 2, minimumFractionDigits: 2 });
+/**
+ * THE percentage (R2 F56: one formatter site-wide), from a 0..1 share: "42.5%" (one decimal by default), `digits` 0
+ * for a whole "90%", 2 for "12.34%". No space before "%", digits in the visitor's language. "—" when not a number.
+ */
+export function pct(x: number, digits: 0 | 1 | 2 = 1): string {
+  if (typeof x !== "number" || !Number.isFinite(x)) return "—";
+  return `${(digits === 0 ? fmt : digits === 2 ? fmt2 : fmt1).format(x * 100)}%`;
+}
+
+/**
+ * THE level abbreviation (R2 F56): "Lv" everywhere, in headers ("Lv"), labels and text ("Lv 49", lv(49)); not
+ * "Lvl", "LV" or "level 49". `n` undefined or null: "Lv ?".
+ */
+export const LV = "Lv";
+export const lv = (n: number | string | null | undefined): string => `${LV} ${n ?? "?"}`;
+
+/** Sentence case for a label (R2 F56): "time budget (s)" → "Time budget (s)"; the rest of the label is kept as written. */
+export const sentenceCase = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** THE gold amount: "171,946 g" (whole gold; `decimals` 1 for a per-unit cost: "12.5 g"). "—" when not a number. */
 export function gold(n: number | null | undefined, decimals: 0 | 1 = 0): string {

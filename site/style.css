@@ -1252,10 +1252,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .save-menu .xp-about { padding: 7px 10px; border-radius: 8px; font-weight: 600; text-decoration: none; }
 .save-menu .xp-about:hover, .save-menu .xp-about:focus-visible { background: var(--card-2); }
 .topbar .save-chip + .theme-btn { margin-left: 0; }
-.topbar .xp-chip-btn { gap: 6px; }
-.topbar .xp-chip-btn .xp-badge { margin-left: 0; gap: 4px; }
-.topbar .xp-chip-btn .xp-ico { color: var(--banner-fg); font-size: 1em; }
-.topbar .xp-chip-icons.xp-none .xp-ico { opacity: 0.55; }
 /* Wiki: the Expansions page and the hidden-content pages */
 .xp-page h1 .xp-badge, .wiki-section h2 .xp-badge { margin-left: 0; }
 .xp-section .xp-lists { display: flex; flex-direction: column; gap: 6px; }
@@ -1987,3 +1983,69 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
   #party .farm-slot select { flex: 1 1 auto; }
 }
 /* end farming f2 */
+/* r2-a */
+/* Review R2 batch A (home, menus, footer, formats). */
+
+/* F58: THE sideways row of chips or links, for every page: one line, no scrollbar, a fade at the edge that has more
+   (the U20 scroll-driven --fade-l / --fade-r, "phone navs" block; no fade when the row fits or without scroll
+   timelines). Children keep their width; focus rings drawn inside. nav.ts revealCurrent keeps the current link in view. */
+.scroll-row {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  animation: row-fade linear both; animation-timeline: scroll(self inline);
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+.scroll-row > * { flex: none; white-space: nowrap; }
+.scroll-row :focus-visible { outline-offset: -2px; }
+/* The second row is a scroll row: the separators keep their height. */
+.subnav.scroll-row { padding: 2px 0; }
+
+/* F08: the Save sections' row shows on phones too (one sideways line under the top bar, the current one marked); it
+   stays hidden until a save is loaded (the rule with data-save-loaded wins). */
+@media (max-width: 760px) {
+  .subnav[data-section="save"] { display: flex; margin: -12px 0 16px; }
+}
+
+/* F08 / F11: the drawer's Save group, labelled with the kept save's file name (cut with an ellipsis). */
+.drawer-save .drawer-top { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 28px; }
+
+/* F09: the Save dropdown's head on one line (the rest in its tooltip). */
+.save-menu .save-menu-head { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+
+/* F01 / F02: home tools as compact rows (icon, name, one short line), the full description in the link's tooltip. */
+ul.home-rows { gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); margin: 24px 0 0; }
+ul.home-rows > li { flex-direction: row; align-items: center; gap: 12px; padding: 12px 14px; }
+ul.home-rows > li::before { inset: 0 auto 0 0; width: 3px; height: auto; }
+ul.home-rows .icon { flex: none; width: 36px; height: 36px; margin: 0; border-radius: 10px; font-size: 1.1rem; }
+ul.home-rows .home-row-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+ul.home-rows h3 { margin: 0; font-size: 1rem; }
+ul.home-rows > li p { margin: 0; font-size: 0.85rem; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-solver { --c: #f97316; }
+
+/* F04: the lead on one line on a phone. */
+@media (max-width: 600px) {
+  .home-head .lead { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* F05: with a save kept in this browser (html.has-save, theme.js), one line of quick links under the lead. */
+.home-quick { display: none; }
+:root.has-save .home-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.home-quick-save { font-weight: 650; margin-right: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-quick a { text-decoration: none; font-size: 0.88rem; font-weight: 600; color: var(--fg); padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); }
+.home-quick a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* F03: the older tools in a <details>, closed on phones (home.ts); its title is the summary, with a "?" for the note. */
+details.tools-other { margin-top: 32px; }
+details.tools-other > summary { list-style: none; cursor: pointer; width: fit-content; }
+details.tools-other > summary::-webkit-details-marker { display: none; }
+details.tools-other > summary h2 { margin: 0 0 12px; display: inline-flex; align-items: center; gap: 8px; }
+details.tools-other > summary h2::before { content: "▸"; font-size: 0.8em; transition: transform .15s; }
+details.tools-other[open] > summary h2::before { transform: rotate(90deg); }
+details.tools-other > summary .help-q { color: var(--muted); }
+
+/* F57: the footer on one line; its small print in the "?". */
+footer .footer-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
+footer .footer-line a { color: inherit; }
+/* end r2-a */

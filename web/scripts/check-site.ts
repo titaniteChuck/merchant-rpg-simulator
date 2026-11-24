@@ -6,7 +6,9 @@
  * and each dropdown opens on screen and closes with Escape; at 760 px and less only the burger shows, and it opens the
  * left drawer (on screen, current page marked, focus inside) that Escape closes. At every width the top-bar Save
  * dropdown opens and closes with Escape, and every dropdown keeps 8 px from both window edges; on the Save pages (no
- * menu or drawer entry since U44) the Save button is marked current (aria-current) and counts as the current marker.
+ * menu entry since U44) the Save button is marked current (aria-current) and counts as the current marker. R2-A: the
+ * widths are the CSS breakpoints (matchMedia on the viewport, not clientWidth, which a scrollbar narrows), and the
+ * Save dropdown must come first of the top bar's right-side controls.
  *
  *   cd web && npm run site && node scripts/check-site.ts            # all pages, all variants
  *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt --widths 414
@@ -100,12 +102,15 @@ const PROBE = `(() => {
   addEventListener("unhandledrejection", (e) => errors.push("unhandled rejection: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
   window.__check = () => {
     const d = document.documentElement, cw = d.clientWidth;
+    // R2 F12: the breakpoints as the CSS sees them (the viewport, scrollbar included), not clientWidth (753 px at a
+    // 768 px viewport with a scrollbar, which read as a phone).
+    const phone = matchMedia("(max-width: 760px)").matches, narrow = matchMedia("(max-width: 600px)").matches;
     const scrolls = (el) => { for (let p = el.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === "auto" || o === "scroll" || o === "hidden" || o === "clip") return true; } return false; };
     const wide = d.scrollWidth > cw + 1 ? [...document.querySelectorAll("body *")]
       .filter((el) => el.getBoundingClientRect().right > cw + 1 && !scrolls(el))
       .slice(0, 5).map((el) => el.tagName.toLowerCase() + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\\s+/).join(".") : "") + " → " + Math.round(el.getBoundingClientRect().right) + "px") : [];
     // Phone (U20): every nav row is one line: no visible child starts below another one's bottom.
-    const wrapped = cw > 600 ? [] : [...document.querySelectorAll(${JSON.stringify(ONE_LINE_ROWS)})].filter((row) => row.offsetParent).flatMap((row) => {
+    const wrapped = !narrow ? [] : [...document.querySelectorAll(${JSON.stringify(ONE_LINE_ROWS)})].filter((row) => row.offsetParent).flatMap((row) => {
       const boxes = [...row.children].filter((k) => k.offsetParent && getComputedStyle(k).position !== "absolute").map((k) => k.getBoundingClientRect());
       const lines = boxes.some((a) => boxes.some((b) => b.top >= a.bottom - 1)) ? 2 : 1;
       return lines > 1 ? [row.className.trim().split(/\\s+/).join(".") + " (" + Math.round(row.getBoundingClientRect().height) + "px high)"] : [];
@@ -124,6 +129,9 @@ const PROBE = `(() => {
     const savePage = document.documentElement.dataset.navSection === "save";
     const saveCurrent = () => !!document.querySelector('.topbar .save-chip-btn[aria-current], .topbar .save-menu [aria-current="page"]');
     if (savePage && !(saveBtn && saveBtn.hasAttribute("aria-current"))) nav.push("Save page: the top-bar Save button is not marked current");
+    // R2 F07: one top-bar order on every page: the Save dropdown, then the theme switch, the language and GitHub.
+    const right = [...document.querySelectorAll(".topbar > .save-chip, .topbar > .theme-btn, .topbar > .lang-pick, .topbar > .gh")];
+    if (right.length && !right[0].classList.contains("save-chip")) nav.push("top bar: the Save dropdown is not the first right-side control");
     if (!saveBtn) nav.push("no Save dropdown in the top bar");
     else {
       saveBtn.click();
@@ -134,7 +142,7 @@ const PROBE = `(() => {
       if (saveBtn.getAttribute("aria-expanded") !== "false" || shown(menu)) nav.push("the Save dropdown does not close on Escape");
     }
     if (!burger || !main || !drawer) nav.push("menus not built (js/nav.js)");
-    else if (cw > 760) {
+    else if (!phone) {
       if (!shown(main)) nav.push("main menu hidden");
       if (shown(burger)) nav.push("burger shown");
       if (!main.querySelector('[aria-current="page"], .is-current') && !saveCurrent()) nav.push("no current section in the main menu");

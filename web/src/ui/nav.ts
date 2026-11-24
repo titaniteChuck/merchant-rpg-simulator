@@ -9,10 +9,12 @@
  * - Phone (760 px and less): a burger at the left of the top bar opens a left drawer (a modal <dialog>: focus kept
  *   inside, Escape, a tap on the backdrop or on a link closes it) with every section and its sub-pages as nested lists;
  *   the current section is unfolded.
- * - Save (U44): no main-menu entry and no drawer section. The save viewer's pages are a group of the ONE top-bar Save
- *   dropdown (save-menu.ts), with the save's own actions; on phones too (the chip stays in the top bar). This module
- *   puts a plain Save dropdown (the viewer's pages and a link to open a save) in the top bar of every page; a page that
- *   handles the save (save-source.ts, expansion-menu.ts) replaces it with its full one.
+ * - Save (U44): no main-menu entry. The save viewer's pages are a group of the ONE top-bar Save dropdown
+ *   (save-menu.ts), with the save's own actions; on phones too (the chip stays in the top bar). This module puts a
+ *   plain Save dropdown (the viewer's pages and a link to open a save) in the top bar of every page; a page that
+ *   handles the save (save-source.ts, expansion-menu.ts) replaces it with its full one. R2-A (F08, F11): the drawer
+ *   has a Save group again, labelled with the kept save's file name, and the Save second row shows on phones too.
+ * - R2-A: the footer as one line (mountFooter, F57) and the home page's parts (home.ts mountHome, F03, F05).
  *
  * The current page and sub-page (hash routes: wiki #/…, save #heroes, #hero=<id> …) are marked aria-current
  * everywhere, on load and at every hashchange. The rest of the right side of the top bar (theme, language, GitHub) is
@@ -24,7 +26,9 @@ import { mountScrollMemory } from "./scroll-memory.ts";
 
 export { currentNav, itemsOf, NAV, pageOf, type NavGroup, type NavItem, type NavSection } from "./nav-data.ts";
 import { currentNav, NAV, type NavItem, type NavSection } from "./nav-data.ts";
-import { keepInView, markSaveChip, mountNavSaveChip } from "./save-menu.ts";
+import { keepInView, keptSave, markSaveChip, mountNavSaveChip, SAVE_NAME_EVENT } from "./save-menu.ts";
+import { mountHome } from "./home.ts";
+import { helpTip } from "./wiki-help.ts";
 
 // ---------------------------------------------------------------- DOM
 const PHONE = "(max-width: 760px)";
@@ -201,9 +205,25 @@ function wireMenuBar(nav: HTMLElement): void {
   });
 }
 
-// ---------------------------------------------------------------- second row (desktop)
+// ---------------------------------------------------------------- second row (desktop; the Save one on phones too)
+/**
+ * Scrolls a sideways row (.scroll-row) so its current link is in view, clear of the edge fades; only that row moves,
+ * never the page. A row that fits is left alone.
+ */
+export function revealCurrent(row: HTMLElement): void {
+  const cur = row.querySelector<HTMLElement>('[aria-current="page"]');
+  if (!cur || row.scrollWidth <= row.clientWidth + 1) return;
+  const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+  if (c.left >= r.left + 24 && c.right <= r.right - 24) return;
+  row.scrollLeft += c.left - r.left - (r.width - c.width) / 2;
+}
+
+/**
+ * The second row. R2-A F08 / F58: a shared sideways row (.scroll-row, edge fades); the Save one also shows on phones,
+ * one line under the top bar, its current section marked: the section's title there (the Overview has no heading).
+ */
 function buildSubnav(s: NavSection): HTMLElement {
-  const nav = h("nav", { class: "subnav", "aria-label": `${s.label} sections`, "data-section": s.id });
+  const nav = h("nav", { class: "subnav scroll-row", "aria-label": `${s.label} sections`, "data-section": s.id });
   const groups = s.groups ?? [];
   groups.forEach((g, k) => {
     if (k > 0) nav.append(h("span", { class: "subnav-sep", "aria-hidden": "true" }));
@@ -213,16 +233,27 @@ function buildSubnav(s: NavSection): HTMLElement {
 }
 
 // ---------------------------------------------------------------- drawer (phone)
+/** The drawer's Save group label: "📜 PlayerData.txt" when a save is kept in this browser, else "📜 Save" (F11). */
+export const saveLabel = (fallback: string, kept = keptSave()): string => `📜 ${kept?.name ?? fallback}`;
+
+/** Keeps the drawer's Save label on the kept save (a save loaded or forgotten on this page). */
+function syncSaveLabel(): void {
+  const top = document.querySelector<HTMLAnchorElement>('.drawer-sec[data-section="save"] .drawer-top');
+  const s = NAV.find((x) => x.inSaveMenu);
+  if (top && s) top.textContent = saveLabel(s.label);
+}
+
 function buildDrawer(brand: HTMLAnchorElement | null): { dialog: HTMLDialogElement; closeBtn: HTMLButtonElement } {
   const closeBtn = h("button", { type: "button", class: "drawer-close", "aria-label": "Close the menu", title: "Close the menu" }, closeIcon());
   const head = h("div", { class: "drawer-head" },
     h("a", { class: "brand drawer-brand", href: brand?.getAttribute("href") ?? "./" }, brand?.textContent ?? "Merchant RPG Simulator"), closeBtn);
   const list = h("ul", { class: "drawer-list" });
   for (const s of NAV) {
-    if (s.inSaveMenu) continue; // in the top-bar Save dropdown, which phones keep too (U44)
-    const li = h("li", { class: "drawer-sec", "data-section": s.id });
+    // R2-A F08 / F11: the Save pages are a drawer group too (the top-bar Save dropdown keeps them as well), labelled
+    // with the kept save's file name (saveLabel, kept in step by syncSaveLabel).
+    const li = h("li", { class: `drawer-sec${s.inSaveMenu ? " drawer-save" : ""}`, "data-section": s.id });
     const row = h("div", { class: "drawer-row" });
-    if (s.href) row.append(link({ label: s.label, href: s.href, title: s.title }, "drawer-top"));
+    if (s.href) row.append(link({ label: s.inSaveMenu ? saveLabel(s.label) : s.label, href: s.href, title: s.title }, "drawer-top"));
     if (s.groups) {
       const sub = h("div", { class: "drawer-sub", id: `drawer-${s.id}`, hidden: "" }, ...groupsList(s, "drawer"));
       const btn = h("button", { type: "button", class: s.href ? "drawer-caret" : "drawer-top drawer-caret drawer-only", "aria-expanded": "false", "aria-controls": sub.id });
@@ -326,7 +357,35 @@ export function mark(): void {
     else a.removeAttribute("aria-current");
   });
   document.querySelectorAll<HTMLElement>(".menu-item, .drawer-sec").forEach((x) => x.classList.toggle("is-current", x.dataset.section === section));
+  document.querySelectorAll<HTMLElement>(".subnav").forEach(revealCurrent);
   markSaveChip(); // the Save pages' section is the top-bar Save button (no menu entry since U44)
+}
+
+// ---------------------------------------------------------------- footer (R2-A F57)
+/** The footer's one line (it fits a 375 px phone); the rest goes in its "?". */
+export const FOOTER_LINE = "Fan project · not affiliated";
+const NOT_AFFILIATED = "Not affiliated with the developers of Merchant.";
+
+/**
+ * The footer's "?": who the site is not affiliated with, then the page's own small print (its text less the former
+ * "Fan project, not affiliated …" sentence).
+ */
+export function footerNote(text: string): string {
+  const own = text.replace(/\s+/g, " ").replace(/Fan project[,·]? not affiliated with the developers of Merchant\.?/i, "").replace(/\s+/g, " ").trim();
+  return own ? `${NOT_AFFILIATED} ${own}` : NOT_AFFILIATED;
+}
+
+/**
+ * Every page's footer as ONE line: "Fan project · not affiliated · Source ?", the page's own small print (how fights
+ * are computed, no game files hosted …) in the "?" (the footer's `data-note`, else its text).
+ */
+export function mountFooter(): void {
+  const footer = document.querySelector<HTMLElement>("body > footer");
+  if (!footer || footer.querySelector(".footer-line")) return;
+  const note = footerNote(footer.dataset.note ?? footer.textContent ?? "");
+  const gh = document.querySelector<HTMLAnchorElement>(".topbar .gh")?.getAttribute("href");
+  footer.replaceChildren(h("p", { class: "footer-line" }, FOOTER_LINE,
+    ...(gh ? [" · ", h("a", { href: gh }, "Source")] : []), " ", helpTip(note, "this site")));
 }
 
 /** The id the skip link jumps to: the page's <main> (given this id when it has none). */
@@ -377,6 +436,9 @@ export function mountNav(): void {
   if (cur?.href && cur.groups) bar.after(buildSubnav(cur));
 
   mountNavSaveChip(); // the plain Save dropdown, until (or unless) the page puts its own (U44)
+  addEventListener(SAVE_NAME_EVENT, syncSaveLabel); // a save loaded or forgotten here: the drawer's Save label follows
+  mountFooter();
+  mountHome();
 
   mark();
   addEventListener("hashchange", mark);

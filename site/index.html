@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Merchant RPG Simulator</title>
-  <meta name="description" content="Unofficial balancing, profit and battle simulation tools for the game Merchant.">
+  <meta name="description" content="Unofficial tools for the game Merchant: save viewer, battle simulator and solver, wiki.">
   <script src="theme.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -15,62 +15,93 @@
     <a class="brand" href="./">Merchant RPG Simulator</a>
     <a class="gh" href="https://github.com/titaniteChuck/merchant-rpg-simulator" title="Source code on GitHub"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
   </div>
-  <header>
+  <header class="home-head">
     <h1>Merchant RPG Simulator</h1>
-    <p class="lead">Unofficial balancing tools for <em>Merchant</em>: crafting profit, essence sources, save viewer and battle simulation.</p>
+    <p class="lead">Unofficial tools for <em>Merchant</em>: save viewer, battle simulator and solver, wiki.</p>
+    <!-- R2-A F05: with a save kept in this browser (html.has-save), one line of quick links; home.ts puts the file name. -->
+    <nav class="home-quick" aria-label="Your save">
+      <span class="home-quick-save">📜 <span class="home-save-name">Your save</span></span>
+      <a href="save.html#heroes">Heroes</a>
+      <a href="save.html#inventory">Inventory</a>
+      <a href="battle.html">Simulator</a>
+      <a href="solver.html">Solver</a>
+    </nav>
   </header>
 
   <main>
-    <section>
-      <h2>Tools</h2>
-      <ul class="cards">
+    <!-- R2-A F01, F02: compact rows (icon, name, one short line), the full description in the link's tooltip. -->
+    <section class="home-tools" aria-labelledby="tools-h">
+      <h2 id="tools-h" class="visually-hidden">Tools</h2>
+      <ul class="cards home-rows">
         <li class="card-save">
           <span class="icon" aria-hidden="true">📜</span>
-          <h3><a href="save.html">Save viewer</a></h3>
-          <p>Open your save to see your heroes with their real combat stats, their gear, your inventory value, maps and crafters. Nothing is uploaded.</p>
+          <div class="home-row-text">
+            <h3><a href="save.html" title="Open your save to see your heroes with their real combat stats, their gear, your inventory value, maps and crafters. Nothing is uploaded.">Save viewer</a></h3>
+            <p>Your heroes, gear, inventory and maps</p>
+          </div>
         </li>
         <li class="card-battle">
           <span class="icon" aria-hidden="true">⚔️</span>
-          <h3><a href="battle.html">Battle simulator</a></h3>
-          <p>Put your heroes in a party and simulate hundreds of quest fights or map runs with the game's combat rules.</p>
+          <div class="home-row-text">
+            <h3><a href="battle.html" title="Put your heroes in a party and simulate hundreds of quest fights or map runs with the game's combat rules.">Battle simulator</a></h3>
+            <p>Hundreds of fights with your party</p>
+          </div>
+        </li>
+        <li class="card-solver">
+          <span class="icon" aria-hidden="true">🔎</span>
+          <div class="home-row-text">
+            <h3><a href="solver.html" title="Search the parties, skills and rotations that win a quest fight or a map run with your heroes (a spoiler).">Battle solver</a></h3>
+            <p>The parties that win a fight</p>
+          </div>
         </li>
         <li class="card-wiki">
           <span class="icon" aria-hidden="true">📖</span>
-          <h3><a href="wiki.html">Wiki</a></h3>
-          <p>Bare stats of everything: skills, passives, equipment, consumables, materials, maps and hero classes, all cross-linked.</p>
+          <div class="home-row-text">
+            <h3><a href="wiki.html" title="Bare stats of everything: skills, passives, equipment, consumables, materials, maps and hero classes, all cross-linked.">Wiki</a></h3>
+            <p>Every item, map, enemy, class and skill</p>
+          </div>
         </li>
       </ul>
     </section>
-    <section class="tools-other">
-      <h2>Other tools</h2>
-      <p class="muted small">Older tools, kept as they are: no longer updated with the rest of the site.</p>
-      <ul class="cards cards-other">
+    <!-- R2-A F03: closed on phones, open on wider screens (home.ts); its explanation in the "?" of its title. -->
+    <details class="tools-other">
+      <summary><h2>Older tools (4)</h2></summary>
+      <ul class="cards cards-other home-rows">
         <li class="card-profit">
           <span class="icon" aria-hidden="true">🪙</span>
-          <h3><a href="profit.html">Profit calculator</a></h3>
-          <p>Rank items by sell value against full production cost: quests, maps, crafting, ascension and enchanting.</p>
+          <div class="home-row-text">
+            <h3><a href="profit.html" title="Rank items by sell value against full production cost: quests, maps, crafting, ascension and enchanting.">Profit calculator</a></h3>
+            <p>What to craft and sell</p>
+          </div>
         </li>
         <li class="card-farming">
           <span class="icon" aria-hidden="true">🌾</span>
-          <h3><a href="farming.html">Farming planner</a></h3>
-          <p>Where should your heroes spend their time? Quests and map runs simulated with your party, ranked by gold and essence per hour.</p>
+          <div class="home-row-text">
+            <h3><a href="farming.html" title="Where should your heroes spend their time? Quests and map runs simulated with your party, ranked by gold and essence per hour.">Farming planner</a></h3>
+            <p>Gold and essence per hour</p>
+          </div>
         </li>
         <li class="card-levelling">
           <span class="icon" aria-hidden="true">📈</span>
-          <h3><a href="levelling.html">Levelling</a></h3>
-          <p>Hours to max level on the best XP quest at every level, and what the next ascension gives against gold and the hours to level back up.</p>
+          <div class="home-row-text">
+            <h3><a href="levelling.html" title="Hours to max level on the best XP quest at every level, and what the next ascension gives against gold and the hours to level back up.">Levelling</a></h3>
+            <p>Hours to max level</p>
+          </div>
         </li>
         <li class="card-balance">
           <span class="icon" aria-hidden="true">⚖️</span>
-          <h3><a href="class-balance.html">Class balance</a></h3>
-          <p>Every class on equal gear against the same quests: win rates, turns and how far each gets, class by class.</p>
+          <div class="home-row-text">
+            <h3><a href="class-balance.html" title="Every class on equal gear against the same quests: win rates, turns and how far each gets, class by class.">Class balance</a></h3>
+            <p>Every class on equal gear</p>
+          </div>
         </li>
       </ul>
-    </section>
+    </details>
   </main>
 
-  <footer>
-    <p>Fan project, not affiliated with the developers of Merchant. No game files are hosted here.</p>
+  <!-- R2-A F57: one line; js/nav.js adds the source link and puts data-note in a "?". -->
+  <footer data-note="No game files are hosted here.">
+    <p>Fan project, not affiliated with the developers of Merchant.</p>
   </footer>
 </body>
 </html>

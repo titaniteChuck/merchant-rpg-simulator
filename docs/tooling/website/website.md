@@ -2,7 +2,7 @@
 type: Tool
 title: Website
 description: GitHub Pages site that exposes the tools in the browser, and the public-repo rules behind it.
-timestamp: 2026-11-24
+timestamp: 2026-11-25
 ---
 
 # Website
@@ -1132,8 +1132,8 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   Battle, Profit, Farming, Levelling and Class balance start right under the top bar; each keeps a visually-hidden h1
   (`.visually-hidden` in the "battle v3" block of `style.css`) for screen readers, the current menu entry
   (`aria-current="page"`) and its document `<title>`.
-- Top bar on every page: the site's menus (below) and, on the right, the ☀ / ☾ switch, the language picker, the save
-  or expansions chip and the GitHub link. Favicon: `site/favicon.svg` (generic coin on the site gradient, no game
+- Top bar on every page: the site's menus (below) and, on the right, in this order on every page (R2-A), the Save
+  dropdown ("📜 <file name or Save> ▾"), the ☀ / ☾ switch, the language picker and the GitHub link. Favicon: `site/favicon.svg` (generic coin on the site gradient, no game
   art), linked from every page. Up to U34 the top bar held seven static links (U13 long-name titles, U18 Balance,
   U20 one sideways-scrolling line on a phone); U35 replaced them with the menus.
 - Phone rows (U20, 600 px and less; block "phone navs + example save" at the end of `style.css`): the top bar and the
@@ -1193,7 +1193,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   - Card grids: the save overview cards and the wiki's fact cards (`.facts`) wrap as flex rows whose cards grow, so
     a last card alone fills its row instead of sitting alone in a column.
   - Home: no "Available" badge on the cards; Save viewer, Battle simulator, Wiki (the menu's order), then "Other tools"
-    (Profit, Farming, Levelling, Class balance: frozen) as smaller, quieter cards.
+    (Profit, Farming, Levelling, Class balance: frozen) as smaller, quieter cards. R2-A reworked it (below).
   - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows and Steam Deck
     paths, slot file names) under the drop zone of every page that uses `initSaveSource`, hidden once a save is
     loaded. R1-D: the pages' own HTML helps and the `data-save-help` marker are gone.
@@ -1201,10 +1201,35 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     Forget), the page's entries folded under their title ("Export (CSV) ▸" in the save viewer), Save pages, then
     Expansions (see [Menus](#menus)). The menu is never taller than the window: `fitMenu` (`save-menu.ts`) sets its
     `max-height` to the room under it and it scrolls inside.
+- Mobile review R2, batch A (R2-A: Home, menus, footer, formats; [review](../roadmap/review-r2.md); CSS block
+  `/* r2-a */ … /* end r2-a */` at the end of `style.css`; tests `web/test/nav-r2a.test.ts`):
+  - Home (F01–F05): the tools are compact rows (icon tile 36 px, name, one short line; the full description is the
+    link's tooltip), in menu order with the Solver added: Save viewer, Battle simulator, Battle solver, Wiki. No
+    visible "Tools" heading (visually hidden). The lead names the current tools ("save viewer, battle simulator and
+    solver, wiki") and is one line at 600 px and less. "Older tools (4)" is a `<details>` (`site/index.html`), closed
+    on phones (760 px and less) and opened on wider screens by `web/src/ui/home.ts` (`mountHome`, run by `nav.ts`; the
+    home page has no script of its own); its former sentence is the "?" of its title (`helpTip`). With a save kept in
+    the browser (`html.has-save`), one line of quick links under the lead: "📜 <file name>" then Heroes, Inventory,
+    Simulator, Solver (static links, shown by CSS; `home.ts` puts the name).
+  - Footer (F57): every page's footer is one line, "Fan project · not affiliated · Source ?" (`mountFooter` in
+    `nav.ts`, `FOOTER_LINE`): "Source" links to the GitHub repo, and the "?" holds "Not affiliated with the developers
+    of Merchant." plus the page's own small print (its `data-note`, else its former text, `footerNote`). The pages'
+    HTML keeps its footer text as the fallback without script.
+  - Formats (F56): `pct(x, digits = 1)` in `dom.ts` is THE percentage ("42.5%", `pct(x, 0)` "90%", no space before
+    "%", "—" when not a number); `LV` / `lv(n)` THE level abbreviation ("Lv", "Lv 49"; not "Lvl", "LV" or
+    "level 49"); `sentenceCase(label)` for labels written lower case ("Time budget (s)"). Applied in the shared
+    helpers and the menus; the Battle, Solver, Wiki, Save viewer and frozen pages adopt them in their own batches.
+  - Sideways rows (F58): `.scroll-row` is THE row of chips or links that scrolls sideways: one line, no scrollbar, a
+    fade at the edge that has more (the U20 scroll-driven fade), children at their width, focus rings inside. The
+    second row (`.subnav`) uses it (`nav.ts` `revealCurrent` keeps the current link in view); the other rows (room
+    bar, filter chips, wiki sections) adopt it in their pages' batches.
 - Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
   less it also checks that the top bar and the tab rows are one line high (U20). Menus (U35): above 760 px the main
   menu shows with a current entry and every dropdown opens on screen and closes with Escape; at 760 px and less only
-  the burger shows, it opens the drawer (on screen, current page marked, focus inside) and Escape closes it. Without
+  the burger shows, it opens the drawer (on screen, current page marked, focus inside) and Escape closes it. R2-A
+  (F12): the widths are read as the CSS reads them, `matchMedia("(max-width: 760px)")` and `(max-width: 600px)` (a
+  768 px window with a scrollbar has a 753 px `clientWidth`, which read as a phone); the Save dropdown must be the
+  first of the top bar's right-side controls. Without
   `saves/snapshot/` it uses the example save for its "with save" runs. The Linux Playwright Chromium builds under
   `~/.cache/ms-playwright` don't start on this WSL (missing `libgbm`, headless shell crashes): it runs on Windows Chrome.
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
@@ -1260,7 +1285,8 @@ dropdowns, the second row, the phone drawer and the Save dropdown's Save pages a
 pages carry no links of their own (only the brand and the GitHub link). `web/test/nav.test.ts` checks that every
 `site/*.html` is in `NAV` and loads `js/nav.js`, that the wiki links are routes of `wiki.ts` and the save links its
 `TABS`, and the current-item rules; `web/test/nav-u44.test.ts` the U44 rules (Save dropdown, "All" export, Battle
-entry, no Battle second row).
+entry, no Battle second row); `web/test/nav-r2a.test.ts` the R2-A rules (top-bar order, chip format, one-line head,
+folded expansions, drawer Save group, footer, home).
 
 ```mermaid
 flowchart LR
@@ -1290,12 +1316,22 @@ flowchart LR
   `keepInView` (`save-menu.ts`, a CSS translate; `theme.js` repeats the rule for the language menu). The current section gets
   `.is-current` (darker, gold underline); its own link `aria-current="true"` when a sub-page is current.
 - Save dropdown (U44): ONE "📜 … ▾" button in the right side of the top bar holds the save's choice and actions and
-  the save viewer's pages; the main menu has no "Save ▾" and the drawer no Save section (phones keep the top-bar
-  button, its file name hidden). Groups, split by separators: Save file (Reload, Choose another file, Try the example
-  save, Forget; with no save, Open your save and Try the example save, or a link "📂 Open a save" to the save viewer on
+  the save viewer's pages; the main menu has no "Save ▾" (phones keep the top-bar button, its file name hidden; R2-A
+  gives the drawer a Save group again, below). R2-A (F07, F09, F10): one button format on every page, "📜 <name> ▾",
+  the kept save's file name or "Save", no expansion icons (`saveChipButton(name, title)`), and always the first of the
+  right-side controls (`chipSlot`: before the theme switch, the language picker and GitHub, whichever is there yet;
+  `theme.js` adds its two before GitHub after `nav.js` has run, so one order holds on every page). Its head is one
+  line, "<file name> · 11:45 PM" (the date too on another day) or "No save loaded", the rest in its tooltip
+  (`menuHead`). The plain forms (every page, the wiki) share their head and "Open" link (`plainHead`, `openSaveLink`:
+  "📂 Open a save", or "📂 Open the save viewer" with a save kept), from the kept save's name: localStorage
+  `merchant:save-name` (`SAVE_NAME_KEY`, JSON name and time), written by `save-source.ts` when a save loads and removed
+  when it is forgotten (`rememberSaveName`, which also fires `merchant:save-name` on window), read only while
+  `html.has-save`. Groups, split by separators: Save file (Reload, Choose another file, Try the example
+  save, Forget; with no save, Open your save and Try the example save, or the "Open" link to the save viewer on
   a page that doesn't read saves), the page's entries ("Export (CSV) ▸", folded: All, Heroes, Hero gear, Inventory,
   Maps, Crafters), Save pages (links with `data-nav`, the current one `aria-current="page"`, kept in step by `mark()`),
-  then Expansions. Three builders, all in `.save-chip` before the GitHub link: `save-source.ts` (a save loaded),
+  then "Expansions ▸", folded too (R2-A F09, `expansionsFold`; both folds use `foldGroup`), so the dropdown stays
+  short on a phone. Three builders, all in `.save-chip`: `save-source.ts` (a save loaded),
   `expansion-menu.ts` `mountExpansionChip` (no save, on a page that reads one or shows expansion content) and
   `save-menu.ts` `mountNavSaveChip` (put by `nav.ts` on every page: on Home, and until a page puts its own;
   `placeChip` swaps it out). `save-menu.ts` also holds `savePagesGroup`, `fitMenu`, `menuKeys` (Up / Down / Escape).
@@ -1306,14 +1342,20 @@ flowchart LR
   chips' look; groups split by a thin bar), only for a section with a page of its own and sub-pages: Save and Wiki.
   U44: none on the Battle pages (Battle has no page of its own). It replaces the wiki's static chip row and the save
   viewer's tabs; the save row only shows once a save is loaded (`save-viewer.ts` sets `data-save-loaded` on `<html>`).
+  R2-A (F08, F58): the row is a `.scroll-row` (one line, sideways, edge fades; the current link scrolled into view),
+  and the Save one also shows at 760 px and less, under the top bar: on a phone it is the Save pages' section title
+  (the Overview has no heading) and their one-tap switch.
   Between 761 and 1100 px the top bar stays one line: "GitHub" and the save file name give way to the icons, and
   below 960 px the site name to the coin.
 - Phone (760 px and less): the menu and the second row are hidden; a burger (`.nav-burger`, `aria-expanded`,
   `aria-controls="nav-drawer"`) at the left of the top bar opens a left drawer, `dialog#nav-drawer` opened with
   `showModal()` (the page behind is inert; Tab and Shift+Tab also wrap inside it): a banner head with the coin, the
-  site name and a close button, then every section but Save (in the top-bar Save dropdown, U44), its sub-pages as
-  nested lists behind a ▾ toggle (the current section unfolded, the others folded; Battle and More are a toggle only),
-  the current page highlighted and focused. Escape, the close button, a tap on the backdrop or on a link close it
+  site name and a close button, then every section, its sub-pages as nested lists behind a ▾ toggle (the current
+  section unfolded, the others folded; Battle and More are a toggle only), the current page highlighted and focused.
+  R2-A (F08, F11): Save is a drawer group again (U44 had left it to the top-bar dropdown only), labelled with the kept
+  save's file name, "📜 PlayerData.txt" ("📜 Save" without one; `saveLabel`, kept in step on `merchant:save-name`),
+  its link the Overview and its sub-pages Overview … Crafters; on the Save pages it is the current section, unfolded,
+  the current page marked. Escape, the close button, a tap on the backdrop or on a link close it
   (focus back on the burger); widening past 760 px closes it; the page doesn't scroll behind it (`html.drawer-open`).
   It slides in from the left (0.2 s), not with reduced motion.
 - Current page: `currentNav(path, hash)`: the page's file name picks the section (More for the frozen tools, Battle
