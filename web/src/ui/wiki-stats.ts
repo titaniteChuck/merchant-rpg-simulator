@@ -75,7 +75,17 @@ const heroExample = (): string => {
 export const STATS_SECTIONS: RefSection<StatTopic>[] = [
   {
     id: "hero-stats",
-    html: () => `<p>A hero's stats are rebuilt from zero every time something changes, in this order:</p>
+    // R2-D F49: the formula first, the ten steps behind it in a closed details
+    html: () => `${formula(`${v("stat")} = (${v("base")} + ${v("growth")}<sub>tier</sub> × ${v("L")} + ${v("gear")} + ${v("enchants")} + ${v("potion")} + ${v("passive")} + ${v("str")} × ${v("strMod")}<sub>tier</sub>) × (1 + ${v("pct")})`)}
+${vars([
+  [v("base"), "the class's base stat"],
+  [`${v("growth")}<sub>tier</sub>`, "the class's growth per level for the tier (hpPlv, atkPlv…); per-level enchants add to it"],
+  [v("L"), "hero level (max 50 / 50 / 60 at tier 1 / 2 / 3)"],
+  [`${v("str")} × ${v("strMod")}`, "atk only (int × intMod for matk, dex × dexMod for acc)"],
+  [v("pct"), "sum of the % bonuses (gear, passive, effects), at least −90 % for atk, matk and HP, −100 % for def, mdef, acc"],
+])}
+<details class="ref-steps-box"><summary>The 10 steps, in order</summary>
+<p>A hero's stats are rebuilt from zero every time something changes, in this order:</p>
 <ol class="ref-steps">
 <li>The class growth of the hero's <b>tier</b> is read (tier = prestige level 1–3, shown on this site as ascension 0–2).</li>
 <li><b>Permanent enchants</b> are added. Luck, XP, AP, crit damage and the % stats are reset just after, so enchants on those have no effect.</li>
@@ -88,14 +98,7 @@ export const STATS_SECTIONS: RefSection<StatTopic>[] = [
 <li>In battle only: active buffs and debuffs (${bl("effects", "effects")}).</li>
 <li>Max HP at least 1, crit at least 0, then the <b>% stats</b> multiply.</li>
 </ol>
-${formula(`${v("stat")} = (${v("base")} + ${v("growth")}<sub>tier</sub> × ${v("L")} + ${v("gear")} + ${v("enchants")} + ${v("potion")} + ${v("passive")} + ${v("str")} × ${v("strMod")}<sub>tier</sub>) × (1 + ${v("pct")})`)}
-${vars([
-  [v("base"), "the class's base stat"],
-  [`${v("growth")}<sub>tier</sub>`, "the class's growth per level for the tier (hpPlv, atkPlv…); per-level enchants add to it"],
-  [v("L"), "hero level (max 50 / 50 / 60 at tier 1 / 2 / 3)"],
-  [`${v("str")} × ${v("strMod")}`, "atk only (int × intMod for matk, dex × dexMod for acc)"],
-  [v("pct"), "sum of the % bonuses (gear, passive, effects), at least −90 % for atk, matk and HP, −100 % for def, mdef, acc"],
-])}
+</details>
 ${heroExample()}
 ${note(`Flat bonuses are all added before the % stats, so a % passive also multiplies gear and potions. Heroes have 0 evasion and no stat adds to it.`)}
 <h3>Potions and enchants</h3>

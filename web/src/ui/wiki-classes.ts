@@ -1,5 +1,5 @@
 /**
- * Class page stats (U19): stat cards, a level / ascension picker, the radar with the three ascensions on one chart, and
+ * Class page stats (U19): a level / ascension picker (R2-D: no stat cards), the radar with the three ascensions on one chart, and
  * one growth chart per stat with each ascension's level cap and the level where the next ascension unlocks.
  *
  * Game rules (decompiled data.Default, obj.Hero, obj.mods.modLoader):
@@ -18,7 +18,7 @@ import { classes } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
 import { className } from "./names.ts";
 import { withHelp } from "./wiki-help.ts";
-import { type StatTopic, statLink } from "./wiki-ref.ts";
+import { statLink } from "./wiki-ref.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -27,10 +27,13 @@ type Any = any;
 export type Growth = [string, string, string];
 export const GROWTH: Growth[] = [["hpPlv", "hp", "HP"], ["atkPlv", "atk", "Atk"], ["matkPlv", "matk", "Matk"], ["accPlv", "acc", "Acc"],
   ["defPlv", "def", "Def"], ["mdefPlv", "mdef", "Mdef"], ["critPlv", "crit", "Crit"]];
-/** Charted stats: Crit left out of the curves and the radar (on request; the cards still show it). */
+/** Charted stats: Crit left out of the curves and the radar (on request; the line above the radar gives it). */
 export const CHARTED = GROWTH.filter(([, b]) => b !== "crit");
-/** U30: stat cards whose label links to its own Stats section (the others: the growth "?"). */
-const CARD_TOPIC: Record<string, StatTopic> = { hp: "max-hp", crit: "crit" };
+const CRIT = GROWTH.find(([, b]) => b === "crit")!;
+
+/** R2-D F47 / F52: the radar's caption, now the "?" of the class page's Stats section. */
+export const RADAR_HELP = ["The class's own stats at the picked level and ascension: no gear, passive or attribute points.",
+  "The radar's other shapes are the other ascensions, each capped at its max level. Rim = the best class at that level."];
 
 const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -74,10 +77,11 @@ export function clampSelection(tiers: number[], s: Selection): Selection {
 const ascName = (a: number) => ascText(a)[0].toUpperCase() + ascText(a).slice(1);
 
 /**
- * The class's stat cards (for the top of the page) and the stats block (picker, radar, growth charts), wired together.
- * `onSelect` is told every new selection (the page keeps it in the URL).
+ * The class's stats block (picker, the level line, radar, growth charts), wired together. R2-D F47: no stat cards (the
+ * radar shows the values; Crit, not charted, is in the level line). `onSelect` is told every new selection (the page
+ * keeps it in the URL).
  */
-export function classStats(id: number, start: Partial<Selection> = {}, onSelect?: (s: Selection) => void): { cards: HTMLElement; block: HTMLElement } {
+export function classStats(id: number, start: Partial<Selection> = {}, onSelect?: (s: Selection) => void): { block: HTMLElement } {
   const c = G.heroList[id];
   // U28: hero ascension 2 (prestige 3, levels 51-60) needs the Frozen Tome; hidden when the visitor hides it.
   const tiers = tiersOf(c).filter((p) => isVisible("prestige", p));
@@ -85,15 +89,8 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
   const levels = Array.from({ length: top }, (_, i) => i + 1);
   let sel = clampSelection(tiers, { level: start.level ?? tierMaxLevel(1), asc: start.asc ?? 0 });
 
-  // ---- cards (top of the page)
-  const cardVals = new Map<string, HTMLElement>();
-  const cardHead = el("p", { class: "cls-cards-head muted small" });
-  const cards = el("div", { class: "cls-cards-wrap" }, cardHead,
-    el("dl", { class: "facts cls-cards" }, ...GROWTH.map((g) => {
-      const dd = el("dd", {});
-      cardVals.set(g[1], dd);
-      return el("div", {}, el("dt", {}, CARD_TOPIC[g[1]] ? statLink(CARD_TOPIC[g[1]], g[2]) : g[2]), dd);
-    })));
+  // ---- the level line: "Level 50, ascension 0 · Crit 5"
+  const head = el("p", { class: "cls-head muted small" });
 
   // ---- picker: ascension switch + level slider
   const ascSeg = segmented(`cls-asc-${id}`, "Ascension", tiers.map((p) => ({
@@ -110,7 +107,6 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
 
   // ---- radar: every ascension at the selected level (each capped at its tier's max), the selected one on top
   const radarHolder = el("div", { class: "cls-radar-fig" });
-  const radarCap = el("figcaption", { class: "muted small" });
   const drawRadar = () => {
     const at = (p: number) => Math.min(sel.level, tierMaxLevel(p));
     const axes: RadarAxis[] = CHARTED.map((g) => {
@@ -129,10 +125,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
       values: CHARTED.map((g) => statAt(c, g, p, at(p))), cls: `tier-${p - 1}`, label: `${ascName(p - 1)}, level ${at(p)}`,
     }));
     const fig = radar(axes, { title: `${className(id) ?? c.name} · level ${at(sel.asc + 1)} · ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
-    // R1 F18: the level, ascension and "no gear" are in the line above the cards; the caption only says what the
-    // chart adds (the other ascensions' shapes and the rim).
-    radarCap.textContent = "Other ascensions capped at their max level. Rim = best class at that level.";
-    fig.append(radarCap);
+    // R2-D F52: what the chart adds (the other ascensions' shapes and the rim) is in the section's "?" (RADAR_HELP)
     radarHolder.replaceChildren(fig);
   };
 
@@ -157,20 +150,25 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
       el("i", { class: `lc-swatch tier-${p - 1}`, "aria-hidden": "true" }), ` ${p - 1} (max ${tierMaxLevel(p)})`))] : []),
     el("span", { class: "lc-key" }, el("i", { class: "lc-ring", "aria-hidden": "true" }),
       ` next ascension unlocks${unlocks.length ? ` (level ${unlocks.map(([, u]) => u).join(", ")})` : ""}`),
-    el("span", {}, " · hover to read a level, click to pick it"));
+    el("span", {}, " · tap a level to pick it"));
 
-  const block = el("div", { class: "cls-v3" }, picker,
+  // R2-D F47: on a phone one growth chart at a time, picked by stat (CSS shows every chart on wider screens)
+  charts.forEach((ch, k) => ch.el.classList.add("cls-chart", ...(k ? [] : ["on"])));
+  const statPick = segField("Stat", segmented(`cls-stat-${id}`, "Stat", CHARTED.map((g, k) => ({ value: String(k), label: g[2] })), "0",
+    (v) => charts.forEach((ch, k) => ch.el.classList.toggle("on", String(k) === v))), "cls-stat-pick");
+
+  const block = el("div", { class: "cls-v3" }, picker, head,
     el("div", { class: "cls-stats" },
       el("div", { class: "cls-radar" }, radarHolder),
       el("div", { class: "cls-growth" }, withHelp(el("h3", { class: "wiki-banner sub" }, "Growth per level"),
-        "The class's own stats: base + growth × level, before gear, potions, passive and attribute points.", "growth per level", [statLink("hero-stats")]), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
-  cards.classList.add("cls-v3");
+        "The class's own stats: base + growth × level, before gear, potions, passive and attribute points.", "growth per level", [statLink("hero-stats", "Hero stats"), statLink("max-hp", "HP")]),
+      legend, statPick, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
 
   function set(s: Selection, quiet = false): void {
     sel = clampSelection(tiers, s);
     const p = sel.asc + 1;
-    for (const g of GROWTH) cardVals.get(g[1])!.textContent = dec.format(statAt(c, g, p, sel.level));
-    cardHead.replaceChildren(el("strong", {}, `Level ${sel.level}`), `, ${ascText(sel.asc)} · no gear, passive or attribute points`);
+    head.replaceChildren(el("strong", {}, `Level ${sel.level}`), `, ${ascText(sel.asc)} · `,
+      statLink("crit", "Crit"), ` ${dec.format(statAt(c, CRIT, p, sel.level))}`);
     radios.forEach((r, k) => (r.checked = tiers[k] === p));
     lvBox.className = `cls-lv tier-${sel.asc}`;
     slider.max = String(tierMaxLevel(p));
@@ -182,5 +180,5 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     if (!quiet) onSelect?.(sel);
   }
   set(sel, true);
-  return { cards, block };
+  return { block };
 }

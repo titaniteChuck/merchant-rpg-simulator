@@ -2105,3 +2105,117 @@ details.tools-other > summary .help-q { color: var(--muted); }
 footer .footer-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; }
 footer .footer-line a { color: inherit; }
 /* end r2-a */
+/* r2-d */
+/* Mobile review R2, batch D: the wiki (wiki*.ts, recipe-chain.ts). One block; every rule is scoped to the wiki page
+   (#wiki) except the rarity chip (wiki-only markup, also in hover cards) and the wiki's row of the sub-navigation. */
+
+/* F55: section titles as text over a thin rule (no dark banner); nested titles (variant names, Growth per level) as
+   small upper-case labels; 24 px between sections on a phone. */
+#wiki .wiki-banner { margin: 28px 0 10px; padding: 0 0 6px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  background: none; box-shadow: none; text-shadow: none; color: var(--fg); font-size: 1.15rem; }
+#wiki .wiki-section h2.wiki-banner { margin-top: 28px; }
+#wiki .ref-main > .ref-section:first-of-type h2.wiki-banner { margin-top: 0; }
+#wiki .wiki-banner.sub { margin: 14px 0 6px; padding: 0; border: 0; font-size: 0.74rem; font-weight: 750; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted); }
+#wiki .wiki-banner .muted { color: var(--muted); }
+#wiki .wiki-banner .help-q:hover, #wiki .wiki-banner .help-q[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+#wiki .cls-growth .wiki-banner.sub { margin: 0 0 6px; }
+@media (max-width: 600px) {
+  #wiki .wiki-section h2.wiki-banner { margin-top: 24px; }
+}
+
+/* F37: the wiki home as compact tiles (icon, name, count), two to a row on a phone; F39: hidden while searching. */
+#wiki ul.wiki-tiles { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+#wiki .wiki-tiles a { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; align-items: center; min-height: 52px;
+  box-sizing: border-box; padding: 7px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--fg); text-decoration: none; }
+#wiki .wiki-tiles a:hover { border-color: var(--accent); }
+#wiki .wiki-tiles a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#wiki .wt-icon { grid-row: 1 / 3; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; font-size: 0.95rem;
+  background: color-mix(in srgb, var(--accent) var(--tint), transparent); }
+#wiki .wt-name { font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+#wiki .wt-count { line-height: 1.2; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  #wiki ul.wiki-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#wiki .kind-chip { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; line-height: 1.5;
+  color: var(--muted); background: var(--card-2); border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); vertical-align: 1px; }
+
+/* F41: the "?" after a column header's sort button (Cost, Sell value); the ascension key inside the popover. */
+#wiki thead th .help-tip { margin-left: 3px; vertical-align: middle; }
+#wiki thead th .help-q { width: 1.05rem; height: 1.05rem; font-size: 0.64rem; }
+.help-pop .asc-legend { margin: 0; }
+
+/* F42: the item page's facts as one strip; the sell values in labelled ascension boxes; merged grade rows; the empty
+   sections as one muted line (F54). */
+#wiki .fact-strip { margin: 10px 0 0; line-height: 1.9; font-weight: 600; }
+#wiki .fact-strip .region-cell, #wiki .fact-strip .rar-chip { vertical-align: 1px; }
+#wiki .nowrap-group { white-space: nowrap; }
+#wiki .sell-boxes { display: inline-flex; flex-wrap: wrap; gap: 3px; vertical-align: 1px; white-space: normal; }
+#wiki .av.av-l { text-align: left; font-weight: 650; }
+#wiki .av-k { color: var(--muted); font-size: 0.72rem; font-weight: 600; }
+#wiki .grade-run { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); }
+#wiki .wiki-empty-line { margin: 18px 0 0; }
+#wiki .wiki-empty-line strong { color: var(--fg); font-weight: 650; }
+
+/* F43: compact facts (map and enemy pages): small cards, three to a row on a phone; the essence spans the row. */
+#wiki .facts.compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-top: 12px; }
+#wiki .facts.compact > div { padding: 5px 9px; border-radius: 8px; }
+#wiki .facts.compact dt { font-size: 0.66rem; }
+#wiki .facts.compact dd { margin: 1px 0 0; font-size: 0.92rem; line-height: 1.3; }
+#wiki .facts.compact > div:has(.ess-fact), #wiki .facts.compact > div:has(.fact-compact) { grid-column: 1 / -1; }
+@media (max-width: 600px) {
+  #wiki .facts.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* F44: the XP block's pickers on one row (it scrolls sideways when narrower); "Left out" closed. */
+#wiki .qxp-controls { flex-wrap: nowrap; overflow-x: auto; gap: 14px; padding: 2px; scrollbar-width: thin; }
+#wiki .qxp-controls > * { flex: none; }
+#wiki .qxp-controls .seg-field { flex-wrap: nowrap; }
+#wiki .qxp-left { margin: 8px 0 0; }
+#wiki .qxp-left > summary { cursor: pointer; }
+#wiki .qxp-left > p { margin: 4px 0 0; }
+
+/* F45: the timeline and the drops as page sections, a column per variant (no card around the tables). */
+#wiki .variant-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px 24px; align-items: start; }
+#wiki .variant-col { min-width: 0; }
+#wiki .variant-col > .wiki-banner.sub:first-child { margin-top: 0; }
+
+/* F46: rarity chips muted, in the style of the grade badges: the rarity's hue as text at AA contrast (4.5:1 or more)
+   on a faint tint of it over a fixed base (the page background in dark, the card in light), so the contrast holds on
+   any surface. 6 and 8 share 5 and 7; 10 and 11 the colours of 3 and 4, as in the game. */
+:root, :root[data-theme="dark"] { --rarc-base: var(--bg); --rarc-0: #d6d6d6; --rarc-1: #f5efe3; --rarc-2: #b0eea8; --rarc-3: #bcd7ff;
+  --rarc-4: #f2c6ff; --rarc-5: #ffe08a; --rarc-7: #ffbdb3; }
+:root[data-theme="light"] { --rarc-base: var(--card); --rarc-0: #4a4a4a; --rarc-1: #4a4238; --rarc-2: #175c20; --rarc-3: #1d4592;
+  --rarc-4: #6e2189; --rarc-5: #6b4400; --rarc-7: #8c1d17; }
+:root .rar-chip.rar-chip { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 0.72rem; font-weight: 750; line-height: 1.55;
+  white-space: nowrap; color: var(--rc, var(--rarc-1)); background: color-mix(in srgb, var(--rc, var(--rarc-1)) 14%, var(--rarc-base));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rc, var(--rarc-1)) 40%, transparent); font-variant-numeric: tabular-nums; }
+.rar-chip.rar-0 { --rc: var(--rarc-0); } .rar-chip.rar-1 { --rc: var(--rarc-1); } .rar-chip.rar-2 { --rc: var(--rarc-2); }
+.rar-chip.rar-3, .rar-chip.rar-10 { --rc: var(--rarc-3); } .rar-chip.rar-4, .rar-chip.rar-11 { --rc: var(--rarc-4); }
+.rar-chip.rar-5, .rar-chip.rar-6 { --rc: var(--rarc-5); } .rar-chip.rar-7, .rar-chip.rar-8 { --rc: var(--rarc-7); }
+
+/* F47: the class page's level line (Crit, not charted, is in it); on a phone one growth chart, picked by stat. */
+#wiki .cls-head { margin: 8px 0 10px; }
+#wiki .cls-stat-pick { display: none; }
+@media (max-width: 600px) {
+  #wiki .cls-stat-pick { display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 6px 0 8px; padding: 2px; }
+  #wiki .cls-stat-pick .seg { flex-wrap: nowrap; }
+  #wiki .lc-grid-wrap > .cls-chart:not(.on) { display: none; }
+}
+
+/* F48: Expansions: the long cards span the row, everything in one column at 600 px and less; "In detail" closed. */
+#wiki .xp-cards > .xp-wide { flex-basis: 100%; }
+#wiki .xp-detail > summary { cursor: pointer; font-weight: 650; }
+#wiki .xp-detail .xp-lines { margin-top: 6px; }
+#wiki .xp-controls { padding: 8px 12px; }
+@media (max-width: 600px) {
+  #wiki .xp-cards > div { flex-basis: 100%; }
+}
+
+/* F49: Stats › Hero stats: the ten steps behind the formula, closed. */
+#wiki .ref-steps-box { margin: 10px 0; }
+#wiki .ref-steps-box > summary { cursor: pointer; font-weight: 650; }
+
+/* F50: the wiki's sub-navigation on one line that scrolls sideways: R2-A's shared `.scroll-row` (nav.ts buildSubnav). */
+/* end r2-d */

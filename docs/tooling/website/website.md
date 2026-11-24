@@ -601,7 +601,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   picker; left out of "Good against" (nothing to answer: they never hit), the class balance and the levelling
   reference quests (no threat).
 - Class page (U6a, reworked in U19, `web/src/ui/wiki-classes.ts`): stat cards at the top (HP, Atk, Matk, Acc, Crit, Def,
-  Mdef) for the selected level and ascension; above the charts an ascension switch (0/1/2) and a level slider
+  Mdef) for the selected level and ascension (dropped in R2-D, see below); above the charts an ascension switch (0/1/2) and a level slider
   (1..the tier's max). Clicking a growth chart (or Enter on it) picks that level for every chart, the cards and the
   radar; hovering reads values and the crosshair returns to the picked level. URL `#/class/ID/LEVEL/ASC` (kept in step
   with `history.replaceState`). Radar: the three ascensions on one chart at the selected level (each capped at its
@@ -902,6 +902,45 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     root every win), Treasure Bushes crystals and gems (plus runes from their loot rolls), not "leaves" or "stones".
   - FR (F40): names stand alone in neutral formats ("Crafting chain · <name> · …", "×2 → <name>", radar title
     "<class> · level 50 · ascension 0", the Stats example "<class> · ascension 0 · level 50").
+- Mobile presentation review R2, batch D ([review](../roadmap/review-r2.md#wiki)). CSS: the `r2-d` block at the end
+  of `site/style.css` (everything under `#wiki`, plus the rarity chip and the wiki's sub-navigation row); tests
+  `test/wiki-r2d.test.ts`. The phone column sets of the lists and tables (F40, F51) wait for a design choice.
+  - Home (F37, F38, F39): compact tiles (icon, name, count; about 52 px, two to a row at 600 px and less), the
+    description as the tile's tooltip. Each list page has a "?" beside its filter with that description, the
+    definitions the Equipment card used to carry (bonus stats, sell value) and the reference links (`CATEGORIES`,
+    `listHelp`). The Skills count is the list's (`listedSkillNames` in `wiki-skills.ts`: the skills that aren't
+    unused), so the home and the list agree. While a query is typed the tiles are hidden; a hit's kind is a small chip.
+  - Priced lists (F41): no legend paragraph above Equipment, Consumables, Materials and Maps; the ascension key (the
+    outlined boxes) and the definitions are in a "?" on the Cost header (cost, total cost) and on the Sell value
+    header (`priceHeads`, `headHelp`). `helpTip` takes nodes as paragraphs (`HelpText`).
+  - Item page (F42, F54): one fact strip, "Weapon · Dagger · Lv 0 · Tuvale · Rarity 1 · Crafter · Sell asc 0 10 g
+    asc 1 20 g asc 2 40 g" (`factStrip`; the sell boxes are labelled, `sellBoxes` in `wiki-items.ts`; the region's
+    reason is the chip's tooltip, no "Item Lv 0" beside it); Bonus stats and Effect stay as cards. Stats by grade
+    merges grades with the same numbers into one row, "D–S" when all five are the same (`mergeGradeRows`). Empty
+    sections (no drops, not craftable, not used in any recipe) end the page as one muted line ("Drops · … · Recipe ·
+    Not craftable. · Used in · Not used in any recipe."), the hidden-content notes after it.
+  - Map and enemy pages (F43): the facts are compact cards, three to a row on a phone (the essence and the bush facts
+    span the row); map "Boss · None." and "Recipe · Not craftable." as one line.
+  - Enemy pages (F44, F45): the XP block's Grade, Party and Ascension pickers sit on one row (it scrolls sideways when
+    too narrow); "Left out: N level-70 maps, not craftable" is a closed `<details>`. Timeline and Drops are two
+    sections of the page, with a column per variant under its name when there is a rare one; the drop tables are no
+    longer nested in a card. An enemy in no map has "Maps · None: met only as a quest." as one line.
+  - Rarity chips (F46): muted, in the grade badges' shape: the rarity's hue as text on a faint tint of it over a fixed
+    base (page background in dark, card in light), tokens `--rarc-N` checked at 4.5:1 or more in both themes; 6 and 8
+    share 5 and 7, 10 and 11 use 3 and 4. The chip no longer carries the game's own colour inline.
+  - Class page (F47): no stat cards (the radar shows the values); a line above the radar gives the level, ascension and
+    Crit (not charted); the radar's caption is the Stats section's "?" (`RADAR_HELP`); "tap a level to pick it". At 600
+    px and less one growth chart shows at a time, picked by a Stat control (`cls-stat-pick`). An empty passive list is
+    one line.
+  - Expansions (F48): every card on its own row at 600 px and less, the long cards always full width; "In detail" is
+    a closed `<details>` ("N points"); the status is one line, "You own … (from PlayerData.txt) · change it in 📜 Save
+    › Expansions".
+  - Stats › Hero stats (F49): the formula and its variables first, the ten steps in a closed `<details>`.
+  - Sub-navigation (F50): the wiki's second row stays one line and scrolls sideways (it wrapped to two at 768 px).
+  - Section titles (F55): plain text over a thin rule instead of the dark-brown banners, nested titles (variant names,
+    Growth per level) as small upper-case labels, 24 px between sections on a phone. Sentences moved into "?" (F52):
+    the Skills list's Unused note, the class radar caption. Empty states as one muted line (F54): Good against,
+    Enemies with this skill.
 
 ## Profit page
 

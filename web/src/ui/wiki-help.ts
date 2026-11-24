@@ -49,11 +49,14 @@ function moreLine(refs: HTMLAnchorElement[]): HTMLElement {
   return el("span", { class: "help-p help-more" }, ...refs.flatMap((a, i) => (i ? [" · ", a] : [a])));
 }
 
+/** A "?" text: a paragraph, or several; R2-D: a paragraph can be a node (the ascension boxes of a price legend). */
+export type HelpText = string | Node | (string | Node)[];
+
 /**
  * A "?" button explaining `text` (a paragraph, or several as an array). `about` names what it explains, for the
  * button's label ("About Stats"). `refs`: links to Stats / Battle sections (statLink, battleLink) on a last line.
  */
-export function helpTip(text: string | string[], about = "this section", refs: HTMLAnchorElement[] = []): HTMLElement {
+export function helpTip(text: HelpText, about = "this section", refs: HTMLAnchorElement[] = []): HTMLElement {
   const id = `help-${++seq}`;
   const paras = Array.isArray(text) ? text : [text];
   const pop = el("span", { class: "help-pop", id, ...(refs.length ? {} : { role: "tooltip" }) },
@@ -81,14 +84,14 @@ export function helpTip(text: string | string[], about = "this section", refs: H
 }
 
 /** Puts a "?" with `text` at the end of `heading` (a section banner) and returns the heading. */
-export function withHelp<T extends HTMLElement>(heading: T, text: string | string[], about = heading.textContent ?? "this section",
+export function withHelp<T extends HTMLElement>(heading: T, text: HelpText, about = heading.textContent ?? "this section",
   refs: HTMLAnchorElement[] = []): T {
   heading.append(" ", helpTip(text, about.trim() || "this section", refs));
   return heading;
 }
 
 /** Same, on the first heading of a section element built by the wiki's section(). */
-export function sectionHelp<T extends HTMLElement>(section: T, text: string | string[], refs: HTMLAnchorElement[] = []): T {
+export function sectionHelp<T extends HTMLElement>(section: T, text: HelpText, refs: HTMLAnchorElement[] = []): T {
   const h = section.querySelector<HTMLElement>("h2, h3, h4");
   if (h) withHelp(h, text, undefined, refs);
   return section;

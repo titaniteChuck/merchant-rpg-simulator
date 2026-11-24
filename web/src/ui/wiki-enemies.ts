@@ -10,7 +10,7 @@ import {
   enemyDrops, enemyIds, enemyKind, enemyLevelSort, enemyLevelText, isGathering, isTreasureBush, enemyLink, enemyMapRoles, hasRare, item, itemLink, quest, regionChip, regionOf, regionSortKey, regionText,
   skillDesc, skillLink,
 } from "./wiki-data.ts";
-import { sectionHelp, withHelp } from "./wiki-help.ts";
+import { sectionHelp } from "./wiki-help.ts";
 import { battleLink, statLink } from "./wiki-ref.ts";
 import { isVisible } from "./expansion-state.ts";
 import { hiddenNote } from "./expansion-menu.ts";
@@ -149,7 +149,6 @@ function rotationList(id: number, rare: boolean): HTMLElement {
     ...(s !== "Basic" && skillDesc(s) ? [el("span", { class: "eff muted small" }, skillDesc(s))] : []))));
 }
 
-const banner = (text: string, ...kids: (Node | string)[]) => el("h4", { class: "wiki-banner sub" }, text, ...kids);
 const dash = (num = false) => el("td", { class: num ? "num muted" : "muted" }, "–");
 const itemCell = (type: string, id: number) => el("td", {}, el("span", { class: "loot-item" }, itemLink(type, id)));
 const rarityCell = (type: string, id: number) => el("td", { class: "loot-rar" }, rarityChip(item(type, id)?.rarity));
@@ -213,16 +212,18 @@ const DROPS_HELP = [
 ];
 const dropsRefs = () => [statLink("grade", "Grade"), statLink("luck", "Luck"), statLink("quest-size", "Quest size ×N")];
 
-/** One card per variant: the 5-turn timeline (each turn with its skill's effect), then drops. */
-function variantCard(id: number, rare: boolean): HTMLElement {
+/**
+ * R2-D F45: the timeline and the drops are two sections of the page (no longer tables nested in a card per variant);
+ * with a rare variant, each section has one column per variant under a small-caps name.
+ */
+function variantCols(id: number, part: (rare: boolean) => HTMLElement): HTMLElement {
+  if (!hasRare(id)) return part(false);
   const q = quest(id);
-  const tl = timelineOf(id, rare);
-  return el("div", { class: `enemy-variant${rare ? " rare" : ""}` },
-    el("h3", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), ...(rare ? [" ", pill("rare", "t-pink")] : [])),
-    withHelp(banner("Timeline"), tl ? [TIMELINE_HELP, stripNote(tl)] : TIMELINE_HELP, "the timeline", [battleLink("rotation")]),
-    tl ? enemyStrip(tl, { note: false }) : rotationList(id, rare),
-    withHelp(banner("Drops"), DROPS_HELP, "the drops", dropsRefs()), dropsBlock(id, rare));
+  return el("div", { class: "variant-cols" }, ...[false, true].map((rare) => el("div", { class: `variant-col${rare ? " rare" : ""}` },
+    el("h3", { class: "wiki-banner sub" }, enemyName(id, rare) ?? (rare ? q.nameB : q.name), ...(rare ? [" ", pill("rare", "t-pink")] : [])),
+    part(rare))));
 }
+const timelinePart = (id: number, rare: boolean) => ((tl) => (tl ? enemyStrip(tl, { note: false }) : rotationList(id, rare)))(timelineOf(id, rare));
 
 /** The maps the enemy appears in; maps the visitor hides (no Scribe expansion) are counted in a note (U28). */
 function mapsTable(id: number): HTMLElement {
@@ -396,9 +397,11 @@ function mapXpBlock(id: number): HTMLElement {
         : "In no map a crafter can make (level 60 at most).");
     const note = hiddenNote(hidden, hidden === 1 ? "map" : "maps");
     // R1 F42: the maps the Maps section lists but no crafter can make, named here so the two sections agree.
+    // R2-D F44: closed by default, one summary line
     const left = uncraftable.length
-      ? el("p", { class: "qxp-left muted small", title: UNCRAFTABLE_TITLE }, `Left out, not craftable (level 70): `,
-        ...uncraftable.flatMap((m, i) => [...(i ? [", "] : []), itemLink("map", m)]))
+      ? el("details", { class: "qxp-left muted small" }, el("summary", { title: UNCRAFTABLE_TITLE },
+        `Left out: ${uncraftable.length} level-70 map${uncraftable.length === 1 ? "" : "s"}, not craftable`),
+      el("p", {}, ...uncraftable.flatMap((m, i) => [...(i ? [", "] : []), itemLink("map", m)])))
       : null;
     box.replaceChildren(
       el("div", { class: "qxp-controls" }, gradeToggle(grade, (v) => (grade = v, redraw(box, draw))),
@@ -438,8 +441,8 @@ export function enemyLead(id: number): string {
   return [enemyKind(id), isTreasureBush(id) ? `Maps Lv ${enemyLevelText(id)}` : `Lv ${quest(id)?.levelReq ?? "?"}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ");
 }
 
-/** An enemy page's body, below its title. */
-export function enemyBody(id: number, facts: Facts, section: Section): HTMLElement[] {
+/** An enemy page's body, below its title. `empty`: an empty section as one muted line (R2-D F54). */
+export function enemyBody(id: number, facts: Facts, section: Section, empty: (...parts: [string, string][]) => HTMLElement): HTMLElement[] {
   const q = quest(id);
   const rare = hasRare(id);
   const roles = enemyMapRoles(id);
@@ -461,8 +464,9 @@ export function enemyBody(id: number, facts: Facts, section: Section): HTMLEleme
     ...((x) => (x ? [x] : []))(xpSection(id, section)),
     sectionHelp(section("Stats", statsTable(id)), "Quest stats, before any map multiplier, grade or game mode.",
       [statLink("hit-chance", "Eva: hit chance"), statLink("defence", "Def, Mdef: defence"), statLink("quest-size", "HP: quest size ×N")]),
-    section("Timeline and drops",
-      el("div", { class: "enemy-variants" }, variantCard(id, false), ...(rare ? [variantCard(id, true)] : []))),
-    roles.length ? sectionHelp(section(`Maps (${roles.length})`, mapsTable(id)), mapsHelp(id), [statLink("map-essence")]) : section("Maps", mapsTable(id)),
+    ((tl) => sectionHelp(section("Timeline", variantCols(id, (r) => timelinePart(id, r))), tl ? [TIMELINE_HELP, stripNote(tl)] : TIMELINE_HELP,
+      [battleLink("rotation")]))(timelineOf(id, false)),
+    sectionHelp(section("Drops", variantCols(id, (r) => dropsBlock(id, r))), DROPS_HELP, dropsRefs()),
+    roles.length ? sectionHelp(section(`Maps (${roles.length})`, mapsTable(id)), mapsHelp(id), [statLink("map-essence")]) : empty(["Maps", "None: met only as a quest."]),
   ];
 }

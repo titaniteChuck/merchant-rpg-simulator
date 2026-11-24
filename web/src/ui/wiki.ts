@@ -17,16 +17,16 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table } from "./dom.ts";
 import { ascLevels } from "../tools/profit.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
-import { classStats, tiersOf } from "./wiki-classes.ts";
-import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, rarityChip, sellAt, sellNode, totalCost } from "./wiki-items.ts";
-import { goodAgainst, isHeroOnlySkill, isUnusedSkill, removesEffects, turnMarks } from "./wiki-skills.ts";
+import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
+import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, sellBoxes, totalCost } from "./wiki-items.ts";
+import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, turnMarks } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import { enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
-import { sectionHelp } from "./wiki-help.ts";
+import { helpTip, sectionHelp } from "./wiki-help.ts";
 import { battlePage, BATTLE_SECTIONS } from "./wiki-battle.ts"; // U25 reference pages
 import { statsPage, STATS_SECTIONS } from "./wiki-stats.ts";
 import { expansionsPage } from "./wiki-expansions.ts";
@@ -56,8 +56,8 @@ const ready = Promise.all([
 ]);
 
 /**
- * The wiki sections: [route, icon, label, count, description]. U21: the descriptions live on the wiki home (one line
- * per section card); the list pages themselves start with their filter and table (no visible title or intro).
+ * The wiki sections (CATEGORIES below). U21: the list pages start with their filter and table (no visible title or
+ * intro); R2-D: the home shows compact tiles and each list's description is the "?" beside its filter.
  */
 const visibleItems = (t: string) => items(t).filter(([id]) => isVisible(t as ContentKind, id));
 const visibleClasses = () => classes().filter(([id]) => isVisible("class", id));
@@ -65,30 +65,43 @@ const visibleEnemyIds = () => enemyIds().filter((id) => isVisible("enemy", id));
 /** Classes with a skill / passive, the hidden ones (the Bard without the Frozen Tome) left out. */
 const visibleClassesWith = (kind: "skill" | "passive", name: string) => classesWith(kind, name).filter(([id]) => isVisible("class", id));
 
-/** A home card's line: text, or (U30) text with links to the reference pages, built at render time. */
-type About = string | (() => (Node | string)[]);
-const CATEGORIES: [string, string, string, () => number, About][] = [
-  ["#/skills", "⚡", "Skills", () => skillNames().length,
-    () => ["Every skill with its ", statLink("ap", "action-point cost"), " and effect. Hero skills are learnt by class; the rest are enemy skills."]],
-  ["#/passives", "✨", "Passives", () => passiveNames().length, "A hero picks one passive from its class list (from level 10)."],
-  ["#/items/equipment", "⚔️", "Equipment", () => visibleItems("equipment").length,
-    () => ["Weapons, armour and trinkets. Any class can wear any item of its slot once the hero reaches the item's level. ",
-      statLink("item-stats", "Bonus stats"), " are the item's own range (before grade and ascension); ", statLink("sell", "sell value"),
-      " is the base price of a plain item."]],
-  ["#/items/consumable", "🧪", "Consumables", () => visibleItems("consumable").length, "Potions, boosts, enchants and map scrolls."],
-  ["#/items/material", "🪨", "Materials", () => visibleItems("material").length, "Crafting materials, essences and boss trophies, with where they drop."],
-  ["#/maps", "🗺️", "Maps", () => visibleItems("map").length,
-    () => ["Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the ",
-      statLink("map-essence", "map modifier"), "."]],
-  ["#/enemies", "👹", "Enemies", () => visibleEnemyIds().length,
-    // R1 F08: the quest bushes (gathering quests) are listed since the U28 follow-up; only the placeholders are not.
-    "Every quest and map enemy with its base stats (before a map's multiplier), the quest bushes included."],
-  ["#/classes", "🛡️", "Classes", () => visibleClasses().length,
-    () => ["The hero classes, their base stats, ", statLink("hero-stats", "growth"), ", skills and passives."]],
-  ["#/stats", "🧮", "Stats", () => STATS_SECTIONS.length, "How every number is calculated: hero stats, damage, hit and crit, luck, grade, XP, item stats, selling, crafting, essence."],
-  ["#/battle", "🗡️", "Battle", () => BATTLE_SECTIONS.length, "How a fight runs: turn order, the 5-slot rotation, targeting, effects and their durations, heals, revives, map runs."],
-  ["#/expansions", "🧩", "Expansions", () => 2, "The Frozen Tome and Scribe expansions: what each adds, the content behind them, and which ones the site thinks you own."],
+/**
+ * A wiki section (R2-D F37): its home tile (icon, name, count; `about` as the tile's tooltip) and, for a list page,
+ * the "?" in its toolbar: `about`, then `more` (the definitions that used to fill the home card) and links to the
+ * reference pages (U30). `count` is what the list shows (F38: the home and the list agree).
+ */
+interface Category { href: string; icon: string; label: string; count: () => number; about: string; more?: string[]; refs?: () => HTMLAnchorElement[] }
+const CATEGORIES: Category[] = [
+  { href: "#/skills", icon: "⚡", label: "Skills", count: () => listedSkillNames().length,
+    about: "Every skill with its action-point cost and effect. Hero skills are learnt by class; the rest are enemy skills.",
+    refs: () => [statLink("ap", "Action points")] },
+  { href: "#/passives", icon: "✨", label: "Passives", count: () => passiveNames().length, about: "A hero picks one passive from its class list (from level 10)." },
+  { href: "#/items/equipment", icon: "⚔️", label: "Equipment", count: () => visibleItems("equipment").length,
+    about: "Weapons, armour and trinkets. Any class can wear any item of its slot once the hero reaches the item's level.",
+    more: ["Bonus stats: the item's own range, before grade and ascension. Sell value: the base price of a plain item."],
+    refs: () => [statLink("item-stats", "Bonus stats"), statLink("sell", "Sell value")] },
+  { href: "#/items/consumable", icon: "🧪", label: "Consumables", count: () => visibleItems("consumable").length, about: "Potions, boosts, enchants and map scrolls." },
+  { href: "#/items/material", icon: "🪨", label: "Materials", count: () => visibleItems("material").length, about: "Crafting materials, essences and boss trophies, with where they drop." },
+  { href: "#/maps", icon: "🗺️", label: "Maps", count: () => visibleItems("map").length,
+    about: "Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the map modifier.",
+    refs: () => [statLink("map-essence", "Map modifier")] },
+  // R1 F08: the quest bushes (gathering quests) are listed since the U28 follow-up; only the placeholders are not.
+  { href: "#/enemies", icon: "👹", label: "Enemies", count: () => visibleEnemyIds().length,
+    about: "Every quest and map enemy with its base stats (before a map's multiplier), the quest bushes included." },
+  { href: "#/classes", icon: "🛡️", label: "Classes", count: () => visibleClasses().length, about: "The hero classes, their base stats, growth, skills and passives.",
+    refs: () => [statLink("hero-stats", "Growth")] },
+  { href: "#/stats", icon: "🧮", label: "Stats", count: () => STATS_SECTIONS.length,
+    about: "How every number is calculated: hero stats, damage, hit and crit, luck, grade, XP, item stats, selling, crafting, essence." },
+  { href: "#/battle", icon: "🗡️", label: "Battle", count: () => BATTLE_SECTIONS.length,
+    about: "How a fight runs: turn order, the 5-slot rotation, targeting, effects and their durations, heals, revives, map runs." },
+  { href: "#/expansions", icon: "🧩", label: "Expansions", count: () => 2,
+    about: "The Frozen Tome and Scribe expansions: what each adds, the content behind them, and which ones the site thinks you own." },
 ];
+/** A list page's "?" (beside its filter): the section's description and definitions, with its reference links. */
+function listHelp(href: string, title: string): HTMLElement | null {
+  const c = CATEGORIES.find((x) => x.href === href);
+  return c ? helpTip([c.about, ...(c.more ?? [])], title.toLowerCase(), c.refs?.() ?? []) : null;
+}
 
 // ---------------------------------------------------------------- building blocks
 const crumbs = (...parts: (string | [string, string])[]) => el("p", { class: "crumbs small" },
@@ -96,14 +109,32 @@ const crumbs = (...parts: (string | [string, string])[]) => el("p", { class: "cr
     ...(i ? [el("span", { "aria-hidden": "true" }, " › ")] : []),
     typeof p === "string" ? el("span", {}, p) : el("a", { href: p[1] }, p[0])]));
 
-/** Facts list: [term, value]; a term can be a node (U30: a link to its Stats section). */
-const facts = (pairs: [string | Node, Node | string | number | undefined | null][]) =>
-  el("dl", { class: "facts" }, ...pairs.filter(([, v]) => v !== undefined && v !== null && v !== "")
+type FactPair = [string | Node, Node | string | number | undefined | null];
+/**
+ * Facts list: [term, value]; a term can be a node (U30: a link to its Stats section). R2-D F43: `compact` packs the
+ * cards three to a row on a phone, label and value tight (map and enemy pages).
+ */
+const facts = (pairs: FactPair[], compact = false) =>
+  el("dl", { class: compact ? "facts compact" : "facts" }, ...pairs.filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
+const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
 
+/**
+ * R2-D F42: an item's facts as one line, "Weapon · Dagger · Lv 0 · Tuvale · Rarity 1 · Sell 10 / 20 / 40 g", empty
+ * parts left out.
+ */
+const factStrip = (parts: (Node | string | null | undefined | false)[]) =>
+  el("p", { class: "fact-strip" }, ...joinNodes(parts.filter((p): p is Node | string => !!p), " · "));
+
+/** R2-D F55: a section title is plain text over a thin rule (style.css r2-d), no longer a dark banner. */
 const section = (title: string, ...kids: (Node | string)[]) => el("section", { class: "wiki-section" }, el("h2", { class: "wiki-banner" }, title), ...kids);
 const none = (t: string) => el("p", { class: "muted" }, t);
-const joinNodes = (nodes: (Node | string)[], sep = ", "): (Node | string)[] => nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
+/** R2-D F54: an empty section as one muted line ("Recipe · Not craftable."), not a title over a sentence. */
+const emptyLine = (...parts: [string, string][]) => el("p", { class: "wiki-empty-line muted small" },
+  ...parts.flatMap(([title, text], i) => [...(i ? [el("span", { "aria-hidden": "true" }, " · ")] : []), el("strong", {}, title), ` ${text}`]));
+function joinNodes(nodes: (Node | string)[], sep = ", "): (Node | string)[] {
+  return nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
+}
 
 function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInputElement {
   const s = el("input", { type: "search", placeholder, "aria-label": placeholder }) as HTMLInputElement;
@@ -116,7 +147,7 @@ function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInput
  * `rowClass`: a class per row (U24: `reg-N`, so region-sorted lists rule a line where the region changes).
  */
 function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name), rowClass?: (r: Row) => string, hidden = 0,
-  legend?: HTMLElement): HTMLElement {
+  o: { href?: string; heads?: Record<string, () => HTMLElement> } = {}): HTMLElement {
   // R1 F15: everything hidden (the Maps list without Scribe): one empty state, no filter, count or empty table.
   if (!rows.length && hidden) return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title), emptyList(title, hidden));
   const holder = el("div");
@@ -124,12 +155,24 @@ function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) 
   const show = (q: string) => {
     const shown = q ? rows.filter((r) => search(r).toLowerCase().includes(q)) : rows;
     count.textContent = `${shown.length} of ${rows.length}`;
-    holder.replaceChildren(table(shown, cols, rowClass));
+    const t = table(shown, cols, rowClass);
+    if (o.heads) headHelp(t, o.heads);
+    holder.replaceChildren(t);
   };
   show("");
   const note = hiddenNote(hidden, title.toLowerCase());
+  // R2-D F37: the section's description and definitions (once on the wiki home card) in a "?" beside the filter
+  const help = o.href ? listHelp(o.href, title) : null;
   return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
-    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count), ...(note ? [note] : []), ...(legend ? [legend] : []), holder);
+    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count, ...(help ? [help] : [])), ...(note ? [note] : []), holder);
+}
+
+/** R2-D F41: a "?" after the sort button of the named column headers ({ "Cost": () => helpTip(…) }). */
+function headHelp(t: HTMLElement, heads: Record<string, () => HTMLElement>): void {
+  for (const b of t.querySelectorAll<HTMLButtonElement>("thead th > button")) {
+    const make = heads[b.textContent ?? ""];
+    if (make) b.after(make());
+  }
 }
 
 /** A list whose every row is expansion content the visitor hides: what hides it and the one action that shows it. */
@@ -164,19 +207,23 @@ function home(): HTMLElement {
       return { label: searchText(enemyName(id, rare), en), kind: "Enemy", node: () => rare ? el("span", { class: "nowrap" }, enemyLink({ id, rare }), " ", pill("rare", "t-pink")) : enemyLink({ id, rare }) };
     })),
   ];
+  // R2-D F37: compact tiles (icon, name, count), two to a row on a phone; the description is the tile's tooltip.
+  const tiles = el("ul", { class: "wiki-tiles" }, ...CATEGORIES.map((c) =>
+    el("li", {}, el("a", { href: c.href, title: c.about },
+      el("span", { class: "wt-icon", "aria-hidden": "true" }, c.icon), el("span", { class: "wt-name" }, c.label),
+      el("span", { class: "wt-count muted small", "aria-label": `${fmt.format(c.count())} entries` }, fmt.format(c.count()))))));
   const search = filterBox("Search skills, items, maps, enemies…", (q) => {
+    // R2-D F39: the tiles step aside while a query is typed; each hit's kind is a small chip
+    tiles.hidden = !!q;
     if (!q) return results.replaceChildren();
     const hits = all.filter((x) => x.label.toLowerCase().includes(q)).slice(0, 60);
     results.replaceChildren(hits.length
-      ? el("ul", { class: "hits" }, ...hits.map((h) => el("li", {}, h.node(), el("span", { class: "muted small" }, ` ${h.kind}`))))
+      ? el("ul", { class: "hits" }, ...hits.map((h) => el("li", {}, h.node(), " ", el("span", { class: "kind-chip" }, h.kind))))
       : none("Nothing matches."));
   });
   search.classList.add("big-search");
   return el("div", {}, el("h1", { class: "sr-only" }, "Wiki: everything in the game, read from the game's data"),
-    search, results,
-    el("ul", { class: "cards wiki-cats" }, ...CATEGORIES.map(([h, icon, label, n, about]) =>
-      el("li", {}, el("span", { class: "icon", "aria-hidden": "true" }, icon), el("h3", {}, el("a", { href: h }, label)),
-        el("p", { class: "wiki-cat-about" }, ...(typeof about === "string" ? [about] : about())), el("p", { class: "muted small wiki-cat-count" }, `${fmt.format(n())} entries`)))));
+    search, results, tiles);
 }
 
 // ---------------------------------------------------------------- skills & passives
@@ -206,13 +253,14 @@ function skillsPage(): HTMLElement {
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("skill", String(r.key)).map(([id]) => classLink(id)))) },
     { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.key)) }, { key: "effect", label: "Effect" },
   ];
-  const names = skillNames();
-  const unused = names.filter(isUnusedSkill);
-  const page = listPage("Skills", names.filter((n) => !isUnusedSkill(n)).map(toRow), cols,
-    (r) => `${searchText(String(r.name), String(r.key))} ${r.effect} ${r.classes} ${r.enemyNames}`);
+  const unused = skillNames().filter(isUnusedSkill);
+  const page = listPage("Skills", listedSkillNames().map(toRow), cols,
+    (r) => `${searchText(String(r.name), String(r.key))} ${r.effect} ${r.classes} ${r.enemyNames}`, undefined, 0, { href: "#/skills" });
   if (unused.length) {
-    page.append(el("details", { class: "skills-unused" }, el("summary", {}, `Unused (${unused.length})`),
-      el("p", { class: "muted small" }, "In the game's data, but no hero class learns them and no enemy plays them."),
+    // R2-D F52: the sentence moved into the summary's "?"
+    const help = helpTip("In the game's data, but no hero class learns them and no enemy plays them.", "unused skills");
+    help.querySelector("button")?.addEventListener("click", (e) => e.preventDefault()); // the "?" doesn't open the list
+    page.append(el("details", { class: "skills-unused" }, el("summary", {}, `Unused (${unused.length}) `, help),
       table(unused.map(toRow), [cols[0], cols[1], cols[4]])));
   }
   return page;
@@ -239,8 +287,9 @@ function goodAgainstSection(name: string): HTMLElement | null {
     if (base) rareOf.set(base, m);
     return !base;
   });
-  if (!list.length) return sectionHelp(section("Good against", none(G.abilityData?.[name] && classesWith("skill", name).length
-    ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill.")), GOOD_HELP, goodRefs(name));
+  // R2-D F54: nothing found is one muted line
+  if (!list.length) return emptyLine(["Good against", G.abilityData?.[name] && classesWith("skill", name).length
+    ? "No enemy-specific advantage found: a steady pick against any enemy." : "Not a hero skill."]);
   // U21: a table, one row per enemy (ranked), a ✓ on the enemy turns the skill answers; the reasons are the cell's
   // tooltip. "All" holds the reasons tied to no single turn (only when some enemy has one).
   const marks = list.map(turnMarks);
@@ -274,10 +323,12 @@ function skillPage(name: string): HTMLElement {
     facts([["Effect", skillDesc(name) || "No description in the game data."], [statLink("ap", "AP cost"), skillAp(name)],
       ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     ...(good ? [good] : []),
-    ...(isHeroOnlySkill(name) ? [] : [section(`Enemies with this skill (${lines.length})`, lines.length
-      ? el("ul", { class: "plain-list" }, ...lines.map((e) => el("li", {}, ...variantNames(e),
-        el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)} · `), regionChip(regionOf("enemy", e.id), false, { tag: false }))))
-      : none(hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."), ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null))]));
+    ...(isHeroOnlySkill(name) ? [] : lines.length ? [section(`Enemies with this skill (${lines.length})`,
+      el("ul", { class: "plain-list" }, ...lines.map((e) => el("li", {}, ...variantNames(e),
+        el("span", { class: "muted small" }, ` level ${enemyLevelText(e.id)} · `), regionChip(regionOf("enemy", e.id), false, { tag: false })))),
+      ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null))]
+      : [emptyLine(["Enemies with this skill", hidden ? "No enemy you can meet uses it." : "No quest enemy uses it."]),
+        ...[hiddenNote(hidden, "enemies")].filter((x): x is HTMLElement => x !== null)]));
 }
 
 /** "Wild Boar · Hogger [rare]": the base name, then the rare variant's own name with the rare pill (as everywhere). */
@@ -291,7 +342,7 @@ function passivesPage(): HTMLElement {
   return listPage("Passives", rows, [
     { key: "name", label: "Passive", render: (r) => passiveLink(String(r.key)) }, { key: "bonus", label: "Bonus" },
     { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("passive", String(r.key)).map(([id]) => classLink(id)))) },
-  ], (r) => `${searchText(String(r.name), String(r.key))} ${r.bonus} ${r.classes}`);
+  ], (r) => `${searchText(String(r.name), String(r.key))} ${r.bonus} ${r.classes}`, undefined, 0, { href: "#/passives" });
 }
 
 function passivePage(name: string): HTMLElement {
@@ -336,7 +387,7 @@ function itemsPage(type: string): HTMLElement {
   ];
   return listPage(ITEM_TYPE_PLURALS[type], rows, cols,
     (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length,
-    ascLegend(priceLevels(type, shown.map(([id]) => id))));
+    { href: `#/items/${type}`, heads: priceHeads(priceLevels(type, shown.map(([id]) => id))) });
 }
 
 // ---------------------------------------------------------------- prices by ascension (U37)
@@ -367,12 +418,17 @@ function priceColumns(type: string, ids: number[]): Column[] {
   ];
 }
 
-/** The key above a priced list: which outline is which ascension, and what the three gold columns hold. */
-function ascLegend(levels: number[]): HTMLElement {
-  return el("p", { class: "muted small asc-legend" },
-    ...levels.map((a) => el("span", { class: `av tier-${a}` }, `asc ${a}`)),
-    " Gold per ascension variant. Cost: one craft (an ascended craft also uses orbs). Total cost: the whole recipe, "
-    + "materials at their sell value. Sell value: the game's price.");
+/** The key of a priced list's boxes: which outline is which ascension (R2-D F41: inside the headers' "?"). */
+const ascLegend = (levels: number[]): HTMLElement => el("span", { class: "asc-legend" },
+  ...levels.map((a) => el("span", { class: `av tier-${a}` }, `asc ${a}`)), " Gold per ascension variant.");
+
+/** R2-D F41: the "?" on the Cost and Sell value headers: the ascension key, then what the gold columns hold. */
+function priceHeads(levels: number[]): Record<string, () => HTMLElement> {
+  return {
+    "Cost": () => helpTip([ascLegend(levels), "Cost: one craft (an ascended craft also uses orbs).",
+      "Total cost: the whole recipe, materials at their sell value."], "the cost columns", [statLink("craft")]),
+    "Sell value": () => helpTip([ascLegend(levels), "Sell value: the game's price."], "the sell value", [statLink("sell")]),
+  };
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -383,23 +439,27 @@ function safeSell(type: string, id: number, asc: number): number | null {
   }
 }
 
-function recipeList(type: string, id: number): HTMLElement {
+/** The recipe, or null when the item isn't crafted (R2-D F54: the page says so in its one muted line). */
+function recipeList(type: string, id: number): HTMLElement | null {
   const rec = recipe(type, id);
-  if (!rec.length) return none("Not craftable.");
+  if (!rec.length) return null;
   return el("div", {},
     el("ul", { class: "plain-list" }, ...rec.map(([t, mid, amt]) => el("li", {}, `${amt} × `, itemLink(t, mid)))),
     // U30: cost and time link to Stats › Craft (× count, grade speed); R1 F07: "15 s", not "0 min" (recipe-chain.ts)
     el("p", { class: "muted small" }, ...craftLine(type, id)));
 }
 
-/** Recipes that use the item; the ones the visitor hides (expansion content) are counted in a note, not listed. */
-function usedInList(type: string, id: number): HTMLElement {
+/**
+ * Recipes that use the item; the ones the visitor hides (expansion content) are counted in a note, not listed.
+ * `list` is null when none is shown, `empty` then says why (R2-D F54: one muted line).
+ */
+function usedInList(type: string, id: number): { list: HTMLElement | null; note: HTMLElement | null; empty: string } {
   const { shown: used, hidden } = partitionVisible(usedInRecipes(type, id), ([t, uid]) => isVisible(t as ContentKind, uid));
   const note = hiddenNote(hidden, hidden === 1 ? "recipe" : "recipes");
   const list = used.length
     ? el("ul", { class: "plain-list cols" }, ...used.map(([t, uid, amt]) => el("li", {}, itemLink(t, uid), el("span", { class: "muted small" }, ` × ${amt}`))))
-    : none(hidden ? "Not used in any recipe you can make." : "Not used in any recipe.");
-  return note ? el("div", {}, list, note) : list;
+    : null;
+  return { list, note, empty: hidden ? "Not used in any recipe you can make." : "Not used in any recipe." };
 }
 
 const EQUIP_STATS = ["atk", "matk", "acc", "crit", "def", "mdef"];
@@ -426,7 +486,12 @@ function gradeRows(id: number, asc: number): HTMLElement {
   }
   const keys = EQUIP_STATS.filter((k) => rows.some((r) => r[k] !== undefined));
   if (!keys.length && !bonusKeys.length) return none("No stats.");
-  return table(rows, [{ key: "grade", label: "Grade", render: (r) => gradeBadge(String(r.grade)) },
+  // R2-D F42: grades with the same numbers share one row ("D–S" when all five are the same)
+  const gradeCell = (g: string) => {
+    const [a, b] = g.split("–");
+    return b ? el("span", { class: "grade-run", title: `Grades ${a} to ${b}` }, gradeBadge(a), "–", gradeBadge(b)) : gradeBadge(a);
+  };
+  return table(mergeGradeRows(rows), [{ key: "grade", label: "Grade", render: (r) => gradeCell(String(r.grade)) },
     ...keys.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), num: true })),
     ...bonusKeys.map((k) => ({ key: `b_${k}`, label: `${bonusLabel(k).replace(/^./, (x) => x.toUpperCase())} (bonus)` }))]);
 }
@@ -463,39 +528,53 @@ function itemPage(type: string, id: number): HTMLElement {
   // R1 F18: no lead line when the Effect card says the same ("Restores 40 health" beside "+40 HP")
   const effect = type === "consumable" && Object.keys(it.stat ?? {}).length > 0;
   const desc = effect ? "" : itemText(type, id);
+  // R1 F43: the stackables' data pair is in each box's tooltip; ascension 1–2 only where the visitor sees them
+  const sells = [0, 1, 2].filter((a) => (type !== "material" || a === 0) && (!a || isVisible(type as ContentKind, id, { ascension: a })))
+    .map((a): [number, number | null] => [a, safeSell(type, id, a)]).filter((x): x is [number, number] => x[1] !== null);
+  const bonus = type === "equipment" ? bonusLines(it) : [];
   const kids: (Node | string)[] = [
     crumbs([ITEM_TYPE_PLURALS[type], listHref], itemName(type, id) ?? it.name),
     el("h1", {}, itemLink(type, id)),
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
-    facts([
-      ["Type", itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined)],
-      ["Level", it.itemLevel], ["Region", regionChip(regionOf(type as "equipment", id), true)], ["Rarity", rarityChip(it.rarity)], ["Made by", it.crafterID ? `${crafterName(it.crafterID)} (level ${it.itemLevel ?? 0})` : undefined],
-      [statLink("sell", "Sell value"), [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
-        : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => (type !== "material" || a === 0) && (!a || isVisible(type as ContentKind, id, { ascension: a }))).map((a) => {
-          const v = safeSell(type, id, a);
-          // ascension shown as the value's outline (silver 1, gold 2), not as text; R1 F43: the data's pair beside it
-          return withAsc(sellNode(type, id, v ?? 0, a), a);
-        }))],
-      [statLink("item-stats", "Bonus stats"), type === "equipment" && bonusLines(it).length ? bonusLines(it).join(", ") : undefined],
-      ["Effect", effect ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
+    // R2-D F42: one strip of facts instead of five cards; the region's reason is its chip's tooltip
+    factStrip([
+      itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined),
+      `Lv ${it.itemLevel ?? 0}`, ((r) => (r ? regionChip(r) : null))(regionOf(type as "equipment", id)), rarityChip(it.rarity),
+      it.crafterID ? crafterName(it.crafterID) : null,
+      sells.length ? el("span", { class: "nowrap-group" }, statLink("sell", "Sell"), " ", sellBoxes(type, id, sells)) : null,
     ]),
+    ...(bonus.length || effect ? [facts([
+      [statLink("item-stats", "Bonus stats"), bonus.length ? bonus.join(", ") : undefined],
+      ["Effect", effect ? Object.entries<number>(it.stat).map(([k, v]) => statText(k, v)).join(", ") : undefined],
+    ])] : []),
   ];
   if (type === "equipment") kids.push(sectionHelp(section("Stats by grade", gradeTable(id)), GRADE_HELP, [statLink("item-stats")]));
+  // R2-D F54: the empty sections end the page as one muted line ("Recipe · Not craftable. · Used in · Not used…")
+  const empty: [string, string][] = [];
   // Sources in content the visitor hides (a Frentir enemy, a map without Scribe) are counted, not listed.
   const allSrc = type === "material" || type === "equipment" ? dropSources(id, type) : [];
   const { shown: src, hidden: hiddenSrc } = partitionVisible(allSrc, (s) => isVisible(s.kind === "map" ? "map" : "enemy", s.id));
-  if (type === "material" || allSrc.length) {
-    const note = hiddenNote(hiddenSrc, hiddenSrc === 1 ? "source" : "sources");
-    kids.push(section(`Where it drops (${src.length})`, src.length
+  const srcNote = hiddenNote(hiddenSrc, hiddenSrc === 1 ? "source" : "sources");
+  if (src.length) {
+    kids.push(section(`Where it drops (${src.length})`,
       // R1 F11: a rare variant is its own name + the small rare pill, as in the lists
-      ? el("ul", { class: "plain-list" }, ...src.map((s) => el("li", {}, s.kind === "map" ? itemLink("map", s.id) : enemyLink({ id: s.id, name: s.label, rare: s.rare }),
+      el("ul", { class: "plain-list" }, ...src.map((s) => el("li", {}, s.kind === "map" ? itemLink("map", s.id) : enemyLink({ id: s.id, name: s.label, rare: s.rare }),
         s.rare ? pill("rare", "t-pink") : "",
-        el("span", { class: "muted small" }, ` · ${s.detail}`))))
-      : none(hiddenSrc ? "Not dropped by anything you can reach." : "Not dropped by quests or maps (crafted, bought or event only)."), ...(note ? [note] : [])));
+        el("span", { class: "muted small" }, ` · ${s.detail}`)))), ...(srcNote ? [srcNote] : [])));
+  } else if (type === "material" || allSrc.length) {
+    empty.push(["Drops", hiddenSrc ? "Not dropped by anything you can reach." : "Not dropped by quests or maps (crafted, bought or event only)."]);
   }
   const chain = recipeChain(type, id);
   if (chain) kids.push(chainSection(chain));
-  kids.push(section("Recipe", recipeList(type, id)), section("Used in", usedInList(type, id)));
+  const rec = recipeList(type, id);
+  if (rec) kids.push(section("Recipe", rec));
+  else empty.push(["Recipe", "Not craftable."]);
+  const used = usedInList(type, id);
+  if (used.list) kids.push(section("Used in", used.list, ...(used.note ? [used.note] : [])));
+  else empty.push(["Used in", used.empty]);
+  if (empty.length) kids.push(emptyLine(...empty));
+  if (!src.length && srcNote) kids.push(srcNote);
+  if (!used.list && used.note) kids.push(used.note);
   return el("div", {}, ...kids);
 }
 
@@ -527,7 +606,7 @@ function mapsPage(): HTMLElement {
     { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
     ...priceColumns("map", ids), // U37: maps go up to asc 1, so two values per cell
   ], (r) => `${searchText(String(r.name), String(r.en))} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length,
-  ascLegend(priceLevels("map", ids)));
+  { href: "#/maps", heads: priceHeads(priceLevels("map", ids)) });
 }
 
 function mapPage(id: number): HTMLElement {
@@ -541,17 +620,18 @@ function mapPage(id: number): HTMLElement {
   return el("div", {}, crumbs(["Maps", "#/maps"], itemName("map", id) ?? m.name), el("h1", {}, itemLink("map", id)),
     // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Boss table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
-    facts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
+    // R2-D F43: compact facts, three to a row on a phone; the essence spans the row
+    compactFacts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
       ["Base time", m.baseMapTime ? duration(m.baseMapTime) : undefined],
-      [statLink("map-essence", "Enemy modifier"), `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
+      [statLink("map-essence", "Enemy ×"), `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
+      [statLink("sell", "Sell value"), safeSell("map", id, 0) !== null ? gold(safeSell("map", id, 0)) : undefined],
       // R1 F16: the essence names wrap inside the card ("500 × Essence de la forêt" in French).
-      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essenceParts(m))],
-      [statLink("sell", "Sell value"), safeSell("map", id, 0) !== null ? gold(safeSell("map", id, 0)) : undefined]]),
-    sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")), modHelp, [statLink("map-essence")]),
+      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essenceParts(m))]]),
+    bosses.length ? sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, enemyTable(bosses, mod)), modHelp, [statLink("map-essence")]) : emptyLine(["Boss", "None."]),
     sectionHelp(section("Room enemies", enemyTable(mapEnemies(m), mod)), modHelp, [statLink("map-essence")]),
     // U24: the Treasure Bush of the map's level band (added to a room at run time, so not in the map's own lists)
     ...(bush && isEnemy(bush) ? [sectionHelp(section("Treasure", enemyTable([bush], mod)), [TREASURE_HELP, modHelp], [statLink("map-essence")])] : []),
-    section("Recipe", recipeList("map", id)));
+    ((rec) => (rec ? section("Recipe", rec) : emptyLine(["Recipe", "Not craftable."])))(recipeList("map", id)));
 }
 
 // ---------------------------------------------------------------- enemies
@@ -559,7 +639,7 @@ function enemiesPage(): HTMLElement {
   const all = enemyListRows();
   const rows = all.filter((r) => isVisible("enemy", Number(r.id)));
   return listPage("Enemies", rows, enemyListColumns,
-    (r) => `${r.name} ${r.rareName} ${r.en} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass, all.length - rows.length);
+    (r) => `${r.name} ${r.rareName} ${r.en} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass, all.length - rows.length, { href: "#/enemies" });
 }
 
 function enemyPage(id: number): HTMLElement {
@@ -570,7 +650,7 @@ function enemyPage(id: number): HTMLElement {
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
     el("p", { class: "lead" }, enemyLead(id)),
-    ...enemyBody(id, facts, section));
+    ...enemyBody(id, compactFacts, section, emptyLine));
 }
 
 // ---------------------------------------------------------------- classes
@@ -614,7 +694,7 @@ function classesPage(): HTMLElement {
   return listPage("Classes", rows, [
     { key: "name", label: "Class", render: (r) => classLink(Number(r.id)) }, { key: "hp", label: "HP", num: true }, { key: "atk", label: "Atk", num: true },
     { key: "matk", label: "Matk", num: true }, { key: "def", label: "Def", num: true }, { key: "mdef", label: "Mdef", num: true }, { key: "about", label: "About" },
-  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.about}`, undefined, classes().length - shown.length);
+  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.about}`, undefined, classes().length - shown.length, { href: "#/classes" });
 }
 
 /** Class page; `#/class/ID/LEVEL/ASC` opens it on a level and ascension (the picker keeps the URL in step). */
@@ -625,12 +705,13 @@ function classPage(id: number, level?: string, asc?: string): HTMLElement {
   const skills = seq<string>(c.skillList ?? {});
   const passives = seq<string>(c.passiveList ?? {});
   const start = { level: level ? Number(level) : undefined, asc: asc ? Number(asc) : undefined };
-  const { cards, block } = classStats(id, start, (s) => history.replaceState(null, "", `#/class/${id}/${s.level}/${s.asc}`));
+  // R2-D F47: no stat cards (the radar shows the values); the radar's caption is the Stats section's "?"
+  const { block } = classStats(id, start, (s) => history.replaceState(null, "", `#/class/${id}/${s.level}/${s.asc}`));
   return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], className(id) ?? c.name), el("h1", {}, classLink(id, { always: true })),
     ...(classText(id) ? [el("p", { class: "lead" }, classText(id))] : []),
-    cards,
-    section("Stats", block, ...[hiddenNote(tiersOf(c).filter((p) => !isVisible("prestige", p)).length, "ascension tier (levels 51–60)")].filter((x): x is HTMLElement => x !== null)),
-    section(`Passives (${passives.length}, pick one from level 10)`, passives.length ? abilityTable("passive", passives) : none("No passive.")),
+    sectionHelp(section("Stats", block, ...[hiddenNote(tiersOf(c).filter((p) => !isVisible("prestige", p)).length, "ascension tier (levels 51–60)")].filter((x): x is HTMLElement => x !== null)),
+      RADAR_HELP, [statLink("hero-stats")]),
+    passives.length ? section(`Passives (${passives.length}, pick one from level 10)`, abilityTable("passive", passives)) : emptyLine(["Passives", "None."]),
     section(`Skills (${skills.length}, in unlock order)`, abilityTable("skill", skills)));
 }
 

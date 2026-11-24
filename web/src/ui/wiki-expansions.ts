@@ -91,7 +91,9 @@ function groupSection(g: Group, needs: Expansion[], title: string): HTMLElement 
       card("Status", own ? "✓ Owned: its content is shown" : showAll() ? "Not owned, shown (“Show expansion content” is on)" : "Not owned: its content is hidden"),
       ...(info ? [card("In the store", el("strong", {}, info.storeTitle), el("span", { class: "xp-store" }, info.description)),
         card("What it adds", list(info.adds))] : []),
-      el("div", { class: "xp-wide" }, el("dt", {}, info ? "In detail" : "What it is"), el("dd", {}, list(DETAILS[g]))),
+      // R2-D F48: the long "In detail" list closed by default (the "Content behind both" group has only this list: open)
+      el("div", { class: "xp-wide" }, el("dt", {}, info ? "In detail" : "What it is"), el("dd", {},
+        info ? el("details", { class: "xp-detail" }, el("summary", {}, `${DETAILS[g].length} points`), list(DETAILS[g])) : list(DETAILS[g]))),
       el("div", { class: "xp-wide" }, el("dt", {}, "Content behind it"),
         el("dd", {}, lists.length ? el("div", { class: "xp-lists" }, ...lists) : "Nothing listed."))));
 }
@@ -105,9 +107,10 @@ function status(): HTMLElement {
   const owned = XP.filter((x) => owns(x));
   const byHand = XP.some((x) => overrideOf(x) !== null);
   const now = owned.length ? `You own ${owned.map((x) => EXPANSIONS[x].name).join(" and ")}` : "You own no expansion";
-  const from = byHand ? " (set by hand)" : inf.source === null ? " (no save loaded)" : ` (guessed from ${inf.source})`;
-  return el("p", { class: "xp-controls" }, `${now}${from}${showAll() ? "; expansion content is shown anyway" : ""}. `,
-    "Change it under ", el("strong", {}, "Expansions"), " in the top bar's 📜 Save menu.");
+  const from = byHand ? " (set by hand)" : inf.source === null ? " (no save loaded)" : ` (from ${inf.source})`;
+  // R2-D F48: one line; where to change it is a short pointer to the Save menu
+  return el("p", { class: "xp-controls" }, `${now}${from}${showAll() ? ", all shown" : ""}`,
+    el("span", { class: "muted" }, " · change it in 📜 Save › ", el("strong", {}, "Expansions")));
 }
 
 export function expansionsPage(topic?: string): HTMLElement {

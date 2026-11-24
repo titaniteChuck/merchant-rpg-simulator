@@ -51,13 +51,14 @@ export function rarityTip(r: unknown): string {
   return same ? `${rarityLabel(r)}: the game draws it in the colour of rarity ${same}` : `${rarityLabel(r)} (the game's colour for it)`;
 }
 
-/** A chip in the game's own rarity colour (dark text and a thin outline keep white and yellow readable on light pages). */
+/**
+ * A rarity chip. R2-D F46: a muted chip in the style of the grade badges, its text in the rarity's hue at AA contrast
+ * (4.5:1 or more in both themes) on a faint tint of it (the `r2-d` block of style.css, tokens --rarc-N); the game's
+ * own colour (RARITY_COLOURS) was louder than the content and failed contrast for white, yellow and red.
+ */
 export function rarityChip(r: unknown): HTMLElement {
   const n = typeof r === "number" ? r : NaN;
-  const colour = RARITY_COLOURS[n];
-  const s = el("span", { class: `rar-chip rar-${Number.isFinite(n) ? n : "x"}`, title: rarityTip(r) }, rarityLabel(r));
-  if (colour) s.style.setProperty("--rar-game", colour);
-  return s;
+  return el("span", { class: `rar-chip rar-${Number.isFinite(n) ? n : "x"}`, title: rarityTip(r) }, rarityLabel(r));
 }
 
 // ---------------------------------------------------------------- bonus stats
@@ -318,4 +319,37 @@ export function sellTip(type: string, id: number, asc = 0): string {
 export function sellNode(type: string, id: number, value: number, asc = 0): HTMLElement {
   const tip = sellTip(type, id, asc);
   return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, gold(value));
+}
+
+/**
+ * R2-D F42: an item's sell values in a row of labelled boxes ("asc 0 10 g", "asc 1 20 g"), each outlined in its tier
+ * colour; one value alone (materials) has no label. `values`: [ascension, gold] of the variants shown.
+ */
+export function sellBoxes(type: string, id: number, values: [number, number][]): HTMLElement {
+  const one = values.length === 1;
+  return el("span", { class: "sell-boxes" }, ...values.map(([a, v]) => {
+    const tip = sellTip(type, id, a);
+    return el("span", { class: `av av-l tier-${a}`, title: `Ascension ${a}: ${gold(v)}${tip ? `. ${tip}` : ""}` },
+      ...(one ? [] : [el("span", { class: "av-k" }, `asc ${a}`), " "]), gold(v));
+  }));
+}
+
+// ---------------------------------------------------------------- grade rows (R2-D F42)
+/**
+ * Grade rows with the same values merged: consecutive grades whose every other cell is the same become one row whose
+ * grade reads "D–S" (all five) or "D–B" (a run). A plain trinket or a level-0 weapon has five identical rows.
+ */
+export function mergeGradeRows<T extends Record<string, unknown>>(rows: T[], key = "grade"): T[] {
+  const same = (a: T, b: T) => {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)].filter((k) => k !== key));
+    return [...keys].every((k) => a[k] === b[k]);
+  };
+  const out: T[] = [];
+  let start = 0;
+  for (let i = 1; i <= rows.length; i++) {
+    if (i < rows.length && same(rows[start], rows[i])) continue;
+    out.push(i - start > 1 ? { ...rows[start], [key]: `${rows[start][key]}–${rows[i - 1][key]}` } : rows[start]);
+    start = i;
+  }
+  return out;
 }

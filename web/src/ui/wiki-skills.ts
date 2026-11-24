@@ -18,7 +18,7 @@
  */
 import type { EffectInfo, EnemyTimeline, SkillProfile } from "../tools/schedule.ts";
 import { enemyTimeline, skillProfile } from "../tools/schedule.ts";
-import { classesWith, enemiesWith, enemyIds, hasRare } from "./wiki-data.ts";
+import { classesWith, enemiesWith, enemyIds, hasRare, skillNames } from "./wiki-data.ts";
 import { skillName } from "./names.ts";
 
 /**
@@ -26,6 +26,9 @@ import { skillName } from "./names.ts";
  * the 235 abilityData rows, passives' names included). The Skills list groups them under a collapsed "Unused".
  */
 export const isUnusedSkill = (name: string): boolean => !classesWith("skill", name).length && !enemiesWith(name).length;
+
+/** R2-D F38: the skills the Skills list shows (the unused ones are folded under it); the wiki home counts these. */
+export const listedSkillNames = (): string[] => skillNames().filter((n) => !isUnusedSkill(n));
 
 /** A hero skill no enemy plays: its page drops the empty "Enemies with this skill" section. */
 export const isHeroOnlySkill = (name: string): boolean => classesWith("skill", name).length > 0 && !enemiesWith(name).length;
