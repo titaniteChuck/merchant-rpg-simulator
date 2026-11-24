@@ -100,6 +100,9 @@ flowchart LR
   ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
   `prestigeLevel` and lower ascensions use `level`; an ascension not unlocked shows "—".
 - Maps: essence per run from the profit model (`mapEssence`, with the map's grade, ascension, prefix and suffix).
+- Item names with modifiers (U34): "[Prefix] Item +N" everywhere (inventory, counter, maps, hero gear, crafters, CSV),
+  `modItemName` in `names.ts` (see [Languages](#languages)); name columns sort by the base name.
+- No "… page in the wiki →" links next to a name that is already a link (U34): a name link opens its wiki page.
 
 ## Battle simulator
 
@@ -673,7 +676,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   match `index.json` (test). Phone: one compact chip, the top bar stays one line (U20).
 - Code: `web/src/ui/names.ts` is the one place names are looked up: `itemName`, `enemyName(id, rare)`,
   `questTitle`, `className`, `skillName`, `passiveName`, `prefixName`, `suffixName`, `crafterName`, `regionName`,
-  `descOf`, `modName`, `itemNameFromEnglish` (worker rows name items in English), `compareNames` (`Intl.Collator` of
+  `descOf`, `modItemName`, `itemNameFromEnglish` (worker rows name items in English), `compareNames` (`Intl.Collator` of
   the language: every table sorts names in that order), `searchText` (searches match the shown and the English name).
   It calls `tr()` of `web/src/tools/i18n.ts` and falls back to English. Ids, routes and keys stay English
   (`wiki.html#/skill/Absorb%20All`). `web/src/ui/language.ts`: `languageReady` (every page awaits it before its first
@@ -692,6 +695,18 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     kept); the rest by `relabel`.
 - Checks: `web/test/languages.test.ts` (FR / RU names, titles, search text, placeholders, sorting, routes, picker
   codes). `check-site.ts --lang fr` runs the sweep with French names (default English).
+- Modded items (U34): an item with a prefix or suffix is named from its parts by ONE helper, `modItemName(type, id,
+  {prefix, suffix})` in `names.ts`: the prefix in brackets before the base name, without the English possessive
+  (`prefixTag`: "Defender's" → "Defender"), the suffix symbol after it, never translated: "[Defender] Molten Platemail
+  +6", in French "[du Défenseur] Plate en Fusion +6". Each part is translated on its own (a whole modded string has no
+  translation). The engine names a modded item in one English string ("Defender's Molten Platemail +6",
+  `sim/equipment.ts`): `parseItemName` splits it back into id, prefix and suffix, and `itemNameFromEnglish` shows it
+  with `modItemName`. Used by the save viewer (inventory, counter sales, maps, hero gear, crafters' jobs, CSV: same
+  bracket format, in the page's language) and by the battle page's search results through `itemNameFromEnglish`.
+  Item-name columns sort by the base name (`Column.sortBy` in `dom.ts`); the inventory filter matches the shown and
+  the English base name. Still building map names by hand (to move to `modItemName`): `farming.ts` `ownedMapLabel`,
+  `battle.ts` map options and map card, `battle-search.ts` `equipLink` / `gearCell` (shows the engine's English
+  string). Tests: `web/test/mod-names.test.ts`.
 - CSS: block `/* language picker */ … /* end language picker */` at the end of `site/style.css`.
 
 ## Shared page parts

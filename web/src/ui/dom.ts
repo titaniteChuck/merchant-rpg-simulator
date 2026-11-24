@@ -113,6 +113,8 @@ export interface Column {
   show?: (v: Cell, r: Row) => string;
   /** Cell content as nodes (wins over show). */
   render?: (r: Row) => Node | string;
+  /** The value the column sorts by, when not the cell's own (a modded item sorts by its base name, U34). */
+  sortBy?: (r: Row) => Cell;
 }
 
 /** A sortable table; click a header to sort. */
@@ -121,8 +123,9 @@ export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string
   let asc = true;
   const tbody = el("tbody");
   const render = () => {
+    const by = cols.find((c) => c.key === sortKey)?.sortBy;
     const sorted = sortKey ? [...rows].sort((a, b) => {
-      const x = a[sortKey], y = b[sortKey];
+      const x = by ? by(a) : a[sortKey], y = by ? by(b) : b[sortKey];
       const c = typeof x === "number" && typeof y === "number" ? x - y : compareNames(String(x ?? ""), String(y ?? "")); // names in the visitor's language (U29)
       return asc ? c : -c;
     }) : rows;

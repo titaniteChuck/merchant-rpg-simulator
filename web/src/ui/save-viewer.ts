@@ -6,6 +6,7 @@ import * as api from "../sim/api.ts";
 import { itemName as englishItemName } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
+import { itemName as shownItemName } from "./names.ts";
 import {
   $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gradeBadge, heroAsc, pill,
   type Row as Cells, table, tabKeys, withAsc,
@@ -52,8 +53,10 @@ function toolbar(...kids: Node[]): HTMLElement {
   return el("div", { class: "toolbar" }, ...kids);
 }
 
-/** Item name coloured by rarity, linked to its wiki page (summary on hover). */
+/** Item name coloured by rarity, linked to its wiki page (summary on hover); `name` is "[Prefix] Item +N" (modItemName, U34). */
 const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc, { always: true }));
+/** A modded item sorts by its base name, not by its "[Prefix]" (U34). */
+const baseName = (r: Cells) => shownItemName(String(r.type), Number(r.id)) ?? String(r.name);
 /** The sortable "Asc" column: an outlined swatch, sorted by the number. */
 const ascCol: Column = { key: "asc", label: "Asc", num: true, render: (r) => ascSwatch(r.asc) };
 const gradeCell = (r: Cells) => (r.grade ? gradeBadge(String(r.grade)) : "");
@@ -232,7 +235,7 @@ function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
 
 /** Inventory columns: one count per grade, best first (S … D), then the stack's total. */
 const ITEM_COLS: Column[] = [
-  { key: "name", label: "Item", render: itemCell }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
+  { key: "name", label: "Item", render: itemCell, sortBy: baseName }, { key: "subtype", label: "Type" }, { key: "item_level", label: "Lvl", num: true },
   ascCol, ...GRADES_BEST_FIRST.map((g): Column => ({ key: g, label: g, num: true, render: countCell(g) })),
   { key: "total", label: "Total", num: true },
   { key: "unit_sell", label: "Unit value", num: true }, { key: "total_sell", label: "Total value", num: true },
@@ -270,7 +273,7 @@ function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
   if (!rows.length) return el("p", { class: "muted" }, "No maps in this save.");
   return el("div", {}, table(rows, [
-    { key: "name", label: "Map", render: itemCell }, { key: "item_level", label: "Lvl", num: true }, ascCol,
+    { key: "name", label: "Map", render: itemCell, sortBy: baseName }, { key: "item_level", label: "Lvl", num: true }, ascCol,
     { key: "grade", label: "Grade", render: gradeCell }, { key: "enemies", label: "Enemies", num: true }, { key: "base_time_min", label: "Minutes", num: true },
     { key: "essence", label: "Essence / run", render: (r) => {
       // Linked essence names; the row's text form goes to the CSV.

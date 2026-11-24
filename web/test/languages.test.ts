@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { loadGameData } from "../src/sim/api.ts";
 import { loadLanguage, setLanguage } from "../src/tools/i18n.ts";
 import {
-  className, compareNames, crafterName, enemyName, itemName, itemNameFromEnglish, modName, passiveName, prefixName, questTitle, searchText, skillName,
+  className, compareNames, crafterName, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, questTitle, searchText, skillName,
   suffixName,
 } from "../src/ui/names.ts";
 import { enemyKind, href, itemText, regionOf, regionText, skillDesc, skillNames } from "../src/ui/wiki-data.ts";
@@ -41,7 +41,7 @@ test("French: names, rare names, titles, prefixes, crafters; suffix symbols and 
   assert.equal(prefixName(1), "Brûlant");
   assert.equal(suffixName(1), "+1");
   assert.equal(crafterName(1), "Forgeron");
-  assert.equal(modName("equipment", 1, 1, 1), "Brûlant Dague en Fer +1");
+  assert.equal(modItemName("equipment", 1, { prefix: 1, suffix: 1 }), "[Brûlant] Dague en Fer +1");
   assert.equal(itemNameFromEnglish("equipment", "Iron Dagger"), "Dague en Fer");
   // search matches both: the shown name and the English one
   assert.match(searchText(itemName("equipment", 1), "Iron Dagger"), /Dague en Fer/);

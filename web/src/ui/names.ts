@@ -3,7 +3,8 @@
  * prints (items, materials, consumables, maps, skills, passives, enemies and their rare variants, quest titles, classes,
  * prefixes, crafters, regions) goes through these helpers: tr() of web/src/tools/i18n.ts in the current language,
  * the English of gamedata.json / wikidata.json when there is no translation. The site's own words stay English, and so
- * do stat labels (Atk, HP…) and suffix symbols (+1, *2), which the game data doesn't translate.
+ * do stat labels (Atk, HP…) and suffix symbols (+1, *2), which the game data doesn't translate. An item with modifiers
+ * is named by modItemName (U34), part by part: "[Defender] Molten Platemail +6".
  *
  * Ids stay English: skill routes and keys (wiki.html#/skill/Fireball), save data, worker requests. Only the text shown
  * changes. Pure (no DOM globals) so Node tests can import it; the browser side (loading a language file, the picker's
@@ -80,9 +81,35 @@ export const regionName = (id: number, english: string): string => tr("region", 
  */
 export const descOf = (kind: Kind, id: number | string): string | undefined => (isEnglish() ? undefined : tr(kind, id, "d"));
 
-/** An item label with its modifiers: "Strong Iron Sword +3" (prefix, name, suffix), in the current language. */
-export function modName(type: string, id: number, prefix?: number | null, suffix?: number | null): string {
-  return [prefixName(prefix), itemName(type, id) ?? `${type} #${id}`, suffixName(suffix)].filter(Boolean).join(" ");
+// ---------------------------------------------------------------- modded items (U34)
+/** An item's modifiers as the save and the engine store them: prefixList id, suffixList id (0 / null = none). */
+export interface ItemMods {
+  prefix?: number | string | null;
+  suffix?: number | string | null;
+}
+
+/**
+ * A prefix as it reads in brackets: its name in the current language, the English possessive dropped ("Defender's"
+ * → "Defender", "Titan's" → "Titan"); "" for none.
+ */
+export const prefixTag = (id: number | string | null | undefined): string => prefixName(id).replace(/['’]s$/, "");
+
+/** The parts of a modded item's name: [prefix tag, base name, suffix symbol] in the current language. */
+export function modItemParts(type: string, id: number | string, mods: ItemMods = {}): [string, string, string] {
+  return [prefixTag(mods.prefix), itemName(type, id) ?? `${type} #${id}`, suffixName(mods.suffix)];
+}
+
+/**
+ * THE name of a saved or generated item with its modifiers (U34), built from its parts so each one is translated on
+ * its own: the prefix in brackets before the base name, the suffix symbol (never translated) after it.
+ *
+ *     modItemName("equipment", 372, { prefix: 25, suffix: 6 })  // "[Defender] Molten Platemail +6"; FR "[du Défenseur] Plate en Fusion +6"
+ *
+ * Without modifiers it is the plain item name. Pass the save's item itself as `mods` ({itemType, id, prefix, suffix…}).
+ */
+export function modItemName(type: string, id: number | string, mods: ItemMods = {}): string {
+  const [pre, base, suf] = modItemParts(type, id, mods);
+  return [pre && `[${pre}]`, base, suf].filter(Boolean).join(" ");
 }
 
 /** Item id from its English name (worker results name items in English: gear, essences), or undefined. */
@@ -90,11 +117,46 @@ export function itemIdByName(type: string, name: string): number | undefined {
   const hit = Object.entries<Any>(G.itemData?.[type] ?? {}).find(([, it]) => it?.name === name);
   return hit ? Number(hit[0]) : undefined;
 }
-/** An English item name shown in the current language (unknown names as they are). */
+
+/**
+ * An English name as the engine builds it, prefix and suffix included ("Defender's Molten Platemail +6",
+ * sim/equipment.ts), split back into the item id and its modifiers; undefined when no item matches.
+ */
+export function parseItemName(type: string, name: string): ({ id: number } & ItemMods) | undefined {
+  const exact = itemIdByName(type, name);
+  if (exact !== undefined) return { id: exact };
+  let rest = name.trim(), suffix = 0, prefix = 0;
+  const sp = rest.lastIndexOf(" ");
+  const sufId = sp > 0 ? Object.entries<Any>(G.suffixList ?? {}).find(([, s]) => s?.name && s.name === rest.slice(sp + 1))?.[0] : undefined;
+  if (sufId !== undefined) {
+    suffix = Number(sufId);
+    rest = rest.slice(0, sp);
+  }
+  let id = itemIdByName(type, rest);
+  if (id === undefined) {
+    // the longest prefix name the rest starts with ("Titan's" before a shorter one)
+    const pres = Object.entries<Any>(G.prefixList ?? {}).filter(([, p]) => p?.name && rest.startsWith(`${p.name} `))
+      .sort((a, b) => b[1].name.length - a[1].name.length);
+    for (const [pid, p] of pres) {
+      id = itemIdByName(type, rest.slice(p.name.length + 1));
+      if (id !== undefined) {
+        prefix = Number(pid);
+        break;
+      }
+    }
+  }
+  return id === undefined ? undefined : { id, prefix, suffix };
+}
+
+/**
+ * An English item name shown in the current language (unknown names as they are). A modded name from the engine
+ * ("Defender's Molten Platemail +6") becomes modItemName's "[Defender] Molten Platemail +6", translated part by part.
+ */
 export function itemNameFromEnglish(type: string, name: string): string {
-  if (isEnglish()) return name;
-  const id = itemIdByName(type, name);
-  return id === undefined ? name : itemName(type, id) ?? name;
+  const hit = parseItemName(type, name);
+  if (!hit) return name;
+  if (!hit.prefix && !hit.suffix) return isEnglish() ? name : itemName(type, hit.id) ?? name;
+  return modItemName(type, hit.id, hit);
 }
 
 // ---------------------------------------------------------------- names kept in step (relabel)

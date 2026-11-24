@@ -9,7 +9,7 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { itemName as englishItemName, rarity, sellValue } from "../tools/engine.ts";
-import { className as classNameOf, crafterName, enemyName, itemName as shownItemName, prefixName, suffixName } from "./names.ts";
+import { className as classNameOf, crafterName, enemyName, itemName as shownItemName, modItemName, prefixTag, suffixName } from "./names.ts";
 import { type Game, gameFromData } from "../tools/gamedata.ts";
 import { mapEssence } from "../tools/profit.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
@@ -40,15 +40,13 @@ export function className(cls: number): string {
   return classNameOf(cls) ?? `class ${cls}`;
 }
 
+/** The prefix (as in brackets, without "'s") and suffix symbol of a saved item, for the prefix / suffix columns. */
 function modNames(it: Any): [string, string] {
-  return [prefixName(it.prefix || 0), suffixName(it.suffix || 0)];
+  return [prefixTag(it.prefix || 0), suffixName(it.suffix || 0)];
 }
 
-/** "Strong Undertaker +10". */
-export function itemLabel(it: Any): string {
-  const [pre, suf] = modNames(it);
-  return [pre, itemName(it.itemType, it.id), suf].filter(Boolean).join(" ");
-}
+/** A saved item's name with its modifiers: "[Strong] Undertaker +10" (names.ts modItemName, U34). */
+export const itemLabel = (it: Any): string => modItemName(it.itemType, it.id, it);
 
 function itemRow(it: Any): Row {
   const data = G.itemData[it.itemType]?.[it.id];

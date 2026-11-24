@@ -565,7 +565,7 @@ export function passiveLink(name: string, cls = ""): HTMLElement {
 const itemKind = (type: string): ContentKind | null => ((ITEM_TYPES as readonly string[]).includes(type) ? type as ContentKind : null);
 
 /**
- * A link to an item or map, coloured by rarity, with a summary on hover. `label` shows modifiers (e.g. "Strong Iron Sword +3");
+ * A link to an item or map, coloured by rarity, with a summary on hover. `label` shows modifiers (names.ts modItemName: "[Strong] Iron Sword +3");
  * `asc` (0–2) outlines it silver or gold. Expansion content carries its badge; content the visitor hides becomes the
  * "expansion content" placeholder unless `opts.always` (U28).
  */
