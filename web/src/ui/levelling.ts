@@ -19,6 +19,7 @@ import {
 } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import type { LevelRequest, LevelResponse } from "./levelling-worker.ts";
+import { heroLabels, sizeText, stepTimeTip, xpRunTip } from "./levelling-view.ts";
 import { xpText } from "./quest-xp.ts";
 import { initSaveSource } from "./save-source.ts";
 import { tip } from "./tooltip.ts";
@@ -47,8 +48,8 @@ function loadData(): Promise<void> {
 }
 
 const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
-/** A hero in the pickers: "Aria · Warrior lv 42" (class in the visitor's language, U29). */
-const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
+/** The heroes in the pickers: "Paladin (2) · Paladin · Lv 60 · Asc 2" (class in the visitor's language, U29; F24). */
+const pickerLabels = () => heroLabels(state.sv!.raw.hero as Any[], className);
 const heroRaw = () => state.sv!.raw.hero[Number($<HTMLSelectElement>("#hero").value)];
 const isGathering = (id: number) => G.questData[id]?.questType === 1;
 const hoursText = (h: number) => duration(h * 3600);
@@ -63,10 +64,15 @@ function labelTip(id: string, text: string): void {
   tip(l, () => text);
 }
 
-/** A quest's name: a link to the enemy's wiki page, or plain text with a "quest bush" label. */
-function questCell(id: number): HTMLElement {
-  if (isGathering(id)) return markName(el("span", { class: "nowrap" }, enemyName(id) ?? `quest ${id}`, " ", pill("quest bush", "t-green")), "enemy", id);
-  return isEnemy(id) ? enemyLink({ id }) : markName(el("span", {}, enemyName(id) ?? `quest ${id}`), "enemy", id);
+/** A quest's name: a link to the enemy's wiki page, or plain text with a "quest bush" label; its size after it (F17). */
+function questCell(id: number, amount = 1): HTMLElement {
+  const size = sizeText(amount);
+  const after = size ? [" ", el("span", { class: "lv-size" }, size)] : [];
+  if (isGathering(id)) {
+    return el("span", { class: "nowrap" }, markName(el("span", {}, enemyName(id) ?? `quest ${id}`), "enemy", id), ...after, " ", pill("quest bush", "t-green"));
+  }
+  const name = isEnemy(id) ? enemyLink({ id }) : markName(el("span", {}, enemyName(id) ?? `quest ${id}`), "enemy", id);
+  return after.length ? el("span", { class: "nowrap" }, name, ...after) : name;
 }
 
 /**
@@ -74,7 +80,7 @@ function questCell(id: number): HTMLElement {
  * visitor's language with its ascension, or the label itself; a quest step stays the quest's cell.
  */
 function sourceCell(r: Row): HTMLElement {
-  if (r.kind !== "map") return questCell(Number(r.quest));
+  if (r.kind !== "map") return questCell(Number(r.quest), Number(r.amount) || 1);
   const map = r.map === null || r.map === undefined ? undefined : Number(r.map);
   const name = map !== undefined && G.itemData.map?.[map] ? itemLink("map", map, undefined, undefined, r.asc) : el("span", {}, String(r.label ?? `quest ${r.quest}`));
   return el("span", { class: "nowrap" }, name, " ", pill("map run", "t-gold"));
@@ -122,13 +128,14 @@ function syncCompanions(): void {
 function renderHero(): void {
   const sv = state.sv!;
   const heroes = sv.raw.hero as Any[];
-  const hero = select({ id: "hero", "aria-label": "Hero to level" }, heroes.map((h, i): [string, string] => [String(i), heroLabel(h)]));
+  const labels = pickerLabels();
+  const hero = select({ id: "hero", "aria-label": "Hero to level" }, heroes.map((_, i): [string, string] => [String(i), labels[i]]));
   // Default: the lowest hero below its tier's max level (the one that needs levelling most), else the first.
   const below = heroes.map((h, i) => [h, i] as const).filter(([h]) => (h.level ?? 1) < maxLevel(h.prestigeLevel ?? 1));
   hero.value = String(below.sort((a, b) => (a[0].level ?? 1) - (b[0].level ?? 1))[0]?.[1] ?? 0);
   const info = el("div", { class: "lv-hero" });
   const comps = Array.from({ length: COMPANIONS }, (_, k) => select({ class: "companion", "aria-label": `Companion ${k + 1}` },
-    [["", "— none —"], ...heroes.map((h, i): [string, string] => [String(i), heroLabel(h)])]));
+    [["", "— none —"], ...heroes.map((_, i): [string, string] => [String(i), labels[i]])]));
   const sync = () => {
     const h = heroRaw();
     const tier = h.prestigeLevel ?? 1, max = maxLevel(tier), atMax = (h.level ?? 1) >= max;
@@ -268,27 +275,27 @@ function planTable(plan: LevellingPlan): HTMLElement {
     levels: `${s.fromLevel} → ${s.toLevel}`, kind: s.source.kind, quest: s.source.quest, map: s.source.map ?? null, asc: s.source.asc ?? 0,
     label: s.source.label ?? null, amount: s.source.amount, win: s.win, xpRun: s.xpPerRun, runs: s.runs, hours: s.hours,
     xpm: s.xpPerHour / 60, gold: stepGold(s), split: goldSplit(s, s.source.boost), potions: s.potions, boost: s.source.boost ?? null,
+    xpTip: xpRunTip(s), timeTip: stepTimeTip(s) ?? null,
   }));
+  const withTip = (text: string, t: unknown) => {
+    const c = el("span", {}, text);
+    if (t) tip(c, () => String(t));
+    return c;
+  };
   const t = table(rows, [
     { key: "levels", label: "Levels" },
     { key: "quest", label: "Best quest", render: sourceCell },
-    { key: "amount", label: "Quest size", num: true, show: (v) => `×${v}` },
     { key: "win", label: "Win", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.win))}`, style: "color: var(--c)" }, pct(Number(r.win))) },
-    { key: "xpRun", label: "XP / run", num: true, show: (v) => xpText(Number(v)) },
     { key: "runs", label: "Runs", num: true },
-    { key: "hours", label: "Time", num: true, show: (v) => hoursText(Number(v)) },
-    { key: "xpm", label: "XP / min", num: true, show: (v) => xpText(Number(v)) },
+    { key: "hours", label: "Time", num: true, render: (r) => withTip(hoursText(Number(r.hours)), r.timeTip) },
+    { key: "xpm", label: "XP / min", num: true, render: (r) => withTip(xpText(Number(r.xpm)), r.xpTip) },
     ...(potions ? [{ key: "potions", label: "XP potions", num: true, render: (r: Row) =>
       el("span", {}, r.boost ? `${fmt.format(Number(r.potions))} × ${potionName(Number(r.boost))}` : "—") }] : []),
-    { key: "gold", label: "Gold", num: true, render: (r) => {
-      const c = el("span", {}, gold(Number(r.gold)));
-      if (r.split) tip(c, () => String(r.split));
-      return c;
-    } },
+    { key: "gold", label: "Gold", num: true, render: (r) => withTip(gold(Number(r.gold)), r.split) },
   ]);
-  headTip(t, 3, "Fights won (map runs: whole runs won).");
-  headTip(t, 7, "The hero's XP per minute of quest time (map runs: craft + run).");
-  headTip(t, potions ? 9 : 8, "Quest launches, revives, XP potions and maps.");
+  headTip(t, 2, "Fights won (map runs: whole runs won).");
+  headTip(t, 5, "The hero's XP per minute of quest time (map runs: craft + run).");
+  headTip(t, potions ? 7 : 6, "Quest launches, revives, XP potions and maps.");
   return t;
 }
 
@@ -452,9 +459,9 @@ function init(): void {
   // U29: names update in place (marked links and labels); the pickers get their labels again, choices kept.
   onLanguageChange(() => {
     if (!state.sv) return;
-    const heroes = state.sv.raw.hero as Any[];
+    const labels = pickerLabels();
     document.querySelectorAll<HTMLSelectElement>("#hero, select.companion").forEach((s) => {
-      for (const o of s.options) if (o.value !== "" && heroes[Number(o.value)]) o.textContent = heroLabel(heroes[Number(o.value)]);
+      for (const o of s.options) if (o.value !== "" && labels[Number(o.value)]) o.textContent = labels[Number(o.value)];
     });
     const ref = document.querySelector<HTMLSelectElement>("#ref-quest")?.value;
     renderRefQuests();

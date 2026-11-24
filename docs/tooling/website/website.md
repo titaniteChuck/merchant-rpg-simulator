@@ -1033,8 +1033,10 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 
 `site/levelling.html` + `web/src/ui/levelling.ts` (page) + `web/src/ui/levelling-worker.ts` (web worker), on
 `levellingPlan` / `prestigePayoff` of `web/src/tools/levelling.ts` (E12, U12; first batch of the
-[Levelling review](../roadmap/review-levelling.md), L1).
+[Levelling review](../roadmap/review-levelling.md), L1; second batch L2).
 
+- Hero pickers (hero and companions): "Paladin (2) · Paladin · Lv 60 · Asc 2", the ascension always shown and heroes
+  sharing a name numbered in save order (`heroLabels` in `web/src/ui/levelling-view.ts`, F24).
 - Step 1: the hero (default: the lowest one below its tier's max level) with avatar, class, level of max and
   ascension; a hero at max level gets a "max level: planned from level 1" pill and From level 1 (a fresh hero of its
   class and ascension). Up to 5 companions, "Companions" with no slot names (placed by the game rules: they join party
@@ -1052,9 +1054,11 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   only visible quests (no Frentir quests without the Frozen Tome), no map runs while Scribe is hidden
   (`planSources` with `isVisible` / `isHidden("Scribe")`).
 - Result: tiles Time (`duration()`), Runs and Gold (launch + revive + potions + maps; the split as the tile's hint),
-  then one row per step: levels, best quest (quest bushes with a "quest bush" pill; a map step shows the map, linked
-  with its ascension and a "map run" pill, U33), quest size, win, XP / run, runs, time, XP / min (`xpText`), XP
-  potions (count × name, only when the plan uses one) and gold (`gold()`, the split in its tooltip). A merged step
+  then one row per step: levels, best quest with its size after the name when above ×1 ("Maexna ×5"; quest bushes
+  with a "quest bush" pill; a map step shows the map, linked with its ascension and a "map run" pill, U33), win, runs,
+  time (a map step: "Craft X + run Y" in its tooltip), XP / min (`xpText`; the XP per run in its tooltip), XP potions
+  (count × name, only when the plan uses one) and gold (`gold()`, the split, maps included, in its tooltip): 7 or 8
+  columns instead of 10 (L2, F17 quick part, F20). A merged step
   shows its own average win, XP / run and XP / min; runs are XP needed / XP per run over the whole step, rounded up
   once. Win, XP / min and Gold headers have one-line tooltips. "Stuck at level N" when no quest is won often enough.
 - Step 3, next ascension (none at the last tier): reference quest (quests the hero may open at its max level,
@@ -1067,11 +1071,13 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   tier and options, so Compare on another reference quest only re-runs the reference fights); progress per candidate
   ("Level 46 · 35 %"); Cancel, or a new run while one is going, terminates it. Any change of an input (hero,
   companions, options, reference quest, expansion switches) dims the results on screen under "Settings changed: run
-  it again for new figures." until the next run. CSS: the `levelling l1` block of `site/style.css`.
+  it again for new figures." until the next run. CSS: the `levelling l1` and `levelling l2` blocks of `site/style.css`
+  (L2: below 560 px the number options and the companion selects sit two per row, the segmented options full width;
+  F23 without the chips).
 - Speed (example save, ascension-2 Cleric 1 → 60, Node): solo 7–16 s → 1.8 s, with 5 level-60 companions 39–78 s →
   13 s (same plan); candidates are tried best bound first and stop as soon as they can't win the band.
 - Left for the user's design choices (D1–D7 of the review): the page layout and options fold (F13, F23), the result
-  layout (F17), the companion model (F07, F24), who opens a party quest (now always the levelled hero: D4 A), the XP
+  layout (F17 beyond the quick part), the companion model (F07; chips for F23, F24), who opens a party quest (now always the levelled hero: D4 A), the XP
   potion's form (kept as a picked potion, modelled per step: D5 A), the next-ascension block and map runs (asc 0,
   grade 3, craft time in full).
 

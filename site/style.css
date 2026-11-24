@@ -676,6 +676,14 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .lv-stale .lv-result { opacity: .45; }
 .lv-stale-note { margin: 0 0 8px; }
 /* end levelling l1 */
+/* levelling l2: quest size beside the quest; two option and companion columns on a phone */
+.lv-size { color: var(--muted); font-weight: 600; }
+@media (max-width: 560px) {
+  .pf-options.lv-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lv-options .lv-seg, .lv-options .lv-seg-wide { grid-column: 1 / -1; }
+  .lv-companions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* end levelling l2 */
 .lv-payoff .down { color: var(--bad, #dc2626); font-weight: 600; }
 
 /* ------------------------------------------------------------------ enemy timeline (U11) */
