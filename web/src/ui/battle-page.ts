@@ -2,7 +2,8 @@
  * The Battle section's two pages (U41), one code: initBattlePage("simulate") for the Simulator (site/battle.html,
  * entry battle.ts) and initBattlePage("solve") for the Solver (site/solver.html, entry solver.ts).
  *
- * Simulator: step 1 is the Simulate box (runs, ▶ Simulate); step 2 the Results (progress, then the outcome), right under
+ * Simulator: step 1 is the Simulate box (runs, ▶ Simulate); step 2 the Results (progress, then the outcome; hidden until
+ * the first run, R2 F20), right under
  * it; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest enemy or a
  * map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  *
@@ -43,7 +44,7 @@ import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill,
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
-import { cappedNote, compactResult, essenceLines, hpLeftCell, turnCapNote } from "./battle-results.ts";
+import { cappedNote, compactResult, essenceLines, hpLeftCell, resultTile, tileColumns, turnCapNote } from "./battle-results.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
@@ -440,20 +441,25 @@ function renderParty(refreshSearch = true): void {
     return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}` },
       head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
   };
-  // R1 F20: what the rows mean is in the heading's tooltip, not a line under it.
-  const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
-    el("h3", { title: row === "front" ? "Enemies hit the front row while anyone stands in it." : "Safe until the front row falls." },
-      row === "front" ? "🛡️ Front row" : "🏹 Back row"),
-    el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
+  // R1 F20: what the rows mean is in the heading's tooltip, not a line under it. R2 F33: on the Solver, a row's empty
+  // slots (not the required one) fold into one line, "3 empty back slots", that opens them (foldEmpty).
+  const cols = (["back", "front"] as const).map((row) => {
+    const empty = picks ? [0, 1, 2].filter((i) => isEmptySlot(row, i) && !rules.required.some((x) => x.row === row && x.i === i)) : [];
+    const shown = [0, 1, 2].filter((i) => !empty.includes(i)).map((i) => slot(row, i));
+    return el("div", { class: "party-row" },
+      el("h3", { title: row === "front" ? "Enemies hit the front row while anyone stands in it." : "Safe until the front row falls." },
+        row === "front" ? "🛡️ Front row" : "🏹 Back row"),
+      el("div", { class: "slots" }, ...shown, ...(empty.length ? [foldEmpty(row, empty.map((i) => slot(row, i)))] : [])));
+  });
   // U32: "Clear all" empties the six slots, with the same undo as a search's Load.
   const clear = el("button", { type: "button", class: "secondary clear-all" }, "🧹 Clear all");
   clear.title = "Empty every hero slot (the edited rotations are kept)";
   if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
   clear.addEventListener("click", clearAll);
-  $("#party").replaceChildren(...(picks ? [el("p", { class: "muted small party-note" },
-    "The setup you showed. Edit it freely; 🔒 keeps a hero in the next solve.")] : []),
+  // R2 F23 / F36: the party's rule and, on the Solver, what this party is, in the "?" beside the Party tab.
+  document.querySelector("#party-help")?.replaceChildren(...partyHelp(rules, picks));
+  $("#party").replaceChildren(
   el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : [])),
-  ...(rulesText(rules) ? [el("p", { class: "muted small party-rules" }, rulesText(rules))] : []),
   // U36: the heroes left out over the size cap.
   ...(fight.capped.length ? [el("p", { class: "small party-capped", role: "status", title: "The last ones in slot order are left out. Untick another hero to bring one in." },
     `ℹ️ At most ${rules.maxSize}: ${fight.capped.map((c) => heroRaw(state.slots[c.key] ?? null)?.name ?? c.key).join(", ")} left out.`)] : []),
@@ -465,6 +471,31 @@ function renderParty(refreshSearch = true): void {
   renderPlan();
   // Not after a search filled the slots: rebuilding the search panel would reset its form.
   if (refreshSearch) search?.refresh();
+}
+
+const isEmptySlot = (row: "front" | "back", i: number) => state.slots[slotKey(row, i)] === null || state.slots[slotKey(row, i)] === undefined;
+
+/** R2 F33: the folded empty slots of each row, open or closed as last left (this page view). */
+const emptyOpen: Record<string, boolean> = {};
+/**
+ * R2 F33: a Solver row's empty slots as one line ("3 empty back slots"), closed by default, so the heroes the solve
+ * found come first; opening it shows the slots, to add a hero by hand.
+ */
+function foldEmpty(row: "front" | "back", slots: HTMLElement[]): HTMLElement {
+  const n = slots.length;
+  const d = el("details", { class: "empty-slots" }, el("summary", { class: "small" }, `${n} empty ${row} slot${n === 1 ? "" : "s"}`), ...slots);
+  (d as HTMLDetailsElement).open = Boolean(emptyOpen[row]);
+  d.addEventListener("toggle", () => (emptyOpen[row] = (d as HTMLDetailsElement).open));
+  return d;
+}
+
+/** R2 F23 / F36: the "?" beside the Party tab: the opponent's party rule, and on the Solver what the shown party is. */
+function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean): HTMLElement[] {
+  const paras = [
+    ...(picks ? ["The setup you showed. Edit it freely; 🔒 keeps a hero in the next solve."] : []),
+    ...(rulesText(rules) ? [rulesText(rules)] : []),
+  ];
+  return paras.length ? [helpTip(paras, "the party")] : [];
 }
 
 /** The opponent for the party rules, or null while the opponent card isn't built yet. */
@@ -911,6 +942,21 @@ function flowEnemyOptions(): [string, [string, string][]][] {
   })]);
 }
 
+/**
+ * R2 F29: a row that scrolls sideways (the map's room bar) gets `fade-start` / `fade-end` while there is more to see
+ * on that side; style.css (r2-c) fades that edge. Kept in step on scroll and on resize (a hidden tab shown later).
+ */
+function edgeFades(row: HTMLElement): void {
+  const sync = () => {
+    const rest = row.scrollWidth - row.clientWidth - row.scrollLeft;
+    row.classList.toggle("fade-start", row.scrollLeft > 2);
+    row.classList.toggle("fade-end", rest > 2);
+  };
+  row.addEventListener("scroll", sync, { passive: true });
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sync).observe(row);
+  sync();
+}
+
 /** What the flow shows, and how (U39): one concrete run, Simulate's first. */
 const FLOW_NOTE = "One concrete fight: the first of the Simulator's runs (same seed), so its hits, misses and critical hits are that run's rolls.";
 const MAP_FLOW_NOTE = "One concrete run: the first of the Map run's runs (same seed), so its layout, rolls and the HP carried from room to room are that run's.";
@@ -941,10 +987,10 @@ function renderPlan(): void {
     const trace = members.length ? planTrace(t) : null;
     const plan = partyPlan(t, members, trace, edit);
     if (plan) {
-      box.append(...(trace ? [el("p", { class: "muted small flow-note" }, FLOW_NOTE)] : []),
-        ...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
+      box.append(...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
         ...(ap && members.length ? [el("p", { class: "error small flow-ap", role: "status" }, `⚠ ${ap} Below, the rotation as planned.`)] : []), plan);
-      help?.append(helpTip(planNote(t), "the flow"));
+      // R2 F28: what the flow shows (one concrete fight) is the first paragraph of its "?", not a line above it.
+      help?.append(helpTip([...(trace ? [FLOW_NOTE] : []), planNote(t)], "the flow"));
     } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
     return;
   }
@@ -963,7 +1009,7 @@ function renderPlan(): void {
   const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
   let at = Math.min(storedRoom(), rooms.length - 1);
   const view = el("div", { class: "flow-room" });
-  const bar = el("div", { class: "room-bar", role: "tablist", "aria-label": "The map's battles, in order" });
+  const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
   const draw = () => {
     bar.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b, k) => {
       b.setAttribute("aria-selected", String(k === at));
@@ -973,13 +1019,14 @@ function renderPlan(): void {
     // U40: after the room where the party died there is no battle: one centred line, no timeline.
     if (tabs[at].skipped) {
       view.replaceChildren(el("p", { class: "flow-skipped", role: "status" }, "💀 Party died, battle skipped"));
-      help?.replaceChildren();
+      help?.replaceChildren(helpTip(MAP_FLOW_NOTE, "the flow"));
       return;
     }
     const plan = partyPlan({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
     view.replaceChildren(...(r.trace ? [] : [el("p", { class: "muted small" }, "Not reached in this run: the rotation as planned.")]),
       plan ?? el("p", { class: "muted" }, "No timeline for this enemy yet."));
-    help?.replaceChildren(helpTip(planNote({ id: r.questId, rare: r.isRare }), "the flow"));
+    // R2 F28: the run's note is the first paragraph of the "?".
+    help?.replaceChildren(helpTip([MAP_FLOW_NOTE, planNote({ id: r.questId, rare: r.isRare })], "the flow"));
   };
   tabs.forEach((x, k) => {
     const b = el("button", { type: "button", role: "tab", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
@@ -1000,7 +1047,9 @@ function renderPlan(): void {
     });
     bar.append(b);
   });
-  box.append(el("p", { class: "muted small flow-note" }, MAP_FLOW_NOTE), bar, view);
+  box.append(bar, view);
+  // R2 F29: the room bar scrolls sideways on a phone; edge fades say more rooms are there.
+  edgeFades(bar);
   draw();
 }
 
@@ -1028,11 +1077,10 @@ function buildPage(): void {
 function revealParty(): void {
   const box = document.querySelector<HTMLElement>("#party-box");
   if (!box) return;
-  const was = box.hidden;
   box.hidden = false;
   showTab(storedTab(), false);
   renderParty(false);
-  if (!was) return;
+  // R2 F33: every Show brings the party into view (not only the first one).
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   box.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
 }
@@ -1081,6 +1129,15 @@ function revealResults(): void {
   if (inView) return;
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   box.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+}
+
+/**
+ * R2 F20: the Simulator's Results (step 2) stay hidden until the first run (as the Solver's, U42); a new save or a
+ * forgotten one hides them again. CSS counters number the steps shown (1, 2, 3, or 1, 2 before a run).
+ */
+function showResultsBox(on: boolean): void {
+  const box = document.querySelector<HTMLElement>("#results-box");
+  if (box) box.hidden = !on;
 }
 
 /** The six slots as the worker takes them (raw save heroes, edited rotations), and who stands where. */
@@ -1154,6 +1211,8 @@ function drawResult(): void {
 function run(): void {
   const out = $("#results");
   lastResult = null;
+  // R2 F20: the Results show from the first Simulate on (its progress, an error, then the outcome).
+  showResultsBox(true);
   let req: BattleRequest;
   let ctx: RunContext | null = null;
   try {
@@ -1205,6 +1264,8 @@ function run(): void {
 // ---------------------------------------------------------------- results
 /** Average grade (1..5) as the nearest letter. */
 const gradeOf = (g: number) => GRADES[Math.min(4, Math.max(0, Math.round(g) - 1))];
+/** A hint as a "?" sentence: capital first letter, full stop. */
+const sentence = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
 
 /**
  * Per hero: damage, taken, healing, death rate, damage by skill. R1 F22: against a quest (`quest`: the result) the
@@ -1225,10 +1286,12 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
   });
   const dmgTip = eff && maxHp ? `Damage that came off the enemy: the party's total is capped at its ${fmt.format(maxHp)} HP (no overkill), each hero keeping its share. `
     + "Hover a number for the damage dealt, overkill included." : "Damage dealt, overkill included.";
+  // R2 F25 / F26: no Slot column (the slot is the hero's subline); the name is plain text with its class colour as a
+  // bar on its left, not a pill (a pill reads as a class). "Damage" per fight (or run) is said in its tooltip.
   const t = table(rows, [
-    { key: "slot", label: "Slot" },
-    { key: "name", label: "Hero", render: (r) => el("span", { class: `nowrap cls-${r.cls}` }, pill(String(r.name))) },
-    { key: "dmg", label: `Damage / ${unit}`, num: true, render: (r) => (eff && Number(r.dealt) > Number(r.dmg) + 0.5
+    { key: "name", label: "Hero", render: (r) => el("span", { class: `hero-cell cls-${r.cls}`, title: `${r.name} · ${className(Number(r.cls))}` },
+      el("span", { class: "hero-cell-name" }, String(r.name)), el("span", { class: "hero-cell-sub" }, String(r.slot))) },
+    { key: "dmg", label: "Damage", num: true, render: (r) => (eff && Number(r.dealt) > Number(r.dmg) + 0.5
       ? el("span", { title: `${fmt.format(Number(r.dealt))} dealt, overkill included` }, fmt.format(Number(r.dmg)))
       : fmt.format(Number(r.dmg))) },
     { key: "taken", label: "Taken", num: true },
@@ -1238,22 +1301,15 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
     { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
     { key: "skills", label: "Damage by skill (uses)" },
   ]);
-  const head = [...t.querySelectorAll<HTMLElement>("th")].find((th) => th.textContent === `Damage / ${unit}`);
-  if (head) head.title = dmgTip;
+  const head = [...t.querySelectorAll<HTMLElement>("th")].find((th) => th.textContent === "Damage");
+  if (head) head.title = `Per ${unit}. ${dmgTip}`;
   return t;
 }
 
 /**
- * U33: the XP and time tiles, a second row under the outcome tiles (same tile size), then a line linking to the Stats
- * sections (Experience, Quest and map time, Craft).
+ * U33: XP per hero, quest time (simulated fight + the quest's own time) and XP / min of a quest result. R2 F24: what
+ * each counts is in its "?", with the link to the Stats page (no separate line of links).
  */
-const xpRow = (items: HTMLElement[], craft = false): HTMLElement[] => (items.length ? [
-  tiles({ class: "qxp-tiles", role: "group", "aria-label": craft ? "Map run" : "XP and time" }, ...items),
-  el("p", { class: "muted small qxp-refs" }, "How these are counted:", " ", statLink("xp", "XP"), " · ", statLink("time", "time"),
-    ...(craft ? [" · ", statLink("craft", "craft")] : [])),
-] : []);
-
-/** U33: XP per hero, quest time (simulated fight + the quest's own time) and XP / min of a quest result. */
 function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
   if (!c) return [];
   const x = questResultXp(ev, c);
@@ -1261,25 +1317,27 @@ function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
   // R1 F06: XP comes only with a win; a quest never won shows none.
   const won = ev.win > 0;
   return [
-    tile("XP per hero", won ? xpText(x.xpPerHero) : "—", won ? `each hero alive after a win, ${c.heroes} in the party` : "no fight won", { icon: "🎓", tone: "t-violet" }),
-    tile("Quest time", duration(x.seconds), `fight ${duration(x.battleSeconds)} + quest ${duration(x.questSeconds)}, ${at}`, { icon: "⌛", tone: "t-blue" }),
-    tile("XP / min", won ? xpText(x.xpPerMin) : "—", won ? "per hero, over the quest time" : "no fight won", { icon: "📈", tone: "t-green" }),
+    resultTile("XP per hero", won ? xpText(x.xpPerHero) : "—", won ? `Each hero alive after a win, ${c.heroes} in the party.` : "No fight won.",
+      { icon: "🎓", tone: "t-violet" }, [statLink("xp", "XP")]),
+    resultTile("Quest time", duration(x.seconds), `Fight ${duration(x.battleSeconds)} + quest ${duration(x.questSeconds)}, ${at}.`,
+      { icon: "⌛", tone: "t-blue" }, [statLink("time", "time")]),
+    resultTile("XP / min", won ? xpText(x.xpPerMin) : "—", won ? "Per hero, over the quest time." : "No fight won.", { icon: "📈", tone: "t-green" }),
   ];
 }
 
-/** U33: craft time, run time, XP per hero per run and XP / min (craft + run) of a map result. */
+/** U33: craft time, run time, XP per hero per run and XP / min (craft + run) of a map result (R2 F24: texts in the "?"). */
 function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
   if (!c) return [];
   // R1 F06: only the rooms won give XP (the share of rooms cleared on average); "—" when none is ever won.
   const x = mapResultXp(ev, c);
   const all = x.cleared >= 0.9995;
-  const xpHint = x.xpPerHero === null ? "no room won"
-    : all ? `per run, every room won, ${c.heroes} in the party` : `per run, the rooms won (${pct(x.cleared)}), ${c.heroes} in the party`;
+  const xpHint = x.xpPerHero === null ? "No room won."
+    : all ? `Per run, every room won, ${c.heroes} in the party.` : `Per run, the rooms won (${pct(x.cleared)}), ${c.heroes} in the party.`;
   return [
-    tile("Craft time", duration(x.craftSeconds), "the map, and the lower maps its recipe uses", { icon: "🔨", tone: "t-slate" }),
-    tile("Run time", duration(x.runSeconds), "per run, simulated", { icon: "⏱️", tone: "t-blue" }),
-    tile("XP per hero", x.xpPerHero === null ? "—" : xpText(x.xpPerHero), xpHint, { icon: "🎓", tone: "t-violet" }),
-    tile("XP / min", x.xpPerMin === null ? "—" : xpText(x.xpPerMin), x.xpPerMin === null ? "no room won" : "per hero, over craft + run", { icon: "📈", tone: "t-green" }),
+    resultTile("Craft time", duration(x.craftSeconds), "The map, and the lower maps its recipe uses.", { icon: "🔨", tone: "t-slate" }, [statLink("craft", "craft")]),
+    resultTile("Run time", duration(x.runSeconds), "Per run, simulated.", { icon: "⏱️", tone: "t-blue" }, [statLink("time", "time")]),
+    resultTile("XP per hero", x.xpPerHero === null ? "—" : xpText(x.xpPerHero), xpHint, { icon: "🎓", tone: "t-violet" }, [statLink("xp", "XP")]),
+    resultTile("XP / min", x.xpPerMin === null ? "—" : xpText(x.xpPerMin), x.xpPerMin === null ? "No room won." : "Per hero, over craft + run.", { icon: "📈", tone: "t-green" }),
   ];
 }
 
@@ -1290,43 +1348,46 @@ function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
 function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): HTMLElement[] {
   const turnHint = [ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", turnCapNote(ev.turns_max),
     cappedNote(ev.turns_capped, ev.n, "fights")].filter(Boolean).join(" · ");
+  // R2 F24: the details are one grid (outcome, then XP and time), label and value only, each explanation in its "?".
   return compactResult(
     tiles({ class: "result-summary" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
       gradeTile(ev.win, ev.grade),
     ),
     [
-      tiles({},
-        tile("Turns", fmt1.format(ev.turns), turnHint, { icon: "⏱️", tone: ev.turns_capped ? "bad" : "t-blue" }),
-        tile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
-          ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
-        tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+      tiles({ class: "result-tiles" },
+        resultTile("Turns", fmt1.format(ev.turns), sentence(turnHint), { icon: "⏱️", tone: ev.turns_capped ? "bad" : "t-blue" }),
+        resultTile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
+          ? `Lowest point ${pct(ev.enemy_dmg_peak)} (it heals back).` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
+        resultTile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+        ...questXpTiles(ev, ctx),
       ),
-      ...xpRow(questXpTiles(ev, ctx)),
       heroTable(ev.heroes, "fight", ev),
     ],
-    runLine(`${fmt.format(ev.n)} fights · ${fmt.format(ms)} ms`, ev.n),
+    runLine(ev.n, "fights", ms),
   );
 }
 
 const gradeTile = (win: number, grade: number) =>
-  tile("Grade when won", win ? gradeOf(grade) : "–", win ? `average ${fmt1.format(grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" });
+  resultTile("Grade when won", win ? gradeOf(grade) : "–", win ? `Average ${fmt1.format(grade)} (D = 1 … S = 5).` : undefined, { icon: "⭐", tone: "t-gold" });
 
-/** R1 F20: the run's size and time in one short line; the seeds in its tooltip. */
-const runLine = (text: string, seeds: number) => el("p", { class: "muted small run-line", title: `Seeds 1–${seeds}: every setting is tested on the same rolls.` }, text);
+/** R1 F20: the run's size in one short line (R2 F24: its time and the seeds in its tooltip). */
+const runLine = (n: number, unit: string, ms: number, seeds = n) => el("p", { class: "muted small run-line",
+  title: `Simulated in ${fmt.format(ms)} ms. Seeds 1–${seeds}: every setting is tested on the same rolls.` }, `${fmt.format(n)} ${unit}`);
 
-/** R1 F35: a tile grid knows its tile count (CSS balances the rows: no lone tile on the last one). */
+/**
+ * R1 F35: a tile grid knows its tile count. R2 F24: and its columns (tileColumns: on a phone and wider), so no row
+ * ends with a lone tile.
+ */
 function tiles(attrs: Record<string, string>, ...items: HTMLElement[]): HTMLElement {
   const g = el("div", { ...attrs, class: `tiles${attrs.class ? ` ${attrs.class}` : ""}` }, ...items);
+  const cols = tileColumns(items.length);
   g.style.setProperty("--n", String(items.length));
+  g.style.setProperty("--cols-phone", String(cols.phone));
+  g.style.setProperty("--cols-wide", String(cols.wide));
   g.dataset.n = String(items.length);
   return g;
 }
-
-const withTitle = (e: HTMLElement, title: string): HTMLElement => {
-  e.title = title;
-  return e;
-};
 
 /**
  * U43: as questResults. The essence per run is a tile of the map-run row (craft, run time, XP), or of the first row
@@ -1335,11 +1396,12 @@ const withTitle = (e: HTMLElement, title: string): HTMLElement => {
 function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): HTMLElement[] {
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
   const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
-  const essence = tile("Essence per run",
+  const essence = resultTile("Essence per run",
     el("span", { class: "tile-lines" }, ...essenceLines(ev.essence, (k) => itemNameFromEnglish("material", k)).map((t) => el("span", {}, t))),
-    ev.win < 1 ? "from the runs won" : undefined, { icon: "✨", tone: "t-violet" });
+    ev.win < 1 ? "From the runs won." : undefined, { icon: "✨", tone: "t-violet" });
   const turnHint = [`${fmt1.format(ev.run_turns)} per run`, `longest room: ${turnCapNote(ev.room_turns_max)}`,
     cappedNote(ev.rooms_capped, ev.n, "runs")].filter(Boolean).join(" · ");
+  // R2 F24: one grid of 9 tiles (6 without the XP figures): the outcome, then craft, run time, XP and the essence last.
   const xp = mapXpTiles(ev, ctx);
   return compactResult(
     tiles({ class: "result-summary" },
@@ -1347,24 +1409,25 @@ function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): 
       gradeTile(ev.win, ev.grade),
     ),
     [
-      tiles({},
-        // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the tooltip.
-        withTitle(tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms (avg)`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
-          "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."),
-        tile("Turns per room", fmt1.format(ev.room_turns), turnHint, { icon: "⏱️", tone: ev.rooms_capped ? "bad" : "t-blue" }),
-        ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⌛", tone: "t-blue" })]),
-        tile("Loot value", gold(ev.loot_value), "base sell value per run", { icon: "💰", tone: "t-orange" }),
-        tile("Party HP left", pct(ev.hp_left), "at the end of the run", { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
-        ...(xp.length ? [] : [essence]),
+      tiles({ class: "result-tiles" },
+        // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the "?".
+        resultTile("Progress", pct(ev.cleared), [`Of ${fmt1.format(ev.rooms)} rooms on average.`,
+          "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."],
+        { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
+        resultTile("Turns per room", fmt1.format(ev.room_turns), sentence(turnHint), { icon: "⏱️", tone: ev.rooms_capped ? "bad" : "t-blue" }),
+        ...(ctx ? [] : [resultTile("Time", `${fmt1.format(ev.time_h)} h`, "Per run.", { icon: "⌛", tone: "t-blue" })]),
+        resultTile("Loot value", gold(ev.loot_value), "Base sell value per run.", { icon: "💰", tone: "t-orange" }),
+        resultTile("Party HP left", pct(ev.hp_left), "At the end of the run.", { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+        ...xp,
+        essence,
       ),
-      ...xpRow(xp.length ? [...xp, essence] : [], true),
       ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
       ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
       ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
       ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
       heroTable(ev.heroes, "run"),
     ],
-    runLine(`${fmt.format(ev.n)} map runs · ${fmt.format(ms)} ms`, ev.n + ev.errors),
+    runLine(ev.n, "map runs", ms, ev.n + ev.errors),
   );
 }
 
@@ -1391,6 +1454,7 @@ async function loadSave(text: string, name: string): Promise<void> {
   $("#setup").hidden = false;
   lastResult = null;
   document.querySelector("#results")?.replaceChildren();
+  showResultsBox(false);
   // The Solver: no party until a result's Show (U41).
   if (solving()) hideParty();
   renderParty();
@@ -1427,6 +1491,9 @@ function startQuest(): string | undefined {
   return id === null ? undefined : String(id);
 }
 
+/** R2 F20: the Simulate step's "?" (was the sentence at the top of its box). */
+const SIMULATE_HELP = "Your party against an enemy or a map run, hundreds of times, on the same rolls every time. Set them up under Party and opponent.";
+
 /** Starts the Simulator (`simulate`, battle.ts) or the Solver (`solve`, solver.ts) on its page's HTML. */
 export function initBattlePage(kind: PageKind): void {
   state.mode = MODES[kind];
@@ -1439,7 +1506,8 @@ export function initBattlePage(kind: PageKind): void {
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
     onForget: () => {
       state.sv = null;
-      $("#setup").hidden = true;
+      document.querySelector("#results")?.replaceChildren();
+      showResultsBox(false);
       document.querySelector("#results")?.replaceChildren();
       hideParty();
     },
@@ -1458,7 +1526,11 @@ export function initBattlePage(kind: PageKind): void {
     saveOpponent();
   }));
   if (solving()) initSolver();
-  else $("#run").addEventListener("click", run);
+  else {
+    $("#run").addEventListener("click", run);
+    // R2 F20: what Simulate does is in the "?" of its heading, not a sentence in the box.
+    document.querySelector("#sim-help")?.replaceChildren(helpTip(SIMULATE_HELP, "Simulate"));
+  }
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
   subscribe(onExpansions);
   onLanguageChange(onLanguage);

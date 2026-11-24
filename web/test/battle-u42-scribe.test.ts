@@ -64,7 +64,8 @@ test("both pages: the toggle, the map pickers and Include scrolls follow Scribe;
 
 test("Solver with Scribe hidden: no Include scrolls option", () => {
   const search = read("web/src/ui/battle-search.ts");
-  assert.match(search, /const scrollOpt = isHidden\("Scribe"\) && !isMap \? \[\] : \[scLabel\];/);
-  assert.match(search, /\.\.\.capNote, \.\.\.scrollOpt,/);
-  assert.doesNotMatch(search, /\.\.\.capNote, scLabel/);
+  // R2 F31: only on a map run (Scribe hidden leaves no map run, so no option either).
+  assert.match(search, /const scrollOpt = isMap \? \[scLabel\] : \[\];/);
+  assert.match(search, /sizes, \.\.\.scrollOpt,/);
+  assert.doesNotMatch(search, /sizes, scLabel/);
 });

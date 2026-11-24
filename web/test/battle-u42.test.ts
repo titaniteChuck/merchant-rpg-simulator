@@ -68,12 +68,13 @@ test("Solver: the time budget is back, a seconds input (30 by default) the searc
   assert.match(search, /const TIME_MIN = 5, TIME_MAX = 600;/);
   assert.match(search, /scrolls: true, time: 30 \}/);
   assert.match(search, /const budget = el\("input", \{ type: "number", class: "solve-time"/);
-  assert.match(search, /field\("time budget \(s\)", budget\), go\)/);
+  // R2 F31: sentence-case label.
+  assert.match(search, /field\("Time budget \(s\)", budget\), go\)/);
   assert.match(search, /const budgetMs = prefs\.time \* 1000;/);
   assert.match(search, /minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs \}/);
-  // The order in the panel: sizes, scrolls, time, Solve.
-  const form = search.slice(search.indexOf('field("smallest party"'));
-  const pos = ['field("smallest party"', 'field("largest party"', "...scrollOpt", 'field("time budget (s)"', "go)"].map((s) => form.indexOf(s));
+  // The order in the panel: sizes ("Party 1 – 5", R2 F31), scrolls, time, Solve.
+  const form = search.slice(search.indexOf('el("div", { class: "toolbar search-form" }'));
+  const pos = ["sizes", "...scrollOpt", 'field("Time budget (s)"', "go)"].map((s) => form.indexOf(s));
   for (let k = 1; k < pos.length; k++) assert.ok(pos[k - 1] >= 0 && pos[k - 1] < pos[k], String(k));
 });
 

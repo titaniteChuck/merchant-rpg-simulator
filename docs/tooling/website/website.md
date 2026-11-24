@@ -146,7 +146,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Menu: Battle ▾ with Simulator and Solver, in the dropdown, the second row and the phone drawer (see
     [Menus](#menus)); the Battle link itself opens the Simulator.
   - Simulator (`battle.html`): no mode chooser. Step 1 is the Simulate box (Runs, ▶ Simulate), step 2 the Results,
-    step 3 the Party and Flow tabs with the opponent in the Party tab, as below.
+    step 3 the Party and Flow tabs with the opponent in the Party tab, as below. R2 F20: the Results section is hidden
+    until the first ▶ Simulate (`showResultsBox`), and the step numbers are CSS counters, so before a run the steps
+    read 1, 2.
   - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
     then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
     enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map), then smallest and
@@ -179,6 +181,43 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     old remembered mode (`battle-mode`) is removed and no longer read.
   - Tests: `web/test/battle-u41.test.ts`.
 
+- Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
+  helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
+  - F20: the Simulate box's sentence is the "?" of its heading (`#sim-help`); the Results wait for the first run.
+  - F23 / F36: no inner "👥 Party" heading on either page; the party's rule ("Party quest: Front 2 always filled, at
+    most 5 heroes.") and, on the Solver, "The setup you showed …" are the "?" beside the Party / Flow tabs
+    (`#party-help` in `.b3-tab-row`, `partyHelp`). Front 2 is still required on party quests (badge, outline, refusal).
+  - F24: result tiles are a label and a value (`resultTile` in `battle-results.ts`): what was the subline ("4.7 when
+    won · max 8 of 200 turns …", "each hero alive after a win …") is the tile's "?", the XP and time tiles' "?" end
+    with their Stats link (no "How these are counted" line). Each result's details are one grid (quest 3 + 3 XP tiles;
+    map 9, or 6 without XP figures, the essence last) whose columns `tileColumns` picks so no row ends with a lone
+    tile: 3 on a phone (icons hidden, smaller values), on a wider screen one row up to 6, else 3 per row. The run line
+    is "200 fights", the milliseconds and the seeds in its tooltip.
+  - F25 / F26: the per-hero table has no Slot column: the hero cell is the name in plain text with its slot under it
+    and the class colour as a 3 px bar on its left (`.hero-cell`), no pill; "Damage" (per fight or run in its tooltip).
+  - F28: no "🗓️ The fight, turn by turn" heading; the Flow starts with the opponent line ("vs Cerberus · change") and
+    its "?" (`#plan-help`), whose first paragraph is the note on the run it shows (`FLOW_NOTE`, `MAP_FLOW_NOTE`).
+  - F29: the map room bar is a `.scroll-row`; `edgeFades` sets `fade-start` / `fade-end` while there are rooms off
+    that side, and a mask fades that edge.
+  - F30: in light mode the pills of a hero card (class · level, required, left out) and the Solver's hero chips use
+    `--ink: 38%`: every class colour reaches 4.5:1 on the card (Paladin was 2.7:1).
+  - F31: the Solver's sizes on one row, "Party [1] – [5]", with a "?" (what they are, the quest's limit: `sizeHelp`);
+    "Include scrolls" only for a map run; labels in sentence case ("Time budget (s)").
+  - F32: the results table is Show · Party · (Scrolls) · Win · Turns / Grade · (Progress): Show first, and a tap
+    on the row shows too; no # or Heroes column; a quest's lowest enemy HP is in the win cell's tooltip and under the
+    rate when the setup can lose ("enemy HP 12.0%").
+  - F33: after a Show the Solver's empty slots fold, per row, into one line, "3 empty back slots", that opens them
+    (`foldEmpty`; never the required slot); every Show scrolls to the party.
+  - F34: one status line over the table, "3 setups ≥ 90 % · 5.0 s" (after Cancel "· cancelled at 3.2 s"), and its
+    "?" holds the rest: what the line counts, how the search ended, the evaluations and the setups not listed, the
+    seeds (`solveStatus` in `battle-setup.ts`). A search that used its whole time budget is an ordinary end ("used its
+    whole time budget (30 s) and lists the best setups found in that time"), not "Stopped early"; the row shown is the
+    highlighted "✓ Shown" one (no "Setup #1 is shown below" line; the undo button keeps its line).
+  - F35: a party row's 🛡️ / 🏹 icon (tooltip "Front row" / "Back row") stays on its first chip's line; "rough" has a
+    "?" (`ROUGH_HELP`): only screened with the default rows and the heroes' own rotations, its size far from winning
+    or the time ran out before its tuning.
+  - Not in this batch: F21 (where the opponent goes on a phone), F22 (collapsed hero cards), F27 (the phone Flow).
+
 - Page order (U26, was U23): (1) mode, its options and its Run button; (2) Results, right under the Run button
   (`#results-box`: progress bar, then the outcome); (3) party and opponent, then the 5-turn plan. The party and
   opponent block is always the setup being edited: the searches fill it with what they found. When a run starts
@@ -197,7 +236,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   (`.run-box`, U23; was a separate step 3) holds the chosen mode's options and its Run button: Runs and ▶ Simulate, or
   the search's panel and 🔎 Search. The output goes to the Results section, step 2 (`#results` for Simulate,
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
-  opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
+  opponent change keeps the results and a running search. Until a run, Results is hidden (R2 F20; a one-line hint before).
 - Step 3, party, opponent and plan (U15, reworked in U23, U36 and U39; step 2 until U26), the same arrangement in every
   mode: two tabs (U39; U40: Party first), Party and Flow (the fight turn by turn, see "Flow tab" below). Party: the six hero slots (back row 1-3
   | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
@@ -225,7 +264,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (the game opens the party with the quest's hero there; swapped, never emptied) and takes at most `questSize`
     heroes (2-6; Desolation Wolf takes 3); a solo quest takes exactly one hero, in Front 1; a map run has no rule. The
     required slot has a "required" badge and an outline; empty slots the opponent doesn't allow are greyed and
-    disabled ("solo: Front 1 only", "at most N heroes"); a line under Clear all states the rule, and what keeps the
+    disabled ("solo: Front 1 only", "at most N heroes"); the rule is in the "?" beside the Party tab (R2 F23; a line under Clear all before), and what keeps the
     party from fighting (the page's own words since R1 F24, e.g. "Desolation Wolf takes at most 3 heroes, not 4.") is shown
     inline and stops ▶ Simulate before the worker runs.
   - The opponent:
@@ -256,7 +295,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     désolation."). The engine's English text stays for logs and worker errors.
   - Short text (R1 F20): one-line mode hints (the long one in the card's tooltip); the quest size, the radar's rims,
     what a map run is, how to read the plan and how the solver works are in "?" helps (`helpTip` of `wiki-help.ts`),
-    the rows' meaning, the run's seeds and the solver's columns in tooltips; "No run yet." until a run. The quest-size
+    the rows' meaning, the run's seeds and the solver's columns in tooltips; the Results hidden until a run (R2 F20). The quest-size
     help states the cap only once the party has heroes ("The largest size depends on your heroes' ascension tier"
     before, R1 F36). Clear all is disabled while every slot is empty.
   - Map card rooms (R1 F29): "10 + 1.0 treasure": `mapRooms` at the map's grade (boss included) plus the treasure rooms
@@ -277,8 +316,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     tiles, the XP / map-run row, the notes, the per-hero table) and becomes "Hide details". Open or closed is
     remembered for the browser tab (sessionStorage `battle-results-details`, try/catch; closed by default and when
     storage fails). The Simulator's tiles are compact (`#results .tiles`: smaller padding and type, as many per row
-    as fit, at least 168 px each; the balanced-row rules of R1 F35 no longer apply there). The link line under the XP
-    row reads "How these are counted:" (no "Before XP bonuses").
+    as fit, at least 168 px each; the balanced-row rules of R1 F35 no longer apply there). R2 F24: no link line under the XP
+    row (the links are in the tiles' "?"), no "Before XP bonuses"; one balanced grid, see the R2-C list.
   - Turns (U43): quests, the average with "N when won", the longest fight and the game's cap, "max 37 of 200 turns
     (at 200 the enemy wins)", and, when fights reached it, "N of M fights (x %) reached turn 200 and were lost" (the
     tile turns red). Maps: "Turns per room" (average over the rooms fought), the average per run, the longest single
@@ -290,16 +329,16 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - HP left per hero (U43): the summary table's "HP left" column is each hero's HP at the end of the fight (a map run:
     of the whole run, HP carried over), 0 when dead, as a percent of max HP averaged over the runs; its tooltip gives
     the average HP and max HP (`hp_left`, `hp_left_frac`, `max_hp` in HeroEval, `heroAccumulator`).
-  - Essence per run (U43): a tile of the map-run row, after Craft time, Run time, XP per hero and XP / min, one essence
+  - Essence per run (U43): a tile of the map-run row (R2 F24: the last of the one details grid), after Craft time, Run time, XP per hero and XP / min, one essence
     per line ("from the runs won" when not every run is won); in the first row when the run has no XP figures.
   - Damage without overkill (R1 F22): against a quest, "Damage / fight" is what came off the enemy: the party's total
     capped at the enemy's max HP (`enemy_dmg_total / enemy_dmg_total_frac`), each hero keeping its share
     (`effectiveDamage` in `ui/battle-setup.ts`); a cell's tooltip gives the damage dealt with overkill, the header's
     says how it's counted. Map runs and "Damage by skill" keep the damage dealt.
-  - Tile grids (R1 F35): `tiles()` in `battle.ts` sets `data-n`; above 1100 px the U33 grid, narrower 5 or 6 tiles in
+  - Tile grids (R1 F35; R2 F24 replaces it in the Simulator with `tileColumns`, see the R2-C list): `tiles()` in `battle.ts` sets `data-n`; above 1100 px the U33 grid, narrower 5 or 6 tiles in
     3 columns, on a phone 2 columns with an odd count's first tile across both: never a lone tile on the last row. The
     two mode cards always share one row. The run line is short ("200 fights · 1,159 ms", seeds in its tooltip).
-- XP and time (U33, `ui/quest-xp.ts`): a second row of tiles under the outcome (`.qxp-tiles`, the same tile size), then
+- XP and time (U33, `ui/quest-xp.ts`): tiles after the outcome ones (R2 F24: in the same grid; `.qxp-tiles` and its link line before), then
   a line linking Stats › Experience / Quest and map time (/ Craft). Quest: XP per hero (`questStats`, the party's size,
   no XP bonus), quest time = the simulated fight + the quest's own time at the average grade when won (else B), with
   the party's speed, and XP / min (e.g. Maexna ×3, two heroes, won in 1 turn at S: 600 XP, 15 s + 3 min 45 s = 4 min,
@@ -334,14 +373,14 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       running search and clears its results). Until accepted (U39), the guard hides the whole rest of the Solve page:
       the Solve panel, the results and the Party and Flow tabs are hidden (U42: every section after the guard's) (`SearchContext.guarded` → `#setup.solve-guarded`).
     - Options: smallest and largest party (1 and 6, clamped to the quest's size cap, both 1 on a solo quest),
-      "Include scrolls" (map runs only; disabled with "(map runs only)" on a quest; U42: off, a map run is solved with
+      "Include scrolls" (map runs only; R2 F31: not shown at all on a quest, was disabled with "(map runs only)"; U42: off, a map run is solved with
       no scrolls, since the card's scroll pickers are out of sight during setup), the time budget (U42: a number input
       in seconds, 30 by default, 5 to 600; the search stops then and shows what it found), "Leave heroes out". The
       options as last set survive the panel's rebuild when the opponent changes (for the page view).
     - Progress by stage ("solo", "size N": done / total) with the time used on the bar. Cancel stops softly: the page
       revokes a blob: URL that the worker's `shouldStop` reads with a synchronous request (at most every 250 ms;
       `SearchRequest.stopUrl`, `stopSignal` in `battle-worker.ts`), and the configurations found so far come back as a
-      normal result ("Stopped early"); a worker that doesn't answer within 10 s is terminated.
+      normal result (R2 F34: "· cancelled at 3.2 s" in the status line; "Stopped early" before); a worker that doesn't answer within 10 s is terminated.
     - Shortlist (U36, `solveShortlist` in `ui/battle-setup.ts`): of the search's configurations (up to 10), the table
       shows only those worth trying: never a 0 % win, only within 25 % of the best one found (win ≥ 0.75 × best win and
       ranking score ≥ 0.75 × best score), at most 5; a line says how many weaker ones were left out. None left: "No
@@ -358,7 +397,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     - Results: a table of up to 5 setups (10 before U36), # · Heroes · Party (hero chips in the class colours, 🏹 back row then 🛡️
       front row, a "rough" tag when `tuned` is false: only screened) · Scrolls (maps only: a green "No scrolls" pill,
       or "N scrolls:" then the scroll links; the column head's tooltip gives the order) · Win ·
-      Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load.
+      Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load. R2 F32: Show · Party · (Scrolls) · Win · Turns / Grade · (Progress), see the R2-C list.
     - Load fills the six slots, every hero's rotation and passive and (with scrolls) the map's scrolls, marks the row
       "✓ Loaded" and offers "↩ Put back the previous party" (party, rotations and scrolls as before). A setup that
       breaks the party rules is not loadable (its button is disabled with the reason in its tooltip); since E21 the
@@ -459,7 +498,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       (`#quest`, `#rare`, `#map`) and fires their change, so both tabs share one state.
     - What it shows: the WHOLE fight, every turn from 1 until it ends (won, lost, or the game's 200-turn cap), one turn
       under the other, from ONE concrete run: Simulate's first fight (seed `fightSeed(1, 0)`, the same rolls as the
-      first of Simulate's runs: hits, misses, critical hits, evasion). A one-line note above the chart says so. Combat
+      first of Simulate's runs: hits, misses, critical hits, evasion). The Flow's "?" says so (R2 F28; a one-line note above the chart before). Combat
       results are unchanged: the trace only reads the engine.
     - Data: `traceFight` / `traceMapRun` in `tools/fight-trace.ts` on the engine's trace (`api.ts traceStart`), which
       U39 extended with display-only fields per action: `did` (what the actor really played: another skill under a
@@ -518,7 +557,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       "Boss · Murlok Monarch"; `mapRoomTabs`), as the Map run mode's first run plays them (same seed: layout, rolls and
       HP carried from room to room); picking one shows that battle's full fight from its real start state; rooms not
       reached are dimmed and show the plan, except the rooms after the one where the party died (U40, `RoomTab.skipped`):
-      their tab stays, the panel shows only "💀 Party died, battle skipped". Arrow keys move along the bar; it scrolls sideways on a phone. The room is
+      their tab stays, the panel shows only "💀 Party died, battle skipped". Arrow keys move along the bar; it scrolls sideways on a phone, with edge fades (R2 F29). The room is
       remembered while the same map, ascension and grade stay chosen (sessionStorage `battle-flow-room`).
   - Plan grid (U39 before the Flow tab): `planGrid` counts turns from the start of the fight (turn 1 carries nothing
     over; turn 6 on carries what round one left on) and takes a turn count (default 10).

@@ -49,17 +49,21 @@
           <h2 id="setup-title">Party and flow</h2>
           <button id="open-sim" type="button" class="secondary" title="Copy this party, its rotations and the opponent to the Simulator (it replaces the Simulator's party for this save), then open it">▶ Open in Simulator</button>
         </div>
-        <div class="tabs b3-tabs" role="tablist" aria-label="Views">
-          <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">👥 Party</button>
-          <button id="tab-flow" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow" tabindex="-1">🗓️ Flow</button>
+        <!-- R2 F36: what the shown party is (and its rule) in the "?" beside the tabs (#party-help), no inner "Party" heading. -->
+        <div class="b3-tab-row">
+          <div class="tabs b3-tabs" role="tablist" aria-label="Views">
+            <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">👥 Party</button>
+            <button id="tab-flow" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow" tabindex="-1">🗓️ Flow</button>
+          </div>
+          <span id="party-help"></span>
         </div>
+        <!-- R2 F28: no heading repeating the tab: the opponent line first, the "?" holds what the flow shows. -->
         <div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow" hidden>
-          <div class="flow-head"><h3 class="col-title">🗓️ The fight, turn by turn <span id="plan-help"></span></h3><div id="flow-opp" class="flow-opp"></div></div>
+          <div class="flow-head"><div id="flow-opp" class="flow-opp"></div><span id="plan-help"></span></div>
           <div id="plan"></div>
         </div>
         <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
           <div id="party-col" class="party-col">
-            <h3 class="col-title">👥 Party</h3>
             <div id="party"></div>
           </div>
           <!-- U42: the opponent card and radar (its pickers are in the Solve panel). -->

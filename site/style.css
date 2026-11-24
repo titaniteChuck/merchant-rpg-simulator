@@ -1904,6 +1904,62 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .solve-status p { margin: 0; }
 .solve-results { margin-top: 14px; }
 /* end u42 solver */
+/* r2-c */
+/* Battle Simulator and Solver, mobile review R2 (F20, F23–F26, F28–F36). */
+/* F20: steps numbered by CSS: a hidden section (the Results before the first run) takes no number. */
+#setup { counter-reset: b3-step; }
+#setup > section:not([hidden]) > h2 > .step::before { counter-increment: b3-step; content: counter(b3-step); }
+#setup > section > h2 .help-tip { vertical-align: middle; font-size: 0.9rem; }
+/* F23 / F36: the party's "?" beside the Party / Flow tabs, no inner heading. */
+.b3-tab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.b3-tab-row .b3-tabs { margin: 0; }
+#party-help:empty { display: none; }
+/* F28: the flow's first line is the opponent, its "?" right after it. */
+.flow-panel .flow-head { justify-content: flex-start; align-items: center; gap: 6px; margin: 0 0 8px; }
+/* F24: label and value tiles, one grid with balanced columns (tileColumns): no lone tile on a row. */
+#results .tiles.result-tiles { grid-template-columns: repeat(var(--cols-wide, 3), minmax(0, 1fr)); }
+#results .tile-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; }
+#results .tile::after { pointer-events: none; }
+#results .tile-label .help-q { width: 1rem; height: 1rem; font-size: 0.6rem; border-width: 1px; }
+@media (max-width: 600px) {
+  #results .tiles.result-tiles { grid-template-columns: repeat(var(--cols-phone, 3), minmax(0, 1fr)); gap: 6px; }
+  #results .tiles.result-tiles > .tile { padding: 6px 8px; }
+  #results .tiles.result-tiles .tile-value { font-size: 1rem; }
+  #results .tiles.result-tiles .tile-icon { display: none; }
+}
+/* F25 / F26: the per-hero table's hero: plain name, its slot under it, the class colour as a bar on its left. */
+.hero-cell { display: inline-flex; flex-direction: column; padding-left: 8px; border-left: 3px solid var(--c, var(--border)); line-height: 1.25; text-align: left; }
+.hero-cell-name { font-weight: 650; color: var(--fg); white-space: nowrap; }
+.hero-cell-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+/* F29: the room bar's edges fade while more rooms are that way (battle-page.ts edgeFades); also `.scroll-row`. */
+.room-bar.fade-end { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.room-bar.fade-start { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px); mask-image: linear-gradient(to right, transparent, #000 36px); }
+.room-bar.fade-start.fade-end {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+}
+/* F30: class badges (and the other pills of a hero card, the solver's hero chips) at AA contrast in light mode. */
+:root[data-theme="light"] .slot-head .pill, :root[data-theme="light"] .solver-party .pill { --ink: 38%; }
+/* F31: "Party 1 – 5" on one row. */
+.solve-sizes { gap: 6px; }
+.solve-sizes input { width: 3.4em; }
+/* F32: Show first, the whole row taps to Show; the lowest enemy HP under the win rate when a setup can lose. */
+.solver-table td.solver-show { width: 1%; }
+.solver-table tr.row-link { cursor: pointer; }
+.solver-win { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.solver-sub { font-size: 0.7rem; font-weight: 400; color: var(--muted); white-space: nowrap; }
+/* F33: a Solver row's empty slots folded into one line. */
+.empty-slots > summary { cursor: pointer; padding: 6px 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); }
+.empty-slots[open] > summary { margin-bottom: 14px; }
+.empty-slots > .slot + .slot { margin-top: 14px; }
+/* F34: one status line over the solver's table. */
+.solve-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
+/* F35: the row icon stays on its first chip's line; "rough" with its "?". */
+.solver-lead { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.solver-row .solver-lead .row-ico { width: auto; }
+.rough-wrap { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; }
+.solver-party .rough-wrap .rough { font-size: 0.7rem; }
+/* end r2-c */
 
 /* profit p1: options at two columns on a phone; segmented grade / who pays; first column sticky on narrow tables */
 .pf-options { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }

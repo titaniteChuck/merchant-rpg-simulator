@@ -22,6 +22,12 @@
  * the fewest scrolls first (a run needing no scrolls first). A map run's Scrolls cell says "No scrolls" (a pill) or the
  * count and the scrolls.
  *
+ * R2 (mobile review): the sizes on one row, "Party 1 – 5", the opponent's limit in their "?" (F31); Include scrolls only
+ * for a map run (F31); Show is the first column and a tap on the row shows too, no hero-count column, a quest's lowest
+ * enemy HP under the win rate (F32); one status line, "3 setups ≥ 90 % · 5.0 s", the rest in its "?" (battle-setup.ts
+ * solveStatus: a spent time budget is an ordinary end, only Cancel reads as stopped, F34); the row icon inline with its
+ * first chip and a "?" on "rough" (F35).
+ *
  * Expansions (U28): heroes of a hidden class start ticked in "Leave heroes out".
  */
 import * as api from "../sim/api.ts";
@@ -31,10 +37,10 @@ import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import type { PartyRules } from "./battle-rules.ts";
-import { scrollCount, solveShortlist } from "./battle-setup.ts";
+import { ROUGH_HELP, scrollCount, sizeHelp, solveShortlist, solveStatus } from "./battle-setup.ts";
 import { bar, el, fmt, fmt1, pct, rateTone } from "./dom.ts";
 import { itemLink } from "./wiki-data.ts";
-import { isHidden, isVisible } from "./expansion-state.ts";
+import { isVisible } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -123,10 +129,10 @@ const isMapEval = (ev: FightEval | MapEval): ev is MapEval => "cleared" in ev;
 
 /** The solver table's column tooltips (R1 F20: no notes under the table). */
 const HEAD_TIPS: Record<string, string> = {
-  "Party": "Rough: only screened (default rows, the heroes' own rotations); party sizes far from winning are not tuned.",
-  "Lowest enemy HP": "The lowest point the enemy's HP reached, on average (0 % = killed).",
+  "Party": "The heroes by row (🏹 back, 🛡️ front). Tap a row, or its Show, to put the setup in the Party and Flow tabs.",
   "Progress": "Rooms cleared per run.",
-  "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one).",
+  "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one). On a quest a setup that can lose also shows the "
+    + "lowest point the enemy's HP reached, on average (0 % = killed).",
   "Scrolls": "The scrolls the run uses. Winners (90 % or more) come first; among the winners, and among the others, the runs with fewer scrolls come first (none first).",
 };
 
@@ -175,7 +181,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
    * `budgetMs`: the bar shows the time used. `soft`: Cancel asks the search to stop (SearchRequest.stopUrl) and its
    * result, with what was found so far, is shown as usual; a worker that doesn't answer within 10 s is terminated.
    */
-  function runSearch(req: SearchRequest, out: HTMLElement, render: (m: Extract<SearchResponse, { type: "done" }>, again: boolean) => Node[],
+  function runSearch(req: SearchRequest, out: HTMLElement, render: (m: Extract<SearchResponse, { type: "done" }>, again: boolean, cancelled: boolean) => Node[],
     budgetMs?: number, soft = false): void {
     stopWorker();
     last = null;
@@ -233,7 +239,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       stopWorker();
       if (m.type === "error") status.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
       else {
-        const draw = (again: boolean) => [...render(m, again), el("p", { class: "muted small", title: "Fixed seeds: every candidate is tested on the same rolls." }, `Searched in ${fmt1.format(m.ms / 1000)} s.`)];
+        // R2 F34: the search time is part of the result's one status line (render); `stopping`: Cancel was used.
+        const cancelled = stopping;
+        const draw = (again: boolean) => render(m, again, cancelled);
         status.replaceChildren();
         out.replaceChildren(...draw(false));
         showResults(true);
@@ -293,14 +301,15 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     const minN = num({ "aria-label": "Smallest party", max: String(cap) }, Math.min(prefs.min, cap)),
       maxN = num({ "aria-label": "Largest party", max: String(cap) }, Math.min(prefs.max ?? cap, cap));
     if (cap === 1) minN.disabled = maxN.disabled = true;
-    const capNote = cap < 6 ? [el("span", { class: "muted small" }, cap === 1 ? "solo quest: one hero" : `this quest takes at most ${cap} heroes`)] : [];
+    // R2 F31: the two sizes on one row, "Party 1 – 5", the opponent's limit in its "?".
+    const sizes = el("span", { class: "check solve-sizes", role: "group", "aria-label": "Party size" },
+      el("span", { class: "muted small" }, "Party"), minN, el("span", { class: "muted", "aria-hidden": "true" }, "–"), maxN,
+      helpTip(sizeHelp(cap), "the party size"));
     const sc = el("input", { type: "checkbox" }) as HTMLInputElement;
     sc.checked = isMap && prefs.scrolls;
-    sc.disabled = !isMap;
-    const scLabel = el("label", { class: `check${isMap ? "" : " off"}` }, sc, " Include scrolls",
-      ...(isMap ? [] : [el("span", { class: "muted small" }, " (map runs only)")]));
-    // U42: Scribe hidden (no maps on the page): no "Include scrolls" at all.
-    const scrollOpt = isHidden("Scribe") && !isMap ? [] : [scLabel];
+    const scLabel = el("label", { class: "check" }, sc, " Include scrolls");
+    // R2 F31: scrolls only on a map run (a quest, or Scribe hidden: no row at all).
+    const scrollOpt = isMap ? [scLabel] : [];
     // U42: the time budget, in seconds (30 by default): the search stops then and shows what it found.
     const budget = el("input", { type: "number", class: "solve-time", min: String(TIME_MIN), max: String(TIME_MAX), step: "5",
       "aria-label": "Time budget in seconds", title: `How long the search may run, ${TIME_MIN} to ${TIME_MAX} seconds: it then stops and shows the setups found so far.` }) as HTMLInputElement;
@@ -336,20 +345,21 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
       runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...target,
         minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
-      (r) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st) : []), budgetMs, true);
+      (r, _again, cancelled) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st, { ms: r.ms, cancelled, budgetMs }) : []),
+      budgetMs, true);
     });
     // R1 F20: how the solver works is in a "?" on the warning line, not a paragraph.
     warn.append(" ", helpTip(intro, "the solver"));
     return { head: warn, form: el("div", { class: "search-panel solver" },
-      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, ...scrollOpt,
-        field("time budget (s)", budget), go), excl.node) };
+      el("div", { class: "toolbar search-form" }, sizes, ...scrollOpt, field("Time budget (s)", budget), go), excl.node) };
   }
 
   /**
    * The solver's table: one row per setup; Show fills step 3 (party, rotations, passives, scrolls) and brings its Party
    * and Flow tabs (U41), with an undo when a party was already shown.
    */
-  function partiesResult(res: PartiesResult, sv: Save, isMap: boolean, withScrolls: boolean, st: { loaded: number; undo: HTMLElement | null }): Node[] {
+  function partiesResult(res: PartiesResult, sv: Save, isMap: boolean, withScrolls: boolean, st: { loaded: number; undo: HTMLElement | null },
+    run: { ms: number; cancelled: boolean; budgetMs: number }): Node[] {
     const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
     const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
     const box = el("div", { class: "solver-out" });
@@ -359,11 +369,15 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       const h = hero(id);
       return el("span", { class: `pill hero-chip cls-${h?.class ?? 0}`, title: h ? `${h.name} · level ${h.level}` : `#${id}` }, h?.name ?? `#${id}`);
     };
+    // R2 F35: the row icon (with its tooltip) stays on the line of its first chip; "rough" has a "?" saying what it means.
     const partyCell = (c: PartyConfig) => el("div", { class: "solver-party" },
-      ...(["back", "front"] as const).filter((row) => c.layout[row].some((id) => id !== null)).map((row) =>
-        el("div", { class: "solver-row" }, el("span", { class: "row-ico", title: row === "front" ? "Front row" : "Back row", role: "img", "aria-label": row === "front" ? "Front row" : "Back row" },
-          row === "front" ? "🛡️" : "🏹"), ...c.layout[row].filter((id): id is number => id !== null).map(chip))),
-      ...(c.tuned ? [] : [el("span", { class: "pill t-orange rough", title: "Only screened: default rows and the heroes' own rotations, not tuned (its party size was far from winning)." }, "rough")]));
+      ...(["back", "front"] as const).filter((row) => c.layout[row].some((id) => id !== null)).map((row) => {
+        const [first, ...rest] = c.layout[row].filter((id): id is number => id !== null).map(chip);
+        const what = row === "front" ? "Front row" : "Back row";
+        return el("div", { class: "solver-row" }, el("span", { class: "solver-lead" },
+          el("span", { class: "row-ico", title: what, role: "img", "aria-label": what }, row === "front" ? "🛡️" : "🏹"), first), ...rest);
+      }),
+      ...(c.tuned ? [] : [el("span", { class: "rough-wrap" }, el("span", { class: "pill t-orange rough" }, "rough"), helpTip(ROUGH_HELP, "rough setups"))]));
     // E25: scroll use at a glance: "No scrolls" (a pill) or the count, then the scrolls.
     const scrollCell = (c: PartyConfig) => {
       const n = scrollCount(c);
@@ -400,24 +414,34 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
           b.setAttribute("disabled", "");
           b.title = `Can't show: ${problem}`;
         } else b.addEventListener("click", () => showSetup(c, k));
-        const win = el("strong", { class: `rate ${rateTone(ev.win)}`, style: "color: var(--c)" }, pct(ev.win));
+        // R2 F32: a quest's lowest enemy HP is no column: a subline under the win rate when the setup can lose, and
+        // always in the cell's tooltip.
+        const low = isMapEval(ev) ? null : Math.max(0, 1 - (ev.enemy_dmg_peak ?? ev.enemy_dmg));
+        const win = el("span", { class: "solver-win", ...(low !== null ? { title: `Lowest enemy HP: ${pct(low)} on average (0 % = killed)` } : {}) },
+          el("strong", { class: `rate ${rateTone(ev.win)}`, style: "color: var(--c)" }, pct(ev.win)),
+          ...(low !== null && ev.win < 1 ? [el("span", { class: "solver-sub" }, `enemy HP ${pct(low)}`)] : []));
         const third = isMapEval(ev)
           ? el("span", { title: `average grade ${fmt1.format(ev.grade)} (D = 1 … S = 5)` }, GRADES[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))])
           : el("span", {}, fmt1.format(ev.turns));
-        const fourth = isMapEval(ev) ? pct(ev.cleared) : pct(Math.max(0, 1 - (ev.enemy_dmg_peak ?? ev.enemy_dmg)));
-        return el("tr", { class: st.loaded === k ? "loaded" : "" },
-          el("td", { class: "num" }, String(k + 1)), el("td", { class: "num" }, String(c.size)), el("td", {}, partyCell(c)),
+        const tr = el("tr", { class: `${st.loaded === k ? "loaded" : ""}${problem ? "" : " row-link"}`.trim() },
+          el("td", { class: "solver-show" }, b), el("td", {}, partyCell(c)),
           ...(isMap ? [el("td", {}, scrollCell(c))] : []), el("td", { class: "num" }, win), el("td", { class: "num" }, third),
-          el("td", { class: "num" }, fourth), el("td", {}, b));
+          ...(isMapEval(ev) ? [el("td", { class: "num" }, pct(ev.cleared))] : []));
+        // R2 F32: a tap on the row is Show too (not on its links or buttons).
+        if (!problem) tr.addEventListener("click", (e) => {
+          if (!(e.target as Element).closest("a, button, summary")) b.click();
+        });
+        return tr;
       });
-      const head = ["#", "Heroes", "Party", ...(isMap ? ["Scrolls"] : []), "Win", isMap ? "Grade" : "Turns", isMap ? "Progress" : "Lowest enemy HP", ""];
-      const nums = new Set(["#", "Heroes", "Win", "Grade", "Turns", "Progress", "Lowest enemy HP"]);
+      // R2 F32: Show first (on a phone it is on screen), no hero count (the chips count them), no lowest-enemy-HP column.
+      const head = ["", "Party", ...(isMap ? ["Scrolls"] : []), "Win", isMap ? "Grade" : "Turns", ...(isMap ? ["Progress"] : [])];
+      const nums = new Set(["Win", "Grade", "Turns", "Progress"]);
       box.replaceChildren(
-        // After Show: which setup the Party and Flow tabs hold, and the undo (once used, it stays as "✓ Previous party back").
-        ...(st.loaded >= 0 || st.undo ? [el("p", { class: "result-note solver-loaded" },
-          ...(st.loaded >= 0 ? [`✓ Setup #${st.loaded + 1} is shown in the Party and Flow tabs below. `] : []), ...(st.undo ? [st.undo] : []))] : []),
+        // R2 F34: the setup shown is the highlighted row ("✓ Shown"); this line only holds the undo, once there is one.
+        ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, st.undo)] : []),
         el("div", { class: "table-wrap" }, el("table", { class: "solver-table" },
-          el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}), ...(HEAD_TIPS[h] ? { title: HEAD_TIPS[h] } : {}) }, h)))),
+          el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}), ...(HEAD_TIPS[h] ? { title: HEAD_TIPS[h] } : {}) },
+            h || el("span", { class: "visually-hidden" }, "Show"))))),
           el("tbody", {}, ...rows))));
     };
     if (!res.results.length) {
@@ -428,15 +452,11 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         + "a smaller quest size or more time.")];
     }
     paint();
-    const wins = shown.filter((c) => c.ev.win >= 0.9).length;
-    return [
-      ...(res.stopped ? [el("p", { class: "muted small" }, "⏱️ Stopped early (time budget or Cancel): these are the setups found so far.")] : []),
-      el("p", { class: "small" }, wins ? `${wins} setup${wins === 1 ? "" : "s"} win${wins === 1 ? "s" : ""} 90 % of the fights or more.`
-        : "No setup wins 90 % of the time yet: the closest ones are listed."),
-      box,
-      // R1 F20: one line; what the columns mean is in the headers' tooltips.
-      el("p", { class: "muted small" }, `${fmt.format(res.tried)} evaluations${shown.length < res.results.length ? ` · ${res.results.length - shown.length} weaker setup${res.results.length - shown.length === 1 ? "" : "s"} not shown` : ""}.`),
-    ];
+    // R2 F34: one status line ("3 setups ≥ 90 % · 5.0 s"); the rest (how the search ended, what was evaluated) in its
+    // "?". A search that used its whole time budget ended normally: only Cancel reads as stopped.
+    const s = solveStatus({ wins: shown.filter((c) => c.ev.win >= 0.9).length, listed: shown.length, found: res.results.length, tried: res.tried,
+      ms: run.ms, budgetMs: run.budgetMs, stopped: res.stopped, cancelled: run.cancelled, map: isMap });
+    return [el("p", { class: "small solve-summary", role: "status" }, s.line, " ", helpTip(s.help, "these results")), box];
   }
 
   /** "Leave heroes out" chips: ticked heroes are not candidates, unless kept (`keep`: locked or starting heroes). */

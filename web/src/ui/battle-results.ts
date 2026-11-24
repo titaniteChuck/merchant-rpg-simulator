@@ -3,12 +3,16 @@
  * button for the rest (other tiles, XP and time, essence, the per-hero table). Open or closed is remembered for the
  * browser tab (sessionStorage `battle-results-details`, convenience only: closed when storage is missing or throws).
  *
+ * R2 F24: a result tile is a label and a value only; what used to be its subline is in a "?" on its label
+ * (resultTile), and the details are one grid whose columns leave no tile alone on a row (tileColumns).
+ *
  * Also the texts of the turn figures (the game's turn cap: Battle:combatLoop stops a fight at turn 200 as a loss) and
  * of each hero's HP left. Node tests import this file: no DOM is touched until a builder is called.
  */
 import { TURN_CAP } from "../sim/battle.ts";
 import type { HeroEval } from "../tools/combat.ts";
-import { el, fmt, fmt1, pct } from "./dom.ts";
+import { el, fmt, fmt1, pct, tile, type TileOptions } from "./dom.ts";
+import { helpTip } from "./wiki-help.ts";
 
 export const DETAILS_KEY = "battle-results-details";
 
@@ -85,3 +89,31 @@ export function compactResult(summary: HTMLElement, details: HTMLElement[], runL
   sync();
   return [summary, el("div", { class: "result-toggle" }, btn, runLine), box];
 }
+
+// ---------------------------------------------------------------- R2 F24: compact tiles, no orphans
+/**
+ * A result tile (R2 F24): label and value, no subline. `tip`, when given, is the "?" on the label (one paragraph or
+ * several, empty ones dropped), with `refs` (links to the Stats page) on its last line.
+ */
+export function resultTile(label: string, value: string | Node, tip?: string | (string | null | undefined)[] | null, opts: TileOptions = {},
+  refs: HTMLAnchorElement[] = []): HTMLElement {
+  const t = tile(label, value, undefined, opts);
+  const paras = (Array.isArray(tip) ? tip : [tip]).filter((p): p is string => Boolean(p));
+  if (paras.length || refs.length) t.querySelector(".tile-label")?.append(" ", helpTip(paras, label.toLowerCase(), refs));
+  return t;
+}
+
+/**
+ * The columns of a grid of `n` result tiles (R2 F24), so no row ends with a lone tile: on a phone (`phone`) 3, or 2
+ * for 2 and 4 tiles; on a wider screen (`wide`) one row up to 6 tiles, else 3 per row when that divides, else 4,
+ * else the phone count. The details hold 3, 6 or 9 tiles, the summary 2.
+ */
+export function tileColumns(n: number): { phone: number; wide: number } {
+  const k = Math.max(1, Math.trunc(n) || 1);
+  const phone = k <= 2 ? k : k === 4 ? 2 : 3;
+  const wide = k <= 6 ? k : k % 3 === 0 ? 3 : k % 4 === 0 ? 4 : phone;
+  return { phone, wide };
+}
+
+/** True when `n` tiles in `cols` columns leave one tile alone on the last of several rows. */
+export const hasOrphan = (n: number, cols: number): boolean => n > cols && n % cols === 1;

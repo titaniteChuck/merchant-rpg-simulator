@@ -26,10 +26,10 @@
     <div id="loaded" aria-live="polite"></div>
 
     <div id="setup" hidden>
+      <!-- R2 F20: the steps are numbered by CSS (r2-c), so the Results, hidden until the first run, leave no gap. -->
       <section>
-        <h2><span class="step">1</span> Simulate</h2>
+        <h2><span class="step" aria-hidden="true"></span> Simulate <span id="sim-help"></span></h2>
         <div class="run-box" role="group" aria-label="Simulate">
-          <p class="muted small run-hint">Your party against an enemy or a map run, hundreds of times, on the same rolls every time. Set them up in step 3.</p>
           <div class="simulate">
             <div class="toolbar">
               <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
@@ -39,26 +39,29 @@
         </div>
       </section>
 
-      <section id="results-box" class="b3-results">
-        <h2 id="results-title"><span class="step">2</span> Results</h2>
-        <p id="results-empty" class="muted small">No run yet.</p>
+      <section id="results-box" class="b3-results" hidden>
+        <h2 id="results-title"><span class="step" aria-hidden="true"></span> Results</h2>
         <section id="results" aria-live="polite"></section>
       </section>
 
       <section>
-        <h2><span class="step">3</span> <span id="setup-title">Party and opponent</span></h2>
-        <!-- U39: two views of one party: the cards (Party) and the whole fight, turn by turn (Flow), both editable. U40: Party first. -->
-        <div class="tabs b3-tabs" role="tablist" aria-label="Views">
-          <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">👥 Party</button>
-          <button id="tab-flow" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow" tabindex="-1">🗓️ Flow</button>
+        <h2><span class="step" aria-hidden="true"></span> <span id="setup-title">Party and opponent</span></h2>
+        <!-- U39: two views of one party: the cards (Party) and the whole fight, turn by turn (Flow), both editable. U40: Party first.
+             R2 F23: the party's rule is in the "?" beside the tabs (#party-help), no inner "Party" heading. -->
+        <div class="b3-tab-row">
+          <div class="tabs b3-tabs" role="tablist" aria-label="Views">
+            <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">👥 Party</button>
+            <button id="tab-flow" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow" tabindex="-1">🗓️ Flow</button>
+          </div>
+          <span id="party-help"></span>
         </div>
+        <!-- R2 F28: no heading repeating the tab: the opponent line first, the "?" holds what the flow shows. -->
         <div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow" hidden>
-          <div class="flow-head"><h3 class="col-title">🗓️ The fight, turn by turn <span id="plan-help"></span></h3><div id="flow-opp" class="flow-opp"></div></div>
+          <div class="flow-head"><div id="flow-opp" class="flow-opp"></div><span id="plan-help"></span></div>
           <div id="plan"></div>
         </div>
         <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
           <div id="party-col" class="party-col">
-            <h3 class="col-title">👥 Party</h3>
             <div id="party"></div>
           </div>
           <div id="opp-col" class="opp-col">

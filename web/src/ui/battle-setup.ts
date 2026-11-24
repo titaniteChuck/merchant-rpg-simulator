@@ -8,8 +8,10 @@
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
  *   most 5; winners first, then within each tier the fewest scrolls first (E25).
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
+ * - solveStatus(), sizeHelp(), ROUGH_HELP (R2 F31, F34, F35): the Solver's texts, its one status line and its "?"s.
  */
 import { G } from "../sim/data.ts";
+import { fmt, fmt1 } from "./dom.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { locationOf } from "./battle-plan.ts";
 import { isBoardQuest } from "../tools/quest-stats.ts";
@@ -195,4 +197,61 @@ export function effectiveDamage(ev: { heroes: Record<string, { dmg: number }>; e
   const maxHp = enemyMaxHp(ev) ?? 0;
   const k = maxHp > 0 && sum > maxHp ? maxHp / sum : 1;
   return Object.fromEntries(Object.entries(ev.heroes).map(([slot, h]) => [slot, [h.dmg * k, h.dmg]]));
+}
+
+// ---------------------------------------------------------------- R2: the Solver's texts (F31, F34, F35)
+/**
+ * R2 F35: what a "rough" setup is (PartyConfig.tuned false, tools/parties.ts): it got only the quick screening with
+ * the default layout, never the tuning of rows, order, rotations and scrolls.
+ */
+export const ROUGH_HELP = "Rough: only screened, not tuned. Its rows are the default ones (the sturdiest heroes in front) and each hero plays "
+  + "its own rotation and passive, on a quick evaluation with fewer fights. The solver tunes a party size only once it comes near winning, "
+  + "so this size was far from winning, or the time ran out before its turn. Show it to tune it by hand, or solve again with more time.";
+
+/** R2 F31: the "?" of the "Party 1 – 5" sizes: what they are, and the opponent's limit (`cap` heroes, 6 = none). */
+export function sizeHelp(cap: number): string[] {
+  return ["The smallest and the largest party to try: parties grow one hero at a time from the smallest.",
+    ...(cap === 1 ? ["A solo quest: one hero."] : cap < 6 ? [`This quest takes at most ${cap} heroes.`] : [])];
+}
+
+export interface SolveRun {
+  /** Setups listed that win 90 % or more, setups listed, setups the search returned, evaluations. */
+  wins: number;
+  listed: number;
+  found: number;
+  tried: number;
+  /** The search's time and its budget, in ms. */
+  ms: number;
+  budgetMs: number;
+  /** The search ended before its end (PartiesResult.stopped): its time budget ran out, or Cancel (`cancelled`). */
+  stopped: boolean;
+  cancelled: boolean;
+  /** A map run (runs), else a quest (fights). */
+  map: boolean;
+}
+
+/**
+ * R2 F34: the Solver's one status line, "3 setups ≥ 90 % · 5.0 s" ("cancelled at 3.2 s" after a Cancel), and the
+ * paragraphs of its "?": what the line counts, how the search ended, what was evaluated and left out. A search that
+ * used its whole time budget ended as asked: it is said plainly, not as a failure; only Cancel reads as stopped.
+ */
+export function solveStatus(r: SolveRun): { line: string; help: string[] } {
+  const s = (n: number) => (n === 1 ? "" : "s");
+  const secs = `${fmt1.format(r.ms / 1000)} s`, budget = `${fmt.format(Math.round(r.budgetMs / 1000))} s`;
+  const unit = r.map ? "runs" : "fights";
+  const line = `${r.wins ? `${r.wins} setup${s(r.wins)} ≥ 90 %` : "No setup ≥ 90 % yet"} · ${r.cancelled ? `cancelled at ${secs}` : secs}`;
+  const ended = r.cancelled ? `Cancelled after ${secs}: these are the setups found so far.`
+    : r.stopped ? `The search used its whole time budget (${budget}) and lists the best setups found in that time. More time can find smaller or stronger parties.`
+    : `The search was complete after ${secs}, within its time budget (${budget}).`;
+  const left = r.found - r.listed;
+  return {
+    line,
+    help: [
+      r.wins ? `${r.wins} of the ${r.listed} setup${s(r.listed)} listed win${r.wins === 1 ? "s" : ""} 90 % of the ${unit} or more.`
+        : `No setup wins 90 % of the ${unit} yet: the closest ones are listed.`,
+      ended,
+      `${fmt.format(r.tried)} evaluation${s(r.tried)}${left > 0 ? `; ${left} weaker setup${s(left)} not listed` : ""}. Only setups within 25 % of the best one are listed, at most 5.`,
+      "Fixed seeds: every candidate is tested on the same rolls.",
+    ],
+  };
 }

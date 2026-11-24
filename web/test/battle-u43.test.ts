@@ -115,7 +115,8 @@ test("page: the summary is the win rate and the grade, the rest behind the toggl
   const summaries = [...page.matchAll(/tiles\(\{ class: "result-summary" \},\s*tile\("Win rate"[^\n]*\n\s*gradeTile\(ev\.win, ev\.grade\),\s*\)/g)];
   assert.equal(summaries.length, 2, "quest and map results");
   assert.equal([...page.matchAll(/return compactResult\(/g)].length, 2);
-  assert.match(page, /\.\.\.xpRow\(xp\.length \? \[\.\.\.xp, essence\] : \[\], true\)/);
+  // R2 F24: the essence comes last of the one details grid, after the map-run figures.
+  assert.match(page, /\.\.\.xp,\s*essence,\s*\),/);
   assert.doesNotMatch(page, /Essence per run: /);
   assert.match(page, /\{ key: "hp_left", label: "HP left"/);
   // The compact tiles are scoped to the Simulator's results.
