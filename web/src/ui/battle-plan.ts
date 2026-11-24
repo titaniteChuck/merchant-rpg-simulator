@@ -14,6 +14,8 @@
  * the grid follows the language picker; the keys stay English.
  */
 import { type EffectInfo, type EnemyTimeline, skillProfile, type SkillTag } from "../tools/schedule.ts";
+import type { TraceCalc } from "../sim/api.ts";
+import { effectName, effectText, type FxData } from "./battle-calc.ts";
 import { enemyName, skillName } from "./names.ts";
 
 /** Compact stat words, and the full ones for tooltips. */
@@ -318,32 +320,41 @@ export function planGrid(tl: EnemyTimeline, members: PlanMember[], n = PLAN_TURN
   return { enemyFirst: tl.enemyFirst, columns: tl.enemyFirst ? [enemyCol, ...heroCols] : [...heroCols, enemyCol] };
 }
 
-// ---------------------------------------------------------------- the flow of one fight (U39)
+// ---------------------------------------------------------------- the flow of one fight (U39, U40)
 /*
  * The flow diagram's data (U39), from one simulated fight (tools/fight-trace.ts: Simulate's first fight, or one room
  * of the Map run mode's first run), every turn from 1 until the fight ends. Inside each turn, one line per action in
  * the order the fighters act: the actor's column holds the skill it played (the planned one struck out under a stun or
- * a forced action), each other column the damage or healing that fighter took, and a dot where an effect landed. Under
- * the lines, each fighter's HP and its effects at the end of the turn, as chips; an effect on every standing hero is
- * one chip over the hero columns. Turns 1-5 are the rotation (editable on the page); a light divider every 5 turns.
+ * a forced action), each other column the damage or healing that fighter took (with its calculation, U40), and what
+ * an effect that landed does ("+15% Def"). Under the lines, the end-of-turn summary: each fighter's HP and its own
+ * effects, as text from their live values (U40: no grouping over the heroes). Turns 1-5 are the rotation (editable on
+ * the page); a light divider every 5 turns.
  */
 export interface TimelineChip {
-  /** 0 = the enemy, 1-6 = party location, -1 = every hero. */
+  /** 0 = the enemy, 1-6 = party location. */
   who: number;
-  /** Engine name (English) and its label in the visitor's language. */
+  /** Engine name (English). */
   name: string;
+  /** What it does, as plain text from its live values ("+15% Def", "Taunt"). */
   label: string;
   debuff: boolean;
   /** Turns left, when the effect counts them. */
   turns?: number;
+  /** "<skill> from <fighter>", and the turns left. */
   title: string;
 }
 export interface TimelineCell {
+  /** Damage taken while standing, HP really healed. */
   dmg: number;
   heal: number;
   /** The fighter fell during this action. */
   ko: boolean;
-  /** Effects that landed on this fighter during this action (new, or cast again). */
+  /** Hits on this fighter while it was already down (they change nothing), and their damage. */
+  deadHits: number;
+  deadDmg: number;
+  /** The hits and heals behind `dmg` and `heal`, for their calculation. */
+  calc: TraceCalc[];
+  /** Effects that landed on this fighter during this action (new, cast again, or stronger: a stack, an amplify). */
   added: TimelineChip[];
 }
 export interface TimelineLine {
@@ -364,10 +375,9 @@ export interface TimelineTurn {
   round: number;
   /** The actions of this turn, in order. */
   lines: TimelineLine[];
-  /** End of the turn: each fighter's HP, and its own effects (those on every standing hero are in `shared`). */
+  /** End of the turn: each fighter's HP, and its own effects. */
   hp: Record<number, { hp: number; maxHP: number }>;
   status: Record<number, TimelineChip[]>;
-  shared: TimelineChip[];
 }
 export interface PlanTimeline {
   turns: TimelineTurn[];
@@ -380,48 +390,44 @@ export interface PlanTimeline {
 /** The game's turn cap (Battle.combatLoop): at 200 turns the fight stops, lost. */
 export const TURN_CAP = 200;
 
-type TracedFx = { who: number; name: string; debuff: boolean; turns?: number; stats?: Record<string, number> };
+type TracedFx = FxData & { who: number; from?: number; skill?: string; amp?: boolean; gone?: boolean };
 /** What the timeline needs of a traced fight (tools/fight-trace.ts FightTrace). */
 export interface TracedFight {
   won: boolean;
   turns: number;
   actions: { turn: number; who: number; planned: string; did: string | false | null; misses: number;
-    hits: { who: number; dmg: number; heal: number; hp: number }[]; fx: TracedFx[];
-    life?: { who: number; hp: number; maxHP: number }[] }[];
+    hits: { who: number; dmg: number; heal: number; hp: number; ko?: boolean; deadHits?: number; deadDmg?: number; calc?: TraceCalc[] }[];
+    fx: TracedFx[]; life?: { who: number; hp: number; maxHP: number }[] }[];
 }
 
-/**
- * An effect's name in the visitor's language: effects are named after their skill ("Tidal Wave"), sometimes with a
- * suffix ("Ancient Mist Eva↑"); the skill part is translated, the suffix kept.
- */
-export function effectName(name: string): string {
-  const own = skillName(name);
-  if (own !== name) return own;
-  const words = name.split(" ");
-  for (let k = words.length - 1; k > 0; k--) {
-    const head = words.slice(0, k).join(" "), t = skillName(head);
-    if (t !== head) return `${t} ${words.slice(k).join(" ")}`;
-  }
-  return name;
-}
+export { effectName };
 
+/** An effect as text, "<skill> from <fighter>" on hover (U40). */
 function chipOf(f: TracedFx, who: (w: number) => string): TimelineChip {
-  const label = effectName(f.name);
-  const stats = Object.entries(f.stats ?? {}).filter(([, v]) => v !== 0).map(([k, v]) => compactStat(k, v).long);
-  const left = f.turns === undefined ? "" : `, ${f.turns} turn${f.turns === 1 ? "" : "s"} left`;
-  return { who: f.who, name: f.name, label, debuff: f.debuff, ...(f.turns === undefined ? {} : { turns: f.turns }),
-    title: `${label} on ${who(f.who)}: ${f.debuff ? "debuff" : "buff"}${stats.length ? ` (${stats.join(", ")})` : ""}${left}.` };
+  const skill = effectName(f.skill ?? f.name);
+  const by = f.from !== undefined && f.from >= 0 ? `${skill} from ${who(f.from)}` : skill;
+  // Turns count the owner's own actions; at 0 the effect still works until the owner acts again.
+  const left = f.turns === undefined ? "" : f.turns <= 0 ? ` · ends when ${who(f.who)} acts next`
+    : ` · ${f.turns} turn${f.turns === 1 ? "" : "s"} left`;
+  return { who: f.who, name: f.name, label: effectText(f), debuff: f.debuff, ...(f.turns === undefined ? {} : { turns: f.turns }),
+    title: `${by}${left}${f.amp ? " · doubled by an amplify" : ""}` };
 }
 
-/** Effects still on: with 0 turns left an effect ends at its owner's next action, so it no longer shows. */
-const liveFx = (fx: TracedFx[]) => fx.filter((f) => f.turns === undefined || f.turns > 0);
+/**
+ * Effects still on (U40): an effect with 0 turns left still works until its owner's next action (the game removes it
+ * then), so it shows; one spent or ended (a one-hit effect that worked, the effects of a fighter that fell) does not.
+ */
+const liveFx = (fx: TracedFx[]) => fx.filter((f) => !f.gone);
+/** What an effect gives now, to see it grow (a stack, an amplify); a shield wearing down is no new landing. */
+const strength = (f: TracedFx) => JSON.stringify([f.stats ?? null, f.heal ?? null]);
 
 /**
- * The flow of a traced fight, every turn from 1 to its end. `occupied`: the party locations in the fight (for "on
- * every hero"); `who`: a fighter's name for the tooltips.
+ * The flow of a traced fight, every turn from 1 to its end. `occupied`: the party locations in the fight; `who`: a
+ * fighter's name for the tooltips.
  */
 export function planTimeline(trace: TracedFight, occupied: number[],
   who: (w: number) => string = (w) => (w ? locationLabel(w) : "the enemy")): PlanTimeline {
+  void occupied;
   const turns: TimelineTurn[] = [];
   let prev: TracedFx[] = [];
   const hp: Record<number, { hp: number; maxHP: number }> = {};
@@ -433,36 +439,28 @@ export function planTimeline(trace: TracedFight, occupied: number[],
   for (let t = 1; t <= trace.turns; t++) {
     const acts = byTurn.get(t) ?? [];
     const lines: TimelineLine[] = acts.map((a) => {
-      const before = new Map(liveFx(prev).map((f) => [`${f.who}|${f.name}`, f.turns ?? Infinity]));
+      const before = new Map(liveFx(prev).map((f) => [`${f.who}|${f.name}`, f]));
       const cells: Record<number, TimelineCell> = {};
-      const cell = (w: number) => (cells[w] ??= { dmg: 0, heal: 0, ko: false, added: [] });
-      // KO: standing before this action (HP before = after + damage − healing), down after it.
-      for (const h of a.hits) Object.assign(cell(h.who), { dmg: h.dmg, heal: h.heal, ko: h.hp <= 0 && h.hp + h.dmg - h.heal > 0 });
+      const cell = (w: number) => (cells[w] ??= { dmg: 0, heal: 0, ko: false, deadHits: 0, deadDmg: 0, calc: [], added: [] });
+      for (const h of a.hits) {
+        // KO: from the trace (standing before a hit, down after it); an older trace without it: HP before = after + damage − healing.
+        Object.assign(cell(h.who), { dmg: h.dmg, heal: h.heal, ko: h.ko ?? (h.hp <= 0 && h.hp + h.dmg - h.heal > 0),
+          deadHits: h.deadHits ?? 0, deadDmg: h.deadDmg ?? 0, calc: h.calc ?? [] });
+      }
       for (const f of liveFx(a.fx)) {
         const was = before.get(`${f.who}|${f.name}`);
-        // New, or cast again (more turns left than before).
-        if (was === undefined || (f.turns ?? Infinity) > was) cell(f.who).added.push(chipOf(f, who));
+        // New, cast again (more turns left than before), or stronger (a stack, an amplify).
+        if (!was || (f.turns ?? Infinity) > (was.turns ?? Infinity) || strength(f) !== strength(was)) {
+          cell(f.who).added.push(chipOf(f, who));
+        }
       }
       for (const l of a.life ?? []) hp[l.who] = { hp: l.hp, maxHP: l.maxHP };
       prev = a.fx;
       return { who: a.who, planned: a.planned, did: a.did, misses: a.misses, cells };
     });
-    const end = liveFx(prev);
-    const standing = occupied.filter((l) => l > 0 && (hp[l]?.hp ?? 1) > 0);
-    const names = [...new Set(end.filter((f) => f.who > 0).map((f) => f.name))];
-    const sharedNames = standing.length > 1 ? names.filter((nm) => standing.every((h) => end.some((f) => f.who === h && f.name === nm))) : [];
-    const shared = sharedNames.map((nm) => {
-      const on = end.filter((f) => f.who > 0 && f.name === nm);
-      const left = new Set(on.map((f) => f.turns));
-      // One chip for the party: its turns left only when every hero has the same.
-      return { ...chipOf({ ...on[0], turns: left.size === 1 ? on[0].turns : undefined }, () => "every hero"), who: -1 };
-    });
     const status: Record<number, TimelineChip[]> = {};
-    for (const f of end) {
-      if (f.who > 0 && sharedNames.includes(f.name)) continue;
-      (status[f.who] ??= []).push(chipOf(f, who));
-    }
-    turns.push({ turn: t, rotation: t <= 5, round: Math.floor((t - 1) / 5), lines, hp: structuredClone(hp), status, shared });
+    for (const f of liveFx(prev)) (status[f.who] ??= []).push(chipOf(f, who));
+    turns.push({ turn: t, rotation: t <= 5, round: Math.floor((t - 1) / 5), lines, hp: structuredClone(hp), status });
   }
   return { turns, won: trace.won, capped: !trace.won && trace.turns >= TURN_CAP, lastTurn: trace.turns };
 }
@@ -474,13 +472,16 @@ export interface RoomTab {
   boss: boolean;
   /** 0 not reached in this run, 1 won, 2 lost. */
   status: number;
+  /** U40: after the room where the party died: no battle, the flow shows only "Party died, battle skipped". */
+  skipped: boolean;
 }
 /** The room bar's entries, in map order; `name`: an enemy's name in the visitor's language. */
 export function mapRoomTabs(rooms: { questId: number; name: string; isRare: boolean; boss: boolean; status: number }[],
   name: (questId: number, rare: boolean) => string | undefined = () => undefined): RoomTab[] {
   return rooms.map((r, k) => {
     const n = name(r.questId, r.isRare) ?? r.name;
-    return { index: k, label: r.boss ? `Boss · ${n}` : `${k + 1} · ${n}`, boss: r.boss, status: r.status };
+    return { index: k, label: r.boss ? `Boss · ${n}` : `${k + 1} · ${n}`, boss: r.boss, status: r.status,
+      skipped: r.status !== 1 && r.status !== 2 && rooms.slice(0, k).some((x) => x.status === 2) };
   });
 }
 

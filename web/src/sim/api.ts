@@ -8,7 +8,7 @@
  *   const r = fight(81, [h], [], { seed: 1 })
  */
 import { Battle, current, determineBattleGrade } from "./battle.ts";
-import { Combatant, hooks } from "./combatant.ts";
+import { type CalcSink, calcState, Combatant, type Effect, hooks } from "./combatant.ts";
 import { G, loadGameData as loadData } from "./data.ts";
 import { attackListUnlocked, D, heroMaxActionPoints, setMode as setDefaultsMode } from "./defaults.ts";
 import { Equipment } from "./equipment.ts";
@@ -63,12 +63,23 @@ export interface TraceEntry {
 }
 export interface TraceHit {
   who: number;
-  /** Damage taken, and HP really healed (no overheal). */
+  /** Damage taken while standing, and HP really healed (no overheal). */
   dmg: number;
   heal: number;
   /** HP after the action. */
   hp: number;
   maxHP: number;
+  /** U40: the fighter fell during this action (standing before one of its hits, down after it). */
+  ko?: boolean;
+  /**
+   * U40: hits that landed on this fighter while it was already down, and their damage. The game plays every action of
+   * a turn even after the enemy falls (Battle.combatLoop checks for the end only once the turn is over), so those
+   * hits change nothing; they are not counted in `dmg`.
+   */
+  deadHits?: number;
+  deadDmg?: number;
+  /** U40: each hit and heal behind `dmg` and `heal` (and the hits on a fallen fighter), in the order they happened. */
+  calc?: TraceCalc[];
 }
 export interface TraceEffect {
   who: number;
@@ -76,8 +87,107 @@ export interface TraceEffect {
   debuff: boolean;
   /** Turns left (the effect's own count), when it has one. */
   turns?: number;
+  /** The effect's numbers as they are now (stacks, amplified values included). */
   stats?: Record<string, number>;
+  /** U40: who put it on (0 = the enemy, 1-6 = party location) and with which skill. */
+  from?: number;
+  skill?: string;
+  /** U40: when it acts (OnTurn, Permanent, OnDamage, DamageReceived, OnAttack, DamageOnTurn, HealingOnTurn …). */
+  trigger?: string;
+  /** U40: healing per turn (heal over time), shield left (Mana Shield), the stat a stat-setting effect gives now. */
+  heal?: number;
+  absorb?: number;
+  value?: number;
+  /** U40: doubled by an amplify (Amplify Magic). */
+  amp?: boolean;
+  /** U40: spent or ended (a one-hit effect that worked, every effect of a fighter that fell): removed at its owner's next action. */
+  gone?: boolean;
 }
+
+/** The attack's three parts as sent (physical from ATK, magic from MATK, true damage). */
+export interface Calc3 {
+  atk: number;
+  matk: number;
+  dmg: number;
+}
+/** The damage's three parts once rounded (physical, magic, true). */
+export interface CalcDmg3 {
+  p: number;
+  m: number;
+  t: number;
+}
+/** A fighter's stats when it sent the attack or the heal, and the stat effects on it then. */
+export interface CalcStats {
+  atk: number;
+  matk: number;
+  acc: number;
+  def: number;
+  mdef: number;
+  maxHP: number;
+  level?: number;
+  fx: { name: string; stats: Record<string, number> }[];
+}
+/**
+ * U40: one hit, stage by stage, with the values the engine really used (Combatant.sendAttack / receiveAttack):
+ * the skill's attack (base) → the attacker's on-attack effects → the share for this target (ratio) → the target's
+ * on-damage effects (used) → × crit or lucky hit × DEF / MDEF reduction, each part rounded (raw) → the target's
+ * damage-received effects (final) → total.
+ */
+export interface CalcAttack {
+  kind: "dmg";
+  seq: number;
+  from: number;
+  to: number;
+  /** The skill, or the effect, that sent it. */
+  src: string;
+  /** Damage over time (a tick of an effect). */
+  tick: boolean;
+  stat: CalcStats | null;
+  base: Calc3 | null;
+  onAttack: { name: string; after: Calc3 | null }[];
+  arrived: Calc3;
+  ratio?: number;
+  onDamage: { name: string; after: Calc3; hitChance?: number }[];
+  missed?: boolean;
+  hitChance: number;
+  crit?: boolean;
+  luck?: boolean;
+  critChance?: number;
+  dmgMod?: number;
+  used?: Calc3;
+  def?: number;
+  defPen?: number;
+  defRed?: number;
+  mdef?: number;
+  mdefPen?: number;
+  mdefRed?: number;
+  raw?: CalcDmg3;
+  received: { name: string; after: CalcDmg3 }[];
+  final?: CalcDmg3;
+  total: number;
+  hpBefore: number;
+  hpAfter: number;
+}
+/** U40: one heal (Combatant.receiveHeal): the amount sent, rounded (total), and the HP it really gave back. */
+export interface CalcHeal {
+  kind: "heal";
+  seq: number;
+  from: number;
+  to: number;
+  src: string;
+  tick: boolean;
+  stat: CalcStats | null;
+  amount: number;
+  isPercent: boolean;
+  revive: boolean;
+  overload: boolean;
+  maxHP: number;
+  total: number;
+  hpBefore: number;
+  hpAfter: number;
+}
+export type TraceCalc = CalcAttack | CalcHeal;
+
 let trace: TraceEntry[] | undefined;
 
 /** The fighters of a battle with their location (0 = the enemy). */
@@ -89,42 +199,90 @@ function fighters(b: Battle): [number, Any][] {
   }
   return out;
 }
-const takenOf = (c: Any) => (c.combatStatistics.physicalDmgTaken ?? 0) + (c.combatStatistics.magicDmgTaken ?? 0);
-/** While tracing, before an action: every fighter's HP, damage taken and healing taken so far, and the actor's misses. */
-let snap: { at: Map<Any, [number, number, number]>; misses: number } | undefined;
+/** While tracing, before an action: the actor's misses so far. */
+let snap: { misses: number } | undefined;
 /** The battle the last traced action was in, and its number since traceStart (-1: none yet). */
 let traceBattle: { b?: Battle; no: number } = { no: -1 };
+/** While tracing: the hits and heals of the current action, the fighter acting, and who put each effect on. */
+let calcs: TraceCalc[] = [];
+let actor: Any;
+let fxSource = new WeakMap<Effect, { from: number; skill: string }>();
 
-/** What the trace adds for display (U39): reads the fighters, changes nothing. */
+const whoOf = (c: Any): number => (c ? c.partyLocation ?? 0 : -1);
+const num = (v: Any): number => (typeof v === "number" ? v : 0);
+
+/** The trace's calc sink (U40): turns the engine's records into plain data (locations instead of fighters). */
+const sink: CalcSink = {
+  attack(r) {
+    calcs.push({ ...r, kind: "dmg", from: whoOf(r.from), to: whoOf(r.to), src: String(r.src ?? "?") });
+  },
+  heal(r) {
+    calcs.push({ ...r, kind: "heal", from: whoOf(r.from), to: whoOf(r.to), src: String(r.src ?? "?") });
+  },
+  effect(_target, e) {
+    // A stacked effect keeps who first put it on; a new one, or one cast again (a new object), is the actor's.
+    if (!fxSource.has(e) && actor) fxSource.set(e, { from: whoOf(actor), skill: String(actor._did ?? e.name) });
+  },
+};
+
+/** An effect as the trace shows it: its live numbers (stacks, amplify), who put it on, and what it does. */
+function traceEffect(who: number, f: Any, e: Effect): TraceEffect {
+  const stats = e.stats && typeof e.stats === "object"
+    ? Object.fromEntries(Object.entries(e.stats).filter(([, v]) => typeof v === "number")) as Record<string, number> : undefined;
+  const src = fxSource.get(e);
+  // Mana Shield's dmgFunc lowers the shield on the skill's own object (the effect is a copy of it): read that one.
+  const absorb = e._live?.absorb ?? e.absorb;
+  // Holy Shield sets MDEF (statFunc): the fighter's MDEF now is what it gives.
+  const value = e.name === "Holy Shield" ? f.mdef : undefined;
+  return {
+    who, name: e.name ?? "?", debuff: Boolean(e.debuff), ...(typeof e.turns === "number" ? { turns: e.turns } : {}),
+    ...(stats && Object.keys(stats).length ? { stats } : {}),
+    ...(src ? { from: src.from, skill: src.skill } : {}),
+    ...(e.trigger ? { trigger: e.trigger } : {}),
+    ...(typeof e.heal === "number" ? { heal: e.heal } : {}),
+    ...(typeof absorb === "number" ? { absorb } : {}),
+    ...(typeof value === "number" ? { value } : {}),
+    ...(e._isAmplified ? { amp: true } : {}),
+    ...(e.remove ? { gone: true } : {}),
+  };
+}
+
+/** What the trace adds for display (U39, U40): reads the fighters and the action's records, changes nothing. */
 function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" | "fx" | "misses" | "battle" | "life"> {
   const hits: TraceHit[] = [], fx: TraceEffect[] = [];
+  const evs = [...calcs].sort((x, y) => x.seq - y.seq);
   for (const [who, f] of fighters(b)) {
-    const was = snap?.at.get(f);
-    if (was) {
-      const taken = Math.max(0, takenOf(f) - was[1]), healed = (f.combatStatistics.healingTaken ?? 0) - was[2];
-      const net = f.questHP - was[0];
-      // Damage from the damage taken (an HP loss without it, e.g. a sacrifice, counts too); healing as the HP it gave back.
-      const dmg = taken || Math.max(0, -net);
-      const heal = healed > 0 ? Math.max(0, net + dmg) : 0;
-      if (dmg > 0 || heal > 0) hits.push({ who, dmg: Math.round(dmg), heal: Math.round(heal), hp: f.questHP, maxHP: f.maxHP });
+    const mine = evs.filter((x) => x.to === who && !(x.kind === "dmg" && x.missed));
+    if (mine.length) {
+      let dmg = 0, heal = 0, deadHits = 0, deadDmg = 0, ko = false;
+      for (const x of mine) {
+        if (x.kind === "dmg") {
+          if (x.hpBefore > 0) {
+            dmg += x.total;
+            if (x.hpAfter <= 0) ko = true;
+          } else {
+            deadHits++;
+            deadDmg += x.total;
+          }
+        } else heal += Math.max(0, x.hpAfter - Math.max(0, x.hpBefore));
+      }
+      if (dmg > 0 || heal > 0 || deadHits > 0) {
+        hits.push({ who, dmg, heal, hp: f.questHP, maxHP: f.maxHP, ...(ko && f.questHP <= 0 ? { ko: true } : {}),
+          ...(deadHits ? { deadHits, deadDmg } : {}), calc: mine });
+      }
     }
-    for (const e of f.effectList) {
-      const stats = e.stats && typeof e.stats === "object"
-        ? Object.fromEntries(Object.entries(e.stats).filter(([, v]) => typeof v === "number")) as Record<string, number> : undefined;
-      fx.push({ who, name: e.name ?? "?", debuff: Boolean(e.debuff), ...(typeof e.turns === "number" ? { turns: e.turns } : {}),
-        ...(stats && Object.keys(stats).length ? { stats } : {}) });
-    }
+    for (const e of f.effectList) fx.push(traceEffect(who, f, e));
   }
   if (b !== traceBattle.b) traceBattle = { b, no: traceBattle.no + 1 };
   const life = fighters(b).map(([who, f]) => ({ who, hp: f.questHP, maxHP: f.maxHP }));
-  return { did: c._did ?? null, hits, fx, misses: snap ? (c.combatStatistics.misses ?? 0) - snap.misses : 0, battle: traceBattle.no, life };
+  return { did: c._did ?? null, hits, fx, misses: snap ? num(c.combatStatistics.misses) - snap.misses : 0, battle: traceBattle.no, life };
 }
 
 hooks.beforeAction = (c) => {
-  const b = current.battle;
-  if (trace && b) {
-    snap = { at: new Map(fighters(b).map(([, f]) => [f, [f.questHP, takenOf(f), f.combatStatistics.healingTaken ?? 0]])),
-      misses: c.combatStatistics.misses ?? 0 };
+  if (trace && current.battle) {
+    snap = { misses: num(c.combatStatistics.misses) };
+    calcs = [];
+    actor = c;
   }
   return dealt(c);
 };
@@ -148,17 +306,30 @@ hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
       ...traceDetail(b, c),
     });
     snap = undefined;
+    calcs = [];
+    actor = undefined;
   }
 };
 
-/** Record every action of the next fights (like sim.traceStart / sim.traceStop). */
+/**
+ * Record every action of the next fights (like sim.traceStart / sim.traceStop). U40: the damage and heal calculations
+ * are recorded only from here to traceStop (the calc sink), so a plain simulation builds none of them.
+ */
 export function traceStart(): void {
   trace = [];
   traceBattle = { no: -1 };
+  calcs = [];
+  actor = undefined;
+  fxSource = new WeakMap();
+  Object.assign(calcState, { sends: [], heals: [], effects: [], tick: undefined, seq: 0 });
+  hooks.calc = sink;
 }
 export function traceStop(): TraceEntry[] {
   const t = trace ?? [];
   trace = undefined;
+  hooks.calc = undefined;
+  calcs = [];
+  actor = undefined;
   return t;
 }
 

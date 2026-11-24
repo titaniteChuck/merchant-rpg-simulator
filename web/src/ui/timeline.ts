@@ -18,6 +18,8 @@ import {
   compactEffect, type EnemyCell, type HeroCell, lasts, locationLabel, type PlanColumn, type PlanMark, type PlanMember, planGrid, planTimeline,
   type TimelineCell, type TimelineChip, type TimelineLine, type TimelineTurn, type TracedFight,
 } from "./battle-plan.ts";
+import { type CalcTerm, calcView } from "./battle-calc.ts";
+import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
@@ -216,6 +218,26 @@ export interface PlanEdit {
   skills(loc: number): [string, string][] | null;
   /** Rotation slot k (0-4) of the hero at a location. */
   setSkill(loc: number, k: number, skill: string): void;
+  /**
+   * U40: the opponent choices of the enemy column's head, the Party tab's own (a quest enemy, its rare variant; or a
+   * map for a map run), grouped, and the current value; null when it can't be changed there.
+   */
+  enemies?(): { label: string; groups: OptionGroups; value: string } | null;
+  setEnemy?(value: string): void;
+}
+/** Options, flat ([value, label]) or in groups ([group label, options]). */
+export type OptionGroups = [string, [string, string][]][];
+
+/** A <select> with these options, flat or grouped. */
+function selectEl(label: string, options: [string, string][] | OptionGroups, value: string, onChange: (v: string) => void): HTMLSelectElement {
+  const grouped = options.length > 0 && Array.isArray(options[0][1]);
+  const opt = ([v, l]: [string, string]) => el("option", { value: v }, l);
+  const s = el("select", { "aria-label": label, class: "fl-select" }, ...(grouped
+    ? (options as OptionGroups).map(([g, list]) => el("optgroup", { label: g }, ...list.map(opt)))
+    : (options as [string, string][]).map(opt))) as HTMLSelectElement;
+  s.value = value;
+  s.addEventListener("change", () => onChange(s.value));
+  return s;
 }
 
 /**
@@ -223,10 +245,18 @@ export interface PlanEdit {
  * arrow keys or Enter). `focus`: a key the page uses to put the focus back after the redraw.
  */
 function editControl(label: string, options: [string, string][], value: string, focus: string, onChange: (v: string) => void): HTMLElement {
-  const s = el("select", { "aria-label": label, class: "fl-select" }, ...options.map(([v, l]) => el("option", { value: v }, l))) as HTMLSelectElement;
-  s.value = value;
-  s.addEventListener("change", () => onChange(s.value));
-  return el("span", { class: "fl-edit", title: label, "data-flow-focus": focus }, el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"), s);
+  return el("span", { class: "fl-edit", title: label, "data-flow-focus": focus }, el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"),
+    selectEl(label, options, value, onChange));
+}
+
+/**
+ * A column head's name with a ▾ (U40): the transparent <select> covers the name and the ▾, so clicking the name opens
+ * the choices, as on the heroes' heads.
+ */
+function nameEdit(name: Node | string, label: string, options: [string, string][] | OptionGroups, value: string, focus: string,
+  onChange: (v: string) => void): HTMLElement {
+  return el("span", { class: "fl-name", title: label, "data-flow-focus": focus }, el("strong", {}, name),
+    el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"), selectEl(label, options, value, onChange));
 }
 
 function heroCellEl(c: HeroCell, loc: number, edit?: PlanEdit): HTMLElement {
@@ -261,26 +291,30 @@ function enemyCellEl(c: EnemyCell): HTMLElement {
 function planHeads(tl: EnemyTimeline, cols: PlanColumn[], edit?: PlanEdit): HTMLElement[] {
   return cols.map((c) => {
     if (c.kind === "enemy") {
-      // R1 F11: a rare variant by its own name and a "rare" pill, as the wiki lists it.
-      return el("div", { class: "pg-head enemy", role: "columnheader", title: tlName(tl) }, el("strong", {}, tlName(tl)),
+      // R1 F11: a rare variant by its own name and a "rare" pill, as the wiki lists it. U40: its name opens the
+      // opponent choices (the Party tab's), with a ▾.
+      const e = edit?.enemies?.() ?? null;
+      return el("div", { class: "pg-head enemy", role: "columnheader", title: tlName(tl) },
+        e ? nameEdit(tlName(tl), e.label, e.groups, e.value, "enemy", (v) => edit!.setEnemy?.(v)) : el("strong", {}, tlName(tl)),
         el("span", { class: "muted small" }, "enemy", ...(tl.rare ? [" ", el("span", { class: "pill t-pink pg-rare" }, "rare")] : [])));
     }
     const h = edit?.heroes(c.loc!);
     return el("div", { class: `pg-head hero cls-${c.member!.cls}`, role: "columnheader", title: `${c.member!.name}, ${locationLabel(c.loc!)}` },
-      el("strong", {}, c.member!.name, ...(h ? [editControl(`${locationLabel(c.loc!)}: hero`, h.options, h.value, `hero-${c.loc}`, (v) => edit!.setHero(c.loc!, v))] : [])),
+      h ? nameEdit(c.member!.name, `${locationLabel(c.loc!)}: hero`, h.options, h.value, `hero-${c.loc}`, (v) => edit!.setHero(c.loc!, v))
+        : el("strong", {}, c.member!.name),
       el("span", { class: "muted small" }, locationLabel(c.loc!)));
   });
 }
 
-// ---------------------------------------------------------------- the flow diagram (U39)
+// ---------------------------------------------------------------- the flow diagram (U39, U40)
 const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 /** Past this many turns the rest of a fight waits behind a button (a 200-turn stalemate is thousands of lines). */
 export const FLOW_PAGE = 100;
 
-/** An effect chip: its name and turns left, the full sentence on hover. */
-function chipEl(c: TimelineChip): HTMLElement {
-  return el("span", { class: `tc-chip ${c.debuff ? "debuff" : "buff"}`, title: c.title, "aria-label": c.title }, c.label,
-    ...(c.turns !== undefined ? [el("span", { class: "tc-left", "aria-hidden": "true" }, String(c.turns))] : []));
+/** An effect as plain text of what it does ("+15% Def", "Taunt"); "<skill> from <fighter>" on hover (U40). */
+function fxEl(c: TimelineChip): HTMLElement {
+  return el("span", { class: `tc-fx ${c.debuff ? "debuff" : "buff"}`, title: c.title }, c.label,
+    ...(c.turns !== undefined && c.turns > 0 ? [el("span", { class: "tc-left", "aria-hidden": "true" }, ` ${c.turns}`)] : []));
 }
 
 /** The actor's cell: the skill it played (the planned one struck out under a stun or a forced action). */
@@ -297,27 +331,86 @@ function actorEl(l: TimelineLine): HTMLElement[] {
   return [skill, ...(l.misses ? [el("span", { class: "tc-miss", title: `${l.misses} attack${l.misses > 1 ? "s" : ""} missed` }, "miss")] : [])];
 }
 
-/** What a fighter took during one action: damage, healing, KO, and a dot per effect that landed. */
-function takenEl(c: TimelineCell | undefined): HTMLElement[] {
+/** One term of a formula: its operator, then its words, where it comes from on hover. */
+function termEl(t: CalcTerm): HTMLElement[] {
+  return [...(t.op ? [el("span", { class: "cf-op", "aria-hidden": t.op === "=" ? "false" : "true" }, ` ${t.op} `)] : []),
+    el("span", { class: `cf-term${t.kind ? ` cf-${t.kind}` : ""}`, title: t.tip, tabindex: "0" }, t.text)];
+}
+
+/** The calculation of a fighter's damage or healing in one action (U40): one block per hit or heal, then their sum. */
+function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) => string, shown: number): HTMLElement {
+  const views = calc.filter((c) => c.kind === kind && !(c.kind === "dmg" && c.missed)).map((c) => calcView(c, nameOf));
+  const blocks = views.map((v) => el("div", { class: `cf-block${v.void ? " void" : ""}` }, el("div", { class: "cf-head" }, v.head),
+    ...v.lines.map((l) => el("div", { class: "cf-line" }, ...(v.lines.length > 1 || l.label !== "Heal" ? [el("span", { class: "cf-label" }, `${l.label}: `)] : []),
+      ...l.terms.flatMap(termEl))),
+    ...v.notes.map((n) => el("div", { class: "cf-note" }, n))));
+  const counted = views.filter((v) => !v.void);
+  const sum = counted.length > 1
+    ? [el("div", { class: "cf-sum" }, `${kind === "dmg" ? "Damage" : "Healing"} this action: ${counted.map((v) => fmtInt.format(v.shown)).join(" + ")} = ${fmtInt.format(shown)}`)]
+    : [];
+  return el("div", { class: `tc-calc ${kind}`, role: "note" }, ...blocks, ...sum);
+}
+
+/**
+ * A number's "▾ calculation" toggle (U40): it opens the calculation under the action's line (in `box`, full width,
+ * in column order), and turns to "▸"; clicking again closes it.
+ */
+function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
+  const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false", title: `How ${what} was worked out` }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"), " calculation");
+  let panel: HTMLElement | null = null;
+  btn.addEventListener("click", () => {
+    if (panel) {
+      panel.remove();
+      panel = null;
+      btn.firstElementChild!.textContent = "▾";
+      btn.setAttribute("aria-expanded", "false");
+    } else {
+      panel = open();
+      panel.dataset.order = String(order);
+      const after = [...box.children].find((x) => Number((x as HTMLElement).dataset.order) > order);
+      box.insertBefore(panel, after ?? null);
+      btn.firstElementChild!.textContent = "▸";
+      btn.setAttribute("aria-expanded", "true");
+    }
+    box.hidden = box.children.length === 0;
+  });
+  return btn;
+}
+
+/**
+ * What a fighter took during one action: damage (−) and healing (+), each with its calculation, the KO, hits that
+ * landed once it was already down ("no target"), and what each effect that landed does.
+ */
+function takenEl(c: TimelineCell | undefined, w: number, nameOf: (w: number) => string, box: HTMLElement, col: number): HTMLElement[] {
   if (!c) return [];
+  const name = nameOf(w);
+  const voidTip = `${name} was already down: the game still plays the rest of the turn (it ends the fight only once the turn is over), `
+    + "so these hits land on a fallen fighter and change nothing.";
   return [
-    ...(c.dmg ? [el("span", { class: "tc-dmg", title: `${fmtInt.format(c.dmg)} damage` }, `−${fmtInt.format(c.dmg)}`)] : []),
-    ...(c.heal ? [el("span", { class: "tc-heal", title: `${fmtInt.format(c.heal)} HP healed` }, `+${fmtInt.format(c.heal)}`)] : []),
+    ...(c.dmg ? [el("span", { class: "tc-dmg", title: `${fmtInt.format(c.dmg)} damage to ${name}` }, `−${fmtInt.format(c.dmg)}`),
+      calcToggle(() => calcPanel(c.calc, "dmg", nameOf, c.dmg), box, col * 2, `the damage to ${name}`)] : []),
+    ...(c.deadHits ? [el("span", { class: "tc-void", title: voidTip }, c.dmg ? "then no target" : "no target"),
+      ...(c.dmg ? [] : [calcToggle(() => calcPanel(c.calc, "dmg", nameOf, 0), box, col * 2, `the hits on ${name}`)])] : []),
+    ...(c.heal ? [el("span", { class: "tc-heal", title: `${fmtInt.format(c.heal)} HP healed on ${name}` }, `+${fmtInt.format(c.heal)}`),
+      calcToggle(() => calcPanel(c.calc, "heal", nameOf, c.heal), box, col * 2 + 1, `the healing on ${name}`)] : []),
     ...(c.ko ? [el("span", { class: "tc-ko", title: "Falls" }, "✝ KO")] : []),
-    ...c.added.map((x) => el("span", { class: `tc-dot ${x.debuff ? "debuff" : "buff"}`, role: "img", title: `+ ${x.title}`, "aria-label": `+ ${x.title}` })),
+    ...c.added.map(fxEl),
   ];
 }
 
-/** A fighter's HP at the end of a turn: a thin bar and the number; "down" once it fell. */
+/**
+ * A fighter's HP at the end of a turn (U40): the bar and the number in fixed places, so every bar has the same place
+ * and width in every column and every turn; an empty bar and "✝ down" once it fell.
+ */
 function hpEl(v: { hp: number; maxHP: number } | undefined, name: string, turn: number): HTMLElement[] {
   if (!v) return [];
-  if (v.hp <= 0) return [el("span", { class: "tc-hp down", title: `${name} is down (end of turn ${turn})` }, "✝ down")];
-  const f = v.maxHP > 0 ? Math.max(0, Math.min(1, v.hp / v.maxHP)) : 0;
-  const tone = f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
-  const text = `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP at the end of turn ${turn}`;
+  const down = v.hp <= 0;
+  const f = !down && v.maxHP > 0 ? Math.max(0, Math.min(1, v.hp / v.maxHP)) : 0;
+  const tone = down ? "down" : f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
+  const text = down ? `${name} is down (end of turn ${turn})` : `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP at the end of turn ${turn}`;
   return [el("span", { class: `tc-hp ${tone}`, title: text, role: "img", "aria-label": text },
     el("span", { class: "tc-hpbar", "aria-hidden": "true" }, el("span", { style: `width: ${(f * 100).toFixed(1)}%` })),
-    el("span", { class: "tc-hpnum", "aria-hidden": "true" }, fmtInt.format(v.hp)))];
+    el("span", { class: "tc-hpnum", "aria-hidden": "true" }, down ? "✝ down" : fmtInt.format(v.hp)))];
 }
 
 /** The light line between two 5-turn rounds. */
@@ -327,32 +420,32 @@ function roundDivider(round: number): HTMLElement {
 }
 
 /**
- * The flow diagram (U39): every turn of one simulated fight, from turn 1 to its end. Per turn, one line per action in
- * action order (the actor's column: the skill; the others: damage −, healing +, a dot where an effect landed), then
- * each fighter's HP and effects at the end of the turn (one chip over the hero columns for an effect on every standing
- * hero). Turns 1-5 carry the rotation's ▾ (with `edit`); a light divider every 5 turns; the result at the end.
+ * The flow diagram (U39, U40): every turn of one simulated fight, from turn 1 to its end. Per turn, one line per
+ * action in action order (the actor's column: the skill; the others: damage −, healing +, each with its "▾
+ * calculation", and what a landed effect does), then the end-of-turn summary on its own background: each fighter's HP
+ * (bars aligned) and its effects as text. Turns 1-5 carry the rotation's ▾ (with `edit`); a light divider every 5
+ * turns; the result at the end.
  */
 function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, edit?: PlanEdit): HTMLElement {
   const whoOf = (c: PlanColumn) => (c.kind === "enemy" ? 0 : c.loc!);
   const nameOf = (w: number) => (w ? cols.find((c) => c.loc === w)?.member?.name ?? locationLabel(w) : tlName(tl));
   const occupied = cols.filter((c) => c.kind === "hero").map((c) => c.loc!);
   const data = planTimeline(trace, occupied, nameOf);
-  const heroIdx = cols.map((c, k) => (c.kind === "hero" ? k : -1)).filter((k) => k >= 0);
-  const span = heroIdx.length ? `${heroIdx[0] + 1} / ${heroIdx[heroIdx.length - 1] + 2}` : "";
   const turnEl = (t: TimelineTurn): HTMLElement[] => {
-    const rows: HTMLElement[] = t.lines.map((l) => el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c) => {
-      const w = whoOf(c), actor = w === l.who;
-      const cls = actor ? ` actor ${c.kind === "enemy" ? "enemy" : `cls-${c.member!.cls}`}` : "";
-      return el("div", { class: `tc-cell${cls}`, role: "cell" }, ...(actor ? actorEl(l) : []),
-        ...(actor && c.kind === "hero" ? skillEdit(edit, w, t.turn, l.planned) : []), ...takenEl(l.cells[w]));
-    })));
+    const rows: HTMLElement[] = t.lines.flatMap((l) => {
+      const box = el("div", { class: "tc-calcs" });
+      box.hidden = true;
+      const line = el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c, k) => {
+        const w = whoOf(c), actor = w === l.who;
+        const cls = actor ? ` actor ${c.kind === "enemy" ? "enemy" : `cls-${c.member!.cls}`}` : "";
+        return el("div", { class: `tc-cell${cls}`, role: "cell" }, ...(actor ? actorEl(l) : []),
+          ...(actor && c.kind === "hero" ? skillEdit(edit, w, t.turn, l.planned) : []), ...takenEl(l.cells[w], w, nameOf, box, k));
+      }));
+      return [line, box];
+    });
     rows.push(el("div", { class: "tc-line tc-status", role: "row", "aria-label": `End of turn ${t.turn}: HP and effects` }, ...cols.map((c) =>
-      el("div", { class: "tc-cell", role: "cell" }, ...hpEl(t.hp[whoOf(c)], nameOf(whoOf(c)), t.turn), ...(t.status[whoOf(c)] ?? []).map(chipEl)))));
-    if (t.shared.length && span) {
-      rows.push(el("div", { class: "tc-line tc-status", role: "row", "aria-label": `End of turn ${t.turn}: effects on every hero` },
-        el("div", { class: "tc-cell tc-shared", role: "cell", style: `grid-column: ${span}` }, ...t.shared.map(chipEl),
-          el("span", { class: "tc-all" }, "every hero"))));
-    }
+      el("div", { class: "tc-cell", role: "cell" }, ...hpEl(t.hp[whoOf(c)], nameOf(whoOf(c)), t.turn),
+        ...((t.status[whoOf(c)] ?? []).length ? [el("span", { class: "tc-fxs" }, ...(t.status[whoOf(c)] ?? []).map(fxEl))] : [])))));
     return [...(t.round > 0 && (t.turn - 1) % 5 === 0 ? [roundDivider(t.round)] : []),
       el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup" },
         el("div", { class: "tc-turnlab", role: "rowheader" }, `T${t.turn}`), el("div", { class: "tc-lines" }, ...rows))];
@@ -398,9 +491,10 @@ export function partyPlan(quest: { id: number; rare: boolean }, members: PlanMem
 export function planNote(quest: { id: number; rare: boolean }): string {
   const tl = timelineOf(quest.id, quest.rare);
   return [`Each hero plays slot k of its rotation on turn k, left to right${tl?.enemyFirst ? ", after the enemy" : ", then the enemy"}; `
-    + "turn 6 is turn 1 again. Turns 1–5 are the rotation: ▾ changes a skill or a hero (the Party tab follows).",
+    + "turn 6 is turn 1 again. Turns 1–5 are the rotation: ▾ changes a skill or a hero, and the enemy's name changes the opponent (the Party tab follows).",
   "Each turn shows the fight action by action, one line per fighter in the order they act: the skill in the actor's column, the "
-    + "damage (−) or healing (+) in the column of whoever takes it, a dot where an effect lands. Under the lines, each fighter's HP "
-    + "and effects at the end of the turn, with their turns left.",
+    + "damage (−) or healing (+) in the column of whoever takes it, and what an effect that lands does (+15% Def). ▾ calculation after a "
+    + "number opens how it was worked out. Under the lines, on their own band, each fighter's HP and effects at the end of the turn, with "
+    + "their turns left. \"No target\": a hit on a fighter already down (the game plays the rest of the turn), which changes nothing.",
   "Without a party that can fight, the rotation as planned. [Skill]: where an effect comes from. Hover anything for the full text."].join(" ");
 }

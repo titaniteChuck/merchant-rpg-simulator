@@ -18,7 +18,7 @@ import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, toast, withAsc } from "./dom.ts";
 import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
@@ -29,7 +29,7 @@ import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, e
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
-import { assignHero, setRotationSkill, slotKeyOfLoc } from "./battle-edit.ts";
+import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, slotKeyOfLoc } from "./battle-edit.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
@@ -219,6 +219,41 @@ function rotationOf(idx: number): SkillChoice {
 }
 
 /**
+ * U40: a hero's AP budget (what each skill costs it, its limit) with its passive (`passive`, else the one it plays
+ * now): a passive can give AP (Wisdom).
+ */
+function apBudgetOf(idx: number, passive = rotationOf(idx).passive): ApBudget {
+  const h = api.newHero(state.sv!.raw.hero[idx]);
+  if (passive && passive !== h.passiveSelect) {
+    h.passiveSelect = passive;
+    h.determineStats();
+  }
+  const info = api.skillInfo(h);
+  const apOf: Record<string, number> = Object.fromEntries(info.skills.map((x: Any) => [x.name, x.ap]));
+  return { cost: (s) => apOf[s] ?? skillAp(s) ?? 0, max: info.maxAP ?? 0 };
+}
+/** U40: a hero's AP use and limit when its rotation is over the limit, else null. */
+function apOver(idx: number): { used: number; max: number } | null {
+  const b = apBudgetOf(idx), used = apUsed(rotationOf(idx).attackList, b);
+  return used > b.max ? { used, max: b.max } : null;
+}
+/**
+ * U40: the party's heroes over their AP limit (an old saved party): the game would play their default rotation, so the
+ * flow shows this instead of a fight, as the Party tab warns on the card.
+ */
+function apProblem(): string | null {
+  const over = partyOf().members.map((m) => ({ name: String(m.raw.name), o: apOver(m.idx) })).filter((x) => x.o);
+  return over.length ? `${over.map((x) => `${x.name}: ${x.o!.used} / ${x.o!.max} AP`).join(", ")}: over the AP limit, so the game would `
+    + "play the default rotation instead. Lower it in the Party tab." : null;
+}
+/** U40: an edit refused for AP: the toast, then the views drawn again from the unchanged state. */
+function refuseAp(idx: number, r: { used?: number; max?: number }, focus?: () => void): void {
+  toast(apRefusal(String(state.sv!.raw.hero[idx].name), r.used ?? 0, r.max ?? 0));
+  renderParty(false);
+  focus?.();
+}
+
+/**
  * Passive, then rotation, as the wiki / save viewer's ability rows (U22): the whole row opens the wiki page, the AP
  * as apBadge, the "x / y AP" budget beside the label; each row edits in place with its ⇄ control. An empty slot
  * (`raw` null) shows the same skeleton, greyed, so every slot has the same size.
@@ -239,6 +274,9 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
     el("td", { class: "eff" }, raw ? (passive && passive !== "None" ? passiveText(passive) : "no passive") : ""),
     el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
       ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, passiveName(x)]), passive, (v) => {
+        // U40: a passive that gives AP (Wisdom) can't be dropped when the rotation then goes over the limit.
+        const b = apBudgetOf(idx!, v), used = apUsed(rot, b);
+        if (used > b.max && b.max < apBudgetOf(idx!, passive).max) return refuseAp(idx!, { used, max: b.max });
         edit([...rot], v);
         afterEdit(`${key}-p`);
       }) : swapPlaceholder()));
@@ -251,8 +289,9 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
     const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
       el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
-        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts).
-        setRotationSkill(state, idx!, k, v, { attackList: rot, passive });
+        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
+        const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
+        if (!r.ok) return refuseAp(idx!, r, () => document.querySelector<HTMLElement>(`[data-focus="${key}-${k}"] select`)?.focus());
         afterEdit(`${key}-${k}`);
       }) : swapPlaceholder()));
     if (raw) clickableRow(tr, link);
@@ -261,7 +300,8 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
 
   // "14 / 20 AP"; over budget the game plays the default rotation (Hero.calculateAPRemainder).
   const used = rot.reduce((a, n) => a + (n && n !== "Basic" ? apOf[n] ?? skillAp(n) ?? 0 : 0), 0);
-  const max = info?.maxAP ?? 0;
+  // U40: the limit with the passive it plays (Wisdom gives AP).
+  const max = idx !== null && info ? apBudgetOf(idx, passive).max : info?.maxAP ?? 0;
   const over = info !== null && used > max;
   const apTitle = info ? `${used} of ${max} action points used${over ? `: ${used - max} over budget, the game plays the default rotation instead` : `, ${max - used} remaining`}` : "";
   const ap = info
@@ -326,8 +366,10 @@ function renderParty(refreshSearch = true): void {
     const raw = heroRaw(idx);
     s.addEventListener("change", () => {
       // U39: the same edit as the Flow tab's (battle-edit.ts): one slot per hero, the new hero fights, and in a search
-      // mode a hero picked by hand is locked.
-      assignHero(state, key, s.value === "" ? null : Number(s.value), picks);
+      // mode a hero picked by hand is locked. U40: not a hero whose rotation is over its AP limit.
+      const pick = s.value === "" ? null : Number(s.value);
+      const r = assignHeroChecked(state, key, pick, picks, pick === null ? null : apOver(pick));
+      if (!r.ok) return refuseAp(pick!, r);
       clearUndo = null;
       persistParty();
       renderParty();
@@ -645,11 +687,12 @@ function syncAmount(): void {
   }
 }
 
-// ---------------------------------------------------------------- the two views: Flow and Party (U39)
+// ---------------------------------------------------------------- the two views: Party and Flow (U39, U40)
 /**
- * Step 3 has two tabs over one party state: Flow (the fight, turn by turn: the main working view) and Party (the hero
- * cards and the opponent). Edits in either change the same state (battle-edit.ts), then both redraw and the flow is
- * simulated again. The active tab is remembered for this browser tab (sessionStorage `battle-tab`; convenience only).
+ * Step 3 has two tabs over one party state: Party (the hero cards and the opponent; first, U40) and Flow (the fight,
+ * turn by turn). Edits in either change the same state (battle-edit.ts), then both redraw and the flow is simulated
+ * again. The active tab is remembered for this browser tab (sessionStorage `battle-tab`; convenience only); without
+ * one, the first tab, Party.
  */
 type Tab = "flow" | "party";
 const TAB_KEY = "battle-tab";
@@ -657,9 +700,9 @@ let tabChoice: Tab | null = null;
 function storedTab(): Tab {
   if (tabChoice) return tabChoice;
   try {
-    return sessionStorage.getItem(TAB_KEY) === "party" ? "party" : "flow";
+    return sessionStorage.getItem(TAB_KEY) === "flow" ? "flow" : "party";
   } catch {
-    return "flow";
+    return "party";
   }
 }
 function showTab(tab: Tab, remember = true): void {
@@ -710,7 +753,7 @@ function engineParty(sim: Sim): [Any[], Any[]] {
  * traced action by action (tools/fight-trace.ts); null when the party can't fight it (a rule, or an engine error).
  */
 function planTrace(t: { id: number; rare: boolean; amount: number }): FightTrace | null {
-  if (partyProblem()) return null;
+  if (partyProblem() || apProblem()) return null;
   try {
     const sim = new Sim(state.sv!.raw.gameMode || "Standard");
     const [front, back] = engineParty(sim);
@@ -767,7 +810,9 @@ function planEdit(): PlanEdit {
       return { options, value: String(idxAt(loc) ?? "") };
     },
     setHero: (loc, v) => {
-      assignHero(state, slotKeyOfLoc(loc), v === "" ? null : Number(v), !state.mode.party);
+      const pick = v === "" ? null : Number(v);
+      const r = assignHeroChecked(state, slotKeyOfLoc(loc), pick, !state.mode.party, pick === null ? null : apOver(pick));
+      if (!r.ok) return refuseAp(pick!, r, () => refocus(`hero-${loc}`));
       clearUndo = null;
       persistParty();
       renderParty();
@@ -780,12 +825,57 @@ function planEdit(): PlanEdit {
     setSkill: (loc, k, skill) => {
       const idx = idxAt(loc);
       if (idx === null) return;
-      setRotationSkill(state, idx, k, skill, rotationOf(idx));
+      // U40: refused over the AP limit, as in the Party tab.
+      const r = editRotationSkill(state, idx, k, skill, rotationOf(idx), apBudgetOf(idx));
+      if (!r.ok) return refuseAp(idx, r, () => refocus(`skill-${loc}-${k + 1}`));
       persistParty();
       renderParty(false);
       refocus(`skill-${loc}-${k + 1}`);
     },
+    // U40: the enemy column's head changes the opponent through the Party tab's own controls (one state).
+    enemies: () => {
+      if (oppKind() === "quest") {
+        const q = document.querySelector<HTMLSelectElement>("#quest");
+        if (!q) return null;
+        const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
+        return { label: "Enemy", groups: flowEnemyOptions(), value: `${q.value}${rare ? ":rare" : ""}` };
+      }
+      const m = document.querySelector<HTMLSelectElement>("#map");
+      return m ? { label: "Map", groups: mapOptions(state.sv), value: m.value } : null;
+    },
+    setEnemy: (v) => {
+      if (oppKind() === "quest") {
+        const [id, variant] = v.split(":");
+        const q = $<HTMLSelectElement>("#quest"), rare = $<HTMLInputElement>("#rare");
+        if (q.value !== id) {
+          q.value = id;
+          q.dispatchEvent(new Event("change"));
+        }
+        if (!rare.disabled && rare.checked !== (variant === "rare")) {
+          rare.checked = variant === "rare";
+          rare.dispatchEvent(new Event("change"));
+        }
+      } else {
+        const m = $<HTMLSelectElement>("#map");
+        m.value = v;
+        m.dispatchEvent(new Event("change"));
+      }
+      refocus("enemy");
+    },
   };
+}
+
+/**
+ * The flow's enemy choices (U40): the Party tab's enemy list (questOptions), each enemy with a rare variant listed a
+ * second time as that variant ("<id>:rare"), since the flow has no "Rare variant" box.
+ */
+function flowEnemyOptions(): [string, [string, string][]][] {
+  return questOptions().map(([g, list]) => [g, list.flatMap(([id, label]): [string, string][] => {
+    const d = G.questData[id];
+    const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined && d.nameB;
+    const lv = `Lv ${enemyLevelText(Number(id))} · `, mark = expansionMark(needsOf("enemy", Number(id)));
+    return hasRare ? [[id, `${lv}${enemyName(id)}${mark}`], [`${id}:rare`, `${lv}${enemyName(id, true)} (rare)${mark}`]] : [[id, label]];
+  })]);
 }
 
 /** What the flow shows, and how (U39): one concrete run, Simulate's first. */
@@ -809,6 +899,8 @@ function renderPlan(): void {
     document.querySelector<HTMLElement>("#tab-party")?.focus();
   });
   const problem = partyProblem();
+  // U40: a hero over its AP limit (an old saved party): the warning, not a fight with the default rotation.
+  const ap = problem ? null : apProblem();
   const edit = planEdit();
   if (oppKind() === "quest" && document.querySelector("#quest")) {
     const t = targetOf().quest!;
@@ -817,7 +909,8 @@ function renderPlan(): void {
     const plan = partyPlan(t, members, trace, edit);
     if (plan) {
       box.append(...(trace ? [el("p", { class: "muted small flow-note" }, FLOW_NOTE)] : []),
-        ...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []), plan);
+        ...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
+        ...(ap && members.length ? [el("p", { class: "error small flow-ap", role: "status" }, `⚠ ${ap} Below, the rotation as planned.`)] : []), plan);
       help?.append(helpTip(planNote(t), "the flow"));
     } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
     return;
@@ -825,8 +918,8 @@ function renderPlan(): void {
   if (oppKind() !== "map" || !document.querySelector("#map")) return;
   const m = targetOf().map!;
   opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""), " ", toParty);
-  if (!members.length || problem) {
-    box.append(el("p", { class: "muted" }, problem ? `⚠ ${problem}` : "Put heroes in the party (Party tab) to see the run."));
+  if (!members.length || problem || ap) {
+    box.append(el("p", { class: problem || ap ? "error" : "muted" }, problem || ap ? `⚠ ${problem ?? ap}` : "Put heroes in the party (Party tab) to see the run."));
     return;
   }
   const rooms = mapTrace(m);
@@ -844,6 +937,12 @@ function renderPlan(): void {
       b.tabIndex = k === at ? 0 : -1;
     });
     const r = rooms[at];
+    // U40: after the room where the party died there is no battle: one centred line, no timeline.
+    if (tabs[at].skipped) {
+      view.replaceChildren(el("p", { class: "flow-skipped", role: "status" }, "💀 Party died, battle skipped"));
+      help?.replaceChildren();
+      return;
+    }
     const plan = partyPlan({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
     view.replaceChildren(...(r.trace ? [] : [el("p", { class: "muted small" }, "Not reached in this run: the rotation as planned.")]),
       plan ?? el("p", { class: "muted" }, "No timeline for this enemy yet."));
@@ -851,7 +950,7 @@ function renderPlan(): void {
   };
   tabs.forEach((x, k) => {
     const b = el("button", { type: "button", role: "tab", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
-      title: `${x.label}: ${["not reached in this run", "won", "lost"][x.status] ?? ""}` }, x.label,
+      title: `${x.label}: ${x.skipped ? "skipped, the party died before" : ["not reached in this run", "won", "lost"][x.status] ?? ""}` }, x.label,
       ...(x.status === 2 ? [el("span", { "aria-hidden": "true" }, " 💀")] : []));
     b.addEventListener("click", () => {
       at = k;

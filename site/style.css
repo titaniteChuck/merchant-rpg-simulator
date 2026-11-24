@@ -1765,9 +1765,9 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
 .pg-cycle::before, .pg-cycle::after { content: ""; flex: 1; border-top: 1px dashed var(--trim); }
-/* The timeline chart (timeline.ts timelineChart): per turn, one line per action in action order, the actor's cell
-   tinted in its colour; damage and healing as the main text where they land; the effects once per turn, as chips
-   (variant C of the U39 prototypes: the cleanest of three). Columns line up with the heads (same 36px + gap 3px). */
+/* The flow chart (timeline.ts flowChart): per turn, one line per action in action order, the actor's cell
+   tinted in its colour; damage and healing as the main text where they land; the effects as text, and once per turn
+   the end-of-turn summary (U40). Columns line up with the heads (same 36px + gap 3px). */
 .tc-grid { min-width: calc(40px + var(--pg-cols) * 78px); }
 .tc-turn { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 3px; padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .tc-turnlab { padding-top: 3px; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -1785,19 +1785,45 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .tc-dmg { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
 .tc-heal { color: color-mix(in srgb, var(--good) 85%, var(--fg)); }
 .tc-ko { font-size: 0.6rem; font-weight: 800; padding: 0 4px; border-radius: 4px; color: #fff; background: #b91c1c; }
-.tc-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; cursor: help; }
-.tc-dot.buff { background: var(--good); } .tc-dot.debuff { background: #ef4444; }
-.tc-status .tc-cell { min-height: 0; padding-block: 1px; }
-.tc-chip { display: inline-flex; align-items: baseline; gap: 3px; max-width: 100%; font-size: 0.6rem; line-height: 1.3; padding: 0 5px; border-radius: 999px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
-.tc-chip.buff { background: color-mix(in srgb, var(--good) 22%, transparent); }
-.tc-chip.debuff { background: color-mix(in srgb, #ef4444 30%, transparent); }
+/* U40: effects as plain text of what they do ("+15% Def", "Taunt"), green for a buff, red for a debuff; the skill and
+   who put it on in the tooltip. */
+.tc-fx { font-size: 0.62rem; font-weight: 650; line-height: 1.25; cursor: help; overflow-wrap: anywhere; }
+.tc-fx.buff { color: color-mix(in srgb, var(--good) 88%, var(--fg)); }
+.tc-fx.debuff { color: color-mix(in srgb, #ef4444 75%, var(--fg)); }
+.tc-fx .tc-left { font-weight: 500; color: var(--muted); }
+.tc-fxs { display: flex; flex-wrap: wrap; gap: 1px 7px; width: 100%; }
+.tc-void { font-size: 0.64rem; font-style: italic; color: var(--muted); cursor: help; }
+/* The end-of-turn summary: its own band, under the action lines (HP, then the effects). */
+.tc-status { margin-top: 2px; padding: 3px 0; border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
+.tc-status .tc-cell { min-height: 0; padding-block: 1px; align-content: flex-start; }
 .tc-left { font-size: 0.54rem; opacity: .8; font-variant-numeric: tabular-nums; }
-.tc-shared { justify-content: center; }
-.tc-all { font-size: 0.6rem; color: var(--muted); }
+/* U40: a damage or heal number's calculation: the toggle after the number, the formula under the line (full width). */
+.tc-calc-btn { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 0.58rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tc-calc-btn:hover, .tc-calc-btn[aria-expanded="true"] { color: var(--fg); text-decoration: underline; }
+.tc-calc-btn .tc-caret { display: inline-block; font-size: 0.8rem; line-height: 1; vertical-align: -1px; }
+.tc-calc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+.tc-calcs { display: flex; flex-direction: column; gap: 3px; margin: 2px 0 4px; }
+.tc-calc { padding: 5px 9px; border-radius: 7px; font-size: 0.7rem; line-height: 1.45; background: var(--card); border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--bad) 70%, var(--border)); }
+.tc-calc.heal { border-left-color: color-mix(in srgb, var(--good) 70%, var(--border)); }
+.cf-block + .cf-block { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.cf-block.void { opacity: .7; }
+.cf-head { font-weight: 700; font-size: 0.66rem; color: var(--muted); }
+.cf-line { font-variant-numeric: tabular-nums; }
+.cf-label { color: var(--muted); }
+.cf-op { color: var(--muted); }
+.cf-term { cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
+.cf-term:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cf-stat { font-weight: 650; }
+.cf-def { color: color-mix(in srgb, #60a5fa 70%, var(--fg)); }
+.cf-crit { color: color-mix(in srgb, var(--mid) 85%, var(--fg)); font-weight: 650; }
+.cf-fx { color: color-mix(in srgb, #c084fc 70%, var(--fg)); }
+.cf-result { font-weight: 800; border-bottom: 0; }
+.cf-note, .cf-sum { color: var(--muted); font-size: 0.66rem; }
+.cf-sum { margin-top: 4px; font-weight: 700; color: var(--fg); }
 .tc-planned .pg-cell { opacity: .8; }
 .tc-end { margin: 6px 0 2px; text-align: center; }
-/* Step 3's two views: Flow (the fight, the main working view) and Party (the cards). */
+/* Step 3's two views: Party (the cards; first, U40) and Flow (the fight, turn by turn). */
 .b3-tabs { margin: 0 0 12px; }
 .flow-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .flow-head .col-title { display: inline-flex; align-items: center; gap: 6px; }
@@ -1810,12 +1836,24 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .fl-caret { font-size: 0.7rem; line-height: 1; pointer-events: none; }
 :is(.tc-cell, .pg-cell, .pg-head):hover .fl-edit, .fl-edit:focus-within { opacity: 1; color: var(--fg); background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .fl-edit:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* HP at the end of each turn: a thin bar and the number; "✝ down" once fallen. */
-.tc-hp { display: inline-flex; align-items: center; gap: 4px; width: 100%; font-size: 0.6rem; font-variant-numeric: tabular-nums; color: var(--muted); }
-.tc-hpbar { flex: 1; min-width: 18px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
+/* U40: a column head's name with a ▾: the transparent select covers both, so clicking the name opens the choices. */
+.fl-name { position: relative; display: inline-flex; align-items: baseline; gap: 3px; min-width: 0; max-width: 100%; border-radius: 5px; cursor: pointer; }
+.fl-name strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-head.enemy .fl-name strong { white-space: normal; overflow-wrap: anywhere; }
+.fl-name .fl-caret { flex: none; color: var(--muted); }
+.fl-name select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.fl-name:hover, .fl-name:focus-within { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.fl-name:hover .fl-caret, .fl-name:focus-within .fl-caret { color: var(--fg); }
+.fl-name:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* HP at the end of each turn (U40): the bar and the number in fixed places, so every bar has the same place and width
+   in every column and every turn; an empty bar and "✝ down" once fallen. */
+.tc-hp { display: grid; grid-template-columns: minmax(0, 1fr) 4.6em; align-items: center; gap: 4px; width: 100%; font-size: 0.6rem;
+  font-variant-numeric: tabular-nums; color: var(--muted); }
+.tc-hpnum { text-align: right; white-space: nowrap; }
+.tc-hpbar { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
 .tc-hpbar > span { display: block; height: 100%; background: var(--good); }
 .tc-hp.mid .tc-hpbar > span { background: var(--mid); } .tc-hp.low .tc-hpbar > span { background: #ef4444; }
-.tc-hp.down { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
+.tc-hp.down .tc-hpnum { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
 .tc-result { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; text-align: center; font-weight: 750; }
 .tc-result.won { background: color-mix(in srgb, var(--good) 18%, transparent); }
 .tc-result.lost { background: color-mix(in srgb, #ef4444 18%, transparent); }
@@ -1833,3 +1871,10 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .room-tab.st-0 { opacity: .6; }
 .room-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* end u39 battle */
+/* U40: a short message in a corner (an edit refused); click to close. */
+.toast { position: fixed; z-index: 50; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 650; box-shadow: 0 6px 24px rgb(0 0 0 / .35); cursor: pointer; background: var(--card); border: 1px solid var(--border); color: var(--fg); }
+.toast.error { border-color: #ef4444; background: color-mix(in srgb, #ef4444 22%, var(--card)); }
+.toast[hidden] { display: none; }
+/* U40: the flow when a map run's party fell in an earlier room: one centred line. */
+.flow-skipped { margin: 24px 0; text-align: center; color: var(--muted); font-weight: 650; }

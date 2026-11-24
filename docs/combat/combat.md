@@ -43,6 +43,10 @@ flowchart LR
 
 - Order: enemy first only if `questType == 6` (first attack), then back 1, front 1, back 2, front 2, back 3, front 3, enemy.
   The order is fixed once at the start (`determineTurnOrder`); a dead combatant's turn is skipped.
+- The end of the fight is checked only once the whole turn is played (`Battle.combatLoop`, `obj.combat.Battle.lua:82`–`:94`),
+  and `Combatant:receiveAttack` has no dead check (`obj.Combatant.lua:376`): heroes acting after the enemy falls still
+  hit it (its HP goes further below 0, the RNG still rolls). The port keeps this (parity); the battle page shows those
+  hits as "no target". The party side has no such case: `Party:receiveAttack` skips heroes at 0 HP or less.
 - Each combatant uses slot `((turn − 1) mod 5) + 1` of its 5-slot `attackList`, from one shared turn counter: hero
   slot k always meets enemy slot k. A fight is a 5-turn timetable ([schedule](#schedule)).
 - The enemy always plays its rotation. `isTurnSkipped` is never set, and no hero skill puts an `OnDetermineAction`

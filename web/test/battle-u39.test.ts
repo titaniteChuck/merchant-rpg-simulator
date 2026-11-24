@@ -59,7 +59,7 @@ test("traced fight: a stunned hero's action is lost (did: false), the planned sk
   for (const a of stunned) assert.equal(typeof a.planned, "string");
 });
 
-test("flow data: every turn of the fight up to its end, lines in action order, HP each turn, effects merged on every hero", () => {
+test("flow data: every turn of the fight up to its end, lines in action order, HP each turn, each hero's own effects", () => {
   const [f, b] = party();
   const t = traceFight(sim, 72, [...f], [...b]); // Odin: lost on turn 14
   const tl = planTimeline(t, [1, 2, 3, 4, 5, 6]);
@@ -90,14 +90,16 @@ test("flow data: every turn of the fight up to its end, lines in action order, H
   // the damage of an action is in the column of whoever took it
   const t1 = tl.turns[0];
   assert.ok(t1.lines.find((l) => l.who === 3)!.cells[0].dmg > 0); // Mind Blast II on Odin
-  // a party buff on every hero at the end of turn 1 is one shared chip, not six
-  assert.ok(t1.shared.length > 0);
-  for (const c of t1.shared) {
-    assert.equal(c.who, -1);
-    for (let w = 1; w <= 6; w++) assert.ok(!(t1.status[w] ?? []).some((x) => x.name === c.name), `${c.name} not repeated on ${w}`);
+  // U40: no grouping over the heroes: a party buff on every hero is listed on each hero, as text with its source
+  const everyHero = [1, 2, 3, 4, 5, 6].map((w) => new Set((t1.status[w] ?? []).map((c) => c.name)));
+  const common = [...everyHero[0]].filter((n) => everyHero.every((s) => s.has(n)));
+  assert.ok(common.length > 0, "a party buff on every hero at the end of turn 1");
+  for (const w of [1, 2, 3, 4, 5, 6]) {
+    for (const c of t1.status[w]) {
+      assert.ok(c.label.length > 0 && !c.label.includes("undefined"), c.label);
+      assert.match(c.title, / from /, "the tooltip says who put it on");
+    }
   }
-  // effects with no turn left don't show
-  for (const x of tl.turns) for (const chips of Object.values(x.status)) for (const c of chips) assert.ok(c.turns === undefined || c.turns > 0);
 });
 
 test("flow data: a short fight ends where it ends, won", () => {
@@ -186,7 +188,7 @@ test("shared state round trip: the flow's rotation edit changes the simulated fi
   assert.equal(after.actions.find((a) => a.turn === 1 && a.who === 2)!.planned, skill);
 });
 
-test("timeline data: new effects and recasts land as dots on their fighter, KO, stun and forced actions kept", () => {
+test("timeline data: new effects and recasts land on their fighter, KO, stun and forced actions kept", () => {
   const fx = (who: number, name: string, turns: number, debuff = false) => ({ who, name, debuff, turns });
   const trace: TracedFight = {
     won: false, turns: 2,
@@ -217,12 +219,11 @@ test("timeline data: new effects and recasts land as dots on their fighter, KO, 
   assert.equal(m2.did, false);
   assert.deepEqual(m2.cells[0].added.map((c) => c.name), ["Taunt"], "a recast (more turns left) is new again");
   assert.equal(m2.cells[4].heal, 120);
-  // end of turn 2: Drown has no turn left, Taunt has 3
-  assert.equal(tl.turns[1].status[4], undefined);
-  assert.deepEqual(tl.turns[1].status[0].map((c) => [c.name, c.turns, c.debuff]), [["Taunt", 3, true]]);
-  assert.match(tl.turns[1].status[0][0].title, /Taunt on the enemy: debuff, 3 turns left/);
-  // one hero only: nothing is "on every hero"
-  assert.deepEqual(tl.turns[0].shared, []);
+  // end of turn 2: Drown has no turn left but works until its owner acts again (U40), Taunt has 3
+  assert.deepEqual(tl.turns[1].status[4].map((c) => [c.name, c.label, c.turns]), [["Drown", "Basic only", 0]]);
+  assert.match(tl.turns[1].status[4][0].title, /ends when Front 2 acts next/);
+  assert.deepEqual(tl.turns[1].status[0].map((c) => [c.name, c.label, c.turns, c.debuff]), [["Taunt", "Taunt", 3, true]]);
+  assert.match(tl.turns[1].status[0][0].title, /Taunt · 3 turns left/);
   // effect names keep their suffix
   assert.equal(effectName("Ancient Mist Eva↑"), "Ancient Mist Eva↑");
 });

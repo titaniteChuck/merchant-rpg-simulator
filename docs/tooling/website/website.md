@@ -136,7 +136,7 @@ flowchart LR
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
   opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
 - Step 3, party, opponent and plan (U15, reworked in U23, U36 and U39; step 2 until U26), the same arrangement in every
-  mode: two tabs (U39), Flow (the fight turn by turn, see "Flow tab" below) and Party: the six hero slots (back row 1-3
+  mode: two tabs (U39; U40: Party first), Party and Flow (the fight turn by turn, see "Flow tab" below). Party: the six hero slots (back row 1-3
   | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
   Mdef, Acc, Crit; columns as wide as their values, five-digit values shortened to "12.3K" with the full value in a
@@ -353,11 +353,24 @@ flowchart LR
   - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only; gone with
     Optimise everything in U36).
   - Without the timeline data the pages fall back to the plain rotation list.
-  - Flow tab (U39, replaces the plan column of U36): step 3 has two tabs over ONE party state, 🗓️ Flow (the main
-    working view, first) and 👥 Party (the hero cards and the opponent card, as before). The active tab is remembered
-    for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit through `ui/battle-edit.ts`
-    (`assignHero`: one slot per hero, the new hero fights, a hand-picked hero locked in Solve; `setRotationSkill`), then
-    the page saves the party, redraws both tabs and traces the fight again.
+  - Flow tab (U39, replaces the plan column of U36; reshaped in U40): step 3 has two tabs over ONE party state,
+    👥 Party first (the hero cards and the opponent card, as before; the default) and 🗓️ Flow second (U40 swapped
+    them). The active tab is remembered for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit
+    through `ui/battle-edit.ts` (`assignHero`: one slot per hero, the new hero fights, a hand-picked hero locked in
+    Solve; `setRotationSkill`), then the page saves the party, redraws both tabs and traces the fight again.
+    - AP limit (U40): an edit that would put a hero over its action-point limit is refused in both tabs, the state
+      unchanged, with an error toast "Paladin: 23 / 20 AP. Change refused." (`toast()` in `dom.ts`, one aria-live
+      region per page). `editRotationSkill` (a rotation slot; an edit that lowers a rotation already over is allowed,
+      so an old party can be brought back under), `assignHeroChecked` (a hero whose edited rotation is over can't be
+      put in a slot), and the Party tab's passive ⇄ (dropping Wisdom, which gives AP, is refused when the rotation
+      would then be over). The limit counts the passive the hero plays (`apBudgetOf`), on the card's "x / y AP" too.
+      A saved party already over the limit keeps the card's warning, and the Flow shows the same warning (and the
+      rotation as planned) instead of a traced fight: the engine would play the default rotation (Basic everywhere),
+      which the Flow used to show.
+    - Enemy column (U40): the enemy's name in its head opens the opponent choices with a ▾, a transparent select over
+      the name (the heroes' heads work the same way now): the Party tab's enemy list, each enemy with a rare variant
+      listed twice ("<id>:rare"); for a map run, the Party tab's map list. Picking one sets the Party tab's own controls
+      (`#quest`, `#rare`, `#map`) and fires their change, so both tabs share one state.
     - What it shows: the WHOLE fight, every turn from 1 until it ends (won, lost, or the game's 200-turn cap), one turn
       under the other, from ONE concrete run: Simulate's first fight (seed `fightSeed(1, 0)`, the same rolls as the
       first of Simulate's runs: hits, misses, critical hits, evasion). A one-line note above the chart says so. Combat
@@ -366,16 +379,47 @@ flowchart LR
       U39 extended with display-only fields per action: `did` (what the actor really played: another skill under a
       forced action, `false` when stunned), `hits` (per fighter: damage taken and HP really healed), `fx` (the effects
       on every fighter), `misses`, `life` (every fighter's HP and max HP) and `battle` (which battle of a map run).
-      `combatant.ts` records `_did`; nothing else in the engine changed. `planTimeline` in `ui/battle-plan.ts` turns
-      it into turns → lines → cells (pure, tested).
+      `combatant.ts` records `_did`. `planTimeline` in `ui/battle-plan.ts` turns it into turns → lines → cells (pure,
+      tested).
+    - Calculations (U40): while a trace runs, and only then, the engine records every hit and heal with the values it
+      really used: `hooks.calc` (a `CalcSink`, set by `traceStart`, cleared by `traceStop`) and `calcState` in
+      `combatant.ts`. `sendAttack` records the attacker's stats and the attack the skill sent, then each on-attack
+      effect; `receiveAttack` the share for this target (`damageRatio`), each on-damage effect, the hit chance, crit or
+      lucky hit and its factor, DEF / MDEF and penetration and the reduction factors, each part rounded, each
+      damage-received effect, the total and the target's HP before and after; `sendHeal` / `receiveHeal` the amount,
+      percent / revive / overload and the HP really given back; damage and heal over time are named after their effect
+      (`calcState.tick`), and what a dmgFunc sends (reflects, absorbs) after that effect (`runDmgFunc`). Without a sink
+      the engine pays one property check per attack, heal and effect (3,600 fights: same time as before within noise);
+      results are unchanged (the Lua-parity tests run with the trace on). `TraceHit` now carries `calc` (the records),
+      `ko`, and `deadHits` / `deadDmg`; its `dmg` is the sum of the hits' totals on a standing fighter and `heal` the HP
+      really given back. `ui/battle-calc.ts` (pure) turns a record into terms with a value and a tooltip
+      (`attackFormula`, `healFormula`, `evalLine`): "ATK 575 × 1.6 × 0.333 share × 2 crit × 75.8% DEF 32 = 1,370", one
+      line per part (physical, magic, true) and a total; a skill's base reads as stat × multiplier when one stat (or
+      sum: ATK + ACC …) times a skill-like multiplier gives it back exactly (`decompose`), else as the skill's amount.
+      The tests recompute every hit from its parts (`web/test/battle-u40.test.ts`).
+    - Effects as text (U40): an effect shows what it does, from its live numbers in the trace, never from the skill
+      data: "+15% Def", "−20% Atk", "Taunt", "1,235 MAtk/turn", "+120 HP/turn", "Shield 340", "+25% Dmg taken"
+      (`effectText` in `battle-calc.ts`; the code-only effects, reflects, absorbs, stuns, by name). Live values:
+      stacking effects (Enraged +10% Atk per hit taken, Song of Courage, Rampart, the Growths …), Amplify Magic (doubles
+      the debuffs on the target, damage over time included), Mana Shield's shield left (`_live` on the skill's own
+      effect object, which its dmgFunc lowers), Holy Shield's MDEF now. The trace records who put each effect on and
+      with which skill (`from`, `skill`; a stack keeps the first caster), shown on hover as "<skill> from <fighter>".
+      An effect at 0 turns left still shows (it works until its owner acts again); one spent or ended (`gone`: a one-hit
+      effect that worked, the effects of a fallen fighter) does not.
+    - Hits on a fallen fighter (U40): the game ends a fight only once the turn is over (`Battle.combatLoop` checks the
+      enemy's HP after the whole turn; `receiveAttack` has no dead check, in the game's Lua as in the port), so heroes
+      acting after the enemy's KO still hit it. The engine keeps that (parity); the trace counts those hits apart and the
+      Flow shows "no target" (or "then no target" after damage) with a tooltip, not damage.
     - Layout (prototype C of three, static HTML compared on a real Odin trace: chips on every line was unreadable,
       per-line "new effect" chips repeated party buffs six times): per turn, one line per action in action order; the
       actor's cell tinted in its class colour with the skill played (planned skill struck out under a stun or a
       forced action, "miss" when an attack missed); damage (−, red) or healing (+, green) as the main text in the
-      column of whoever takes it, "✝ KO" on the hit that fells a fighter, a small dot where an effect lands (tooltip).
-      Under the lines, each fighter's HP at the end of the turn (thin bar + number, "✝ down" once fallen) and its
-      effects as chips with turns left; an effect on every standing hero is one chip over the hero columns ("every
-      hero"). A light dashed divider every 5 turns ("Turns 6–10: the rotations again"); the result at the end ("🏆 Won on
+      column of whoever takes it, each followed by a small "▾ calculation" toggle that opens the exact formula under the
+      line, full width, in column order (the toggle turns to "▸"; again closes it), "✝ KO" on the hit that fells a
+      fighter, and what an effect that lands (or grows) does, as text (U40; U39 had a dot). Under the lines, the
+      end-of-turn summary on its own band (U40): each fighter's HP (bar and number in fixed places, so every bar has the
+      same place and width in every column and turn; an empty bar and "✝ down" once fallen) and its own effects as text
+      with turns left; no "every hero" grouping any more (U40). A light dashed divider every 5 turns ("Turns 6–10: the rotations again"); the result at the end ("🏆 Won on
       turn 4", "💀 Lost on turn 14", or the turn cap). Past 100 turns the rest waits behind "Show turns 101–N".
     - Editing: each hero column head has a small ▾ (a transparent select, faint until hover or focus, keyboard
       reachable) to change the slot's hero (the hero choices of the Party tab; the required Front 2 of a party quest
@@ -387,7 +431,8 @@ flowchart LR
     - Map runs: a horizontal bar above the chart lists the run's battles in map order ("1 · Treasure Bush" …
       "Boss · Murlok Monarch"; `mapRoomTabs`), as the Map run mode's first run plays them (same seed: layout, rolls and
       HP carried from room to room); picking one shows that battle's full fight from its real start state; rooms not
-      reached are dimmed and show the plan. Arrow keys move along the bar; it scrolls sideways on a phone. The room is
+      reached are dimmed and show the plan, except the rooms after the one where the party died (U40, `RoomTab.skipped`):
+      their tab stays, the panel shows only "💀 Party died, battle skipped". Arrow keys move along the bar; it scrolls sideways on a phone. The room is
       remembered while the same map, ascension and grade stay chosen (sessionStorage `battle-flow-room`).
   - Plan grid (U39 before the Flow tab): `planGrid` counts turns from the start of the fight (turn 1 carries nothing
     over; turn 6 on carries what round one left on) and takes a turn count (default 10).

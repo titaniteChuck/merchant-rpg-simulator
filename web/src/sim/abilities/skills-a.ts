@@ -457,6 +457,8 @@ export const skillsA: Record<string, AbilityFn> = {
       }
       return attack;
     };
+    // Read by the battle page's trace only (U40): the copy in the effect list points here for the shield left.
+    effect._live = effect;
     self.addEffect(effect);
     self.logger?.shield?.(effect.absorb);
   },

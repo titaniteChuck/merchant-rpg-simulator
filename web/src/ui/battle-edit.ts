@@ -51,3 +51,42 @@ export function setRotationSkill(s: PartyState, idx: number, k: number, skill: s
   attackList[k] = skill;
   s.skills[idx] = { attackList, ...(current.passive !== undefined ? { passive: current.passive } : {}) };
 }
+
+/** U40: a hero's action-point budget: what each skill costs it (Basic is free), and its limit. */
+export interface ApBudget {
+  cost(skill: string): number;
+  max: number;
+}
+/** The action points a rotation uses. */
+export const apUsed = (attackList: string[], b: ApBudget): number =>
+  attackList.reduce((a, s) => a + (s && s !== "Basic" ? b.cost(s) || 0 : 0), 0);
+
+/**
+ * U40: set slot k of a hero's rotation, unless that puts it over its AP limit (the game would then play its default
+ * rotation): refused, the state unchanged. An edit that lowers the AP of a rotation already over (an old saved party)
+ * is allowed, so it can be brought back under. Both views go through it.
+ */
+export function editRotationSkill(s: PartyState, idx: number, k: number, skill: string, current: SkillChoice, b: ApBudget):
+  { ok: boolean; used: number; max: number } {
+  const next = [...current.attackList];
+  while (next.length < 5) next.push("Basic");
+  next[k] = skill;
+  const used = apUsed(next, b);
+  if (used > b.max && used > apUsed(current.attackList, b)) return { ok: false, used, max: b.max };
+  setRotationSkill(s, idx, k, skill, current);
+  return { ok: true, used, max: b.max };
+}
+
+/**
+ * U40: put a hero in a slot unless its rotation (its edited one) is over its AP limit: refused, the state unchanged.
+ * `over`: the hero's AP use and limit when over, else null.
+ */
+export function assignHeroChecked(s: PartyState, key: string, idx: number | null, picks: boolean, over: { used: number; max: number } | null):
+  { ok: boolean; used?: number; max?: number } {
+  if (idx !== null && over) return { ok: false, ...over };
+  assignHero(s, key, idx, picks);
+  return { ok: true };
+}
+
+/** U40: the AP refusal's words ("Paladin: 23 / 20 AP. Change refused."). */
+export const apRefusal = (name: string, used: number, max: number): string => `${name}: ${used} / ${max} AP. Change refused.`;

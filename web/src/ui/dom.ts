@@ -439,3 +439,22 @@ export function expansionPlaceholder(needs: readonly ExpansionId[]): HTMLElement
     title: `Hidden: content of the ${names}, which you don't own. Turn on “Show expansion content” in the expansions menu (top bar) to see it.` },
   ...expansionIcons(needs), el("span", {}, "expansion content"));
 }
+
+/**
+ * U40: a short message in a corner toast, read out by screen readers (one aria-live region per page, made on first
+ * use). It goes away after a few seconds, or on a click.
+ */
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+export function toast(message: string, kind: "error" | "info" = "error"): void {
+  let box = document.querySelector<HTMLElement>("#toast");
+  if (!box) {
+    box = el("div", { id: "toast", class: "toast", role: kind === "error" ? "alert" : "status", "aria-live": kind === "error" ? "assertive" : "polite" });
+    box.addEventListener("click", () => (box!.hidden = true));
+    document.body.append(box);
+  }
+  box.className = `toast ${kind}`;
+  box.textContent = `${kind === "error" ? "⚠ " : ""}${message}`;
+  box.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (box!.hidden = true), 5000);
+}

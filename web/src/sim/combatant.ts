@@ -37,8 +37,49 @@ const statToPct: Record<string, string> = {
 
 const toAmplify: Record<string, boolean> = { atk: true, matk: true, eva: true, def: true, mdef: true };
 
+/**
+ * U40: the damage and heal calculations, recorded only while a sink is set (the battle page's traced fight). Each
+ * record holds the real intermediate values of one hit or one heal. Recording only reads: no result changes, and
+ * without a sink nothing is built (one property check per attack, heal and effect).
+ */
+export interface CalcSink {
+  attack(rec: Any): void;
+  heal(rec: Any): void;
+  /** An effect was put on (or stacked on, or cast again on) a fighter. */
+  effect(target: Combatant, effect: Effect): void;
+}
+
 /** Optional hook called after every action (trace / per-skill damage, as the former Lua harness recorded them). */
-export const hooks: { afterAction?: (c: Combatant, name: Any, before: Any) => void; beforeAction?: (c: Combatant) => Any } = {};
+export const hooks: { afterAction?: (c: Combatant, name: Any, before: Any) => void; beforeAction?: (c: Combatant) => Any; calc?: CalcSink } = {};
+
+/**
+ * While a calc sink is set: the attacks and heals being sent (innermost last: a reflect sends from inside another
+ * attack), the effects whose dmgFunc runs (innermost last), and the damage or heal over time being applied.
+ */
+export const calcState: { sends: Any[]; heals: Any[]; effects: string[]; tick?: { name: string; from?: Any }; seq: number } = {
+  sends: [], heals: [], effects: [], seq: 0,
+};
+/** The attack's three parts (physical, magic, true) as numbers. */
+const parts3 = (a: Any) => ({ atk: Number(a.atk) || 0, matk: Number(a.matk) || 0, dmg: Number(a.dmg) || 0 });
+const dmg3 = (a: Any) => ({ p: Number(a.physicalDamage) || 0, m: Number(a.magicDamage) || 0, t: Number(a.trueDamage) || 0 });
+/** A fighter's stats a skill's formula may start from, and its stat effects then (for the calculation's notes). */
+function statsOf(c: Any): Any {
+  return {
+    atk: c.atk, matk: c.matk, acc: c.acc, def: c.def, mdef: c.mdef, maxHP: c.maxHP, level: c.level,
+    fx: (c.effectList ?? []).filter((e: Effect) => e.stats && typeof e.stats === "object")
+      .map((e: Effect) => ({ name: e.name, stats: Object.fromEntries(Object.entries(e.stats).filter(([, v]) => typeof v === "number")) })),
+  };
+}
+/** Run an effect's dmgFunc with its name on the calc stack (tracing only), so what it sends is named after it. */
+function runDmgFunc(effect: Effect, attack: Any): Any {
+  if (!hooks.calc) return effect.dmgFunc!(attack);
+  calcState.effects.push(effect.name);
+  try {
+    return effect.dmgFunc!(attack);
+  } finally {
+    calcState.effects.pop();
+  }
+}
 
 export class Combatant {
   // Combat fields are dynamic in the game (skills and effects add stats by name).
@@ -133,7 +174,9 @@ export class Combatant {
         e.turns = (e.turns as number) - 1;
       } else if (e.trigger === "HealingOnTurn") {
         e.turns = (e.turns as number) - 1;
+        if (hooks.calc) calcState.tick = { name: e.name, from: e.caster };
         const healingReceived = this.receiveHeal(e.heal as number);
+        calcState.tick = undefined;
         e.caster!.combatStatistics.recordHealingDone(healingReceived);
       } else if (e.trigger === "DamageOnTurn") {
         e.turns = (e.turns as number) - 1;
@@ -142,7 +185,9 @@ export class Combatant {
         dotStats.matk = dotStats.matk ?? 0;
         dotStats.crit = dotStats.crit ?? 0;
         dotStats.isDot = true;
+        if (hooks.calc) calcState.tick = { name: e.name, from: dotStats.attacker };
         this.receiveAttack(dotStats);
+        calcState.tick = undefined;
       }
     }
     for (let n = this.effectList.length - 1; n >= 0; n--) {
@@ -189,6 +234,11 @@ export class Combatant {
     }
     const target = this.getTarget();
     let result: Any;
+    // U40 (tracing only): what the skill sent, before the attacker's on-attack effects.
+    const send: Any = hooks.calc
+      ? { from: this, target, src: params?.damageSource ?? calcState.effects[calcState.effects.length - 1] ?? this._did,
+        stat: statsOf(this), base: parts3(attackParams), onAttack: [] }
+      : undefined;
     if (target.name === "Party") {
       if (params && truthy(params.damageRatio)) {
         let damRatio = params.damageRatio;
@@ -210,15 +260,25 @@ export class Combatant {
       if (truthy(effect.trigger) && effect.trigger === "OnAttack" && !effect.remove) {
         if (attackParams) {
           if (effect.dmgFunc) {
-            attackParams = effect.dmgFunc(attackParams);
+            attackParams = runDmgFunc(effect, attackParams);
           } else {
             for (const key of Object.keys(effect.stats)) attackParams[key] = attackParams[key] + effect.stats[key];
           }
+          if (send) send.onAttack.push({ name: effect.name, after: attackParams ? parts3(attackParams) : null });
         }
         if (!truthy(effect.turns)) effect.remove = true;
       }
     }
-    if (attackParams) result = target.receiveAttack(attackParams);
+    if (attackParams) {
+      if (send) {
+        calcState.sends.push(send);
+        try {
+          result = target.receiveAttack(attackParams);
+        } finally {
+          calcState.sends.pop();
+        }
+      } else result = target.receiveAttack(attackParams);
+    }
     return result;
   }
 
@@ -267,6 +327,7 @@ export class Combatant {
     }
     const e = this.effectList[effectID - 1];
     if (e && !truthy(e.trigger) && truthy(e.turns)) e.trigger = "OnTurn";
+    if (e && hooks.calc) hooks.calc.effect(this, e);
     this.determineStats(true);
   }
 
@@ -305,12 +366,21 @@ export class Combatant {
   }
 
   sendHeal(target: Any, amount: number, revive?: boolean, overload?: boolean, isPercent?: boolean): void {
-    const totalHeal = target.receiveHeal(amount, revive, overload, isPercent);
+    let totalHeal: number;
+    if (hooks.calc) {
+      calcState.heals.push({ from: this, src: calcState.effects[calcState.effects.length - 1] ?? this._did, stat: statsOf(this) });
+      try {
+        totalHeal = target.receiveHeal(amount, revive, overload, isPercent);
+      } finally {
+        calcState.heals.pop();
+      }
+    } else totalHeal = target.receiveHeal(amount, revive, overload, isPercent);
     this.combatStatistics.recordHealingDone(totalHeal);
   }
 
   receiveHeal(amount: number, revive?: boolean, overload?: boolean, isPercent?: boolean): number {
     if (this.isDead && !revive) return 0;
+    const hpBefore = this.questHP;
     if (revive) {
       this.isDead = false;
       this.questHP = 0;
@@ -328,16 +398,33 @@ export class Combatant {
       this.questHP = this.questHP + totalHeal;
     }
     this.combatStatistics.recordHealingTaken(totalHeal);
+    if (hooks.calc) {
+      const ctx = calcState.heals[calcState.heals.length - 1], tick = calcState.tick;
+      hooks.calc.heal({ seq: calcState.seq++, to: this, from: tick ? tick.from : ctx?.from,
+        src: tick ? tick.name : ctx ? ctx.src : calcState.effects[calcState.effects.length - 1], tick: Boolean(tick),
+        stat: tick ? null : ctx?.stat ?? null, amount, isPercent: Boolean(isPercent), revive: Boolean(revive), overload: Boolean(overload),
+        maxHP: this.maxHP, total: totalHeal, hpBefore, hpAfter: this.questHP });
+    }
     return totalHeal;
   }
 
   receiveAttack(attack: Any): Any {
+    // U40 (tracing only): the hit's calculation, stage by stage, with the values the game really used.
+    let rec: Any;
+    if (hooks.calc) {
+      const top = calcState.sends[calcState.sends.length - 1], tick = calcState.tick;
+      const send = !tick && top && (top.target === this || (top.target?.name === "Party" && this.partyLocation)) ? top : undefined;
+      rec = { seq: calcState.seq++, to: this, from: attack.attacker, src: tick ? tick.name : send ? send.src : attack.damageSource ?? attack.attacker?._did,
+        tick: Boolean(tick), stat: send?.stat ?? null, base: send?.base ?? null, onAttack: send?.onAttack ?? [], arrived: parts3(attack),
+        onDamage: [], received: [], hpBefore: this.questHP };
+    }
     if (attack.damageRatio) {
       const mod = attack.damageRatio[this.partyLocation];
       if (mod === 0) return { totalDamage: 0, atk: 0, matk: 0, crit: false, zeroRatio: true };
       attack.atk = attack.atk * mod;
       attack.matk = attack.matk * mod;
       attack.dmg = attack.dmg * mod;
+      if (rec) rec.ratio = mod;
     }
     const attacker = attack.attacker;
     const rawDamage = attack.atk + attack.matk + (attack.dmg ?? 0);
@@ -348,12 +435,13 @@ export class Combatant {
           const doRemove = !truthy(effect.turns);
           if (doRemove) effect.remove = true;
           if (effect.dmgFunc) {
-            attack = effect.dmgFunc(attack);
+            attack = runDmgFunc(effect, attack);
           } else if (effect.stats) {
             for (const key of Object.keys(effect.stats)) {
               if (truthy(attack[key])) attack[key] = attack[key] * effect.stats[key];
             }
           }
+          if (rec) rec.onDamage.push({ name: effect.name, after: parts3(attack), hitChance: attack.hitChance });
         }
       }
     }
@@ -369,6 +457,7 @@ export class Combatant {
     }
     if (!isHit) {
       attacker.combatStatistics.recordMiss();
+      if (rec) hooks.calc!.attack(Object.assign(rec, { missed: true, hitChance, total: 0, hpAfter: this.questHP }));
       return { missed: true, hitChance };
     }
     const critChance = random(1, 100);
@@ -394,6 +483,10 @@ export class Combatant {
     attack.magicDamage = mathRound(mdefReduction * attack.matk * dmgMod);
     attack.trueDamage = mathRound((attack.dmg ?? 0) * (isLuck ? dmgMod : 1));
     attack.totalDamage = attack.physicalDamage + attack.magicDamage + attack.trueDamage;
+    if (rec) {
+      Object.assign(rec, { hitChance, crit: isCrit, luck: isLuck, critChance: attack.crit, dmgMod, used: parts3(attack), def: this.def,
+        defPen: attack.defPen ?? 0, defRed: defReduction, mdef: this.mdef, mdefPen: attack.mdefPen ?? 0, mdefRed: mdefReduction, raw: dmg3(attack) });
+    }
     if (0 < attack.totalDamage) {
       for (let n = this.effectList.length - 1; n >= 0; n--) {
         const effect = this.effectList[n];
@@ -401,10 +494,11 @@ export class Combatant {
           const doRemove = !truthy(effect.turns);
           if (doRemove) effect.remove = true;
           if (effect.dmgFunc) {
-            attack = effect.dmgFunc(attack);
+            attack = runDmgFunc(effect, attack);
           } else {
             for (const key of Object.keys(effect.stats)) attack[key] = attack[key] * effect.stats[key];
           }
+          if (rec) rec.received.push({ name: effect.name, after: dmg3(attack) });
         }
       }
       attack.totalDamage = mathRound(attack.physicalDamage + attack.magicDamage + attack.trueDamage);
@@ -418,6 +512,7 @@ export class Combatant {
       this.isDead = true;
     }
     attacker.combatStatistics.recordAttackHit(attack, isCrit, isLuck);
+    if (rec) hooks.calc!.attack(Object.assign(rec, { total: attack.totalDamage, final: dmg3(attack), hpAfter: this.questHP }));
     return { totalDamage: attack.totalDamage, atk: attack.physicalDamage, matk: attack.magicDamage, crit: isCrit };
   }
 
