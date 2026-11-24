@@ -6,6 +6,7 @@ import * as api from "../src/sim/api.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { evaluate, evaluateTarget, partyProblem, partyRules, requiredSlots, searchParty, soloRows } from "../src/tools/combat.ts";
 import { optimiseFight } from "../src/tools/optimise.ts";
+import { catalogHero } from "./helpers/catalog-heroes.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 const sim = new Sim("Standard");
@@ -82,4 +83,17 @@ test("E23: a hero id of 0 is a hero, not an empty slot (only null / undefined ar
   assert.match(partyProblem({ quest: 81 }, [0, undefined, 2], []) ?? "", /needs a hero in front 2/);
   assert.match(partyProblem({ quest: 3 }, [null, 0, null], []) ?? "", /solo quest/);
   assert.match(partyProblem({ quest: 81 }, [null, null, null], [null, null, null]) ?? "", /the party is empty/);
+});
+
+test("an empty front row is targeted like a dead one: a back-row-only party takes the enemy's hits", () => {
+  // obj.Enemy.lua:99-129 getDamageRatio and obj.Party.lua getFirstRowRatio only look at living front heroes, so an
+  // empty front row falls back to the back row, as a dead one does. Murlok Monarch (quest 92) as a map room: the same
+  // hero alone in back 1 or in front 1 fights the same fights.
+  const h = catalogHero({ cls: 3, level: 30, prestige: 3 });
+  const back = evaluate(sim, 92, [null, null, null], [h, null, null], 20, false, 1, 1, true);
+  const front = evaluate(sim, 92, [h, null, null], [null, null, null], 20, false, 1, 1, true);
+  const { heroes: hb, ...b } = back, { heroes: hf, ...f } = front;
+  assert.deepEqual(b, f);
+  assert.deepEqual(hb.back1, hf.front1);
+  assert.ok(back.turns > 1 && hb.back1.taken > 0, "the back-row hero is hit");
 });

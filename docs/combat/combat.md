@@ -53,6 +53,15 @@ flowchart LR
 - Slots: back row = party locations 1, 3, 5; front row = 2, 4, 6.
 - Enemy default attack (`getDamageRatio`): split evenly over the living front row (each takes 1/n of the damage);
   back row only once the front row is dead. Not random, not by HP, no threat.
+- An **empty** front row counts as a dead one. `getDamageRatio` (`obj.Enemy.lua:99`–`129`) and
+  `Party:getFirstRowRatio` (`obj.Party.lua:208`) only look for living front heroes, so with none the default attack
+  and the `front` attacks go to the back row. The fight doesn't end early and the enemy doesn't skip its turn. A
+  back-row-only party (possible in a map run) is hit just like the same heroes in the front row.
+  - The Lua recordings (`web/test/fixtures/fights.json`) have 635 fights with an empty front row, and the port matches
+    all of them. In 435 of the 476 that last past turn 1, the back-row heroes take damage (the others: misses, heals, or
+    enemies that deal none). 7 of them are against Murlok Monarch, and in all 6 that last past turn 1 the back row is hit.
+  - A back-row-only party that wins "in 1.0 turns without damage" kills the enemy on turn 1, before it acts (it acts
+    last). Murlok Monarch has only 900 HP (× amount), so one strong hero can do that.
 - Skills can target `front` / `back` (full damage to each hero of that row, the other row if it is empty), `mid`
   (location 4), `midline` (locations 3 and 4: back 2 and front 2, `obj.Combatant.lua:156`; Fatal Gaze, Shadow
   Strike), `aoe` (all, full damage), a fixed location, or the lowest-HP hero (Execute, `getHeroByStat`). An empty
