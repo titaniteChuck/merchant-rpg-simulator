@@ -3,6 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
+import { current } from "../src/sim/battle.ts";
+import { hooks } from "../src/sim/combatant.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { buildTimelines, probeHeroSkill } from "../src/tools/skill-probe.ts";
 import {
@@ -37,6 +39,60 @@ test("turn order and effect windows follow the engine", () => {
   // Holy Shield: the whole party, until the enemy's next action
   const hs = probeHeroSkill(sim, "Holy Shield").effects[0];
   assert.deepEqual([hs.on, hs.facingTurns], ["party", [0]]);
+});
+
+test("effect durations in hero and enemy actions (lastsHeroActions / lastsEnemyActions)", () => {
+  // Murlok Monarch slot 5, Ancient Mist: Eva↑ turns 4 on the enemy itself (ticked at the end of its cast) = 3 enemy
+  // actions but 4 hero actions; Acc↓ turns 3 on the heroes = 3 of their actions. Tidal Wave: turns 4 = 4 hero actions
+  // (the game's description says 3).
+  const [eva, acc] = enemyTimeline(92).slots[4].effects;
+  assert.deepEqual([eva.name, eva.facingTurns, eva.lastsHeroActions, eva.lastsEnemyActions], ["Ancient Mist Eva↑", [1, 2, 3, 4], 4, 3]);
+  assert.deepEqual([acc.name, acc.ownerTurns, acc.lastsHeroActions, acc.lastsEnemyActions], ["Ancient Mist Acc↓", [1, 2, 3], 3, 3]);
+  const tw = enemyTimeline(92).slots[0].effects[0];
+  assert.deepEqual([tw.turns, tw.lastsHeroActions, tw.lastsEnemyActions], [4, 4, 4]);
+  // every enemy effect that lasts `turns`, whatever the turn order: on the heroes, `turns` actions of each side; on
+  // the enemy itself, `turns` hero actions and `turns` − 1 enemy actions
+  for (const t of Object.values(committed.timelines) as ReturnType<typeof enemyTimeline>[]) {
+    for (const s of t.slots) for (const e of s.effects) {
+      if (e.until !== "turns") continue;
+      const exp = e.on === "heroes" ? [e.turns, e.turns] : [e.turns, e.turns! - 1];
+      assert.deepEqual([e.lastsHeroActions, e.lastsEnemyActions], exp, `${t.quest}${t.rare ? "B" : ""} ${s.name} ${e.name}`);
+    }
+  }
+});
+
+test("Ancient Mist windows match a real fight (engine stats per hero action)", () => {
+  const heroes = [1, 2, 3, 4, 5, 6].map((id) => sim.hero({
+    id, heroID: id, name: `H${id}`, class: 1, level: 60, exp: 0, prestigeLevel: 3, hp: 300, questHP: 300,
+    attackList: [0, 0, 0, 0, 0], campaignID: -1, questListID: -1, heroInventory: [],
+  }));
+  const h1 = heroes[0];
+  const rows: { turn: number; acc: number; eva: number }[] = [];
+  let first = true;
+  const prev = { ...hooks }; // api.ts's own hooks (skill damage stats): keep them running
+  hooks.beforeAction = (c) => {
+    const b = current.battle!;
+    if (first) { // nobody dies: the fight runs past turn 15
+      b.enemy.questHP = b.enemy.maxHP = 1e8;
+      for (const h of heroes) h.questHP = h.maxHP = 1e8;
+      first = false;
+    }
+    return { turn: b.turns, prev: prev.beforeAction?.(c) };
+  };
+  hooks.afterAction = (c, n, before) => {
+    prev.afterAction?.(c, n, before.prev);
+    if (c === h1) rows.push({ turn: before.turn, acc: h1.acc, eva: current.battle!.enemy.eva });
+  };
+  try {
+    sim.fight(92, [heroes[1], heroes[3], heroes[5]], [heroes[0], heroes[2], heroes[4]], { seed: 7 });
+  } finally {
+    Object.assign(hooks, prev);
+  }
+  // cast on turn 10 (slot 5, enemy last): hero acc halved on turns 11-13, enemy eva up on turns 11-14
+  const at = (t: number) => rows.find((r) => r.turn === t)!;
+  const [acc0, eva0] = [at(10).acc, at(10).eva];
+  assert.deepEqual([11, 12, 13, 14].map((t) => at(t).acc < acc0), [true, true, true, false]);
+  assert.deepEqual([11, 12, 13, 14, 15].map((t) => at(t).eva > eva0), [true, true, true, true, false]);
 });
 
 test("skill tags", () => {

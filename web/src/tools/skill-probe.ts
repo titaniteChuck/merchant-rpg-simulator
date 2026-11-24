@@ -47,6 +47,14 @@ export interface EffectInfo {
   ownerTurns: number[];
   /** Battle turns in which the other side acts while the effect is on the owner. */
   facingTurns: number[];
+  /**
+   * `until: "turns"` effects only: how many hero actions and enemy actions run with the effect on, from the windows.
+   * `turns` counts the owner's own actions, so the other side can see one more: Ancient Mist's Eva↑ (`turns` 4 on the
+   * enemy itself, ticked at the end of its cast) is on for 3 enemy actions and 4 hero actions. Each hero's count;
+   * for a hero skill it is the caster's, and a hero acting after the caster on the cast turn gets one more.
+   */
+  lastsHeroActions?: number;
+  lastsEnemyActions?: number;
   /** Removed by a cleanse (debuffs on heroes) or a dispel (buffs on the enemy). */
   removable: boolean;
   /** For damage filters (shield, reflect...): what a test attack did against the owner, relative to no effect. */
@@ -394,6 +402,10 @@ function profile(cast: Cast, name: string, side: "hero" | "enemy", make: (after:
         : params.trigger === "OnAttack" ? "next-attack" : params.trigger === "OnDetermineAction" ? "next-attack" : "permanent"
       : "turns";
     const ownerIsEnemy = rep === battle.enemy;
+    // hero actions: the caster's own (a hero skill's turn-0 facing entries are the heroes acting after it)
+    const heroWin = ownerIsEnemy ? facingTurns.filter((d) => !heroCaster || d > 0) : ownerTurns;
+    const lasts = until === "turns"
+      ? { lastsHeroActions: heroWin.length, lastsEnemyActions: (ownerIsEnemy ? ownerTurns : facingTurns).length } : {};
     const info: EffectInfo = {
       name: ename, kind,
       on: ownSide ? (owners.length > 1 ? "party" : rep === caster ? "self" : "party") : heroCaster ? "enemy" : "heroes",
@@ -401,7 +413,7 @@ function profile(cast: Cast, name: string, side: "hero" | "enemy", make: (after:
       ...(params.stats && Object.keys(params.stats).length ? { stats: numeric(params.stats) } : {}),
       ...(params.turns !== undefined && params.turns !== null ? { turns: params.turns } : {}),
       ...(params.trigger ? { trigger: params.trigger } : {}),
-      until, ownerTurns, facingTurns,
+      until, ownerTurns, facingTurns, ...lasts,
       removable: !params.cannotDispell && (isHero(rep) ? Boolean(params.debuff) : !params.debuff),
     };
     if (["shield", "reflect", "counter", "vulnerability"].includes(kind)) {
@@ -550,7 +562,7 @@ export interface TimelinesData {
   timelines: Record<string, EnemyTimeline>;
 }
 
-export const TIMELINES_VERSION = 5;
+export const TIMELINES_VERSION = 6;
 
 export const timelineKey = (quest: number, rare = false) => `${quest}${rare ? "B" : ""}`;
 

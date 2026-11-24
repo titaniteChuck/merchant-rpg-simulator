@@ -127,6 +127,24 @@ Shield) gives every hero exactly "until the enemy's next action". Effects withou
 `OnDamage` / `DamageReceived` at the next hit taken, `OnAttack` at the next attack, `OnDetermineAction` at the next
 action. `Permanent` effects (stacking buffs) last the whole fight. A dead combatant loses all its effects.
 
+An effect with `turns` 0 left is still on, with its stats, until its owner's next action drops it
+(`determineEffectStats` and the trigger loops never look at `turns`). So the other side can act with it one more
+time than the owner:
+
+| Effect (enemy acting last, cast on turn k) | `turns` | Enemy actions | Hero actions |
+|---|---|---|---|
+| On the heroes (Ancient Mist Acc↓, Tidal Wave) | t | k + 1 … k + t: t | k + 1 … k + t: t |
+| On the enemy itself (Ancient Mist Eva↑, Harden) | t | k + 1 … k + t − 1: t − 1 | k + 1 … k + t: t |
+
+Murlok Monarch's Ancient Mist ("Gain Eva↑50%. Give Acc↓50% for 3 turns") is `turns` 4 for Eva↑ on itself and 3
+for Acc↓ on the heroes (`data.AbilityFunc.lua:2259`): Eva↑ is on for 3 enemy actions and 4 hero actions, Acc↓ for 3
+of each. In a real fight (slot 5 on turn 10) the heroes' acc is halved on turns 11-13 and the enemy's eva raised on
+turns 11-14. The game's texts give one of the two counts, not always the same one: enemy self-buffs with `turns` 4
+("3 turns": Harden, Iron Hide, Shadow Dance) count enemy actions; those with `turns` 3 ("3 turns": Obsidian Shield,
+Grand Duel, Bulwark) count hero actions. Five texts match neither, and the code wins: Tidal Wave and Unholy Cleave
+("3 turns", `turns` 4: 4 actions), Piercing strike and Weaken ("2 turns", `turns` 3), Ice Barrier's Ice ("3 turns",
+`turns` 2). The timelines carry both counts (`lastsHeroActions`, `lastsEnemyActions`).
+
 Examples (enemy acting last, cast on turn k): Soul Barrier (`turns` 2, on the enemy) reflects every hero action of
 turns k + 1 and k + 2; a hero debuff on the enemy with `turns` 1 (Ambush) weakens the enemy's action of the same turn
 and still counts for heroes acting before the enemy on turn k + 1. Measured windows for every skill:

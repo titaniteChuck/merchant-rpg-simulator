@@ -52,10 +52,19 @@ loadTimelines(json); enemyTimeline(quest, rare); skillProfile(name, side); skill
   - `ownerTurns`: the owner acts with the effect on;
   - `facingTurns`: the other side acts while the effect is on the owner.
 
+  Effects that last `turns` also have two counts from these windows: `lastsHeroActions` and `lastsEnemyActions`.
+  `turns` counts the owner's actions, and an effect at 0 stays on until the owner's next action, so the other side
+  can see one more ([effect timing](../../combat/combat.md#effect-timing)). In every enemy timeline: on the heroes, t
+  actions of each side; on the enemy itself, t hero actions and t − 1 enemy actions. Ancient Mist (Murlok Monarch)
+  is "3 enemy turns (covers 4 hero turns)" for its Eva↑ (`turns` 4) and 3 of each for its Acc↓ (`turns` 3). For a
+  hero skill, `lastsHeroActions` is the probe owner's (the caster for self and party effects); a hero acting after
+  the caster on the cast turn gets one more.
+
   Shields, reflects and counters also carry the result of a test hit (damage taken vs none, damage sent back).
 - Windows of effects that end at their first use are upper bounds, because the probe never attacks.
 - In enemy-skill probes the heroes deal no damage, so a forced Basic (Drown: each hero's next 2 actions) can't kill
-  the probe enemy and cut its windows short (`timelines.json` version 5).
+  the probe enemy and cut its windows short (`timelines.json` version 5). Version 6 adds the two counts; the
+  windows did not change.
 
 ## Counter-schedule score
 

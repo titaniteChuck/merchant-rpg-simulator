@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-24
+- **Effect durations (E24)**: the probe windows were right (Ancient Mist Eva↑ really covers 4 hero turns); `timelines.json` version 6 adds `lastsHeroActions` / `lastsEnemyActions` to every effect that lasts `turns`; windows and scores unchanged, warm start not rebuilt.
 - **Hero id 0 in a slot (E23)**: `partyProblem` / `checkParty` treat only `null` / `undefined` as an empty slot; a row of ids with hero 0 in a party quest's front 2 or a solo quest's front 1 is no longer refused.
 - **Map-only enemies (E20)**: levelling candidates are quest-board quests (single fights) and whole map runs (from level 10; room XP, craft + run time, map gold); map bosses and Treasure Bushes are never standalone quests; consecutive bands with the same source merge into one step; `quest-stats.ts` adds `questStats` / `mapRunStats` (XP, time, XP/min) for the UI.
 - **Tidy-up after E13-E21**: one consistent reference. Reports listed as `cmd*` functions with their options (no CLI flags); Search API adds `searchParties`, targets (`mapRoom`), `searchSkills` options and result fields, `searchParty` `lock`; party setup rules in the search methods, optimiser and limits; validation lists the Lua parity counts (3,000 fights, 400 map runs, 1,949 item rolls) and snapshots; code and test lists complete; warm start, schedule (Drown probe fix) and party search pages aligned.
