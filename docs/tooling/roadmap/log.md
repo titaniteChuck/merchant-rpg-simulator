@@ -75,3 +75,4 @@
 - **Update**: R2-C done (c30d660): Simulator and Solver on phones (review-r2). Its room-bar fade script is kept beside R2-A's CSS-only .scroll-row fades (works without scroll timelines; tested).
 - **Update**: R2-D done (248bfd9): Wiki on phones (review-r2); its own wiki sub-navigation rule dropped for R2-A's shared `.scroll-row`.
 - **Update**: L1 done (131325b): Levelling page first batch (review-levelling); Lua parity tests ran on the merge.
+- **Update**: L2 done (67f28f2): Levelling page second batch.
