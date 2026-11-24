@@ -14,8 +14,11 @@
  * save menu holds the expansions items ("I own Frozen Tome", "I own Scribe", "Show expansion content"). With no
  * save loaded, the top bar's expansions button (expansion-menu.ts) holds them instead.
  *
- * R1: the save menu is three groups split by separators (Save file; Expansions; the page's own entries such as the
- * save viewer's "Export (CSV)", folded under their title) and never taller than the window (it scrolls inside). The
+ * R1: the save menu is groups split by separators and never taller than the window (it scrolls inside). U44: it is THE
+ * Save dropdown (save-menu.ts; the main menu has no "Save ▾" any more): Save file, then the page's own entries such as
+ * the save viewer's "Export (CSV)" (folded under their title), then the Save pages (the save viewer's Overview,
+ * Heroes …), then Expansions. With no save loaded, expansion-menu.ts's "📜 Save ▾" dropdown stands in for it, with
+ * "Open your save" and "Try the example save" as its file actions. The
  * "Where is my save file?" help is one component (saveHelp), put under the drop zone of every page that calls
  * initSaveSource (the pages' HTML has none of its own).
  *
@@ -25,7 +28,8 @@
  * save (none stored, or the stored one can't be read), and the picker then shows.
  */
 import { el } from "./dom.ts";
-import { expansionMenuSection, fitMenu, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
+import { expansionMenuSection, mountExpansionChip, type SaveAction, unmountExpansionChip } from "./expansion-menu.ts";
+import { fitMenu, menuKeys, menuSep, placeChip, saveChipButton, savePagesGroup } from "./save-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
@@ -103,6 +107,12 @@ export function initSaveSource(o: SaveSourceOptions): void {
   const help = saveHelp();
   exampleRow.after(help);
 
+  /** The file actions of the Save dropdown with no save loaded. */
+  const noSaveActions = (): SaveAction[] => [
+    { label: "📂 Open your save", hint: "Choose your save file (PlayerData.txt, Slot2Data.txt …)", run: () => chooseSave(pickerOpts) },
+    { label: "🧪 Try the example save", hint: "Load an anonymised real save, to try the tools without your own file", run: () => void useExample() },
+  ];
+
   const setLoaded = (loaded: boolean) => {
     document.documentElement.classList.toggle(HAS_SAVE_CLASS, loaded);
     dropBlock.hidden = loaded;
@@ -111,7 +121,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     if (!loaded) {
       chip?.remove();
       chip = null;
-      mountExpansionChip(); // no save menu: the expansions toggles get their own button
+      mountExpansionChip(noSaveActions()); // no save: the Save dropdown without one (U44)
     }
   };
 
@@ -121,8 +131,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     const canReread = Boolean(await getHandle());
     chip?.remove();
     const menu = el("div", { class: "save-menu", role: "menu", hidden: "" });
-    const button = el("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false",
-      title: `Save: ${name}, opened ${age(savedAt)}` }, "📜 ", el("span", { class: "save-chip-name" }, name), " ▾");
+    const button = saveChipButton(name, `Save: ${name}, opened ${age(savedAt)}`);
     const close = () => {
       menu.hidden = true;
       button.setAttribute("aria-expanded", "false");
@@ -135,8 +144,8 @@ export function initSaveSource(o: SaveSourceOptions): void {
       });
       return b;
     };
-    // R1 F45: three groups split by separators (the file, the expansions, the page's exports, folded), and the menu
-    // never taller than the window (it scrolls inside, fitMenu).
+    // R1 F45 / U44: groups split by separators (the file, the page's exports folded, the Save pages, the expansions),
+    // and the menu never taller than the window (it scrolls inside, fitMenu).
     const fileGroup = el("div", { class: "save-menu-group", role: "group", "aria-label": "Save file" },
       el("p", { class: "muted small save-menu-title" }, "Save file"),
       ...(isExample ? [] : [item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload)]),
@@ -144,12 +153,11 @@ export function initSaveSource(o: SaveSourceOptions): void {
       ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
       item("🗑 Forget", "Remove the save from this browser", forget));
     const extras = el("div", { class: "save-menu-extras save-menu-group", role: "group" });
-    const sep = () => el("div", { class: "save-menu-sep", role: "separator" });
-    const extrasSep = sep();
+    const extrasSep = menuSep();
     menu.append(
       el("p", { class: "muted small save-menu-head" }, el("strong", {}, name), el("br"),
         isExample ? `an anonymised real save · opened ${age(savedAt)}` : `opened ${age(savedAt)} · kept in this browser only`),
-      fileGroup, sep(), expansionMenuSection(), extrasSep, extras);
+      fileGroup, extrasSep, extras, menuSep(), savePagesGroup(close), menuSep(), expansionMenuSection());
     /** The page's own entries (folded under their title), rebuilt on every opening: they follow what the page shows. */
     const fillExtras = () => {
       const x = o.menuExtras?.();
@@ -184,10 +192,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     // Escape closes; Up / Down move between the menu items (menu pattern), wrapping.
     menuKeys(chip, menu, button, close);
     unmountExpansionChip(); // the save menu holds the expansions toggles
-    const bar = document.querySelector(".topbar");
-    const gh = bar?.querySelector(".gh");
-    if (bar && gh) bar.insertBefore(chip, gh);
-    else o.status.after(chip); // a page without the top bar
+    if (!placeChip(chip)) o.status.after(chip); // a page without the top bar
   };
 
   const loaded = async (name: string, savedAt: number) => {
@@ -256,7 +261,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
   // The save opened on any page before: use it right away. U38: theme.js already hid the picker when it expects one
   // (<html class="has-save">); without a save the expansions button stands in for the save menu from the start.
   const expected = document.documentElement.classList.contains(HAS_SAVE_CLASS);
-  if (!expected) mountExpansionChip();
+  if (!expected) mountExpansionChip(noSaveActions());
   getSave().then(async (s) => {
     setSaveFlag(Boolean(s)); // a save kept before U38, or site data cleared in part: the hint follows the store
     if (!s) {

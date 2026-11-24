@@ -63,7 +63,10 @@ flowchart LR
   save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Sections: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters. CSV downloads (heroes,
-  hero gear, inventory, maps, crafters; whole tables) are in the top-bar save menu.
+  hero gear, inventory, maps, crafters; whole tables) are in the top-bar Save dropdown, "All" first (U44): every table
+  in one file, `all_tables.csv`, whose first column `table` names the table of each row (then the union of the
+  tables' columns, a column a table lacks left empty; `withAllTables` / `allTablesRows` in `save-tables.ts`). One
+  combined file because the site has no zip writer.
   Each section has a hash (`#overview`, `#heroes`, `#inventory`, `#maps`, `#crafters`) and is reached from the site's
   menus (U35, [Menus](#menus): the Save dropdown, the second row under the top bar once a save is loaded, the phone
   drawer); the in-page tabs are gone. A section link is a normal hash link (`hashchange` re-renders, Back works). No
@@ -937,9 +940,10 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
 - Controls (`web/src/ui/expansion-menu.ts`): "I own Frozen Tome", "I own Scribe" (`menuitemcheckbox`; the hover
   text gives the save's guess and its evidence, the line under says "from the save", "not in the save", "no save" or
   "set by hand"), "Show expansion content", "↺ Use the save's guess" (only while a toggle is set by hand) and "What the
-  expansions add →". A toggle that agrees with the save's guess clears its override. They end the save menu when a
-  save is loaded; otherwise (no save, the wiki, the class balance) a small top-bar button (❄ ✒ ▾, "Expansions" in its
-  label) holds the same menu. Up / Down / Escape as in the save menu (`menuKeys`). The items update in place: the menu
+  expansions add →". A toggle that agrees with the save's guess clears its override. They end the Save dropdown when
+  a save is loaded; otherwise (no save, the wiki, the class balance) the no-save Save dropdown (U44: "📜 Save ❄ ✒ ▾",
+  `mountExpansionChip`, which before U44 was an "Expansions" button) holds them, after its Save file and Save pages
+  groups. Up / Down / Escape as in the save menu (`menuKeys`). The items update in place: the menu
   stays open.
 - Badge (`dom.ts`): `expansionBadge(needs)` = one inline-SVG icon per expansion (a snowflake for the Frozen Tome,
   colour `--xp-frozen`; a quill for Scribe, `--xp-scribe`), each `role="img"` with "Frozen Tome expansion" /
@@ -1125,9 +1129,9 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows and Steam Deck
     paths, slot file names) under the drop zone of every page that uses `initSaveSource`, hidden once a save is
     loaded. R1-D: the pages' own HTML helps and the `data-save-help` marker are gone.
-  - Save menu: three groups split by separators: Save file (Reload, Choose another file, Try the example save,
-    Forget), Expansions, then the page's entries folded under their title ("Export (CSV) ▸" in the save viewer). The
-    menu (and the expansions button's) is never taller than the window: `fitMenu` in `expansion-menu.ts` sets its
+  - Save menu: groups split by separators. U44 order: Save file (Reload, Choose another file, Try the example save,
+    Forget), the page's entries folded under their title ("Export (CSV) ▸" in the save viewer), Save pages, then
+    Expansions (see [Menus](#menus)). The menu is never taller than the window: `fitMenu` (`save-menu.ts`) sets its
     `max-height` to the room under it and it scrolls inside.
 - Regression sweep: `web/scripts/check-site.ts` (local, needs Chrome; how to run it in `tools/README.md`). At 600 px and
   less it also checks that the top bar and the tab rows are one line high (U20). Menus (U35): above 760 px the main
@@ -1158,7 +1162,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   "📜 Example save ▾". Its menu has no Reload and says "Open your own save" instead of "Choose another file"; Forget
   works as usual. A failed download (offline, HTTP error, empty file) shows "Could not load the example save: …" and
   leaves the page as it was. A page can add its own menu entries
-  (`menuExtras`, rebuilt at each opening): the save viewer's "Export (CSV)" group (U18), one download per table.
+  (`menuExtras`, rebuilt at each opening): the save viewer's "Export (CSV)" group (U18), one download per table, "All" first (U44, every table in one file).
 - File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
   open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.
 - Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest
@@ -1175,55 +1179,72 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
 ### Menus
 
 U35, `web/src/ui/nav.ts` (bundled as `js/nav.js`, a module in every page's head; CSS block `/* menus + drawer */ …
-/* end menus + drawer */` at the end of `style.css`). One list, `NAV`, holds every page and sub-page; the desktop
-menu, its dropdowns, the second row and the phone drawer are all built from it, so the HTML pages carry no links of
-their own (only the brand and the GitHub link). `web/test/nav.test.ts` checks that every `site/*.html` is in `NAV`
-and loads `js/nav.js`, that the wiki links are routes of `wiki.ts` and the save links its `TABS`, and the current-item
-rules.
+/* end menus + drawer */` at the end of `style.css`). One list, `NAV` (`web/src/ui/nav-data.ts`, pure data and
+`currentNav`, no DOM, so the pages' bundles can read it too), holds every page and sub-page; the desktop menu, its
+dropdowns, the second row, the phone drawer and the Save dropdown's Save pages are all built from it, so the HTML
+pages carry no links of their own (only the brand and the GitHub link). `web/test/nav.test.ts` checks that every
+`site/*.html` is in `NAV` and loads `js/nav.js`, that the wiki links are routes of `wiki.ts` and the save links its
+`TABS`, and the current-item rules; `web/test/nav-u44.test.ts` the U44 rules (Save dropdown, "All" export, Battle
+entry, no Battle second row).
 
 ```mermaid
 flowchart LR
-  N[NAV in nav.ts] --> D[Desktop menu + dropdowns]
-  N --> R[Second row: current section]
+  N[NAV in nav-data.ts] --> D[Desktop menu + dropdowns]
+  N --> R[Second row: Save, Wiki]
   N --> M[Phone drawer]
+  N --> S[Top-bar Save dropdown: Save pages]
 ```
 
-| Section | Sub-pages |
+| Main menu | Sub-pages |
 | --- | --- |
 | Home | – |
-| Save ▾ | Overview, Heroes, Inventory, Maps, Crafters |
-| Battle ▾ | Simulator, Solver (U41; two pages, `battle.html` and `solver.html`) |
+| Battle ▾ | Simulator, Solver (U41; two pages, `battle.html` and `solver.html`); no page of its own (U44) |
 | Wiki ▾ | Search; Items: Equipment, Consumables, Materials; World: Maps, Enemies; Heroes: Classes, Skills, Passives; Reference: Stats, Battle, Expansions |
 | More ▾ | Other tools: Profit, Farming, Levelling, Balance (frozen tools) |
+| (top-bar Save dropdown) | Save pages: Overview, Heroes, Inventory, Maps, Crafters (U44; `inSaveMenu` in `NAV`) |
 
 - Desktop (above 760 px): `<nav class="mainnav" aria-label="Site">` in the top bar after the brand. A section with
-  sub-pages is its link plus a ▾ button (`aria-expanded`, `aria-controls`) that opens its dropdown (disclosure
-  pattern, not an ARIA menu); More is a ▾ button only. The wiki dropdown shows its groups in four columns under a
+  a page of its own and sub-pages (Wiki) is its link plus a ▾ button (`aria-expanded`, `aria-controls`) that opens its
+  dropdown (disclosure pattern, not an ARIA menu); Battle and More (no page of their own) are a ▾ button only
+  (`.menu-only`): a click opens the dropdown and never a page (U44; Battle's entry opened the Simulator before), with
+  the same keys and ARIA. The wiki dropdown shows its groups in four columns under a
   Search row. A mouse opens a dropdown on hover too; a click elsewhere, Tab out of it or Escape (focus back on ▾)
   closes it; Down / Up on ▾ open it on the current (or last) link; Up / Down / Home / End move inside; Left / Right
   move between the top entries. A dropdown that would pass the right edge shifts left. The current section gets
   `.is-current` (darker, gold underline); its own link `aria-current="true"` when a sub-page is current.
+- Save dropdown (U44): ONE "📜 … ▾" button in the right side of the top bar holds the save's choice and actions and
+  the save viewer's pages; the main menu has no "Save ▾" and the drawer no Save section (phones keep the top-bar
+  button, its file name hidden). Groups, split by separators: Save file (Reload, Choose another file, Try the example
+  save, Forget; with no save, Open your save and Try the example save, or a link "📂 Open a save" to the save viewer on
+  a page that doesn't read saves), the page's entries ("Export (CSV) ▸", folded: All, Heroes, Hero gear, Inventory,
+  Maps, Crafters), Save pages (links with `data-nav`, the current one `aria-current="page"`, kept in step by `mark()`),
+  then Expansions. Three builders, all in `.save-chip` before the GitHub link: `save-source.ts` (a save loaded),
+  `expansion-menu.ts` `mountExpansionChip` (no save, on a page that reads one or shows expansion content) and
+  `save-menu.ts` `mountNavSaveChip` (put by `nav.ts` on every page: on Home, and until a page puts its own;
+  `placeChip` swaps it out). `save-menu.ts` also holds `savePagesGroup`, `fitMenu`, `menuKeys` (Up / Down / Escape).
 - Second row (desktop): the current section's sub-pages as chips under the top bar (`nav.subnav`, the former wiki
-  chips' look; groups split by a thin bar). It replaces the wiki's static chip row and the save viewer's tabs; the
-  save row only shows once a save is loaded (`save-viewer.ts` sets `data-save-loaded` on `<html>`). Between 761 and
-  1100 px the top bar stays one line: "GitHub" and the save file name give way to the icons, and below 960 px the
-  site name to the coin.
+  chips' look; groups split by a thin bar), only for a section with a page of its own and sub-pages: Save and Wiki.
+  U44: none on the Battle pages (Battle has no page of its own). It replaces the wiki's static chip row and the save
+  viewer's tabs; the save row only shows once a save is loaded (`save-viewer.ts` sets `data-save-loaded` on `<html>`).
+  Between 761 and 1100 px the top bar stays one line: "GitHub" and the save file name give way to the icons, and
+  below 960 px the site name to the coin.
 - Phone (760 px and less): the menu and the second row are hidden; a burger (`.nav-burger`, `aria-expanded`,
   `aria-controls="nav-drawer"`) at the left of the top bar opens a left drawer, `dialog#nav-drawer` opened with
   `showModal()` (the page behind is inert; Tab and Shift+Tab also wrap inside it): a banner head with the coin, the
-  site name and a close button, then every section, its sub-pages as nested lists behind a ▾ toggle (the current
-  section unfolded, the others folded), the current page highlighted and focused. Escape, the close button, a tap on
-  the backdrop or on a link close it (focus back on the burger); widening past 760 px closes it; the page doesn't
-  scroll behind it (`html.drawer-open`). It slides in from the left (0.2 s), not with reduced motion.
-- Current page: `currentNav(path, hash)`: the page's file name picks the section (More for the frozen tools); in the
-  save viewer the hash picks the section (`#hero=<id>` is Heroes, no or an unknown hash Overview); in the wiki the
-  route's first part, a detail route counting for its list (`#/enemy/97` → Enemies, `#/item/material/12` →
-  Materials, `#/stats/hit-chance` → Stats); a sub-page that is a page of its own (Battle's Simulator and Solver, U41)
-  is found by its file name. Marked on load and on every `hashchange` / `popstate`
-  (`aria-current="page"` in the menu, the second row and the drawer). A section with sub-pages marks its own top
-  link `aria-current="true"` even when it is the same page as a sub-page (Battle and Simulator).
-- The right-side controls are not built here: `theme.js` (theme, language), `save-source.ts` (save chip) and
-  `expansion-menu.ts` (expansions chip) insert them before the GitHub link, as before.
+  site name and a close button, then every section but Save (in the top-bar Save dropdown, U44), its sub-pages as
+  nested lists behind a ▾ toggle (the current section unfolded, the others folded; Battle and More are a toggle only),
+  the current page highlighted and focused. Escape, the close button, a tap on the backdrop or on a link close it
+  (focus back on the burger); widening past 760 px closes it; the page doesn't scroll behind it (`html.drawer-open`).
+  It slides in from the left (0.2 s), not with reduced motion.
+- Current page: `currentNav(path, hash)`: the page's file name picks the section (More for the frozen tools, Battle
+  for the Simulator and the Solver); in the save viewer the hash picks the section (`#hero=<id>` is Heroes, no or an
+  unknown hash Overview); in the wiki the route's first part, a detail route counting for its list (`#/enemy/97` →
+  Enemies, `#/item/material/12` → Materials, `#/stats/hit-chance` → Stats); a sub-page that is a page of its own
+  (Battle's Simulator and Solver) is found by its file name. Marked on load and on every `hashchange` / `popstate`
+  (`aria-current="page"` in the menu, the second row, the drawer and the Save dropdown). A section with a page of its
+  own and sub-pages marks its own top link `aria-current="true"` when a sub-page is current.
+- The other right-side controls are not built here: `theme.js` (theme, language) inserts them before the GitHub
+  link, as before.
 
 ### Scroll position
 

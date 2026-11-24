@@ -1,140 +1,30 @@
 /**
- * The site's menus (U35), built once for every page from NAV (js/nav.js, a module in every page's head):
+ * The site's menus (U35), built once for every page from NAV (nav-data.ts; js/nav.js, a module in every page's head):
  *
- * - Desktop (wider than 760 px): the top bar's main menu (Home, Save ▾, Battle ▾, Wiki ▾, More ▾). A section's sub-pages
+ * - Desktop (wider than 760 px): the top bar's main menu (Home, Battle ▾, Wiki ▾, More ▾). A section's sub-pages
  *   open in a dropdown under its ▾ button (the wiki's grouped in columns); More holds the frozen tools (Profit,
- *   Farming, Levelling, Balance). The current section's sub-pages also sit in a compact second row under the top bar
- *   (.subnav: the save viewer's sections, Battle's Simulator and Solver (U41), the wiki's), so they stay one click away.
+ *   Farming, Levelling, Balance). Battle and More have no page of their own: their entry only opens the dropdown
+ *   (U44). The save viewer's and the wiki's sub-pages also sit in a compact second row under the top bar (.subnav), so
+ *   they stay one click away; Battle's two pages have none (U44).
  * - Phone (760 px and less): a burger at the left of the top bar opens a left drawer (a modal <dialog>: focus kept
  *   inside, Escape, a tap on the backdrop or on a link closes it) with every section and its sub-pages as nested lists;
  *   the current section is unfolded.
+ * - Save (U44): no main-menu entry and no drawer section. The save viewer's pages are a group of the ONE top-bar Save
+ *   dropdown (save-menu.ts), with the save's own actions; on phones too (the chip stays in the top bar). This module
+ *   puts a plain Save dropdown (the viewer's pages and a link to open a save) in the top bar of every page; a page that
+ *   handles the save (save-source.ts, expansion-menu.ts) replaces it with its full one.
  *
  * The current page and sub-page (hash routes: wiki #/…, save #heroes, #hero=<id> …) are marked aria-current
- * everywhere, on load and at every hashchange. The right side of the top bar (theme, language, save / expansions
- * chips, GitHub) is not built here: theme.js, save-source.ts and expansion-menu.ts insert it before the GitHub link.
+ * everywhere, on load and at every hashchange. The rest of the right side of the top bar (theme, language, GitHub) is
+ * not built here: theme.js inserts it.
  *
  * U38: this module also mounts the scroll memory of every page (scroll-memory.ts), as soon as it runs.
  */
 import { mountScrollMemory } from "./scroll-memory.ts";
 
-export interface NavItem { label: string; href: string; title?: string }
-/** A run of sub-pages, with an optional heading ("Items"). */
-export interface NavGroup { label?: string; items: NavItem[] }
-export interface NavSection {
-  id: string;
-  label: string;
-  /** The section's own page; none for a menu that only groups pages (More). */
-  href?: string;
-  title?: string;
-  groups?: NavGroup[];
-}
-
-/** The one list of the site's pages and sub-pages: the menus, the drawer and the second row all come from it. */
-export const NAV: NavSection[] = [
-  { id: "home", label: "Home", href: "./", title: "Home: every tool" },
-  {
-    id: "save", label: "Save", href: "save.html", title: "Save viewer",
-    groups: [{ items: [
-      { label: "Overview", href: "save.html#overview" },
-      { label: "Heroes", href: "save.html#heroes" },
-      { label: "Inventory", href: "save.html#inventory" },
-      { label: "Maps", href: "save.html#maps" },
-      { label: "Crafters", href: "save.html#crafters" },
-    ] }],
-  },
-  {
-    // U41: two pages; the section's own link is the Simulator.
-    id: "battle", label: "Battle", href: "battle.html", title: "Battle simulator",
-    groups: [{ items: [
-      { label: "Simulator", href: "battle.html", title: "Battle simulator: your party, hundreds of fights" },
-      { label: "Solver", href: "solver.html", title: "Battle solver: the parties that win (a spoiler)" },
-    ] }],
-  },
-  {
-    id: "wiki", label: "Wiki", href: "wiki.html", title: "Wiki: everything in the game",
-    groups: [
-      { items: [{ label: "Search", href: "wiki.html#/", title: "Search the wiki" }] },
-      { label: "Items", items: [
-        { label: "Equipment", href: "wiki.html#/items/equipment" },
-        { label: "Consumables", href: "wiki.html#/items/consumable" },
-        { label: "Materials", href: "wiki.html#/items/material" },
-      ] },
-      { label: "World", items: [
-        { label: "Maps", href: "wiki.html#/maps" },
-        { label: "Enemies", href: "wiki.html#/enemies" },
-      ] },
-      { label: "Heroes", items: [
-        { label: "Classes", href: "wiki.html#/classes" },
-        { label: "Skills", href: "wiki.html#/skills" },
-        { label: "Passives", href: "wiki.html#/passives" },
-      ] },
-      { label: "Reference", items: [
-        { label: "Stats", href: "wiki.html#/stats", title: "How every number is calculated" },
-        { label: "Battle", href: "wiki.html#/battle", title: "How a fight runs" },
-        { label: "Expansions", href: "wiki.html#/expansions", title: "The two paid expansions" },
-      ] },
-    ],
-  },
-  {
-    id: "more", label: "More", title: "Other tools",
-    groups: [{ label: "Other tools", items: [
-      { label: "Profit", href: "profit.html", title: "Profit calculator" },
-      { label: "Farming", href: "farming.html", title: "Farming planner" },
-      { label: "Levelling", href: "levelling.html", title: "Levelling planner" },
-      { label: "Balance", href: "class-balance.html", title: "Class balance: every class on equal gear" },
-    ] }],
-  },
-];
-
-export const itemsOf = (s: NavSection): NavItem[] => (s.groups ?? []).flatMap((g) => g.items);
-
-/** A wiki detail route names its list in the singular: #/enemy/97 belongs to #/enemies. */
-const WIKI_LIST: Record<string, string> = { skill: "skills", passive: "passives", map: "maps", enemy: "enemies", class: "classes", item: "items" };
-
-/** The sub-page `page` + `hash` belong to, in a section whose page is open; undefined when none does. */
-function currentItem(s: NavSection, page: string, hash: string): string | undefined {
-  const items = itemsOf(s).map((i) => i.href);
-  if (s.id === "save") {
-    const h = hash.toLowerCase();
-    if (/^#hero=/.test(h)) return "save.html#heroes";
-    return items.includes(`save.html${h}`) ? `save.html${h}` : "save.html#overview"; // no hash or an unknown one: Overview
-  }
-  if (s.id === "wiki") {
-    let route = hash.replace(/^#\/?/, "");
-    try {
-      route = decodeURIComponent(route);
-    } catch { /* a malformed escape: as typed */ }
-    const [a = "", b = ""] = route.split("/");
-    const list = WIKI_LIST[a] ?? a;
-    const href = `wiki.html#/${list === "items" ? `items/${b}` : list}`;
-    return items.includes(href) ? href : undefined;
-  }
-  // Sub-pages that are pages of their own (Battle: Simulator, Solver).
-  return items.find((i) => samePage(i, page));
-}
-
-/** The file name of a page path ("/merchant/wiki.html" → "wiki.html"; the site root → "index.html"). */
-export function pageOf(path: string): string {
-  return path.split("/").pop() || "index.html";
-}
-
-const samePage = (href: string, page: string) => (href === "./" ? "index.html" : href.split("#")[0]) === page;
-
-/** The section and the link (a NAV href) that `path` + `hash` show. */
-export function currentNav(path: string, hash: string): { section?: string; href?: string } {
-  const page = pageOf(path);
-  for (const s of NAV) {
-    // A section's page, or one of its sub-pages that is a page of its own (the Solver, U41).
-    if (s.href && (samePage(s.href, page) || itemsOf(s).some((i) => samePage(i.href, page)))) {
-      return { section: s.id, href: s.groups ? currentItem(s, page, hash) : s.href };
-    }
-    if (!s.href) {
-      const it = itemsOf(s).find((i) => samePage(i.href, page));
-      if (it) return { section: s.id, href: it.href };
-    }
-  }
-  return {};
-}
+export { currentNav, itemsOf, NAV, pageOf, type NavGroup, type NavItem, type NavSection } from "./nav-data.ts";
+import { currentNav, NAV, type NavItem, type NavSection } from "./nav-data.ts";
+import { mountNavSaveChip } from "./save-menu.ts";
 
 // ---------------------------------------------------------------- DOM
 const PHONE = "(max-width: 760px)";
@@ -187,6 +77,7 @@ function groupsList(s: NavSection, idPrefix: string): HTMLElement[] {
 function buildMenuBar(): HTMLElement {
   const bar = h("ul", { class: "menu-bar" });
   for (const s of NAV) {
+    if (s.inSaveMenu) continue; // in the top-bar Save dropdown (U44)
     const li = h("li", { class: "menu-item", "data-section": s.id });
     if (s.href) li.append(link({ label: s.label, href: s.href, title: s.title }, "menu-top"));
     if (s.groups) {
@@ -331,6 +222,7 @@ function buildDrawer(brand: HTMLAnchorElement | null): { dialog: HTMLDialogEleme
     h("a", { class: "brand drawer-brand", href: brand?.getAttribute("href") ?? "./" }, brand?.textContent ?? "Merchant RPG Simulator"), closeBtn);
   const list = h("ul", { class: "drawer-list" });
   for (const s of NAV) {
+    if (s.inSaveMenu) continue; // in the top-bar Save dropdown, which phones keep too (U44)
     const li = h("li", { class: "drawer-sec", "data-section": s.id });
     const row = h("div", { class: "drawer-row" });
     if (s.href) row.append(link({ label: s.label, href: s.href, title: s.title }, "drawer-top"));
@@ -481,8 +373,11 @@ export function mountNav(): void {
   document.body.append(dialog);
   wireDrawer(dialog, burger, closeBtn);
 
+  // The second row: a section with a page of its own and sub-pages (Save, Wiki); not Battle (no page of its own, U44).
   const cur = NAV.find((s) => s.id === currentNav(location.pathname, location.hash).section);
   if (cur?.href && cur.groups) bar.after(buildSubnav(cur));
+
+  mountNavSaveChip(); // the plain Save dropdown, until (or unless) the page puts its own (U44)
 
   mark();
   addEventListener("hashchange", mark);

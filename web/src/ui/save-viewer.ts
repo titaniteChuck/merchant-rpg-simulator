@@ -16,7 +16,7 @@ import { initSaveSource } from "./save-source.ts";
 import { badgeFor } from "./expansion-state.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  type ApBudget, crafterRows, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv,
+  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, summary, toCsv, withAllTables,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -35,18 +35,25 @@ function downloadCsv(name: string, rows: Row[]): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** CSV downloads, one per table, offered in the top-bar save menu (save-source.ts menuExtras). */
+/**
+ * CSV downloads offered in the top-bar save menu (save-source.ts menuExtras): "All" first (every table in one file,
+ * a "table" column saying which, U44), then one per table.
+ */
 function csvExports(): { label: string; hint: string; run: () => void }[] {
   if (!current) return [];
   const { sv, views } = current;
-  const one = (label: string, file: string, rows: () => Row[]) => ({ label: `⬇ ${label}`, hint: `Download ${file}.csv`, run: () => downloadCsv(file, rows()) });
-  return [
-    one("Heroes", "heroes", () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) }))),
-    one("Hero gear", "hero_gear", () => gearRows(views)),
-    one("Inventory", "inventory", () => inventoryRows(sv)),
-    one("Maps", "maps", () => mapRows(sv)),
-    one("Crafters", "crafters", () => crafterRows(sv)),
+  const tables: CsvTable[] = [
+    { label: "Heroes", file: "heroes", rows: () => views.map((v) => ({ ...v.row, ...(v.stats ?? {}) })) },
+    { label: "Hero gear", file: "hero_gear", rows: () => gearRows(views) },
+    { label: "Inventory", file: "inventory", rows: () => inventoryRows(sv) },
+    { label: "Maps", file: "maps", rows: () => mapRows(sv) },
+    { label: "Crafters", file: "crafters", rows: () => crafterRows(sv) },
   ];
+  return withAllTables(tables).map((t) => ({
+    label: `⬇ ${t.label}`,
+    hint: t.file === ALL_TABLES_FILE ? `Download every table in one file, ${t.file}.csv (its first column names the table)` : `Download ${t.file}.csv`,
+    run: () => downloadCsv(t.file, t.rows()),
+  }));
 }
 
 function toolbar(...kids: Node[]): HTMLElement {

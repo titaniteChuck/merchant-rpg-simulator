@@ -1730,6 +1730,10 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .save-menu-fold[aria-expanded="true"] .fold-mark { transform: rotate(90deg); }
 .save-menu-sub { display: flex; flex-direction: column; }
 .save-menu-sub[hidden] { display: none; }
+/* U44: the Save dropdown's links (the Save pages, "Open a save"), styled as its buttons; the current page marked. */
+.save-menu .save-menu-link { display: block; padding: 7px 10px; border-radius: 8px; font-weight: 600; text-decoration: none; color: var(--fg); }
+.save-menu .save-menu-link:hover, .save-menu .save-menu-link:focus-visible { background: var(--card-2); color: var(--accent); }
+.save-menu .save-menu-link[aria-current="page"] { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--trim); }
 /* end r1 global */
 /* r1 wiki ref */
 /* R1 F26: Expansions tab as cards (wiki-expansions.ts); the long lists span the whole row. */

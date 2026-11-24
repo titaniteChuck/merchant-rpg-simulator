@@ -1,12 +1,16 @@
 /**
  * The expansions controls (U28): "I own Frozen Tome", "I own Scribe" (the save's guess, overridden by hand) and
- * "Show expansion content", as menu items. They sit in the save menu (save-source.ts) when a save is loaded; on a page
- * without one (no save yet, the wiki, the class balance) a small expansions button in the top bar holds the same menu.
+ * "Show expansion content", as menu items. They sit in the top-bar Save dropdown (save-menu.ts): the one of a loaded
+ * save (save-source.ts) or, on a page without one (no save yet, the wiki, the class balance), the "📜 Save ▾" dropdown
+ * built here (mountExpansionChip, U44: it also holds a way to open a save and the Save pages).
  * Also the "N hidden" notes the pages put under a filtered list. State: expansion-state.ts.
  */
 import { EXPANSIONS } from "../tools/expansions.ts";
 import { notOwnedWhy } from "./expansion-why.ts";
 import { el, EXPANSION_LABEL, expansionBadge, EXPANSIONS_HREF } from "./dom.ts";
+import { fitMenu, menuKeys, menuSep, menuTitle, placeChip, SAVE_PAGE, saveChipButton, savePagesGroup } from "./save-menu.ts";
+
+export { fitMenu, menuKeys } from "./save-menu.ts";
 import {
   type Expansion, inferredState, overrideOf, owns, setOverride, setOwned, setShowAll, showAll, subscribe,
 } from "./expansion-state.ts";
@@ -81,53 +85,31 @@ export function expansionMenuSection(): HTMLElement {
   return box;
 }
 
-/** Keep an open top-bar menu inside the window: at most the height left under it, scrolling inside (R1 F45). */
-export function fitMenu(menu: HTMLElement): void {
-  menu.style.maxHeight = "";
-  const top = menu.getBoundingClientRect().top;
-  menu.style.maxHeight = `${Math.max(160, window.innerHeight - top - 12)}px`;
-}
-
-/** Up / Down move between a menu's items (wrapping), Escape closes it and gives the focus back to its button. */
-export function menuKeys(chip: HTMLElement, menu: HTMLElement, button: HTMLElement, close: () => void): void {
-  chip.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      close();
-      button.focus();
-      return;
-    }
-    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu.hidden) {
-      const items = [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter((i) => !i.hidden && i.offsetParent !== null);
-      const i = items.indexOf(document.activeElement as HTMLElement);
-      const j = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
-      e.preventDefault();
-      items[j]?.focus();
-    }
-  });
-}
-
 let chip: HTMLElement | null = null;
 
+/** A save action of the no-save dropdown (save-source.ts: open your save, try the example save). */
+export interface SaveAction { label: string; hint: string; run: () => void }
+
 /**
- * The top-bar expansions button and its menu, for a page with no save menu (no save loaded, or a page that never
- * asks for one). save-source.ts removes it while its save chip (which holds the same items) is there.
+ * The top-bar Save dropdown with no save loaded (U44; the expansions button before): "📜 Save ▾" with the expansion
+ * icons, holding the save file group (`actions` on a page that reads a save; else a link to the save viewer), the Save
+ * pages and the expansions. save-source.ts removes it while its own dropdown (a save loaded) is there.
  */
-export function mountExpansionChip(): void {
+export function mountExpansionChip(actions?: SaveAction[]): void {
   if (chip?.isConnected) return;
-  const bar = document.querySelector(".topbar");
-  if (!bar) return;
-  const menu = el("div", { class: "save-menu", role: "menu", hidden: "", "aria-label": "Expansions" });
+  if (!document.querySelector(".topbar")) return;
+  const menu = el("div", { class: "save-menu", role: "menu", hidden: "", "aria-label": "Save" });
   const icons = el("span", { class: "xp-chip-icons" });
-  const button = el("button", { type: "button", class: "save-chip-btn xp-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false" },
-    icons, el("span", { class: "save-chip-name" }, "Expansions"), " ▾");
-  const note = el("p", { class: "muted small" });
+  const button = saveChipButton("Save", "Save: none loaded", icons);
+  button.classList.add("xp-chip-btn");
+  const note = el("p", { class: "muted small save-menu-head" });
   const sync = () => {
     const owned = XP.filter(owns);
     icons.replaceChildren(expansionBadge(XP));
     icons.classList.toggle("xp-none", !owned.length && !showAll());
     const inf = inferredState();
     const state = `${owned.length ? `You own ${owned.map((x) => EXPANSIONS[x].name).join(" and ")}` : "No expansion owned"}${showAll() ? "; all expansion content shown" : ""}`;
-    button.title = `Expansions: ${state}`;
+    button.title = `Save: none loaded. Expansions: ${state}`;
     note.textContent = inf.source === null
       ? "No save loaded: expansion content is hidden unless you own it (set it below) or show it."
       : `Ownership guessed from ${inf.source}; set it by hand below.`;
@@ -136,13 +118,25 @@ export function mountExpansionChip(): void {
     menu.hidden = true;
     button.setAttribute("aria-expanded", "false");
   };
-  menu.append(note, expansionMenuSection());
+  const action = (x: SaveAction) => {
+    const b = el("button", { type: "button", role: "menuitem", title: x.hint }, x.label);
+    b.addEventListener("click", () => {
+      close();
+      x.run();
+    });
+    return b;
+  };
+  const file = actions?.length ? actions.map(action)
+    : [el("a", { role: "menuitem", class: "save-menu-link", href: SAVE_PAGE, title: "The save viewer: choose your save file, or try the example save" }, "📂 Open a save")];
+  menu.append(note,
+    el("div", { class: "save-menu-group", role: "group", "aria-label": "Save file" }, menuTitle("Save file"), ...file),
+    menuSep(), savePagesGroup(close), menuSep(), expansionMenuSection());
   button.addEventListener("click", () => {
     menu.hidden = !menu.hidden;
     button.setAttribute("aria-expanded", String(!menu.hidden));
     if (!menu.hidden) {
       fitMenu(menu);
-      menu.querySelector<HTMLElement>(".xp-toggle")?.focus();
+      menu.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
     }
   });
   chip = el("div", { class: "save-chip xp-chip" }, button, menu);
@@ -153,8 +147,7 @@ export function mountExpansionChip(): void {
   menuKeys(chip, menu, button, close);
   subscribe(sync);
   sync();
-  const gh = bar.querySelector(".gh");
-  bar.insertBefore(chip, gh);
+  placeChip(chip);
 }
 
 export function unmountExpansionChip(): void {

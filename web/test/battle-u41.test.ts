@@ -11,13 +11,12 @@ const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const head = (html: string) => html.slice(0, html.indexOf("</head>"));
 
-test("menu: Battle has two sub-entries, Simulator and Solver, for the dropdown, the second row and the drawer", () => {
+test("menu: Battle has two sub-entries, Simulator and Solver, for the dropdown and the drawer", () => {
   const battle = NAV.find((s) => s.id === "battle")!;
   assert.equal(battle.label, "Battle");
-  assert.equal(battle.href, "battle.html");
+  // U44: no page of its own (its entry only opens the dropdown, like More), so no second row either (nav-u44.test.ts).
+  assert.equal(battle.href, undefined);
   assert.deepEqual(itemsOf(battle).map((i) => [i.label, i.href]), [["Simulator", "battle.html"], ["Solver", "solver.html"]]);
-  // A section with its own page and sub-pages gets a ▾ dropdown and a drawer sub-list (built from groups) and, when
-  // current, the second row: the same rule as Save and Wiki.
   const nav = read("web/src/ui/nav.ts");
   assert.match(nav, /if \(cur\?\.href && cur\.groups\) bar\.after\(buildSubnav\(cur\)\)/);
   for (const s of NAV.filter((x) => x.id === "save" || x.id === "wiki")) assert.ok(s.href && s.groups, s.id);

@@ -264,3 +264,22 @@ export function toCsv(rows: Row[]): string {
   };
   return [keys.join(","), ...rows.map((r) => keys.map((k) => cell(r[k])).join(","))].join("\n") + "\n";
 }
+
+/** One table of the save viewer's CSV exports: its menu label, its file name (no extension) and its rows. */
+export interface CsvTable { label: string; file: string; rows: () => Row[] }
+
+/** The file name of the "All" export (all_tables.csv). */
+export const ALL_TABLES_FILE = "all_tables";
+
+/**
+ * U44: every table in one CSV: a first "table" column names the table a row comes from (its file name), then the union
+ * of the tables' columns (a column a table lacks stays empty).
+ */
+export function allTablesRows(tables: CsvTable[]): Row[] {
+  return tables.flatMap((t) => t.rows().map((r) => ({ table: t.file, ...r })));
+}
+
+/** The export list: "All" (every table in one file) first, then each table. */
+export function withAllTables(tables: CsvTable[]): CsvTable[] {
+  return [{ label: "All", file: ALL_TABLES_FILE, rows: () => allTablesRows(tables) }, ...tables];
+}

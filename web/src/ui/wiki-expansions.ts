@@ -107,7 +107,7 @@ function status(): HTMLElement {
   const now = owned.length ? `You own ${owned.map((x) => EXPANSIONS[x].name).join(" and ")}` : "You own no expansion";
   const from = byHand ? " (set by hand)" : inf.source === null ? " (no save loaded)" : ` (guessed from ${inf.source})`;
   return el("p", { class: "xp-controls" }, `${now}${from}${showAll() ? "; expansion content is shown anyway" : ""}. `,
-    "Change it in the ", el("strong", {}, "Expansions"), " menu of the top bar.");
+    "Change it under ", el("strong", {}, "Expansions"), " in the top bar's 📜 Save menu.");
 }
 
 export function expansionsPage(topic?: string): HTMLElement {
@@ -128,7 +128,7 @@ export function expansionsPage(topic?: string): HTMLElement {
         + "“expansion content” entry, so the numbers still add up.",
       "Ownership is a guess from your save. The game keeps your purchases in another file (UserInfo.usr), which the site never "
         + "reads, so the save can only prove you own an expansion (a Bard, a hero above level 50 or in Frentir, maps, ascended items, essences, "
-        + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand in the Expansions menu of the top bar.",
+        + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand under Expansions in the top bar's 📜 Save menu.",
       `An item counts as expansion content when none of its sources (quest drops, loot, crafts, map essences) can be reached without the `
         + `expansion. The ${bushes} Treasure Bushes and the map bosses follow their maps.`,
     ]),

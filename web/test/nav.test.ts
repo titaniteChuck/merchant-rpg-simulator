@@ -9,8 +9,9 @@ const site = new URL("../../site/", import.meta.url);
 const src = (f: string) => readFileSync(new URL(`../src/ui/${f}`, import.meta.url), "utf8");
 const allHrefs = NAV.flatMap((s) => [...(s.href ? [s.href] : []), ...itemsOf(s).map((i) => i.href)]);
 
-test("main menu: Home, Save, Battle, Wiki, then More with the frozen tools", () => {
+test("main menu: Home, Battle, Wiki, then More with the frozen tools; Save's pages are in the top-bar Save dropdown (U44)", () => {
   assert.deepEqual(NAV.map((s) => s.label), ["Home", "Save", "Battle", "Wiki", "More"]);
+  assert.deepEqual(NAV.filter((s) => !s.inSaveMenu).map((s) => s.label), ["Home", "Battle", "Wiki", "More"]);
   assert.deepEqual(itemsOf(NAV.find((s) => s.id === "more")!).map((i) => i.label), ["Profit", "Farming", "Levelling", "Balance"]);
 });
 
@@ -45,6 +46,7 @@ test("current section and sub-page", () => {
   assert.deepEqual(c("/merchant-rpg-simulator/"), { section: "home", href: "./" });
   assert.deepEqual(c("/index.html"), { section: "home", href: "./" });
   assert.deepEqual(c("/battle.html"), { section: "battle", href: "battle.html" });
+  assert.deepEqual(c("/solver.html"), { section: "battle", href: "solver.html" });
   assert.deepEqual(c("/levelling.html"), { section: "more", href: "levelling.html" });
   assert.deepEqual(c("/class-balance.html"), { section: "more", href: "class-balance.html" });
   // save: no hash / unknown = Overview; a hero page belongs to Heroes
