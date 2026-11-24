@@ -1,4 +1,5 @@
 /** Small DOM helpers shared by the site's pages. */
+import { compareNames } from "./names.ts";
 
 export type Cell = string | number | boolean | null | undefined;
 export type Row = Record<string, Cell>;
@@ -122,7 +123,7 @@ export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string
   const render = () => {
     const sorted = sortKey ? [...rows].sort((a, b) => {
       const x = a[sortKey], y = b[sortKey];
-      const c = typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""));
+      const c = typeof x === "number" && typeof y === "number" ? x - y : compareNames(String(x ?? ""), String(y ?? "")); // names in the visitor's language (U29)
       return asc ? c : -c;
     }) : rows;
     tbody.replaceChildren(...sorted.map((r) => {

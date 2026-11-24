@@ -6,6 +6,7 @@
  *
  *   cd web && npm run site && node scripts/check-site.ts            # all pages, all variants
  *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt --widths 414
+ *   node scripts/check-site.ts --lang fr                                # game names in French (U29; default English)
  *
  * How: a small HTTP server serves _site/ and injects a probe script into every page (console.error / warn, error
  * and unhandledrejection events, horizontal overflow). Each run loads a wrapper page that first puts the save into
@@ -56,6 +57,8 @@ const WIDTHS = (opt("widths") ?? "1280,375").split(",").map(Number);
 // More than ~4 Windows Chromes at once start failing (exit 255) or time out.
 const jobs = Math.max(1, Number(opt("jobs") ?? 3));
 const settleMs = Number(opt("settle") ?? 8000);
+/** U29: the language of game names (site/theme.js "lang"), English by default. */
+const lang = opt("lang") ?? "en";
 const savePath = opt("save") ?? [join(ROOT, "saves/snapshot/PlayerData.txt"), join(ROOT, "site/data/example-save.txt")].find(existsSync) ?? "";
 const saveText = existsSync(savePath) ? readFileSync(savePath, "utf8") : null;
 
@@ -112,6 +115,8 @@ const P = new URLSearchParams(location.search);
 const width = Number(P.get("w")), withSave = P.get("save") === "1", settle = Number(P.get("settle"));
 // The site's theme is a stored choice (site/theme.js: dark unless "light"), not the OS setting.
 localStorage.setItem("theme", P.get("theme") === "light" ? "light" : "dark");
+// U29: game names in this language (site/theme.js reads "lang"; English when unset).
+localStorage.setItem("lang", P.get("lang") || "en");
 function idb() {
   return new Promise((ok, ko) => {
     const r = indexedDB.open("merchant-rpg-simulator", 1);
@@ -243,7 +248,7 @@ function runOnce(base: string, r: Run): Promise<Result> {
   const page = PAGES[r.page];
   const [path, hash = ""] = page.split("#");
   const src = `/${path}?__run=${r.id}${hash ? `#${hash}` : ""}`;
-  const url = `${base}/__frame.html?__run=${r.id}&w=${r.width}&save=${r.save ? 1 : 0}&theme=${r.theme}&settle=${settleMs}&src=${encodeURIComponent(src)}`;
+  const url = `${base}/__frame.html?__run=${r.id}&w=${r.width}&save=${r.save ? 1 : 0}&theme=${r.theme}&lang=${lang}&settle=${settleMs}&src=${encodeURIComponent(src)}`;
   const argv = [`--headless=new`, `--user-data-dir=${profileDir(r.id)}`, "--no-first-run", "--no-default-browser-check",
     `--window-size=${Math.max(r.width, 600) + 40},1000`, `--blink-settings=preferredColorScheme=${r.theme === "dark" ? 0 : 1}`, url];
   return new Promise((done) => {
@@ -295,7 +300,7 @@ async function main(): Promise<void> {
       runs.push({ page, width, theme, save, id: `r${++k}` });
     }
   }
-  console.log(`check-site: ${runs.length} runs, ${jobs} at a time, browser ${CHROME}${saveText ? "" : " (no save: runs with a save skipped)"}`);
+  console.log(`check-site: ${runs.length} runs, ${jobs} at a time, game names in ${lang}, browser ${CHROME}${saveText ? "" : " (no save: runs with a save skipped)"}`);
   const results: Result[] = [];
   let next = 0;
   await Promise.all(Array.from({ length: jobs }, async () => {

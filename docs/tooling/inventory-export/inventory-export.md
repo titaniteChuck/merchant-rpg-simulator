@@ -76,8 +76,8 @@ committed like `wikidata.json` (game text, no assets).
   from English) and `missing` fields. All 8 languages are 100% covered; anything missing falls back to English.
 - Sizes: 69 KB (en) to 105 KB (ru) per language, index 5 KB.
 - Runtime: `web/src/tools/i18n.ts` (pure, browser-safe): `loadLanguage(json)`, `setLanguage(code)`,
-  `currentLanguage()`, `tr(kind, id, field = "n")` → string or `undefined` (caller keeps its English). Not wired
-  into the UI yet.
+  `currentLanguage()`, `tr(kind, id, field = "n")` → string or `undefined` (caller keeps its English). Wired
+  into the UI by U29 (`web/src/ui/names.ts`, see the website's Languages section).
 - Findings: placeholder items and quests (77 equipment, 12 materials, 8 consumables, quests 39–41, 58–60, 75, 76) have
   no text. 6 English skill texts differ from `abilityData.desc` (Absorb Atk/Matk, Demon Slash, Disharmony, Siphon
   Soul, Sunder); the game shows the TextData one. Quest nicknames and titles are often left in English (FR 71%

@@ -18,6 +18,8 @@ import type { FarmRequest, FarmResponse } from "./farming-worker.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
 import { badgeFor, isVisible, subscribe } from "./expansion-state.ts";
+import { languageReady, onLanguageChange } from "./language.ts";
+import { className, enemyName, itemName, itemNameFromEnglish, prefixName, suffixName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -67,7 +69,7 @@ function restoreParty(heroes: number): boolean {
 function renderParty(): void {
   const sv = state.sv!;
   const options: [string, string][] = [["", "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] =>
-    [String(i), `${h.name} · ${G.heroList[h.class]?.name ?? h.class} lv ${h.level}`])];
+    [String(i), `${h.name} · ${className(h.class) ?? h.class} lv ${h.level}`])];
   const rows = (["front", "back"] as const).map((row) => el("div", { class: "toolbar" },
     el("span", { class: "muted small", style: "min-width: 5.5em" }, row === "front" ? "🛡️ Front" : "🏹 Back"),
     ...[0, 1, 2].map((i) => {
@@ -97,7 +99,7 @@ interface SourceChoice {
 
 const questLabel = (id: number, rare: boolean) => {
   const q = G.questData[id];
-  return el("span", {}, `👹 ${rare ? q.nameB : q.name}`, el("span", { class: "muted small" }, ` · level ${q.levelReq ?? "?"}${rare ? " · rare" : ""}`));
+  return el("span", {}, `👹 ${enemyName(id, rare) ?? (rare ? q.nameB : q.name)}`, el("span", { class: "muted small" }, ` · level ${q.levelReq ?? "?"}${rare ? " · rare" : ""}`));
 };
 
 function checkbox(label: Node | string, checked: boolean, value: string): HTMLLabelElement {
@@ -108,8 +110,8 @@ function checkbox(label: Node | string, checked: boolean, value: string): HTMLLa
 
 /** Owned map label: prefix + name + suffix, outlined for its ascension. */
 function ownedMapLabel(it: Any): HTMLElement {
-  const pre = it.prefix ? G.prefixList[it.prefix]?.name : "", suf = it.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
-  const name = [pre, G.itemData.map?.[it.id]?.name ?? `map ${it.id}`, suf].filter(Boolean).join(" ");
+  const pre = it.prefix ? prefixName(it.prefix) : "", suf = it.suffix > 0 ? suffixName(it.suffix) : "";
+  const name = pre || suf ? [pre, itemName("map", it.id) ?? `map ${it.id}`, suf].filter(Boolean).join(" ") : undefined;
   return el("span", { class: "nowrap" }, itemLink("map", it.id, name, undefined, it.prestigeLevel, { always: true }), " ", gradeBadge(GRADES[(it.grade ?? 3) - 1] ?? String(it.grade)));
 }
 
@@ -125,7 +127,7 @@ function renderSources(): void {
   const rare = checkbox("Also the rare variants (where the quest has one)", false, "rare");
   const questBox = el("details", { class: "help" }, el("summary", {}, `Quests (preselected: level ${Math.max(0, maxLevel - 12)}–${maxLevel}, around your heroes)`),
     ...[...bands].map(([b, list]) => el("fieldset", { class: "plain" }, el("legend", { class: "muted small" }, `Level ${b}–${b + 9}`),
-      el("div", { class: "toolbar" }, ...list.map(([id, q]) => checkbox(el("span", {}, `${q.name} (lv ${q.levelReq ?? "?"})`, badgeFor("enemy", id) ?? ""), near(q), `quest:${id}`))))),
+      el("div", { class: "toolbar" }, ...list.map(([id, q]) => checkbox(el("span", {}, `${enemyName(id) ?? q.name} (lv ${q.levelReq ?? "?"})`, badgeFor("enemy", id) ?? ""), near(q), `quest:${id}`))))),
     rare);
   // Maps you own, then catalog maps at ascension 0/1.
   const owned = sv.mapInventory;
@@ -137,10 +139,10 @@ function renderSources(): void {
   const catBox = el("details", { class: "help" }, el("summary", {}, "Catalog maps (grade S, no prefix or suffix): pick ascension 0 and/or 1"),
     el("div", { class: "toolbar" }, ...catalog.flatMap(([id, m]) => [
       checkbox(el("span", {}, itemLink("map", id), el("span", { class: "muted small" }, ` lv ${m.itemLevel ?? "?"}`)), false, `cat:${id}:0`),
-      ...(isVisible("map", id, { ascension: 1 }) ? [checkbox(el("span", {}, itemLink("map", id, `${m.name}`, undefined, 1)), false, `cat:${id}:1`)] : []),
+      ...(isVisible("map", id, { ascension: 1 }) ? [checkbox(el("span", {}, itemLink("map", id, undefined, undefined, 1)), false, `cat:${id}:1`)] : []),
     ])));
   const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
-    .map((id): [string, string] => [String(id), G.itemData.consumable[id].name])];
+    .map((id): [string, string] => [String(id), itemName("consumable", id) ?? G.itemData.consumable[id].name])];
   const scrolls = [0, 1, 2].map((k) => select({ class: "farm-scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
   $("#sources").replaceChildren(
     el("h3", {}, "⚔️ Quests"), questBox,
@@ -193,8 +195,12 @@ function partyRequest(): Pick<FarmRequest, "front" | "back" | "skills"> {
   return { front, back, skills };
 }
 
+/** The last result, drawn again in another language (U29). */
+let drawLast: (() => void) | null = null;
+
 function run(): void {
   const out = $("#results");
+  drawLast = null;
   const party = partyRequest();
   if (![...party.front, ...party.back].some(Boolean)) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, "Put at least one hero in the party."));
@@ -234,7 +240,10 @@ function run(): void {
     }
     stop();
     if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
-    else out.replaceChildren(...results(m.rows, choices, m.ms));
+    else {
+      drawLast = () => out.replaceChildren(...results(m.rows, choices, m.ms));
+      drawLast();
+    }
   };
   w.onerror = (e) => {
     stop();
@@ -266,7 +275,7 @@ function results(rows: FarmRow[], choices: SourceChoice[], ms: number): HTMLElem
   const data = ranked.map(({ r }, i) => ({
     i, rank: i + 1, value: r.value_per_hour, gold: r.gold_per_hour, essence: r.essence_per_hour, win: r.win, grade: r.grade,
     minutes: r.time_h * 60, cost: r.cost.total, loot: r.loot_value, ess_run: r.essence_total, deaths: r.death_rate,
-    ess_names: Object.entries(r.essence).map(([k, v]) => `${fmt1.format(v)} ${k}`).join(", "),
+    ess_names: Object.entries(r.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", "),
   }));
   return [headline, tiles,
     table(data, [
@@ -288,7 +297,7 @@ function results(rows: FarmRow[], choices: SourceChoice[], ms: number): HTMLElem
 
 // ---------------------------------------------------------------- page
 async function loadSave(text: string, name: string): Promise<void> {
-  await Promise.all([loadData(), loadWikiText()]);
+  await Promise.all([loadData(), loadWikiText(), languageReady]);
   let sv: Save;
   try {
     sv = loadSaveText(text);
@@ -323,7 +332,18 @@ function init(): void {
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
   // The expansion switches changed: rebuild the sources, keeping what was ticked and the scrolls.
-  subscribe(() => {
+  subscribe(rebuildSources);
+  // U29: another language: the party pickers, the sources and the last result again, choices kept.
+  onLanguageChange(() => {
+    if (!state.sv) return;
+    renderParty();
+    rebuildSources();
+    if (!state.worker) drawLast?.();
+  });
+}
+
+function rebuildSources(): void {
+  {
     if (!state.sv) return;
     const ticked = new Map([...document.querySelectorAll<HTMLInputElement>("#sources input[type=checkbox]")].map((c) => [c.value, c.checked]));
     const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.farm-scroll")].map((s) => s.value);
@@ -334,7 +354,7 @@ function init(): void {
     document.querySelectorAll<HTMLSelectElement>("select.farm-scroll").forEach((s, k) => {
       if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
     });
-  });
+  }
 }
 
 init();

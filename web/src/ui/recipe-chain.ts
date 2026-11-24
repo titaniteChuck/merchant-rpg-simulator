@@ -7,15 +7,15 @@
  * borders, so the frame scrolls sideways on a phone.
  */
 import { el, fmt } from "./dom.ts";
-import { item, itemLink } from "./wiki-data.ts";
+import { itemLink } from "./wiki-data.ts";
 import { durationText, type RecipeNode, recipeTree } from "./wiki-items.ts";
-import { G } from "../sim/data.ts";
+import { crafterName as crafterOf, itemName } from "./names.ts";
 
-const crafterName = (id: number): string => (G as unknown as { crafterData?: Record<number, { name?: string }> }).crafterData?.[id]?.name ?? "";
+const crafterName = (id: number): string => crafterOf(id) ?? "";
 
 /** "4 × Adaman Ingot (1 min each)". */
 const hiddenText = (n: RecipeNode) =>
-  n.hidden.map((h) => `${h.amount} × ${item(h.type, h.id)?.name ?? `${h.type} #${h.id}`} (${durationText(h.time)} each)`).join(", ");
+  n.hidden.map((h) => `${h.amount} × ${itemName(h.type, h.id) ?? `${h.type} #${h.id}`} (${durationText(h.time)} each)`).join(", ");
 
 function totalTip(n: RecipeNode): string {
   const what = [n.kids.length ? "the equipment ingredients on its left" : "", n.hidden.length ? `the crafted materials, not drawn: ${hiddenText(n)}` : ""]
@@ -38,7 +38,7 @@ function box(n: RecipeNode, root: boolean): HTMLElement {
 function node(n: RecipeNode, root = false): HTMLElement {
   if (!n.kids.length) return el("div", { class: "rc-node" }, box(n, root));
   const kids = n.kids.map((k) => el("div", { class: "rc-kid" }, node(k),
-    el("span", { class: "rc-amt", title: `${k.amount} needed per ${n.name}` }, `×${k.amount}`)));
+    el("span", { class: "rc-amt", title: `${k.amount} needed per ${itemName(n.type, n.id) ?? n.name}` }, `×${k.amount}`)));
   return el("div", { class: "rc-node" }, el("div", { class: `rc-kids${kids.length === 1 ? " rc-one" : ""}` }, ...kids), box(n, root));
 }
 
@@ -47,7 +47,7 @@ export function recipeChain(type: string, id: number): HTMLElement | null {
   if (type !== "equipment") return null;
   const t = recipeTree(type, id);
   if (!t || !t.time) return null;
-  const label = `Crafting chain of ${t.name}: ${t.depth} equipment step${t.depth > 1 ? "s" : ""}, ${durationText(t.totalTime)} and ${fmt.format(t.totalCost)} gold in all`;
+  const label = `Crafting chain of ${itemName(t.type, t.id) ?? t.name}: ${t.depth} equipment step${t.depth > 1 ? "s" : ""}, ${durationText(t.totalTime)} and ${fmt.format(t.totalCost)} gold in all`;
   return el("div", {},
     el("div", { class: "rc-frame", role: "group", "aria-label": label, tabindex: "0" }, el("div", { class: "rc-tree" }, node(t, true))),
     el("p", { class: "muted small" },

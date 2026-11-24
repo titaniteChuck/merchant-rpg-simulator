@@ -14,6 +14,7 @@ import { sectionHelp, withHelp } from "./wiki-help.ts";
 import { isVisible } from "./expansion-state.ts";
 import { hiddenNote } from "./expansion-menu.ts";
 import { rarityChip } from "./wiki-items.ts";
+import { enemyName, itemName, skillName } from "./names.ts";
 import { amountOddsText, amountRange, BASE_GRADE, fixedAmounts, LOOT_GRADES, lootTable, pctText } from "./wiki-loot.ts";
 
 /** [quest key (the rare variant adds "B"), label]. */
@@ -26,7 +27,7 @@ function enemyRow(id: number, rare: boolean, mod = 1): Row {
   const q = quest(id);
   const sfx = rare ? "B" : "";
   // A Treasure Bush shows the level range of the maps it spawns in and sorts by the lowest (enemyLevelText).
-  const r: Row = { id, rare, name: rare ? q.nameB : q.name, level: isTreasureBush(id) ? enemyLevelSort(id) : q.levelReq ?? null, levelText: enemyLevelText(id) };
+  const r: Row = { id, rare, name: enemyName(id, rare) ?? (rare ? q.nameB : q.name), level: isTreasureBush(id) ? enemyLevelSort(id) : q.levelReq ?? null, levelText: enemyLevelText(id) };
   for (const [k, label] of ENEMY_STATS) r[label] = q[k + sfx] !== undefined ? Math.round(q[k + sfx] * mod) : null;
   return r;
 }
@@ -54,7 +55,7 @@ export function rotationSummary(list: string[]): { skill: string; count: number 
  */
 export function skillSummaryText(id: number, rare: boolean): string {
   const real = rotationSummary(rotation(id, rare)).filter((s) => s.skill !== "Basic");
-  return real.length ? real.map((s) => (s.count > 1 ? `${s.skill} ×${s.count}` : s.skill)).join(", ") : "Basic only";
+  return real.length ? real.map((s) => (s.count > 1 ? `${skillName(s.skill)} ×${s.count}` : skillName(s.skill))).join(", ") : "Basic only";
 }
 
 /**
@@ -64,7 +65,7 @@ export function skillSummaryText(id: number, rare: boolean): string {
 function skillLine(id: number, rare: boolean): HTMLElement {
   const list = rotation(id, rare);
   const sum = rotationSummary(list);
-  const title = `Turns 1–${list.length}: ${list.join(" → ")}`;
+  const title = `Turns 1–${list.length}: ${list.map(skillName).join(" → ")}`;
   if (sum.every((s) => s.skill === "Basic")) return el("span", { class: "skill-line muted", title }, "Basic attack only");
   const parts = sum.map((s) => s.skill === "Basic"
     ? el("span", { class: "muted small" }, `Basic ×${s.count}`)
@@ -96,9 +97,11 @@ export function enemyListRows(): Row[] {
   return enemyIds().map((id): Row => {
     const reg = regionOf("enemy", id);
     return {
-      ...enemyRow(id, false), kind: enemyKind(id), rareName: hasRare(id) ? quest(id).nameB : "", maps: enemyMapRoles(id).length,
+      ...enemyRow(id, false), kind: enemyKind(id), rareName: hasRare(id) ? enemyName(id, true) ?? quest(id).nameB : "", maps: enemyMapRoles(id).length,
+      // U29: the filter also matches the English names
+      en: [quest(id).name, hasRare(id) ? quest(id).nameB : ""].filter(Boolean).join(" "),
       region: regionSortKey(reg, enemyLevelSort(id)), regionId: reg?.id ?? 0, regionName: regionText(reg),
-      skills: [...new Set([...rotation(id, false), ...(hasRare(id) ? rotation(id, true) : [])])].join(" "),
+      skills: [...new Set([...rotation(id, false), ...(hasRare(id) ? rotation(id, true) : [])])].flatMap((s) => [...new Set([s, skillName(s)])]).join(" "),
     };
   }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id));
 }
@@ -205,7 +208,7 @@ function variantCard(id: number, rare: boolean): HTMLElement {
   const q = quest(id);
   const tl = timelineOf(id, rare);
   return el("div", { class: `enemy-variant${rare ? " rare" : ""}` },
-    el("h3", {}, rare ? q.nameB : q.name, ...(rare ? [" ", pill("rare", "t-pink")] : [])),
+    el("h3", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), ...(rare ? [" ", pill("rare", "t-pink")] : [])),
     withHelp(banner("Timeline"), tl ? [TIMELINE_HELP, stripNote(tl)] : TIMELINE_HELP, "the timeline"),
     tl ? enemyStrip(tl, { note: false }) : rotationList(id, rare),
     withHelp(banner("Drops"), DROPS_HELP, "the drops"), dropsBlock(id, rare));
@@ -222,7 +225,7 @@ function mapsTable(id: number): HTMLElement {
   const rows: Row[] = roles.map(({ map, room, boss, treasure }) => {
     const m = item("map", map);
     const mod = m.enemyMod ?? 1;
-    return { map, name: m.name, level: m.itemLevel ?? null, role: [room ? "room" : "", boss ? "boss" : "", treasure ? "treasure" : ""].filter(Boolean).join(" "),
+    return { map, name: itemName("map", map) ?? m.name, level: m.itemLevel ?? null, role: [room ? "room" : "", boss ? "boss" : "", treasure ? "treasure" : ""].filter(Boolean).join(" "),
       mod, hp: Math.round(hp * mod) };
   });
   const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };

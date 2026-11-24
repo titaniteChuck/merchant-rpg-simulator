@@ -19,6 +19,10 @@ import {
 import { el } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
+import { enemyName, skillName } from "./names.ts";
+
+/** The timeline's enemy in the visitor's language (U29). */
+const tlName = (tl: EnemyTimeline): string => enemyName(tl.quest, tl.rare) ?? tl.name;
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -148,7 +152,7 @@ function enemyCell(s: Any, turn: number, desc = true): HTMLElement {
   const text = desc && s.name !== "Basic" ? skillDesc(s.name) : "";
   const cell = el("div", { class: "tl-cell enemy" }, el("span", { class: "tl-turn", "aria-hidden": "true" }, `T${turn}`),
     tagIcons(s.tags, "enemy"), name, ...(text ? [el("span", { class: "tl-desc" }, text)] : []));
-  cell.title = `Turn ${turn}: ${s.name}${s.tags.length ? ` (${s.tags.map((t: SkillTag) => tagWords(t, "enemy")).join(", ")})` : ""}`;
+  cell.title = `Turn ${turn}: ${skillName(s.name)}${s.tags.length ? ` (${s.tags.map((t: SkillTag) => tagWords(t, "enemy")).join(", ")})` : ""}`;
   return linkCard(cell, s.name);
 }
 
@@ -164,7 +168,7 @@ export function stripNote(tl: EnemyTimeline): string {
  * `note: false` leaves out the line under it (stripNote) for pages that explain it elsewhere.
  */
 export function enemyStrip(tl: EnemyTimeline, opts: { note?: boolean } = {}): HTMLElement {
-  return el("div", { class: "tl tl-strip", role: "group", "aria-label": `${tl.name}: 5-turn timeline` },
+  return el("div", { class: "tl tl-strip", role: "group", "aria-label": `${tlName(tl)}: 5-turn timeline` },
     el("div", { class: "tl-grid" }, ...[1, 2, 3, 4, 5].map((t) => el("div", { class: "tl-head" }, `T${t}`)),
       ...tl.slots.map((s, k) => enemyCell(s, k + 1))),
     ...windowRows(tl, 1),
@@ -202,7 +206,7 @@ export function scheduleFor(quest: { id: number; rare: boolean; amount: number }
 /** A note as a small line: ✓ helps, ⚠ hurts. */
 function noteLine(n: ScoreNote, withTurn = false): HTMLElement {
   const good = n.delta >= 0;
-  return el("span", { class: `tl-noteline ${good ? "good" : "bad"}` }, good ? "✓ " : "⚠ ", withTurn ? `T${n.turn} ${n.skill}: ` : "", n.why);
+  return el("span", { class: `tl-noteline ${good ? "good" : "bad"}` }, good ? "✓ " : "⚠ ", withTurn ? `T${n.turn} ${skillName(n.skill)}: ` : "", n.why);
 }
 
 /** The notes of one hero (by location), for the search results: "why this rotation". */
@@ -232,7 +236,7 @@ export function partyPlan(quest: { id: number; rare: boolean; amount: number }, 
         return linkCard(cell, sk);
       })];
   });
-  const enemyRow = [el("div", { class: "tl-actor enemy" }, el("strong", {}, tl.name), el("span", { class: "muted small" }, "enemy")),
+  const enemyRow = [el("div", { class: "tl-actor enemy" }, el("strong", {}, tlName(tl)), el("span", { class: "muted small" }, "enemy")),
     ...tl.slots.map((s, k) => enemyCell(s, k + 1, false))];
   const rows = tl.enemyFirst ? [enemyRow, ...heroRows] : [...heroRows, enemyRow];
   const fmtScore = (x: number) => x.toFixed(1);

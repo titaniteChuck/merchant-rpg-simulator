@@ -2,6 +2,9 @@
 
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
+## 2026-11-24
+- **Update**: Languages (U29): game names and descriptions in the language picked in the top bar ("EN ▾", 8 languages, `site/theme.js`), the site's text in English; one helper module (`names.ts`) for every name, `language.ts` loads `data/i18n/<lc>.json` lazily and redraws pages in place; search matches both names, sorting follows the language; see [Languages](./website.md#languages).
+
 ## 2026-11-23
 - **Update**: Wiki reference pages v2 (U31): Stats and Battle lose their visible title and intro (hidden h1, like the other tabs); a sticky side panel of topics marks the section being read (a "Topics" dropdown below 760 px) instead of the 5-column contents; no game-code citations on the pages (the source references moved to `test/wiki-ref.test.ts` `SOURCES`, still checked against the decompiled game); Battle opens with "Two kinds of battle" (quests vs. maps).
 - **Fix**: Bushes (user): the quest bushes (gathering quests 1, 11, 21, 30, 42, 77, each region's first battle) are enemies again, kind "Quest bush" (`PLACEHOLDER_QUEST_IDS` replaces `NON_ENEMY_QUEST_IDS`); map Treasure Bushes show the level range of the maps they spawn in (99 = 1–10, Tuvale), sort by it and take the lowest map's region; Kind column Quest bush · Quest · Boss · Event boss · Map boss · Map treasure bush; bush pages say where they are fought and what they mainly drop.

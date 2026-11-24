@@ -3,7 +3,9 @@
  * never leaves it; game data comes from data/gamedata.json next to the page.
  */
 import * as api from "../sim/api.ts";
+import { itemName as englishItemName } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
+import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import {
   $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gradeBadge, heroAsc, pill,
   type Row as Cells, table, tabKeys, withAsc,
@@ -248,7 +250,8 @@ function renderInventory(sv: Save): HTMLElement {
   const filtered = () => {
     const q = search.value.trim().toLowerCase();
     return all.filter((r) => (kind.value === "all" || (kind.value === "counter" ? r.where === "counter" : r.type === kind.value && r.where !== "counter"))
-      && (!q || String(r.name).toLowerCase().includes(q)));
+      // U29: the shown name or the English one
+      && (!q || `${r.name} ${englishItemName(String(r.type), Number(r.id))}`.toLowerCase().includes(q)));
   };
   const total = el("span", { class: "muted small" });
   const update = () => {
@@ -375,7 +378,7 @@ function showError(msg: string): void {
 
 /** Parse and show a save (from a file or from the browser's storage); throws when it isn't one. */
 async function loadSave(text: string, name: string): Promise<void> {
-  await Promise.all([loadData(), loadWikiText()]); // skill effects in the rotation rows
+  await Promise.all([loadData(), loadWikiText(), languageReady]); // skill effects in the rotation rows; game names (U29)
   let sv: Save;
   try {
     sv = loadSaveText(text);
@@ -394,6 +397,12 @@ function init(): void {
   });
   loadWikiText();
   loadData().catch((e) => showError(String(e)));
+  // U29: another language rebuilds the rows (names) and redraws the tab or hero in place, filters and sorting kept.
+  onLanguageChange(() => {
+    if (!current) return;
+    current = { sv: current.sv, views: heroViews(current.sv) };
+    rerenderKeeping($("#result"), route);
+  });
 }
 
 init();

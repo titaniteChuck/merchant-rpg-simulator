@@ -11,6 +11,8 @@ import { enchantColumns, essenceColumns, type InfoColumn, itemColumns, rankedTab
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
 import { isVisible, subscribe } from "./expansion-state.ts";
+import { languageReady, onLanguageChange } from "./language.ts";
+import { itemName } from "./names.ts";
 
 /** U28: an orb source on a map (or an orb) of an expansion the visitor hides is left out. */
 const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension: Number(x.map_asc) || 0 }) && isVisible("material", Number(x.essence_id));
@@ -97,7 +99,7 @@ function worker(): Worker {
     // A forced map that needs its own orb to be made can't price it (the solver starts from "unknown").
     const stuck = r.orbs.filter((o) => state.orbChoice.has(o.id) && o.cost === null);
     if (stuck.length) {
-      status.push(el("p", { class: "error", role: "alert" }, `${stuck.map((o) => o.name).join(", ")}: the map you picked needs that orb to be made, `
+      status.push(el("p", { class: "error", role: "alert" }, `${stuck.map((o) => itemName("material", o.id) ?? o.name).join(", ")}: the map you picked needs that orb to be made, `
         + "so it can't be its only source. Items that need it are left out. Pick another map or go back to Cheapest."));
     }
     $("#status").replaceChildren(...status);
@@ -145,14 +147,15 @@ function buildOrbSelects(r: Result): void {
   box.dataset.built = "1";
   const selects = r.orbs.filter((o) => isVisible("material", o.id)).map((o) => {
     const seen = new Set<string>();
-    const s = el("select", { "aria-label": `${o.name} source` });
+    const orbName = itemName("material", o.id) ?? o.name;
+    const s = el("select", { "aria-label": `${orbName} source` });
     s.append(el("option", { value: "" }, "Cheapest"));
     for (const row of r.essence.filter((x) => x.essence_id === o.id && visibleOrbRow(x))) {
       const key = `${row.map_id}@${row.map_asc}`;
       if (seen.has(key)) continue;
       seen.add(key);
       // Options can't be outlined; an ascended map needs a word to tell it from the plain one.
-      s.append(el("option", { value: key }, `${row.map}${Number(row.map_asc) ? " · ascension 1" : ""}`));
+      s.append(el("option", { value: key }, `${itemName("map", Number(row.map_id)) ?? row.map}${Number(row.map_asc) ? " · ascension 1" : ""}`));
     }
     const chosen = state.orbChoice.get(o.id);
     if (chosen && [...s.options].some((x) => x.value === chosen)) s.value = chosen; // kept across a rebuild (U28)
@@ -161,7 +164,7 @@ function buildOrbSelects(r: Result): void {
       else state.orbChoice.delete(o.id);
       compute();
     });
-    return el("label", { class: "pf-field" }, el("span", {}, o.name), s);
+    return el("label", { class: "pf-field" }, el("span", {}, orbName), s);
   });
   box.replaceChildren(...selects);
 }
@@ -184,7 +187,7 @@ function itemFilter(rows: Row[], withType: boolean): Row[] {
     && (r.level === null || (Number(r.level) >= f.min && Number(r.level) <= f.max))
     && (f.asc === "all" || String(r.asc) === f.asc)
     && (!f.ownedOnly || Number(r.owned) > 0)
-    && (!q || String(r.name).toLowerCase().includes(q)));
+    && (!q || `${r.name} ${itemName(String(r.type ?? "equipment"), Number(r.id)) ?? ""}`.toLowerCase().includes(q))); // U29: either name
 }
 
 function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HTMLElement {
@@ -211,7 +214,7 @@ function filterBar(opts: { types?: boolean; owned?: boolean; orbs?: Orb[] }): HT
   }
   if (opts.orbs) {
     const orb = el("select", { "aria-label": "Orb" }, el("option", { value: "all" }, "All orbs"),
-      ...opts.orbs.map((o) => el("option", String(o.id) === f.orb ? { value: String(o.id), selected: "" } : { value: String(o.id) }, o.name))) as HTMLSelectElement;
+      ...opts.orbs.map((o) => el("option", String(o.id) === f.orb ? { value: String(o.id), selected: "" } : { value: String(o.id) }, itemName("material", o.id) ?? o.name))) as HTMLSelectElement;
     change(orb, () => (f.orb = orb.value));
     kids.push(orb);
   } else {
@@ -292,7 +295,7 @@ function orbsPanel(r: Result): HTMLElement[] {
       el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun)))))));
   const f = state.filters;
   const rows = r.essence.filter(visibleOrbRow).filter((x) => f.orb === "all" || String(x.essence_id) === f.orb)
-    .filter((x) => !f.q.trim() || `${x.map} ${x.essence}`.toLowerCase().includes(f.q.trim().toLowerCase()));
+    .filter((x) => !f.q.trim() || `${x.map} ${x.essence} ${itemName("map", Number(x.map_id)) ?? ""} ${itemName("material", Number(x.essence_id)) ?? ""}`.toLowerCase().includes(f.q.trim().toLowerCase()));
   const tiers = [...new Set(r.orbs.map((o) => o.tier))].sort();
   return [
     el("p", { class: "muted small" }, "Ascending an item uses orbs (essence) matching its level. Map runs drop them: plain maps drop the ascension-1 orbs, ascended maps (silver outline) the ascension-2 orbs. An orb is worth what it costs to farm, not its few gold of sell price."),
@@ -316,7 +319,7 @@ function summaryTiles(r: Result): HTMLElement {
     tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${fmt.format(Number(topAsc0.best_profit))} g, no ascension` : undefined, { icon: "🔨", tone: "t-blue" }),
     tile("Items priced", fmt.format(items.length), "item × ascension level", { icon: "📦", tone: "t-teal" }),
     tile("Cheapest orb", r.orbs.length ? `${fmt1.format(Math.min(...r.orbs.map((o) => o.cost ?? Infinity)))} g` : "—",
-      r.orbs.length ? r.orbs.reduce((a, b) => ((b.cost ?? Infinity) < (a.cost ?? Infinity) ? b : a)).name : undefined, { icon: "🔮", tone: "t-violet" }));
+      r.orbs.length ? ((o) => itemName("material", o.id) ?? o.name)(r.orbs.reduce((a, b) => ((b.cost ?? Infinity) < (a.cost ?? Infinity) ? b : a))) : undefined, { icon: "🔮", tone: "t-violet" }));
 }
 
 function renderPanel(keepFocus = false): void {
@@ -388,15 +391,17 @@ function init(): void {
     },
   });
   loadWikiText();
-  // U28: the tables, tiles and orb choices follow the expansion switches.
-  subscribe(() => {
+  // U28: the tables, tiles and orb choices follow the expansion switches; U29: and the language (state is kept).
+  const redraw = () => {
     if (!state.result) return;
     delete $("#orb-selects").dataset.built;
     buildOrbSelects(state.result);
     render();
-  });
+  };
+  subscribe(redraw);
+  onLanguageChange(redraw);
   // item names and tooltips need the game data in the page too (the worker loads its own copy)
-  loadData().then(compute).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
+  Promise.all([loadData(), languageReady]).then(compute).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
 }
 
 init();

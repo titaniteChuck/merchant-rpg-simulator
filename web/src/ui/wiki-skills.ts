@@ -19,6 +19,7 @@
 import type { EffectInfo, EnemyTimeline, SkillProfile } from "../tools/schedule.ts";
 import { enemyTimeline, skillProfile } from "../tools/schedule.ts";
 import { enemyIds, hasRare } from "./wiki-data.ts";
+import { skillName } from "./names.ts";
 
 export interface Matchup {
   quest: number;
@@ -111,7 +112,7 @@ function buffWeight(e: EffectInfo): number {
 const HEAVY = 1.5;
 const heavyHits = (hits: Hit[]) => hits.filter((h) => h.power >= HEAVY && !h.tags.includes("damage-split"));
 const strongest = <T>(xs: T[], f: (x: T) => number) => xs.reduce<T | undefined>((b, x) => (b === undefined || f(x) > f(b) ? x : b), undefined);
-const hitWords = (h: Hit) => `${h.name} (×${h.power.toFixed(1)}${h.tags.includes("damage-aoe") ? ", everyone" : h.hits.length === 1 ? ", one hero" : h.tags.includes("damage-row") ? ", one row" : ""}, turn ${h.slot})`;
+const hitWords = (h: Hit) => `${skillName(h.name)} (×${h.power.toFixed(1)}${h.tags.includes("damage-aoe") ? ", everyone" : h.hits.length === 1 ? ", one hero" : h.tags.includes("damage-row") ? ", one row" : ""}, turn ${h.slot})`;
 
 /** Effects listed once per name (Arkyos casts Hellfire twice). */
 const byName = <T extends { e: EffectInfo }>(xs: T[]) => xs.filter((x, i) => xs.findIndex((y) => y.e.name === x.e.name) === i);
@@ -175,7 +176,7 @@ export function reasons(p: SkillProfile, tl: EnemyTimeline): Reason[] {
     const score = aoe.reduce((a, h) => a + h.power, 0) + dots.length * 0.75;
     if (score >= 0.5) {
       const t = strongest(aoe, (h) => h.power);
-      out.push([score, [t ? `${t.name} hits everyone (×${t.power.toFixed(1)}, turn ${t.slot})${aoe.length > 1 ? ` and ${aoe.length - 1} more party-wide hit${aoe.length > 2 ? "s" : ""}` : ""}` : "",
+      out.push([score, [t ? `${skillName(t.name)} hits everyone (×${t.power.toFixed(1)}, turn ${t.slot})${aoe.length > 1 ? ` and ${aoe.length - 1} more party-wide hit${aoe.length > 2 ? "s" : ""}` : ""}` : "",
         dots.length ? `${dots[0].e.name} burns the party over time` : ""].filter(Boolean).join("; "),
         aoe.length ? [...new Set(aoe.map((h) => h.slot))].sort((a, b) => a - b) : turnsOf(dots)]);
     }

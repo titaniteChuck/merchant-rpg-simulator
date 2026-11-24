@@ -16,6 +16,7 @@ import { group, type LineChart, lineChart } from "./line-chart.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { classes } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
+import { className } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -115,7 +116,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
         if (!isVisible("class", cid)) continue; // the rim compares with the classes the visitor can have
         for (const p of tiersOf(o).filter((t) => isVisible("prestige", t))) {
           const v = statAt(o, g, p, at(p));
-          if (v > max) [max, best] = [v, `${o.name}, ${ascText(p - 1)}`];
+          if (v > max) [max, best] = [v, `${className(cid) ?? o.name}, ${ascText(p - 1)}`];
         }
       }
       const value = statAt(c, g, sel.asc + 1, at(sel.asc + 1));
@@ -124,7 +125,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     const layers = tiers.filter((p) => p - 1 !== sel.asc).map((p) => ({
       values: CHARTED.map((g) => statAt(c, g, p, at(p))), cls: `tier-${p - 1}`, label: `${ascName(p - 1)}, level ${at(p)}`,
     }));
-    const fig = radar(axes, { title: `${c.name} at level ${at(sel.asc + 1)}, ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
+    const fig = radar(axes, { title: `${className(id) ?? c.name} at level ${at(sel.asc + 1)}, ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
     radarCap.textContent = `Level ${sel.level} (each ascension capped at its max level), no gear or passive. `
       + `Values: ${ascText(sel.asc)}. Rim = best class at that level.`;
     fig.append(radarCap);

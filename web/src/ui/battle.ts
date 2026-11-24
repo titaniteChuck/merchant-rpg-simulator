@@ -25,6 +25,8 @@ import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } 
 import { initSaveSource } from "./save-source.ts";
 import { enemyLevelSort, enemyLevelText, enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
+import { languageReady, onLanguageChange } from "./language.ts";
+import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -94,7 +96,7 @@ function loadData(): Promise<void> {
   return dataReady;
 }
 
-const className = (cls: number) => G.heroList[cls]?.name ?? `class ${cls}`;
+const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
 // No "asc N" in option text: the chosen hero's avatar carries the ascension outline.
 const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
 const slotKey = (row: string, i: number) => `${row}${i}`;
@@ -109,9 +111,9 @@ function questOptions(): [string, [string, string][]][] {
     if (!isVisible("enemy", Number(id))) continue; // an expansion the visitor hides (Frentir, map bosses)
     const lvl = enemyLevelSort(Number(id)); // a Treasure Bush: the lowest level of the maps it spawns in
     const tier = `Level ${Math.floor(lvl / 10) * 10}–${Math.floor(lvl / 10) * 10 + 9}`;
-    const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${q.nameB}` : "";
+    const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${enemyName(id, true)}` : "";
     const list = byTier.get(tier) ?? [];
-    list.push([lvl, id, `Lv ${enemyLevelText(Number(id))} · ${q.name}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
+    list.push([lvl, id, `Lv ${enemyLevelText(Number(id))} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
     byTier.set(tier, list);
   }
   return [...byTier.entries()].sort((a, b) => a[1][0][0] - b[1][0][0])
@@ -121,13 +123,13 @@ function questOptions(): [string, [string, string][]][] {
 function mapOptions(sv: Save | null): [string, [string, string][]][] {
   const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([id, m]) => m.name && isVisible("map", Number(id)))
     .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || Number(a[0]) - Number(b[0]))
-    .map(([id, m]): [string, string] => [`cat:${id}`, `Lv ${m.itemLevel ?? "?"} · ${m.name}${expansionMark(needsOf("map", Number(id)))}`]);
+    .map(([id, m]): [string, string] => [`cat:${id}`, `Lv ${m.itemLevel ?? "?"} · ${itemName("map", id) ?? m.name}${expansionMark(needsOf("map", Number(id)))}`]);
   const groups: [string, [string, string][]][] = [];
   const owned = sv?.mapInventory ?? [];
   if (owned.length) {
     groups.push(["Your maps", owned.map((m: Any, i: number): [string, string] => {
-      const name = G.itemData.map?.[m.id]?.name ?? `map ${m.id}`;
-      const mods = [G.prefixList[m.prefix || 0]?.name, m.suffix > 0 ? G.suffixList[m.suffix]?.name : ""].filter(Boolean).join(" ");
+      const name = itemName("map", m.id) ?? `map ${m.id}`;
+      const mods = [prefixName(m.prefix), m.suffix > 0 ? suffixName(m.suffix) : ""].filter(Boolean).join(" ");
       // Options can't be outlined: the chosen map is shown outlined under the pickers (renderTarget).
       return [`own:${i}`, `${name}${mods ? ` (${mods})` : ""} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
     })]);
@@ -199,7 +201,7 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
   const pRow = el("tr", {}, el("td", { class: "name" }, pLink),
     el("td", { class: "eff" }, raw ? (passive && passive !== "None" ? passiveText(passive) : "no passive") : ""),
     el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
-      ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, x]), passive, (v) => {
+      ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, passiveName(x)]), passive, (v) => {
         edit([...rot], v);
         afterEdit(`${key}-p`);
       }) : swapPlaceholder()));
@@ -209,9 +211,9 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
   const unlocked: Any[] = info ? info.skills.slice(0, info.unlocked) : [];
   const rows = rot.map((sk, k) => {
     const link = raw ? (sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk)) : el("span", { class: "muted" }, "—");
-    const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${u.name} (${u.ap} AP)`])];
+    const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${skillName(u.name)} (${u.ap} AP)`])];
     // A skill the hero plays but hasn't unlocked (old save) stays listed, so the control shows the truth.
-    if (raw && sk !== "Basic" && !unlocked.some((u) => u.name === sk)) opts.push([sk, `${sk} (${apOf[sk] ?? "?"} AP)`]);
+    if (raw && sk !== "Basic" && !unlocked.some((u) => u.name === sk)) opts.push([sk, `${skillName(sk)} (${apOf[sk] ?? "?"} AP)`]);
     const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
       el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
@@ -306,7 +308,7 @@ function renderParty(refreshSearch = true): void {
 }
 
 // ---------------------------------------------------------------- target
-let search: { show(key: SearchKey | null): void; refresh(): void } | null = null;
+let search: { show(key: SearchKey | null): void; refresh(): void; relabel(): void } | null = null;
 const oppKind = (): Opp => ($<HTMLInputElement>("input[name=opp]:checked")?.value ?? "quest") as Opp;
 
 /** Largest base stat among the enemies of the same kind (quest, boss, party boss …) and level band (0-9, 10-19 …),
@@ -324,8 +326,13 @@ function enemyRims(d: Any): Record<string, number> {
   return rims;
 }
 
+/** Set while the page redraws for another language: the search panel keeps its form (U29). */
+let keepSearchForm = false;
+
 function renderTarget(): void {
-  queueMicrotask(() => search?.refresh());
+  queueMicrotask(() => {
+    if (!keepSearchForm) search?.refresh();
+  });
   const box = $("#target");
   if (oppKind() === "quest") {
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
@@ -348,7 +355,7 @@ function renderTarget(): void {
           el("div", {}, el("h3", {}, enemyLink({ id: Number(q.value), rare: r })),
             el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
               ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
-        radar(axes, { title: `${r ? d.nameB : d.name}'s stats`, size: 240 }),
+        radar(axes, { title: `${enemyName(q.value, r)}'s stats`, size: 240 }),
         el("p", { class: "muted small" }, `Rims: the strongest ${(d.title || "quest").toLowerCase()} enemy of level ${Math.floor((d.levelReq ?? 0) / 10) * 10}–${Math.floor((d.levelReq ?? 0) / 10) * 10 + 9}.`),
         // The 5-turn timeline with effect windows (U11); the plain rotation without timeline data.
         ...((tl) => tl ? [el("h4", {}, "Timeline"), enemyStrip(tl)]
@@ -370,7 +377,7 @@ function renderTarget(): void {
     const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
     grade.value = "3";
     const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
-      .map((id): [string, string] => [String(id), `${G.itemData.consumable[id].name}${expansionMark(needsOf("consumable", id))}`])];
+      .map((id): [string, string] => [String(id), `${itemName("consumable", id)}${expansionMark(needsOf("consumable", id))}`])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
     const card = el("article", { class: "opp-card map" });
     const sync = () => {
@@ -380,8 +387,9 @@ function renderTarget(): void {
       const id = own ? Number(it?.id) : Number(m.value.slice(4));
       const d: Any = G.itemData.map?.[id] ?? {};
       const a = own ? it?.prestigeLevel : Number(asc.value), g = own ? (it?.grade ?? 3) : Number(grade.value);
-      const pre = own && it?.prefix ? G.prefixList[it.prefix]?.name : "", suf = own && it?.suffix > 0 ? G.suffixList[it.suffix]?.name : "";
-      const name = [pre, d.name ?? `map ${id}`, suf].filter(Boolean).join(" ");
+      const pre = own && it?.prefix ? prefixName(it.prefix) : "", suf = own && it?.suffix > 0 ? suffixName(it.suffix) : "";
+      // Plain catalog map: no label, so the link shows (and keeps in step) the map's name in the visitor's language.
+      const name = pre || suf ? [pre, itemName("map", id) ?? `map ${id}`, suf].filter(Boolean).join(" ") : undefined;
       const bosses = seq<number>(d.bossList ?? {});
       const fact = (k: string, v: Node | string) => [el("dt", {}, k), el("dd", {}, v)];
       card.replaceChildren(
@@ -545,8 +553,17 @@ function request(): BattleRequest {
   return { gameMode: sv.raw.gameMode || "Standard", front, back, skills, n, ...targetOf() };
 }
 
+/** The last simulation shown (drawn again in another language, U29). */
+let lastResult: Extract<BattleResponse, { ok: true }> | null = null;
+function drawResult(): void {
+  const r = lastResult;
+  if (!r) return;
+  $("#results").replaceChildren(...(r.kind === "quest" ? questResults(r.result, r.ms) : mapResults(r.result, r.ms)));
+}
+
 function run(): void {
   const out = $("#results");
+  lastResult = null;
   let req: BattleRequest;
   try {
     req = request();
@@ -575,8 +592,10 @@ function run(): void {
     stop();
     const r = e.data;
     if (!r.ok) out.replaceChildren(el("p", { class: "error", role: "alert" }, r.error));
-    else if (r.kind === "quest") out.replaceChildren(...questResults(r.result, r.ms));
-    else out.replaceChildren(...mapResults(r.result, r.ms));
+    else {
+      lastResult = r;
+      drawResult();
+    }
   };
   worker.onerror = (e) => {
     stop();
@@ -594,7 +613,7 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string): HTMLElement 
   const rows: Row[] = order.filter((k) => heroes[k]).map((k) => {
     const h = heroes[k];
     const top = Object.entries(h.skillDmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
-      .map(([sk, v]) => `${sk} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
+      .map(([sk, v]) => `${skillName(sk)} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
     const raw = heroRaw(state.slots[`${k.replace(/\d$/, "")}${Number(k.slice(-1)) - 1}`] ?? null);
     return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
   });
@@ -623,9 +642,9 @@ function questResults(ev: FightEval, ms: number): HTMLElement[] {
 }
 
 function mapResults(ev: MapEval, ms: number): HTMLElement[] {
-  const ess = Object.entries(ev.essence).map(([k, v]) => `${fmt1.format(v)} ${k}`).join(", ") || "none";
+  const ess = Object.entries(ev.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", ") || "none";
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
-  const charges = ev.charges_used.map(([id, v]) => `${G.itemData.consumable?.[id]?.name ?? id}: ${fmt1.format(v)}`).join(", ");
+  const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
   return [
     el("div", { class: "tiles" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
@@ -649,7 +668,7 @@ function mapResults(ev: MapEval, ms: number): HTMLElement[] {
 /** Parse and use a save (from a file or from the browser's storage); throws when it isn't one. */
 async function loadSave(text: string, name: string): Promise<void> {
   // Timelines are optional: without them the opponent card shows the plain rotation and there is no party plan.
-  await Promise.all([loadData(), loadWikiText(), loadTimelineData().catch(() => {})]);
+  await Promise.all([loadData(), loadWikiText(), loadTimelineData().catch(() => {}), languageReady]);
   let sv: Save;
   try {
     sv = loadSaveText(text);
@@ -664,6 +683,7 @@ async function loadSave(text: string, name: string): Promise<void> {
   state.skills = {};
   restoreParty(sv.raw.hero.length);
   $("#setup").hidden = false;
+  lastResult = null;
   $("#results").replaceChildren();
   renderParty();
   setMode(state.mode.key);
@@ -716,6 +736,26 @@ function init(): void {
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
   subscribe(onExpansions);
+  onLanguageChange(onLanguage);
+}
+
+/**
+ * U29: another language. Redraw the party (skill and passive pickers), the opponent card (pickers, names, timeline)
+ * keeping every choice, the plan, the last simulation and the last search result; the search form is left as it is
+ * (it holds no game name). Marked names elsewhere are already updated (language.ts relabel).
+ */
+function onLanguage(): void {
+  if (!state.sv) return;
+  const y = window.scrollY;
+  const runs = $<HTMLInputElement>("#runs").value;
+  keepSearchForm = true; // no search panel rebuild (it would reset its form); the refresh renderTarget queues is skipped
+  renderParty(false);
+  onExpansions();
+  queueMicrotask(() => (keepSearchForm = false));
+  $<HTMLInputElement>("#runs").value = runs;
+  drawResult();
+  search?.relabel();
+  window.scrollTo(0, y);
 }
 
 /**

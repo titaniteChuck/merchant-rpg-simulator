@@ -13,6 +13,8 @@ import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import type { LevelRequest, LevelResponse } from "./levelling-worker.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLink, isEnemy, loadWikiText } from "./wiki-data.ts";
+import { languageReady, onLanguageChange } from "./language.ts";
+import { className as classNameOf, enemyName, markName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -31,7 +33,9 @@ function loadData(): Promise<void> {
   return dataReady;
 }
 
-const className = (cls: number) => G.heroList[cls]?.name ?? `class ${cls}`;
+const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
+/** A hero in the pickers: "Aria · Warrior lv 42" (class in the visitor's language, U29). */
+const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
 const heroRaw = () => state.sv!.raw.hero[Number($<HTMLSelectElement>("#hero").value)];
 const isGathering = (id: number) => G.questData[id]?.questType === 1;
 
@@ -44,15 +48,15 @@ function hours(h: number): string {
 
 /** A quest's name: a link to the enemy's wiki page, or plain text with a "gathering" label. */
 function questCell(id: number): HTMLElement {
-  if (isGathering(id)) return el("span", { class: "nowrap" }, G.questData[id]?.name ?? `quest ${id}`, " ", pill("gathering", "t-green"));
-  return isEnemy(id) ? enemyLink({ id }) : el("span", {}, G.questData[id]?.name ?? `quest ${id}`);
+  if (isGathering(id)) return markName(el("span", { class: "nowrap" }, enemyName(id) ?? `quest ${id}`, " ", pill("gathering", "t-green")), "enemy", id);
+  return isEnemy(id) ? enemyLink({ id }) : markName(el("span", {}, enemyName(id) ?? `quest ${id}`), "enemy", id);
 }
 
 // ---------------------------------------------------------------- step 1: hero and companions
 function renderHero(): void {
   const sv = state.sv!;
   const heroes = sv.raw.hero as Any[];
-  const label = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
+  const label = heroLabel;
   const hero = select({ id: "hero", "aria-label": "Hero to level" }, heroes.map((h, i): [string, string] => [String(i), label(h)]));
   // Default: the lowest hero below its tier's max level (the one that needs levelling most), else the first.
   const below = heroes.map((h, i) => [h, i] as const).filter(([h]) => (h.level ?? 1) < maxLevel(h.prestigeLevel ?? 1));
@@ -71,7 +75,7 @@ function renderHero(): void {
     info.replaceChildren(
       el("span", { class: `cls-${h.class}` }, withAsc(el("span", { class: "avatar big" }, String(h.name).slice(0, 1).toUpperCase()), heroAsc(tier), h.name)),
       el("div", {}, el("h3", {}, h.name),
-        el("div", { class: "pills" }, el("span", { class: `cls-${h.class}` }, pill(className(h.class))),
+        el("div", { class: "pills" }, el("span", { class: `cls-${h.class}` }, markName(pill(className(h.class)), "class", h.class)),
           pill(`level ${h.level} of ${max}`, "plain"), pill(ascText(heroAsc(tier)), "plain"),
           ...(h.level >= max ? [pill("max level", "t-green")] : []))));
     // A hero can't be its own companion.
@@ -219,7 +223,7 @@ function renderRefQuests(): void {
   const ids = availableQuests(max, tier).filter((id) => isEnemy(id) && !isGathering(id) && isVisible("enemy", id))
     .sort((a, b) => (G.questData[b].levelReq ?? 0) - (G.questData[a].levelReq ?? 0));
   const ref = select({ id: "ref-quest", "aria-label": "Quest to compare on" },
-    ids.map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${G.questData[id].name}`]));
+    ids.map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${enemyName(id)}`]));
   const fit = ids.find((id) => (G.questData[id].levelReq ?? 0) <= max);
   if (state.lastPlanQuest !== null && ids.includes(state.lastPlanQuest)) ref.value = String(state.lastPlanQuest);
   else if (fit !== undefined) ref.value = String(fit);
@@ -278,7 +282,7 @@ function runPrestige(): void {
 
 // ---------------------------------------------------------------- page
 async function loadSave(text: string, _name: string): Promise<void> {
-  await Promise.all([loadData(), loadWikiText()]);
+  await Promise.all([loadData(), loadWikiText(), languageReady]);
   let sv: Save;
   try {
     sv = loadSaveText(text);
@@ -308,6 +312,18 @@ function init(): void {
   $("#plan-run").addEventListener("click", runPlan);
   // U28: the next-ascension block and its quest list follow the expansion switches.
   subscribe(() => renderRefQuests());
+  // U29: names update in place (marked links and labels); the pickers get their labels again, choices kept.
+  onLanguageChange(() => {
+    if (!state.sv) return;
+    const heroes = state.sv.raw.hero as Any[];
+    document.querySelectorAll<HTMLSelectElement>("#hero, select.companion").forEach((s) => {
+      for (const o of s.options) if (o.value !== "" && heroes[Number(o.value)]) o.textContent = heroLabel(heroes[Number(o.value)]);
+    });
+    const ref = document.querySelector<HTMLSelectElement>("#ref-quest")?.value;
+    renderRefQuests();
+    const now = document.querySelector<HTMLSelectElement>("#ref-quest");
+    if (now && ref && [...now.options].some((o) => o.value === ref)) now.value = ref;
+  });
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
 }
 

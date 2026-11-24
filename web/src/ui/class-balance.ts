@@ -18,6 +18,8 @@ import { $, bar, el, fmt, fmt1, pct, select, table } from "./dom.ts";
 import type { ClassesRequest, ClassesResponse } from "./class-balance-worker.ts";
 import { tip } from "./tooltip.ts";
 import { classLink, enemyLink, isEnemy, isGathering, loadWikiText, passiveLink, skillLink } from "./wiki-data.ts";
+import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
+import { className, enemyName } from "./names.ts";
 
 let worker: Worker | null = null;
 
@@ -77,7 +79,7 @@ function renderOptions(): void {
     const was = ref.value;
     ref.replaceChildren(el("option", { value: "auto" }, "Auto: toughest quest a class can win"),
       el("option", { value: "each" }, "Each quest (one search per quest, slower)"),
-      el("optgroup", { label: "This quest" }, ...qs.map((q) => el("option", { value: String(q) }, `Lv ${G.questData[q].levelReq} · ${G.questData[q].name}`))));
+      el("optgroup", { label: "This quest" }, ...qs.map((q) => el("option", { value: String(q) }, `Lv ${G.questData[q].levelReq} · ${enemyName(q)}`))));
     ref.value = [...ref.options].some((o) => o.value === was) ? was : "auto";
     ref.disabled = skills.value !== "search";
   };
@@ -90,6 +92,7 @@ function renderOptions(): void {
     syncRef();
   });
   skills.addEventListener("change", syncRef);
+  refreshRef = syncRef;
   syncLevel();
   syncBand();
   // The expansion switches changed: ascension options, quest bands and the reference quest follow.
@@ -117,8 +120,13 @@ function request(): ClassesRequest {
 }
 
 // ---------------------------------------------------------------- run
+/** U29: the reference-quest picker's refill and the last result, both drawn again in another language. */
+let refreshRef: (() => void) | null = null;
+let drawLast: (() => void) | null = null;
+
 function run(): void {
   const out = $("#out"), btn = $<HTMLButtonElement>("#run");
+  drawLast = null;
   const req = request();
   if (!req.quests.length) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, "No quest in this level band."));
@@ -150,9 +158,12 @@ function run(): void {
     }
     stop();
     if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
-    else out.replaceChildren(...results(m.rows, req, m.searchQuest), el("p", { class: "muted small" },
-      `${fmt.format(m.rows.length)} class × quest cells, ${req.n} fights each on seeds 1–${req.n}, in ${fmt1.format(m.ms / 1000)} s. `
-      + "Enemy HP removed: the share of its HP taken off at its lowest point, averaged over the quests."));
+    else {
+      drawLast = () => out.replaceChildren(...results(m.rows, req, m.searchQuest), el("p", { class: "muted small" },
+        `${fmt.format(m.rows.length)} class × quest cells, ${req.n} fights each on seeds 1–${req.n}, in ${fmt1.format(m.ms / 1000)} s. `
+        + "Enemy HP removed: the share of its HP taken off at its lowest point, averaged over the quests."));
+      drawLast();
+    }
   };
   w.onerror = (e) => {
     stop();
@@ -171,7 +182,7 @@ function results(rows: ClassMatrixRow[], req: ClassesRequest, ref: number | "eac
   for (const r of rows) if (!first.has(r.classId)) first.set(r.classId, r);
   const quests = req.quests.filter((q) => rows.some((r) => r.quest === q));
   const refText = req.skills !== "search" ? "the game's default rotation (all Basic)"
-    : ref === "each" ? "a rotation searched for each quest" : `a rotation searched on ${G.questData[Number(ref)]?.name ?? "?"}`;
+    : ref === "each" ? "a rotation searched for each quest" : `a rotation searched on ${enemyName(Number(ref)) ?? "?"}`;
   return [
     el("p", { class: "muted small" }, `Level ${req.level}, ${req.prestige > 1 ? `ascension ${req.prestige - 1}` : "no ascension"}, `
       + `${req.gearPolicy === "best" ? "the same best catalog gear for every class" : req.gearPolicy === "fit" ? "gear fitted to each class" : "no gear"}, ${refText}.`),
@@ -210,8 +221,9 @@ function matrix(classes: number[], quests: number[], rows: ClassMatrixRow[]): HT
     const td = el("td", { class: "cb-cell", style: heat(r.win), tabindex: "0" },
       el("strong", {}, pct(r.win)), el("span", { class: "small" }, `${fmt1.format(r.turns)} t`),
       el("span", { class: "cb-bar", "aria-hidden": "true" }, el("span", { style: `width: ${Math.max(0, Math.min(100, r.enemyHpRemovedPeak * 100))}%` })));
-    td.setAttribute("aria-label", `${r.className} against ${r.questName}: win ${pct(r.win)}, ${fmt1.format(r.turns)} turns, enemy HP removed at its lowest ${pct(r.enemyHpRemovedPeak)}`);
-    tip(td, () => el("span", { class: "tip-body" }, el("strong", {}, `${r.className} vs ${r.questName}`),
+    const who = className(r.classId) ?? r.className, what = enemyName(r.quest) ?? r.questName;
+    td.setAttribute("aria-label", `${who} against ${what}: win ${pct(r.win)}, ${fmt1.format(r.turns)} turns, enemy HP removed at its lowest ${pct(r.enemyHpRemovedPeak)}`);
+    tip(td, () => el("span", { class: "tip-body" }, el("strong", {}, `${className(r.classId) ?? r.className} vs ${enemyName(r.quest) ?? r.questName}`),
       el("span", { class: "tip-kind" }, `${r.n} fights, level ${r.level}`),
       el("span", {}, `Win ${pct(r.win)} · ${fmt1.format(r.turns)} turns${r.turnsWin !== null ? ` (${fmt1.format(r.turnsWin)} when won)` : ""}`),
       el("span", {}, `Enemy HP removed: ${pct(r.enemyHpRemovedPeak)} at its lowest, ${pct(r.enemyHpRemoved)} at the end`),
@@ -225,7 +237,7 @@ function matrix(classes: number[], quests: number[], rows: ClassMatrixRow[]): HT
 // ---------------------------------------------------------------- page
 async function init(): Promise<void> {
   try {
-    await Promise.all([loadData(), loadWikiText()]);
+    await Promise.all([loadData(), loadWikiText(), languageReady]);
   } catch (e) {
     $("#out").replaceChildren(el("p", { class: "error", role: "alert" }, String(e)));
     return;
@@ -234,6 +246,10 @@ async function init(): Promise<void> {
   $("#run").addEventListener("click", run);
   $<HTMLButtonElement>("#run").disabled = false;
   void syncWithStoredSave();
+  onLanguageChange(() => {
+    refreshRef?.();
+    if (drawLast && !worker) rerenderKeeping($("#out"), drawLast);
+  });
 }
 
 mountExpansionChip();

@@ -8,7 +8,8 @@
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { itemName, rarity, sellValue } from "../tools/engine.ts";
+import { itemName as englishItemName, rarity, sellValue } from "../tools/engine.ts";
+import { className as classNameOf, crafterName, enemyName, itemName as shownItemName, prefixName, suffixName } from "./names.ts";
 import { type Game, gameFromData } from "../tools/gamedata.ts";
 import { mapEssence } from "../tools/profit.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
@@ -32,14 +33,15 @@ export function gradeLabel(gr: unknown): string {
   return gr === undefined || gr === null ? "" : String(gr);
 }
 
+/** Game names in the visitor's language (U29, names.ts); English by default. */
+const itemName = (type: string, id: number): string => shownItemName(type, id) ?? englishItemName(type, id);
+
 export function className(cls: number): string {
-  return G.heroList[cls]?.name ?? `class ${cls}`;
+  return classNameOf(cls) ?? `class ${cls}`;
 }
 
 function modNames(it: Any): [string, string] {
-  const pre = G.prefixList[it.prefix || 0]?.name ?? "";
-  const suf = G.suffixList[it.suffix || 0]?.name ?? (it.suffix === -1 ? "Worn" : "");
-  return [pre, suf];
+  return [prefixName(it.prefix || 0), suffixName(it.suffix || 0)];
 }
 
 /** "Strong Undertaker +10". */
@@ -190,7 +192,7 @@ export function mapEssenceOf(it: Any): [number, number][] {
 export function mapRows(sv: Save): Row[] {
   return sv.mapInventory.map((it: Any, i: number) => {
     const data = G.itemData.map?.[it.id] ?? {};
-    const bosses = seq<number>(data.bossList ?? {}).map((b) => G.questData[b]?.name).filter(Boolean);
+    const bosses = seq<number>(data.bossList ?? {}).map((b) => enemyName(b)).filter(Boolean);
     return {
       slot: i + 1, ...itemRow(it),
       essence: mapEssenceOf(it).map(([id, amt]) => `${amt} ${itemName("material", id)}`).join(", "),
@@ -219,7 +221,7 @@ export function crafterRows(sv: Save): Row[] {
   return [...sv.crafters.entries()].sort(([a], [b]) => a - b).map(([id, c]) => {
     const busy = c.isCrafting && typeof c.isCrafting === "object" ? c.isCrafting : null;
     return {
-      crafter: (G as Any).crafterData?.[id]?.name ?? `#${id}`,
+      crafter: crafterName(id) ?? `#${id}`,
       level: crafterLevelFor(c, 0), asc1_level: crafterLevelFor(c, 1), asc2_level: crafterLevelFor(c, 2),
       crafting: busy ? `${busy.amount ?? 1}x ${itemLabel(busy)}${busy.prestigeLevel ? ` (asc ${busy.prestigeLevel})` : ""}` : "",
     };

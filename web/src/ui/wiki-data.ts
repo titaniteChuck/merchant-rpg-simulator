@@ -10,6 +10,9 @@ import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansio
 import { tip } from "./tooltip.ts";
 import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
+import {
+  className, compareNames, descOf, enemyName, isEnglish, itemName, markName, passiveName, questTitle, regionName, skillName,
+} from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -69,8 +72,10 @@ export function items(type: string): [number, Any][] {
     .sort((a, b) => a[0] - b[0]);
 }
 
-export const skillNames = (): string[] => Object.keys(G.abilityData ?? {}).sort((a, b) => a.localeCompare(b));
-export const passiveNames = (): string[] => Object.keys(G.passiveData ?? {}).filter((p) => p !== "None").sort((a, b) => a.localeCompare(b));
+/** Skill keys (English names), in the alphabetical order of their names in the visitor's language (U29). */
+export const skillNames = (): string[] => Object.keys(G.abilityData ?? {}).sort((a, b) => compareNames(skillName(a), skillName(b)) || a.localeCompare(b));
+export const passiveNames = (): string[] => Object.keys(G.passiveData ?? {}).filter((p) => p !== "None")
+  .sort((a, b) => compareNames(passiveName(a), passiveName(b)) || a.localeCompare(b));
 export const classes = (): [number, Any][] =>
   Object.entries<Any>(G.heroList ?? {}).filter(([, v]) => v?.name).map(([k, v]) => [Number(k), v] as [number, Any]).sort((a, b) => a[0] - b[0]);
 export const quest = (id: number | string): Any => G.questData?.[id];
@@ -116,7 +121,7 @@ export const enemyKind = (id: number): string => {
   if (TREASURE_IDS.includes(id)) return "Map treasure bush";
   if (q.questType === 6) return "Event boss";
   if (q.questType === 8) return "Map boss";
-  return q.title || "Quest";
+  return questTitle(id) || "Quest"; // the game's title ("Boss", "Party Boss"), in the visitor's language
 };
 
 /** Enemies (and their rare variant) that use a skill; gathering quests and placeholders left out. */
@@ -124,8 +129,8 @@ export function enemiesWith(skill: string): { id: number; name: string; rare: bo
   const out: { id: number; name: string; rare: boolean }[] = [];
   for (const id of enemyIds()) {
     const q = quest(id);
-    if (seq<string>(q.attackList ?? {}).includes(skill)) out.push({ id, name: q.name, rare: false });
-    if (q.nameB && seq<string>(q.attackListB ?? {}).includes(skill)) out.push({ id, name: q.nameB, rare: true });
+    if (seq<string>(q.attackList ?? {}).includes(skill)) out.push({ id, name: enemyName(id) ?? q.name, rare: false });
+    if (q.nameB && seq<string>(q.attackListB ?? {}).includes(skill)) out.push({ id, name: enemyName(id, true) ?? q.nameB, rare: true });
   }
   return out;
 }
@@ -197,7 +202,10 @@ export function enemyMapRoles(questId: number): MapRole[] {
 export const enemyMaps = (questId: number): number[] => enemyMapRoles(questId).map((r) => r.map);
 
 // ---------------------------------------------------------------- regions
-/** The game's six regions (TEXT.regionText 1..6: "Tuvale Forest" … "Frentir Chasm"); `name` is the short form. */
+/**
+ * The game's six regions (TEXT.regionText 1..6: "Tuvale Forest" … "Frentir Chasm"); `name` is the short form. English:
+ * a Region (regionOf) reads them through getters, in the visitor's language (U29: the translations have the full name only).
+ */
 export const REGIONS: { id: number; name: string; full: string }[] = [
   { id: 1, name: "Tuvale", full: "Tuvale Forest" }, { id: 2, name: "Yarsol", full: "Yarsol Cove" },
   { id: 3, name: "Aldur", full: "Aldur Highlands" }, { id: 4, name: "Vulkrum", full: "Vulkrum Badlands" },
@@ -207,19 +215,35 @@ export const REGIONS: { id: number; name: string; full: string }[] = [
 export type RegionGroup = "region" | "event" | "map";
 export interface Region {
   id: number;
+  /** Short name ("Tuvale"); in another language the translated full name (the game has no short form). */
   name: string;
+  /** Full name ("Tuvale Forest"), in the visitor's language. */
   full: string;
+  /** English short name (search matches it in any language). */
+  en: string;
   /** Sort key: region first, then group (region, event, map). */
   order: number;
   group: RegionGroup;
   /** How it was decided, in a few words for the reader ("on Grimhal's quest board", "boss of Treant Revenge Map"). */
   why: string;
 }
+/** A region's name as the page shows it: the English short form, or the translated full name. */
+const regionShort = (id: number): string => {
+  const r = REGIONS[clampRegion(id) - 1];
+  return isEnglish() ? r.name : regionName(r.id, r.full);
+};
 const GROUP_RANK: Record<RegionGroup, number> = { region: 0, event: 1, map: 2 };
 const clampRegion = (r: unknown): number => Math.max(1, Math.min(6, Math.trunc(Number(r)) || 1));
-function mkRegion(id: number, group: RegionGroup, why: string): Region {
+/** `why` is a function: the text names regions and maps, so it follows the language (the Region is cached). */
+function mkRegion(id: number, group: RegionGroup, why: () => string): Region {
   const r = REGIONS[clampRegion(id) - 1];
-  return { ...r, order: (r.id - 1) * 3 + GROUP_RANK[group], group, why };
+  const out = { id: r.id, en: r.name, order: (r.id - 1) * 3 + GROUP_RANK[group], group } as Region;
+  Object.defineProperties(out, {
+    name: { get: () => regionShort(r.id), enumerable: true },
+    full: { get: () => regionName(r.id, r.full), enumerable: true },
+    why: { get: why, enumerable: true },
+  });
+  return out;
 }
 
 /** Fallback only: levels 1–10 Tuvale, 11–20 Yarsol, … 51–60 Frentir (level 0 is Tuvale, above 60 Frentir). */
@@ -268,20 +292,20 @@ function enemyRegion(id: number): Region | null {
   if (q.questType === 8 && q.title !== "Treasure Bush") {
     const boss = items("map").filter(([, m]) => seq<number>(m.bossList ?? {}).includes(id))
       .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0])[0];
-    if (boss) return mkRegion(mapRegionId(boss[1]), "map", `map boss, met only in maps: first in ${boss[1].name}`);
+    if (boss) return mkRegion(mapRegionId(boss[1]), "map", () => `map boss, met only in maps: first in ${itemName("map", boss[0])}`);
   }
-  const name = REGIONS[clampRegion(q.region) - 1].name;
-  if (q.questType === 6) return mkRegion(q.region, "event", `event boss: the event sends you to ${name}`);
+  const name = () => regionShort(q.region);
+  if (q.questType === 6) return mkRegion(q.region, "event", () => `event boss: the event sends you to ${name()}`);
   const bush = bushLevels(id);
-  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", `bush of maps level ${bush.lo}–${bush.hi}`);
-  if (q.title === "Treasure Bush") return mkRegion(q.region, "region", `hides in ${name}'s maps`);
-  if (q.region !== undefined) return mkRegion(q.region, "region", `on ${name}'s quest board`);
-  return mkRegion(regionOfLevel(q.levelReq), "region", `level ${q.levelReq}`);
+  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", () => `bush of maps level ${bush.lo}–${bush.hi}`);
+  if (q.title === "Treasure Bush") return mkRegion(q.region, "region", () => `hides in ${name()}'s maps`);
+  if (q.region !== undefined) return mkRegion(q.region, "region", () => `on ${name()}'s quest board`);
+  return mkRegion(regionOfLevel(q.levelReq), "region", () => `level ${q.levelReq}`);
 }
 
 function mapRegion(id: number): Region | null {
   const m = item("map", id);
-  return m ? mkRegion(mapRegionId(m), "region", `map level ${m.itemLevel ?? 0}`) : null;
+  return m ? mkRegion(mapRegionId(m), "region", () => `map level ${m.itemLevel ?? 0}`) : null;
 }
 
 let sourcesOf: Map<string, { fixed: number[]; loot: number[] }> | null = null;
@@ -316,8 +340,8 @@ function itemRegion(type: string, id: number): Region | null {
   const it = item(type, id);
   if (!it) return null;
   const src = itemSources().get(`${type}:${id}`);
-  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", "where it drops every win");
-  if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", "where it drops");
+  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", () => "where it drops every win");
+  if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", () => "where it drops");
   const band = regionOfLevel(it.itemLevel ?? 0);
   const counts = new Map<number, number>();
   for (const [t, mid] of recipe(type, id)) {
@@ -326,16 +350,16 @@ function itemRegion(type: string, id: number): Region | null {
   }
   if (counts.size) {
     const best = [...counts].sort((a, b) => b[1] - a[1] || Math.abs(a[0] - band) - Math.abs(b[0] - band) || a[0] - b[0])[0][0];
-    return mkRegion(best, "region", "where its recipe's materials come from");
+    return mkRegion(best, "region", () => "where its recipe's materials come from");
   }
-  return mkRegion(band, "region", `item level ${it.itemLevel ?? 0}`);
+  return mkRegion(band, "region", () => `item level ${it.itemLevel ?? 0}`);
 }
 
 const GROUP_TAG: Record<RegionGroup, string> = { region: "", event: "event", map: "map boss" };
 /** Sortable number for a table cell: region and group first, then level. */
 export const regionSortKey = (r: Region | null, level: number | null | undefined): number => (r ? r.order : 99) * 1000 + (Number(level) || 0);
 /** "Grimhal", "Yarsol · event" (for search and plain text). */
-export const regionText = (r: Region | null): string => (r ? [r.name, GROUP_TAG[r.group]].filter(Boolean).join(" · ") : "");
+export const regionText = (r: Region | null): string => (r ? [r.name, ...(r.name === r.en ? [] : [r.en]), GROUP_TAG[r.group]].filter(Boolean).join(" · ") : "");
 
 /**
  * The region as a small chip in its colour (+ "event" / "map boss"); the tooltip says how it was decided. A region
@@ -442,14 +466,17 @@ export function mapEnemies(m: Any): number[] {
 }
 
 // ---------------------------------------------------------------- texts
-export const skillDesc = (name: string): string => text.skills[name] ?? "";
+/** A skill's effect: the wiki's English text, or the game's text in the visitor's language (U29). */
+export const skillDesc = (name: string): string => descOf("skill", name) ?? text.skills[name] ?? "";
 export const skillAp = (name: string): number | undefined => G.abilityData?.[name]?.apCost;
 export const passiveText = (name: string): string => statsText(G.passiveData?.[name]?.stats) || "no bonus";
-export const classText = (id: number): string => (text.classes[id] ?? []).join(" ");
+export const classText = (id: number): string => descOf("class", id) ?? (text.classes[id] ?? []).join(" ");
 
 /** Item description with its {stat} placeholders filled (consumables), or the flavour lines. */
 export function itemText(type: string, id: number): string {
-  const lines = text.items[type]?.[id] ?? [];
+  // U29: the game's text in the visitor's language, same {stat} placeholders
+  const own = (ITEM_TYPES as readonly string[]).includes(type) ? descOf(type as ItemType, id) : undefined;
+  const lines = own !== undefined ? [own] : text.items[type]?.[id] ?? [];
   const it = item(type, id);
   return lines.join(" ").replace(/\{(\w+)\}/g, (_, k) => (it?.stat?.[k] !== undefined ? fmt.format(it.stat[k]) : `{${k}}`)).trim();
 }
@@ -466,10 +493,10 @@ export function itemSummary(type: string, id: number): string {
 }
 
 function mapLine(m: Any): string {
-  const boss = seq<number>(m.bossList ?? {}).map((b) => quest(b)?.name).filter(Boolean).join(", ");
+  const boss = seq<number>(m.bossList ?? {}).map((b) => enemyName(b)).filter(Boolean).join(", ");
   const br = seq<number>(m.baseReward ?? {});
   const half = Math.floor(br.length / 2);
-  const ess = Array.from({ length: half }, (_, i) => `${br[i + half]} ${item("material", br[i])?.name ?? `#${br[i]}`}`).join(", ");
+  const ess = Array.from({ length: half }, (_, i) => `${br[i + half]} ${itemName("material", br[i]) ?? `#${br[i]}`}`).join(", ");
   return [boss ? `boss ${boss}` : "", ess ? `${ess} per run` : "", m.baseEnemyAmount ? `${m.baseEnemyAmount} rooms` : ""].filter(Boolean).join(" · ");
 }
 
@@ -507,15 +534,16 @@ function withBadge<T extends HTMLElement>(a: T, needs: string[]): T {
 /** A link to a skill's wiki page, with its effect on hover. */
 export function skillLink(name: string, cls = ""): HTMLElement {
   if (name === "Basic") return el("span", { class: `wl skill basic ${cls}`.trim() }, name);
-  const a = el("a", { class: `wl skill ${cls}`.trim(), href: href.skill(name) }, name);
-  tip(a, () => tipBox(name, `Skill · ${skillAp(name) ?? "?"} AP`, skillDesc(name)));
+  // The route stays the English key (stable URLs); the text is the visitor's language (U29).
+  const a = markName(el("a", { class: `wl skill ${cls}`.trim(), href: href.skill(name) }, skillName(name)), "skill", name);
+  tip(a, () => tipBox(skillName(name), `Skill · ${skillAp(name) ?? "?"} AP`, skillDesc(name)));
   return a;
 }
 
 export function passiveLink(name: string, cls = ""): HTMLElement {
   if (!name || name === "None" || !G.passiveData?.[name]) return el("span", { class: `wl ${cls}`.trim() }, name || "none");
-  const a = el("a", { class: `wl passive ${cls}`.trim(), href: href.passive(name) }, name);
-  tip(a, () => tipBox(name, "Passive", passiveText(name)));
+  const a = markName(el("a", { class: `wl passive ${cls}`.trim(), href: href.passive(name) }, passiveName(name)), "passive", name);
+  tip(a, () => tipBox(passiveName(name), "Passive", passiveText(name)));
   return a;
 }
 
@@ -530,15 +558,18 @@ const itemKind = (type: string): ContentKind | null => ((ITEM_TYPES as readonly 
 export function itemLink(type: string, id: number, label?: string, rarity?: unknown, asc?: unknown, opts: LinkOpts = {}): HTMLElement {
   const it = item(type, id);
   const r = typeof rarity === "number" ? rarity : it?.rarity ?? 1;
-  const name = label ?? it?.name ?? `${type} #${id}`;
+  // A label equal to the English name (worker rows name items in English) is the plain name: translated and kept in step.
+  const plain = label === undefined || label === it?.name;
+  const name = plain ? itemName(type, id) ?? `${type} #${id}` : label;
   const kind = itemKind(type);
   const extra = { ascension: ascLevel(asc) };
   const needs = it && kind ? needsOf(kind, id, extra) : [];
   if (needs.length && !opts.always && !isVisible(kind!, id, extra)) return placeholderFor(kind!, id, extra);
   if (!it) return withAsc(el("span", { class: `item rar-${r}` }, name), asc);
   const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id) }, name);
+  if (plain && kind) markName(a, kind as ItemType, id);
   const ascNote = ascLevel(asc) ? ` · ${ascText(asc)}` : "";
-  tip(a, () => tipBox(it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",
+  tip(a, () => tipBox(itemName(type, id) ?? it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",
     type === "equipment" ? itemText(type, id) : "", needs)); // materials and consumables already show their text as the body
   withAsc(a, asc, name);
   return withBadge(a, needs);
@@ -548,8 +579,8 @@ export function classLink(id: number, opts: LinkOpts = {}): HTMLElement {
   const c = G.heroList?.[id];
   const needs = needsOf("class", id);
   if (needs.length && !opts.always && !isVisible("class", id)) return placeholderFor("class", id);
-  const a = el("a", { class: `wl cls-${id}`, href: href.cls(id) }, c?.name ?? `class ${id}`);
-  tip(a, () => tipBox(c?.name ?? "", "Hero class", classText(id), "", needs));
+  const a = markName(el("a", { class: `wl cls-${id}`, href: href.cls(id) }, className(id) ?? `class ${id}`), "class", id);
+  tip(a, () => tipBox(className(id) ?? "", "Hero class", classText(id), "", needs));
   return withBadge(a, needs);
 }
 
@@ -559,14 +590,18 @@ export function classLink(id: number, opts: LinkOpts = {}): HTMLElement {
  */
 export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts: LinkOpts = {}): HTMLElement {
   const q = quest(e.id);
-  const name = e.name ?? (e.rare ? q?.nameB : q?.name) ?? `quest #${e.id}`;
+  // The game's name (given in English or already translated) is shown in the visitor's language and kept in step.
+  const own = enemyName(e.id, !!e.rare);
+  const plain = e.name === undefined || e.name === own || e.name === (e.rare ? q?.nameB : q?.name);
+  const name = (plain ? own : e.name) ?? `quest #${e.id}`;
   const needs = q ? needsOf("enemy", e.id) : [];
   if (needs.length && !opts.always && !isVisible("enemy", e.id)) return placeholderFor("enemy", e.id);
   if (!isEnemy(e.id)) return withBadge(el("span", { class: "wl" }, name), needs);
   const maps = enemyMaps(e.id);
-  const kind = `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps level ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
-  const where = maps.length ? `Appears in ${maps.map((m) => item("map", m)?.name).join(", ")}.` : "Quest only, in no map.";
+  const kind = () => `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps level ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
+  const where = () => (maps.length ? `Appears in ${maps.map((m) => itemName("map", m)).join(", ")}.` : "Quest only, in no map.");
   const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
-  tip(a, () => tipBox(name, kind, where, "", needs));
+  if (plain) markName(a, e.rare ? "enemyB" : "enemy", e.id);
+  tip(a, () => tipBox(plain ? enemyName(e.id, !!e.rare) ?? name : name, kind(), where(), "", needs));
   return withBadge(a, needs);
 }

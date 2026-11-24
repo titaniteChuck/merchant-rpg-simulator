@@ -7,6 +7,15 @@ import { ascSwatch, type Column, el, fmt, fmt1, GRADE_LETTERS, gradeBadge, type 
 import type { Row as ProfitRow } from "./profit-worker.ts";
 import { tip } from "./tooltip.ts";
 import { itemLink } from "./wiki-data.ts";
+import { compareNames, itemName } from "./names.ts";
+
+/** A name cell's text as shown (U29: worker rows name items, maps and orbs in English). */
+function shownName(r: ProfitRow, key: string): unknown {
+  if (key === "name") return itemName(String(r.type ?? "equipment"), Number(r.id)) ?? r.name;
+  if (key === "map" && r.map_id !== undefined) return itemName("map", Number(r.map_id)) ?? r.map;
+  if (key === "essence" && r.essence_id !== undefined) return itemName("material", Number(r.essence_id)) ?? r.essence;
+  return r[key];
+}
 
 /** A column with the text that explains it (header tooltip). */
 export interface InfoColumn extends Column {
@@ -125,12 +134,12 @@ export function essenceColumns(): InfoColumn[] {
 }
 
 export function sortRows(rows: ProfitRow[], s: SortState): ProfitRow[] {
-  const v = (r: ProfitRow) => r[s.key];
+  const v = (r: ProfitRow) => shownName(r, s.key);
   return [...rows].sort((a, b) => {
     const x = v(a), y = v(b);
     if (x === null || x === undefined) return y === null || y === undefined ? 0 : 1; // blanks last
     if (y === null || y === undefined) return -1;
-    const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+    const c = typeof x === "number" && typeof y === "number" ? x - y : compareNames(String(x), String(y));
     return s.desc ? -c : c;
   });
 }

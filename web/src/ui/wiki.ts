@@ -30,6 +30,8 @@ import { statsPage, STATS_SECTIONS } from "./wiki-stats.ts";
 import { expansionsPage } from "./wiki-expansions.ts";
 import { type ContentKind, type Expansion, isVisible, needsOf, partitionVisible, subscribe, syncWithStoredSave } from "./expansion-state.ts";
 import { hiddenBody, hiddenNote, mountExpansionChip } from "./expansion-menu.ts";
+import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
+import { className, crafterName as crafterOf, enemyName, itemName, passiveName, searchText, skillName } from "./names.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
@@ -48,6 +50,7 @@ const ready = Promise.all([
   loadWikiText(),
   // Enemy timelines (U11): optional, the enemy pages show the plain rotation without them.
   loadTimelineData().catch(() => {}),
+  languageReady, // U29: game names in the visitor's language from the first paint
 ]);
 
 /**
@@ -125,15 +128,16 @@ function hiddenPage(crumb: [string, string], name: string, icon: string, needs: 
 // ---------------------------------------------------------------- home
 function home(): HTMLElement {
   const results = el("div");
+  // `label`: the name shown and, in another language, the English one (U29: both match).
   const all: { label: string; kind: string; node: () => HTMLElement }[] = [
-    ...skillNames().map((n) => ({ label: n, kind: "Skill", node: () => skillLink(n) })),
-    ...passiveNames().map((n) => ({ label: n, kind: "Passive", node: () => passiveLink(n) })),
+    ...skillNames().map((n) => ({ label: searchText(skillName(n), n), kind: "Skill", node: () => skillLink(n) })),
+    ...passiveNames().map((n) => ({ label: searchText(passiveName(n), n), kind: "Passive", node: () => passiveLink(n) })),
     ...(["equipment", "consumable", "material", "map"] as const).flatMap((t) =>
-      visibleItems(t).map(([id, it]) => ({ label: it.name, kind: itemTypeLabel[t], node: () => itemLink(t, id) }))),
-    ...visibleClasses().map(([id, c]) => ({ label: c.name, kind: "Class", node: () => classLink(id) })),
+      visibleItems(t).map(([id, it]) => ({ label: searchText(itemName(t, id), it.name), kind: itemTypeLabel[t], node: () => itemLink(t, id) }))),
+    ...visibleClasses().map(([id, c]) => ({ label: searchText(className(id), c.name), kind: "Class", node: () => classLink(id) })),
     ...visibleEnemyIds().flatMap((id) => [false, ...(hasRare(id) ? [true] : [])].map((rare) => {
-      const name = rare ? quest(id).nameB : quest(id).name;
-      return { label: name, kind: rare ? "Enemy (rare)" : "Enemy", node: () => enemyLink({ id, name, rare }) };
+      const en = rare ? quest(id).nameB : quest(id).name;
+      return { label: searchText(enemyName(id, rare), en), kind: rare ? "Enemy (rare)" : "Enemy", node: () => enemyLink({ id, rare }) };
     })),
   ];
   const search = filterBox("Search skills, items, maps, enemies…", (q) => {
@@ -161,22 +165,22 @@ function enemyCell(skill: string): HTMLElement {
   const shown = list.slice(0, ENEMIES_SHOWN);
   const rest = list.length - shown.length;
   const more = rest > 0 ? el("span", { class: "more-names", tabindex: "0", "aria-label": `${rest} more: ${list.slice(ENEMIES_SHOWN).map((e) => e.name).join(", ")}` }, `+${rest} more`) : null;
-  if (more) tip(more, () => el("span", { class: "tip-body" }, el("strong", {}, `${list.length} enemies use ${skill}`), el("span", {}, list.map((e) => e.name).join(", "))));
+  if (more) tip(more, () => el("span", { class: "tip-body" }, el("strong", {}, `${list.length} enemies use ${skillName(skill)}`), el("span", {}, list.map((e) => e.name).join(", "))));
   return el("span", { class: "enemy-line" }, ...joinNodes(shown.map((e) => enemyLink(e))), ...(more ? [" ", more] : []));
 }
 
 function skillsPage(): HTMLElement {
   const rows: Row[] = skillNames().map((n) => ({
-    name: n, ap: skillAp(n) ?? null, classes: visibleClassesWith("skill", n).map(([, c]) => c.name).join(", "),
+    name: skillName(n), key: n, ap: skillAp(n) ?? null, classes: visibleClassesWith("skill", n).map(([id]) => className(id)).join(", "),
     // sorts by count; the cell shows the names (the enemies the visitor hides left out)
     ...((list) => ({ enemies: list.length, enemyNames: list.map((e) => e.name).join(" ") }))(enemyNamesWith(n).filter((e) => isVisible("enemy", e.id))),
     effect: skillDesc(n),
   }));
   return listPage("Skills", rows, [
-    { key: "name", label: "Skill", render: (r) => skillLink(String(r.name)) }, { key: "ap", label: "AP", num: true },
-    { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("skill", String(r.name)).map(([id]) => classLink(id)))) },
-    { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.name)) }, { key: "effect", label: "Effect" },
-  ], (r) => `${r.name} ${r.effect} ${r.classes} ${r.enemyNames}`);
+    { key: "name", label: "Skill", render: (r) => skillLink(String(r.key)) }, { key: "ap", label: "AP", num: true },
+    { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("skill", String(r.key)).map(([id]) => classLink(id)))) },
+    { key: "enemies", label: "Enemies", render: (r) => enemyCell(String(r.key)) }, { key: "effect", label: "Effect" },
+  ], (r) => `${searchText(String(r.name), String(r.key))} ${r.effect} ${r.classes} ${r.enemyNames}`);
 }
 
 const GOOD_HELP = "From each enemy's 5-turn timeline and this skill's effects (rules, not fight simulations): debuffs it can "
@@ -214,7 +218,7 @@ function skillPage(name: string): HTMLElement {
   const users = visibleClassesWith("skill", name);
   const { shown: enemies, hidden } = partitionVisible(enemiesWith(name), (e) => isVisible("enemy", e.id));
   const good = classesWith("skill", name).length ? goodAgainstSection(name) : null;
-  return el("div", {}, crumbs(["Skills", "#/skills"], name), el("h1", {}, "⚡ ", name),
+  return el("div", {}, crumbs(["Skills", "#/skills"], skillName(name)), el("h1", {}, "⚡ ", skillName(name)),
     el("p", { class: "lead" }, skillDesc(name) || "No description in the game data."),
     facts([["AP cost", skillAp(name)], ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     ...(good ? [good] : []),
@@ -225,24 +229,24 @@ function skillPage(name: string): HTMLElement {
 }
 
 function passivesPage(): HTMLElement {
-  const rows: Row[] = passiveNames().map((n) => ({ name: n, bonus: passiveText(n), classes: visibleClassesWith("passive", n).map(([, c]) => c.name).join(", ") }));
+  const rows: Row[] = passiveNames().map((n) => ({ name: passiveName(n), key: n, bonus: passiveText(n), classes: visibleClassesWith("passive", n).map(([id]) => className(id)).join(", ") }));
   return listPage("Passives", rows, [
-    { key: "name", label: "Passive", render: (r) => passiveLink(String(r.name)) }, { key: "bonus", label: "Bonus" },
-    { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("passive", String(r.name)).map(([id]) => classLink(id)))) },
-  ]);
+    { key: "name", label: "Passive", render: (r) => passiveLink(String(r.key)) }, { key: "bonus", label: "Bonus" },
+    { key: "classes", label: "Classes", render: (r) => el("span", {}, ...joinNodes(visibleClassesWith("passive", String(r.key)).map(([id]) => classLink(id)))) },
+  ], (r) => `${searchText(String(r.name), String(r.key))} ${r.bonus} ${r.classes}`);
 }
 
 function passivePage(name: string): HTMLElement {
   const p = G.passiveData?.[name];
   if (!p) return notFound(`passive “${name}”`);
   const users = visibleClassesWith("passive", name);
-  return el("div", {}, crumbs(["Passives", "#/passives"], name), el("h1", {}, "✨ ", name), el("p", { class: "lead" }, passiveText(name)),
+  return el("div", {}, crumbs(["Passives", "#/passives"], passiveName(name)), el("h1", {}, "✨ ", passiveName(name)), el("p", { class: "lead" }, passiveText(name)),
     facts([["Bonuses", el("ul", { class: "plain-list" }, ...Object.entries<number>(p.stats ?? {}).map(([k, v]) => el("li", {}, statText(k, v))))],
       ["Classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]));
 }
 
 // ---------------------------------------------------------------- items
-const crafterName = (id: number) => (G as Any).crafterData?.[id]?.name ?? (id ? `crafter ${id}` : "");
+const crafterName = (id: number) => crafterOf(id) ?? (id ? `crafter ${id}` : "");
 
 function itemsPage(type: string): HTMLElement {
   if (!["equipment", "consumable", "material"].includes(type)) return notFound(`item type “${type}”`);
@@ -252,7 +256,7 @@ function itemsPage(type: string): HTMLElement {
   const rows: Row[] = shown.map(([id, it]): Row => {
     const reg = regionOf(type as "equipment", id);
     return {
-      id, name: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
+      id, name: itemName(type, id) ?? it.name, en: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
       level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
       made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
       summary: eq ? it.subType ?? "" : itemText(type, id),
@@ -272,7 +276,7 @@ function itemsPage(type: string): HTMLElement {
     ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
   return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols,
-    (r) => `${r.name} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length);
+    (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length);
 }
 
 function safeSell(type: string, id: number, asc: number): number | null {
@@ -363,11 +367,11 @@ function itemPage(type: string, id: number): HTMLElement {
   if (!it) return notFound(`${type} #${id}`);
   const listHref = `#/items/${type}`;
   if (!isVisible(type as ContentKind, id)) {
-    return hiddenPage([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], it.name, "", needsOf(type as ContentKind, id));
+    return hiddenPage([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name, "", needsOf(type as ContentKind, id));
   }
   const desc = itemText(type, id);
   const kids: (Node | string)[] = [
-    crumbs([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], it.name),
+    crumbs([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name),
     el("h1", {}, itemLink(type, id)),
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
     facts([
@@ -412,8 +416,8 @@ function mapsPage(): HTMLElement {
   const rows: Row[] = all.filter(([id]) => isVisible("map", id)).map(([id, m]): Row => {
     const reg = regionOf("map", id);
     return {
-      id, name: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
-      mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => quest(b)?.name).filter(Boolean).join(", "),
+      id, name: itemName("map", id) ?? m.name, en: m.name, level: m.itemLevel ?? null, rooms: m.baseEnemyAmount ?? null, minutes: m.baseMapTime ? m.baseMapTime / 60 : null,
+      mod: m.enemyMod ?? null, boss: seq<number>(m.bossList ?? {}).map((b) => searchText(enemyName(b), quest(b)?.name)).filter(Boolean).join(", "),
       region: regionSortKey(reg, m.itemLevel), regionId: reg?.id ?? 0, regionName: regionText(reg),
     };
   }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id));
@@ -423,18 +427,18 @@ function mapsPage(): HTMLElement {
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Minutes", num: true }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
     { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
-  ], (r) => `${r.name} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length);
+  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length);
 }
 
 function mapPage(id: number): HTMLElement {
   const m = item("map", id);
   if (!m) return notFound(`map #${id}`);
-  if (!isVisible("map", id)) return hiddenPage(["Maps", "#/maps"], m.name, "", needsOf("map", id));
+  if (!isVisible("map", id)) return hiddenPage(["Maps", "#/maps"], itemName("map", id) ?? m.name, "", needsOf("map", id));
   const mod = m.enemyMod ?? 1;
   const bosses = seq<number>(m.bossList ?? {});
   const bush = treasureBushOf(m.itemLevel ?? 0);
   const modHelp = `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`;
-  return el("div", {}, crumbs(["Maps", "#/maps"], m.name), el("h1", {}, itemLink("map", id)),
+  return el("div", {}, crumbs(["Maps", "#/maps"], itemName("map", id) ?? m.name), el("h1", {}, itemLink("map", id)),
     ...(itemText("map", id) ? [el("p", { class: "lead" }, itemText("map", id))] : []),
     facts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
       ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
@@ -452,15 +456,16 @@ function enemiesPage(): HTMLElement {
   const all = enemyListRows();
   const rows = all.filter((r) => isVisible("enemy", Number(r.id)));
   return listPage("Enemies", rows, enemyListColumns,
-    (r) => `${r.name} ${r.rareName} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass, all.length - rows.length);
+    (r) => `${r.name} ${r.rareName} ${r.en} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass, all.length - rows.length);
 }
 
 function enemyPage(id: number): HTMLElement {
   const q = quest(id);
   if (!isEnemy(id)) return notFound(`enemy #${id}`);
   const needs = needsOf("enemy", id);
-  if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], q.name, "👹", needs);
-  return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], q.name), el("h1", {}, "👹 ", q.name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
+  const name = enemyName(id) ?? q.name;
+  if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
+  return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
     el("p", { class: "lead" }, [enemyKind(id), isTreasureBush(id) ? `in maps of level ${enemyLevelText(id)}` : `level ${q.levelReq}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ")),
     ...enemyBody(id, facts, section));
 }
@@ -502,23 +507,23 @@ function abilityTable(kind: "skill" | "passive", names: string[]): HTMLElement {
 
 function classesPage(): HTMLElement {
   const shown = visibleClasses();
-  const rows: Row[] = shown.map(([id, c]) => ({ id, name: c.name, hp: c.hp, atk: c.atk, matk: c.matk, def: c.def, mdef: c.mdef, about: classText(id) }));
+  const rows: Row[] = shown.map(([id, c]) => ({ id, name: className(id) ?? c.name, en: c.name, hp: c.hp, atk: c.atk, matk: c.matk, def: c.def, mdef: c.mdef, about: classText(id) }));
   return listPage("Classes", rows, [
     { key: "name", label: "Class", render: (r) => classLink(Number(r.id)) }, { key: "hp", label: "HP", num: true }, { key: "atk", label: "Atk", num: true },
     { key: "matk", label: "Matk", num: true }, { key: "def", label: "Def", num: true }, { key: "mdef", label: "Mdef", num: true }, { key: "about", label: "About" },
-  ], undefined, undefined, classes().length - shown.length);
+  ], (r) => `${searchText(String(r.name), String(r.en))} ${r.about}`, undefined, classes().length - shown.length);
 }
 
 /** Class page; `#/class/ID/LEVEL/ASC` opens it on a level and ascension (the picker keeps the URL in step). */
 function classPage(id: number, level?: string, asc?: string): HTMLElement {
   const c = G.heroList?.[id];
   if (!c) return notFound(`class #${id}`);
-  if (!isVisible("class", id)) return hiddenPage(["Classes", "#/classes"], c.name, "", needsOf("class", id));
+  if (!isVisible("class", id)) return hiddenPage(["Classes", "#/classes"], className(id) ?? c.name, "", needsOf("class", id));
   const skills = seq<string>(c.skillList ?? {});
   const passives = seq<string>(c.passiveList ?? {});
   const start = { level: level ? Number(level) : undefined, asc: asc ? Number(asc) : undefined };
   const { cards, block } = classStats(id, start, (s) => history.replaceState(null, "", `#/class/${id}/${s.level}/${s.asc}`));
-  return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], c.name), el("h1", {}, classLink(id, { always: true })),
+  return el("div", { class: `cls-${id}` }, crumbs(["Classes", "#/classes"], className(id) ?? c.name), el("h1", {}, classLink(id, { always: true })),
     ...(classText(id) ? [el("p", { class: "lead" }, classText(id))] : []),
     cards,
     section("Stats", block, ...[hiddenNote(tiersOf(c).filter((p) => !isVisible("prestige", p)).length, "ascension tier (levels 51–60)")].filter((x): x is HTMLElement => x !== null)),
@@ -560,6 +565,16 @@ async function render(top = true): Promise<void> {
   const main = $("#wiki");
   try {
     await ready;
+    paint(top);
+  } catch (e) {
+    main.replaceChildren(el("p", { class: "error", role: "alert" }, `The wiki could not load the game data: ${e instanceof Error ? e.message : e}`));
+  }
+}
+
+/** Draw the route now (the data is in). */
+function paint(top: boolean): void {
+  const main = $("#wiki");
+  {
     const y = window.scrollY;
     main.replaceChildren(route());
     const h1 = main.querySelector("h1");
@@ -572,8 +587,6 @@ async function render(top = true): Promise<void> {
       else x.removeAttribute("aria-current");
     });
     window.scrollTo(0, top ? 0 : y);
-  } catch (e) {
-    main.replaceChildren(el("p", { class: "error", role: "alert" }, `The wiki could not load the game data: ${e instanceof Error ? e.message : e}`));
   }
 }
 
@@ -582,5 +595,7 @@ render();
 // U28: the expansions button in the top bar; the save kept in this browser says which expansions are owned.
 mountExpansionChip();
 subscribe(() => render(false));
+// U29: another language re-draws the page in place, keeping its filter, sorted column, pickers and scroll.
+onLanguageChange(() => void ready.then(() => rerenderKeeping($("#wiki"), () => paint(false))).catch(() => {}));
 ready.then(() => syncWithStoredSave()).catch(() => {});
 export { href };

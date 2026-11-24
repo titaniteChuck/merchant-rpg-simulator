@@ -2,7 +2,7 @@
 type: Tool
 title: Website
 description: GitHub Pages site that exposes the tools in the browser, and the public-repo rules behind it.
-timestamp: 2026-11-23
+timestamp: 2026-11-24
 ---
 
 # Website
@@ -21,6 +21,7 @@ timestamp: 2026-11-23
 - [Levelling page](#levelling-page)
 - [Class balance page](#class-balance-page)
 - [Expansions](#expansions)
+- [Languages](#languages)
 - [Shared page parts](#shared-page-parts)
 - [What can run in the browser](#what-can-run-in-the-browser)
 - [Battle simulation in the browser](#battle-simulation-in-the-browser)
@@ -555,6 +556,48 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
   every page without a save, which is the "no expansion owned" variant; pages `expansions` (`#/expansions`) and
   `wiki-enemies` (`#/enemies`) added.
 - CSS: block `/* expansions */ … /* end expansions */` at the end of `site/style.css`.
+
+## Languages
+
+U29: the game's names and descriptions follow a language picked in the top bar; the site's own text stays English.
+
+- What follows the language: names of items, materials, consumables, maps, skills, passives, enemies (rare variants
+  too), quest titles ("Boss de groupe"), classes, prefixes, crafters, regions; descriptions of items, maps, skills and
+  classes. On every page: links, lists, tables, tooltips, search, battle pickers, cards, results and 5-turn plan,
+  save viewer, class balance, profit / farming / levelling (names only).
+- What stays English: the site's words (labels, help, "Quest bush", "Basic"), stat labels (Atk, HP…), suffix symbols
+  (+1, *2), hero names (the player's), effect names and the scorer's reasons (worker text), the optimiser's trace
+  ("Change" column), CSV column names. English keeps the wiki's own texts (`wikidata.json`): six skill texts differ
+  from the game's TextData (E19), and English never loads a translation file.
+- Data: `assemble-site.sh` copies `inventory/i18n/*.json` to `data/i18n/`. A page loads only its language's file
+  (70–105 KB), once; `index.json` (5 KB) only when the picker opens.
+- Picker (`site/theme.js`, before paint): "EN ▾" after the theme button, a menu of `index.json`'s languages by native
+  name (Français, Русский…), keyboard (arrows, Home / End, Escape). The choice is kept in `localStorage` `lang`; on a
+  first visit the browser's language (`navigator.languages`, `pt-*` → `br`) when the game has it, else English, not
+  stored until the visitor picks. It sets `<html data-lang>` and fires `merchant:language`. `LANGS` in theme.js must
+  match `index.json` (test). Phone: one compact chip, the top bar stays one line (U20).
+- Code: `web/src/ui/names.ts` is the one place names are looked up: `itemName`, `enemyName(id, rare)`,
+  `questTitle`, `className`, `skillName`, `passiveName`, `prefixName`, `suffixName`, `crafterName`, `regionName`,
+  `descOf`, `modName`, `itemNameFromEnglish` (worker rows name items in English), `compareNames` (`Intl.Collator` of
+  the language: every table sorts names in that order), `searchText` (searches match the shown and the English name).
+  It calls `tr()` of `web/src/tools/i18n.ts` and falls back to English. Ids, routes and keys stay English
+  (`wiki.html#/skill/Absorb%20All`). `web/src/ui/language.ts`: `languageReady` (every page awaits it before its first
+  render), `onLanguageChange`, `relabel()` (every name link carries `data-name="kind|id"` and gets its new text in
+  place) and `rerenderKeeping(root, draw)` (redraw keeping fields, selects, checkboxes, sorted columns and scroll).
+  Descriptions keep their `{hp}` placeholders filled (`itemText`). Regions: the translations have the full name only,
+  so another language shows "Forêt de Tuvale" in the chips; region `why` texts are getters.
+- Changing the language redraws in place, nothing reloads:
+  - Wiki: the route again with `rerenderKeeping` (filter, sorted column, ascension pickers, class level, scroll).
+  - Save viewer: rows rebuilt, tab or hero page and inventory filter / sort kept.
+  - Battle: party slots (skill and passive pickers), opponent card with the chosen enemy / map / grade / scrolls,
+    runs, plan, last simulation, last search result (drawn again without re-applying its setup); the search form is
+    left as it is.
+  - Class balance: reference-quest list and last result. Profit: tables, tiles, orb selects (the expansion redraw).
+    Farming: party, sources (ticks kept) and last result. Levelling: hero pickers' labels, reference quests (choice
+    kept); the rest by `relabel`.
+- Checks: `web/test/languages.test.ts` (FR / RU names, titles, search text, placeholders, sorting, routes, picker
+  codes). `check-site.ts --lang fr` runs the sweep with French names (default English).
+- CSS: block `/* language picker */ … /* end language picker */` at the end of `site/style.css`.
 
 ## Shared page parts
 
