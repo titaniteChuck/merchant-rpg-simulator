@@ -56,3 +56,4 @@
 - **Update**: E22, R1-A done; R1-B1, R1-C merging; R1-D (adopt shared helpers) queued.
 - **Update**: R1-D done (a539f2e); the R1 backlog is complete. Full browser sweep on f646849 passed (check-site, all 15 pages, 120 of 120 runs); the battle plan TURN column checked on screenshots at 1280 and 375 px.
 - **Update**: R1-E done (a6abccb): battle hero card stats kept apart, long stats shortened with a tooltip, plan enemy header shows the full name.
+- **Update**: user batch scheduled as U37 (wiki tables), U38 (page load and scroll), U39 (battle radar, plan drawer, timeline). No routine browser sweeps from now on; full passes at milestones.
