@@ -34,7 +34,7 @@ test("one set of slot names, the game's own (weapon, head, body, hands, feet, tr
   assert.match(itemSummary("material", idOf("material", "Forest Essence")), /^Material · Essence\b/);
   assert.equal(ITEM_TYPE_PLURALS.consumable, "Consumables");
   // No page code names the slots any other way.
-  for (const f of ["dom.ts", "wiki.ts", "wiki-data.ts", "wiki-stats.ts", "save-viewer.ts", "battle.ts"]) {
+  for (const f of ["dom.ts", "wiki.ts", "wiki-data.ts", "wiki-stats.ts", "save-viewer.ts", "battle-page.ts"]) {
     assert.doesNotMatch(read(`web/src/ui/${f}`), /: "(Chest|Bracers|Talisman)"|\b(chest|talismans?)\b/i, f);
   }
 });
@@ -48,11 +48,11 @@ test("the wiki and battle pages use the shared helpers, and the replaced markup 
   const ui = (f: string) => read(`web/src/ui/${f}`);
   const css = read("site/style.css");
   // gold() and duration(), no hand-made "N g" or "N min"
-  for (const f of ["wiki.ts", "battle.ts", "recipe-chain.ts", "wiki-items.ts", "wiki-enemies.ts"]) {
+  for (const f of ["wiki.ts", "battle-page.ts", "recipe-chain.ts", "wiki-items.ts", "wiki-enemies.ts"]) {
     assert.doesNotMatch(ui(f), /\$\{fmt\.format\([^`]*\)\} g`|\/ 60\)\} min`/, f);
   }
   // segmented(): no ad-hoc toggle groups left on the wiki and battle pages
-  for (const f of ["wiki.ts", "wiki-classes.ts", "wiki-enemies.ts", "battle.ts"]) assert.doesNotMatch(ui(f), /qxp-toggle|mode-switch/, f);
+  for (const f of ["wiki.ts", "wiki-classes.ts", "wiki-enemies.ts", "battle-page.ts"]) assert.doesNotMatch(ui(f), /qxp-toggle|mode-switch/, f);
   assert.doesNotMatch(read("site/battle.html"), /mode-switch/);
   assert.doesNotMatch(css, /\.qxp-toggle|\.ref-kind-tag|\.xp-switch|\.cls-asc legend/);
   // the single save help: no data-save-help left

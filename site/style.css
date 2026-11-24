@@ -596,25 +596,6 @@ a.secondary-link:hover { text-decoration: underline; }
 .hero-detail .radar-fig { max-width: 380px; }
 @media (max-width: 760px) { .hero-detail-grid { grid-template-columns: minmax(0, 1fr); } }
 
-/* ------------------------------------------------------------------ battle page modes (U8) */
-.mode-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
-.mode-card { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
-  transition: transform .12s ease, box-shadow .12s ease; }
-.mode-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
-.mode-card input { position: absolute; opacity: 0; pointer-events: none; }
-.mode-card:has(input:checked) { background: linear-gradient(var(--card), var(--card)) padding-box, var(--gradient) border-box; border: 2px solid transparent; padding: 11px 13px; }
-.mode-card:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mode-ico { font-size: 1.4rem; line-height: 1.2; }
-.mode-text { display: flex; flex-direction: column; gap: 2px; }
-@media (max-width: 560px) {
-  .mode-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .mode-card { padding: 9px 10px; gap: 8px; align-items: center; }
-  .mode-card:has(input:checked) { padding: 8px 9px; }
-  .mode-card .mode-text .muted { display: none; }
-  .mode-ico { font-size: 1.1rem; }
-}
-
 /* U15: the enemy on the left, the six hero slots on the right, in every mode. */
 .setup-grid { display: grid; gap: 20px; grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr); align-items: start; }
 @media (max-width: 960px) { .setup-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -1029,7 +1010,7 @@ ul.wiki-cats > li p.wiki-cat-count { margin: 0; flex: 0; }
 /* U23. Page headers: every page but the home page and the wiki keeps its h1 for screen readers only. */
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
-/* Step 1: the mode cards, then the chosen mode's options and Run button in one box. */
+/* Step 1: the Simulator's Simulate box (runs, Run button); the Solver's options and Solve button (U41). */
 .run-box { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
   border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
 .run-title { margin: 0; font-size: 1rem; }
@@ -1592,8 +1573,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* end menus + drawer */
 
 /* r1 battle */
-/* R1-A (battle page). F35: the two mode cards share one row at every width (no lone card). */
-#modes.mode-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* F35: result tiles (battle.ts tiles() sets data-n / --n): wide, the U33 grid (same tile size in both rows); narrower,
    balanced rows: 5 or 6 tiles in 3 columns, up to 4 in one row; on a phone two columns, an odd count's first tile
    (the win rate) spans both, so the last row is never a lone tile. */
@@ -1759,8 +1738,8 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* U39 (battle page). The enemy's HP as text above the radar (it left the radar; it follows the quest size). */
 .opp-card .opp-hp { font-variant-numeric: tabular-nums; text-align: center; }
 .opp-card .opp-hp strong { font-size: 1.05rem; }
-/* Solve's spoiler guard hides the whole rest of the page until accepted: only step 1 (the modes and the guard) shows. */
-#setup.solve-guarded > section:not(:first-child) { display: none; }
+/* The Solver's spoiler guard hides the whole rest of the page until accepted: only the guard shows (U41: the opponent and options too). */
+#setup.solve-guarded > section:not(:first-child), #setup.solve-guarded .solve-what { display: none; }
 /* The flow: a light gap and dashed gold line every 5 turns, where the rotations start again. */
 .pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
@@ -1878,3 +1857,19 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .toast[hidden] { display: none; }
 /* U40: the flow when a map run's party fell in an earlier room: one centred line. */
 .flow-skipped { margin: 24px 0; text-align: center; color: var(--muted); font-weight: 650; }
+/* u41 battle */
+/* U41: the Simulator's one-line hint above its Run box. */
+.run-hint { margin: 0; }
+/* The Solver's step 1: the opponent (the Simulator's pickers and card) and the options with Solve, side by side on a
+   wide screen, stacked below 960px; under the spoiler warning line. */
+.solve-what { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; margin-top: 10px; }
+@media (max-width: 960px) { .solve-what { grid-template-columns: minmax(0, 1fr); } }
+.solve-what .run-box { margin-top: 0; }
+.solve-opp { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.solve-opp .col-title { margin: 0; }
+.solve-opp .seg { align-self: flex-start; }
+/* Step 3 after a Show: the party alone (the opponent is in step 1), "Open in Simulator" beside the heading. */
+.setup-grid.b3-grid.solve-grid { grid-template-columns: minmax(0, 1fr); }
+.party-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 44px 0 14px; }
+.party-box-head h2 { margin: 0; }
+/* end u41 battle */

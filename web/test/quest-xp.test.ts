@@ -109,7 +109,7 @@ test("time and XP text", () => {
 
 test("the enemy page and battle results link XP and time to the Stats page, without formulas", () => {
   const src = (f: string) => readFileSync(new URL(`../src/ui/${f}`, import.meta.url), "utf8");
-  for (const f of ["wiki-enemies.ts", "battle.ts"]) {
+  for (const f of ["wiki-enemies.ts", "battle-page.ts"]) {
     assert.match(src(f), /statLink\("xp"/, f);
     assert.match(src(f), /statLink\("time"/, f);
   }

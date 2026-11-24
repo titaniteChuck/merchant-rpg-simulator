@@ -33,6 +33,7 @@ const PAGES: Record<string, string> = {
   save: "save.html",
   hero: "save.html#hero=1",
   battle: "battle.html",
+  solver: "solver.html",
   profit: "profit.html",
   farming: "farming.html",
   levelling: "levelling.html",

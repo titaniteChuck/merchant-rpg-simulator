@@ -1,13 +1,17 @@
 /**
- * The battle page's Solve mode (U36; Best party until then): searchParties of parties.ts in the battle worker, with
- * progress and a soft Cancel (the search stops at its next check and keeps what it found). The page passes a
- * SearchContext so this module doesn't import it. Best gear, Best potion / enchant and Optimise everything left the
- * page in U36; their engine code (combat.ts, consumables.ts, optimise.ts) and the worker's handlers stay.
+ * The Solver page (site/solver.html, U41; the battle page's Solve mode until then, Best party before U36):
+ * searchParties of parties.ts in the battle worker, with progress and a soft Cancel (the search stops at its next
+ * check and keeps what it found). The page passes a SearchContext so this module doesn't import it. Best gear, Best
+ * potion / enchant and Optimise everything left the page in U36; their engine code (combat.ts, consumables.ts,
+ * optimise.ts) and the worker's handlers stay.
  *
  * U27: the solver is a spoiler (it gives the answer to a quest or map), so its panel starts hidden behind a
  * disclaimer; "Show me the solver anyway" is remembered in this browser (localStorage `battle-solver-shown`) and a
- * warning line with "Hide it again" stays. U39: while the guard is up, the page hides all the rest of the Solve page
- * (SearchContext.guarded): the Results, the party and opponent, the plan.
+ * warning line with "Hide it again" stays. U39: while the guard is up, the page hides all the rest of the Solver
+ * (SearchContext.guarded): the opponent and options, the Results, the party and flow.
+ *
+ * U41: each result has a "Show" button (was "Load"): it puts the setup in the party (slots, rotations, passives,
+ * scrolls), then SearchContext.onShow lets the page bring its Party and Flow tabs.
  *
  * U36: the results table shows only the setups worth trying (battle-setup.ts solveShortlist): no 0 % result, within
  * 25 % of the best one found, at most 5. E25: winners (90 % or more) first; within the winners, and within the others,
@@ -59,17 +63,19 @@ export interface SearchContext {
   locks(): number[];
   /** A search started (its progress is in the results): the page may bring the results into view. */
   onStart?(): void;
-  /** Switch to the Simulate mode (the spoiler guard's "Try Simulate first"). */
+  /** A result's Show put its setup in the party: the page shows its Party and Flow tabs (U41). */
+  onShow?(): void;
+  /** Open the Simulator (the spoiler guard's "Try the Simulator first"). */
   goSimulate?(): void;
-  /** U39: the spoiler guard is up (true) or gone (false): the page hides or shows the rest of the Solve page. */
+  /** U39: the spoiler guard is up (true) or gone (false): the page hides or shows the rest of the Solver. */
   guarded?(on: boolean): void;
   /** The opponent's party setup rules (battle-rules.ts): the solver's size fields clamp to maxSize. */
   rules?(): PartyRules;
-  /** Why a layout (save hero ids, null = empty) can't fight the opponent, or null: Load is offered only without one. */
+  /** Why a layout (save hero ids, null = empty) can't fight the opponent, or null: Show is offered only without one. */
   problem?(front: (number | null)[], back: (number | null)[]): string | null;
 }
 
-/** The search modes of the page (U36: only the solver). */
+/** The search panels (U36: only the solver). */
 export type SearchKey = "party";
 
 /** U27: the solver's spoiler guard, remembered in this browser (convenience only: storage may be blocked). */
@@ -113,11 +119,12 @@ const HEAD_TIPS: Record<string, string> = {
 };
 
 /**
- * The search panels; show(key) puts one in `mount` (step 1, under the mode cards) and its progress and results in
- * `results` (the page's Results, step 2, right under step 1); refresh() rebuilds the panel after the party or the opponent
+ * The search panels; show(key) puts the spoiler guard, or the warning line, in `mount` (the top of step 1), the
+ * options and the Solve button in `form` (under the opponent; empty while the guard is up), and the progress and
+ * results in `results` (the page's Results, step 2); refresh() rebuilds the panel after the party or the opponent
  * changed, keeping the results (and a running search) where they are.
  */
-export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTMLElement): { show(key: SearchKey | null): void; refresh(): void; relabel(): void } {
+export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLElement, results: HTMLElement): { show(key: SearchKey | null): void; refresh(): void; relabel(): void } {
   let worker: Worker | null = null;
   /** The shown result, to draw again in another language (U29); `again`: no side effect (the setup is already applied). */
   let last: { out: HTMLElement; draw: (again: boolean) => Node[] } | null = null;
@@ -135,7 +142,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     }
     current = key;
     mount.hidden = key === null;
-    mount.replaceChildren(...(key ? [solverPanel(out)] : []));
+    const panel = key ? solverPanel(out) : null;
+    mount.replaceChildren(...(panel ? [panel.head] : []));
+    form.replaceChildren(...(panel?.form ? [panel.form] : []));
     // U39: until the spoiler guard is accepted, the page hides everything else of Solve (results, party, opponent, plan).
     ctx.guarded?.(key !== null && !solverShown());
   };
@@ -221,23 +230,23 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
   }
 
   // ---------------------------------------------------------------- Best party: the solver (U27)
-  /** The spoiler guard, or the solver's form (searchParties) under a warning line. */
-  function solverPanel(out: HTMLElement): HTMLElement {
+  /** The spoiler guard (no form), or a warning line (head) and the solver's form (searchParties). */
+  function solverPanel(out: HTMLElement): { head: HTMLElement; form: HTMLElement | null } {
     if (!solverShown()) {
       const yes = el("button", { type: "button", class: "secondary" }, "Show me the solver anyway");
       yes.addEventListener("click", () => {
         setSolverShown(true);
         show("party", true);
-        mount.querySelector<HTMLElement>(".search-panel button.primary")?.focus();
+        form.querySelector<HTMLElement>(".search-panel button.primary")?.focus();
       });
-      const sim = el("button", { type: "button", class: "primary" }, "▶ Try Simulate first");
+      const sim = el("button", { type: "button", class: "primary" }, "▶ Try the Simulator first");
       sim.addEventListener("click", () => ctx.goSimulate?.());
-      return el("div", { class: "spoiler-guard", role: "note", "aria-label": "Spoiler warning" },
+      return { head: el("div", { class: "spoiler-guard", role: "note", "aria-label": "Spoiler warning" },
         el("p", { class: "spoiler-title" }, el("span", { "aria-hidden": "true" }, "🙈 "), el("strong", {}, "Spoiler ahead")),
         el("p", {}, "This tool runs simulations and finds the best fit to defeat any quest or map. Idle games are fun while we iterate, "
           + "try things and solve the puzzles ourselves: this feature can kill that fun by just giving you the answer."),
-        el("p", {}, "Try the Simulate tool first to test your builds, try different things, and if you come back here, do it at your own risk."),
-        el("div", { class: "toolbar" }, ...(ctx.goSimulate ? [sim] : []), yes));
+        el("p", {}, "Try the Simulator first to test your builds, try different things, and if you come back here, do it at your own risk."),
+        el("div", { class: "toolbar" }, ...(ctx.goSimulate ? [sim] : []), yes)), form: null };
     }
     const hide = el("button", { type: "button", class: "link-btn" }, "Hide it again");
     hide.addEventListener("click", () => {
@@ -264,10 +273,10 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       ...(isMap ? [] : [el("span", { class: "muted small" }, " (map runs only)")]));
     const budget = select({ "aria-label": "Time budget" }, [["60", "60 s"], ["120", "120 s"]]);
     const excl = excludePicker(sv);
-    const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
+    const go = el("button", { type: "button", class: "primary" }, "🔎 Solve");
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
       + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
-      + "Locked slots (🔒) keep their hero. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
+      + "After a Show, the heroes you lock (🔒) stay in. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
       + `${isMap ? "then the fewest scrolls (none first), " : ""}the fewest heroes first.`;
     go.addEventListener("click", () => {
       let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
@@ -281,7 +290,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       }
       const scrolls = isMap && sc.checked;
       const budgetMs = Number(budget.value) * 1000;
-      // Load state of this result (kept when it is drawn again in another language).
+      // Show state of this result (kept when it is drawn again in another language).
       const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
       runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...ctx.target(),
         minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
@@ -289,11 +298,14 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     });
     // R1 F20: how the solver works is in a "?" on the warning line, not a paragraph.
     warn.append(" ", helpTip(intro, "the solver"));
-    return el("div", { class: "search-panel solver" }, warn,
-      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, scLabel, field("time", budget), excl.node, go));
+    return { head: warn, form: el("div", { class: "search-panel solver" },
+      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, scLabel, field("time", budget), excl.node, go)) };
   }
 
-  /** The solver's table: one row per setup, Load fills step 3 (party, rotations, passives, scrolls) with an undo. */
+  /**
+   * The solver's table: one row per setup; Show fills step 3 (party, rotations, passives, scrolls) and brings its Party
+   * and Flow tabs (U41), with an undo when a party was already shown.
+   */
   function partiesResult(res: PartiesResult, sv: Save, isMap: boolean, withScrolls: boolean, st: { loaded: number; undo: HTMLElement | null }): Node[] {
     const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
     const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
@@ -317,8 +329,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
           ...c.scrolls!.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id)]))
         : el("span", { class: "pill t-green no-scrolls", title: "This run needs no scrolls." }, "No scrolls");
     };
-    const load = (c: PartyConfig, k: number) => {
-      st.undo = snapshot();
+    const showSetup = (c: PartyConfig, k: number) => {
+      // The first Show has nothing to put back (no party yet).
+      st.undo = ctx.party().members.length ? snapshot() : null;
       ctx.applyParty(c.layout.front, c.layout.back);
       for (const [id, s] of Object.entries(c.skills)) {
         const i = idx(Number(id));
@@ -326,23 +339,24 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       }
       if (withScrolls) ctx.applyScrolls(c.scrolls ?? []);
       st.loaded = k;
-      st.undo.addEventListener("click", () => {
+      st.undo?.addEventListener("click", () => {
         st.loaded = -1;
         paint();
       });
       paint();
+      ctx.onShow?.();
     };
     const paint = () => {
       const rows = shown.map((c, k) => {
         const ev = c.ev;
-        const b = el("button", { type: "button", class: st.loaded === k ? "secondary loaded" : "secondary" }, st.loaded === k ? "✓ Loaded" : "Load");
-        b.setAttribute("aria-label", `Load setup ${k + 1} into the party slots`);
-        // A setup the opponent's party rules refuse (required slot, size) is not loaded.
+        const b = el("button", { type: "button", class: st.loaded === k ? "secondary loaded" : "secondary" }, st.loaded === k ? "✓ Shown" : "Show");
+        b.setAttribute("aria-label", `Show setup ${k + 1} in the Party and Flow tabs`);
+        // A setup the opponent's party rules refuse (required slot, size) is not shown.
         const problem = ctx.problem?.(c.layout.front, c.layout.back) ?? null;
         if (problem) {
           b.setAttribute("disabled", "");
-          b.title = `Can't load: ${problem}`;
-        } else b.addEventListener("click", () => load(c, k));
+          b.title = `Can't show: ${problem}`;
+        } else b.addEventListener("click", () => showSetup(c, k));
         const win = el("strong", { class: `rate ${rateTone(ev.win)}`, style: "color: var(--c)" }, pct(ev.win));
         const third = isMapEval(ev)
           ? el("span", { title: `average grade ${fmt1.format(ev.grade)} (D = 1 … S = 5)` }, GRADES[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))])
@@ -356,8 +370,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       const head = ["#", "Heroes", "Party", ...(isMap ? ["Scrolls"] : []), "Win", isMap ? "Grade" : "Turns", isMap ? "Progress" : "Lowest enemy HP", ""];
       const nums = new Set(["#", "Heroes", "Win", "Grade", "Turns", "Progress", "Lowest enemy HP"]);
       box.replaceChildren(
-        // After Load: what is in the slots, and the undo (once used, it stays as "✓ Previous party back").
-        ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, ...(st.loaded >= 0 ? [`✓ Setup #${st.loaded + 1} is in the party slots below. `] : []), st.undo)] : []),
+        // After Show: which setup the Party and Flow tabs hold, and the undo (once used, it stays as "✓ Previous party back").
+        ...(st.loaded >= 0 || st.undo ? [el("p", { class: "result-note solver-loaded" },
+          ...(st.loaded >= 0 ? [`✓ Setup #${st.loaded + 1} is shown in the Party and Flow tabs below. `] : []), ...(st.undo ? [st.undo] : []))] : []),
         el("div", { class: "table-wrap" }, el("table", { class: "solver-table" },
           el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}), ...(HEAD_TIPS[h] ? { title: HEAD_TIPS[h] } : {}) }, h)))),
           el("tbody", {}, ...rows))));

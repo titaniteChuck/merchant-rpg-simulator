@@ -114,7 +114,35 @@ flowchart LR
 
 ## Battle simulator
 
-`site/battle.html` + `web/src/ui/battle.ts` (page) + `web/src/ui/battle-worker.ts` (web worker).
+Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/src/ui/battle.ts`, and the Solver,
+`site/solver.html` + entry `web/src/ui/solver.ts`. Both entries call `initBattlePage(kind)` of
+`web/src/ui/battle-page.ts` (the page code, `battle.ts` until U41); the Solver's panel and results are
+`web/src/ui/battle-search.ts`; runs go to `web/src/ui/battle-worker.ts` (web worker). Each page has its own bundle
+(`js/battle.js`, `js/solver.js`).
+
+- Two pages (U41; until then two modes of one page, chosen in a "What do you want to do?" step 1):
+  - Menu: Battle ▾ with Simulator and Solver, in the dropdown, the second row and the phone drawer (see
+    [Menus](#menus)); the Battle link itself opens the Simulator.
+  - Simulator (`battle.html`): no mode chooser. Step 1 is the Simulate box (Runs, ▶ Simulate), step 2 the Results,
+    step 3 the Party and Flow tabs with the opponent in the Party tab, as below.
+  - Solver (`solver.html`): (1) "What to solve": the spoiler guard first; once accepted, the warning line, then the
+    opponent (the Simulator's own pickers and card: quest enemy or map run) beside a box with the solve options and
+    🔎 Solve; (2) Results, the solver's table; (3) "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
+    the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
+    party (`SearchContext.onShow` → `revealParty`). Editing there works as on the Simulator (AP limit toast, include
+    boxes, Flow edits, map room bar, remembered tab); 🔒 locks feed the next solve. Once shown it stays for later
+    solves; a new save or Forget hides it again. The Party tab holds the hero slots only (the opponent is in step 1).
+  - Shared state: the Solver's party is its own and is kept in memory only (`persistParty` / `restoreParty` do
+    nothing there), so Solver edits never change the Simulator's remembered party (`battle-party:<file>`). The
+    Solver's opponent is remembered apart (`solver-opponent`, starting from the Simulator's `battle-opponent` on a
+    first visit). "▶ Open in Simulator" beside the step 3 heading copies the shown party (slots, rotations, heroes left
+    out; the Simulator's edited rotations of other heroes kept, no locks: `simulatorPartyFrom` in
+    `ui/battle-links.ts`) and the opponent to the Simulator's keys, then opens the Simulator. Why: a solver result is
+    an answer to look at; it shouldn't silently overwrite the party the visitor is building by hand.
+  - Old links: `battle.html` with `?mode=solve` (or `party`, `solver`), `?solve`, `#solve`, `#solver`, `#mode=solve`
+    goes to `solver.html` (`solverRedirect` in `ui/battle-links.ts`, run by the entry before the page is built). The
+    old remembered mode (`battle-mode`) is removed and no longer read.
+  - Tests: `web/test/battle-u41.test.ts`.
 
 - Page order (U26, was U23): (1) mode, its options and its Run button; (2) Results, right under the Run button
   (`#results-box`: progress bar, then the outcome); (3) party and opponent, then the 5-turn plan. The party and
@@ -124,7 +152,7 @@ flowchart LR
   the heading is off screen, one smooth scroll puts it at the top (instant with reduced motion). Only at the start:
   progress updates and the result never scroll, so a user who scrolls away stays there. No page title or lead
   paragraph (visually-hidden h1 only, like every page but the home page and the wiki).
-- Step 1, mode (U8; U27 merged Best party, Best rotation and Best scrolls into one Best party; U36 kept two): Simulate
+- Step 1, mode (history: U41 split the two modes into two pages, above. U8; U27 merged Best party, Best rotation and Best scrolls into one Best party; U36 kept two): Simulate
   and Solve (the solver, Best party until U36) (`MODES` in `battle.ts`: per mode, whether step 3 asks for the party,
   which opponents it accepts, and its search panel). Best gear, Best potion / enchant and Optimise everything left the
   page in U36; their engine code (`searchGear`, `rankConsumables`, `optimiseFight`) and the worker's handlers stay (the
@@ -244,7 +272,8 @@ flowchart LR
     former Best party (`searchParty`), Best rotation (`searchSkills`) and Best scrolls (`searchScrolls`) modes: one
     search gives the heroes, their rows and order, every hero's rotation and passive and, for a map, the scrolls.
     - Spoiler guard: the mode starts hidden behind a card ("This tool runs simulations and finds the best fit … do it
-      at your own risk.") with "▶ Try Simulate first" and "Show me the solver anyway". Accepting is remembered in
+      at your own risk.") with "▶ Try Simulate first" (U41: "▶ Try the Simulator first", which opens the Simulator page)
+      and "Show me the solver anyway". Accepting is remembered in
       localStorage `battle-solver-shown` (try/catch; with storage blocked it holds for the page view); the panel then
       starts with "⚠ Spoiler tool: it gives you the answer." and a "Hide it again" link (forgets the choice, stops a
       running search and clears its results). Until accepted (U39), the guard hides the whole rest of the Solve page:
@@ -1128,7 +1157,7 @@ flowchart LR
 | --- | --- |
 | Home | – |
 | Save ▾ | Overview, Heroes, Inventory, Maps, Crafters |
-| Battle | – |
+| Battle ▾ | Simulator, Solver (U41; two pages, `battle.html` and `solver.html`) |
 | Wiki ▾ | Search; Items: Equipment, Consumables, Materials; World: Maps, Enemies; Heroes: Classes, Skills, Passives; Reference: Stats, Battle, Expansions |
 | More ▾ | Other tools: Profit, Farming, Levelling, Balance (frozen tools) |
 
@@ -1154,8 +1183,10 @@ flowchart LR
 - Current page: `currentNav(path, hash)`: the page's file name picks the section (More for the frozen tools); in the
   save viewer the hash picks the section (`#hero=<id>` is Heroes, no or an unknown hash Overview); in the wiki the
   route's first part, a detail route counting for its list (`#/enemy/97` → Enemies, `#/item/material/12` →
-  Materials, `#/stats/hit-chance` → Stats). Marked on load and on every `hashchange` / `popstate`
-  (`aria-current="page"` in the menu, the second row and the drawer).
+  Materials, `#/stats/hit-chance` → Stats); a sub-page that is a page of its own (Battle's Simulator and Solver, U41)
+  is found by its file name. Marked on load and on every `hashchange` / `popstate`
+  (`aria-current="page"` in the menu, the second row and the drawer). A section with sub-pages marks its own top
+  link `aria-current="true"` even when it is the same page as a sub-page (Battle and Simulator).
 - The right-side controls are not built here: `theme.js` (theme, language), `save-source.ts` (save chip) and
   `expansion-menu.ts` (expansions chip) insert them before the GitHub link, as before.
 

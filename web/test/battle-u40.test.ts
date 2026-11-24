@@ -187,6 +187,6 @@ test("step 3: the Party tab comes first, Flow second, Party selected without a r
   assert.ok(party > 0 && flow > party);
   assert.match(html, /id="tab-party"[^>]*aria-selected="true"/);
   assert.match(html, /id="flow-panel"[^>]*hidden/);
-  const ui = readFileSync(new URL("../src/ui/battle.ts", import.meta.url), "utf8");
+  const ui = readFileSync(new URL("../src/ui/battle-page.ts", import.meta.url), "utf8");
   assert.match(ui, /sessionStorage\.getItem\(TAB_KEY\) === "flow" \? "flow" : "party"/);
 });

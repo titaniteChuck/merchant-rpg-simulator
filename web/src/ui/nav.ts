@@ -1,10 +1,10 @@
 /**
  * The site's menus (U35), built once for every page from NAV (js/nav.js, a module in every page's head):
  *
- * - Desktop (wider than 760 px): the top bar's main menu (Home, Save ▾, Battle, Wiki ▾, More ▾). A section's sub-pages
+ * - Desktop (wider than 760 px): the top bar's main menu (Home, Save ▾, Battle ▾, Wiki ▾, More ▾). A section's sub-pages
  *   open in a dropdown under its ▾ button (the wiki's grouped in columns); More holds the frozen tools (Profit,
  *   Farming, Levelling, Balance). The current section's sub-pages also sit in a compact second row under the top bar
- *   (.subnav: the save viewer's sections, the wiki's), so they stay one click away.
+ *   (.subnav: the save viewer's sections, Battle's Simulator and Solver (U41), the wiki's), so they stay one click away.
  * - Phone (760 px and less): a burger at the left of the top bar opens a left drawer (a modal <dialog>: focus kept
  *   inside, Escape, a tap on the backdrop or on a link closes it) with every section and its sub-pages as nested lists;
  *   the current section is unfolded.
@@ -42,7 +42,14 @@ export const NAV: NavSection[] = [
       { label: "Crafters", href: "save.html#crafters" },
     ] }],
   },
-  { id: "battle", label: "Battle", href: "battle.html", title: "Battle simulator" },
+  {
+    // U41: two pages; the section's own link is the Simulator.
+    id: "battle", label: "Battle", href: "battle.html", title: "Battle simulator",
+    groups: [{ items: [
+      { label: "Simulator", href: "battle.html", title: "Battle simulator: your party, hundreds of fights" },
+      { label: "Solver", href: "solver.html", title: "Battle solver: the parties that win (a spoiler)" },
+    ] }],
+  },
   {
     id: "wiki", label: "Wiki", href: "wiki.html", title: "Wiki: everything in the game",
     groups: [
@@ -84,8 +91,8 @@ export const itemsOf = (s: NavSection): NavItem[] => (s.groups ?? []).flatMap((g
 /** A wiki detail route names its list in the singular: #/enemy/97 belongs to #/enemies. */
 const WIKI_LIST: Record<string, string> = { skill: "skills", passive: "passives", map: "maps", enemy: "enemies", class: "classes", item: "items" };
 
-/** The sub-page `hash` belongs to, in a section whose page is open; undefined when none does. */
-function currentItem(s: NavSection, hash: string): string | undefined {
+/** The sub-page `page` + `hash` belong to, in a section whose page is open; undefined when none does. */
+function currentItem(s: NavSection, page: string, hash: string): string | undefined {
   const items = itemsOf(s).map((i) => i.href);
   if (s.id === "save") {
     const h = hash.toLowerCase();
@@ -102,7 +109,8 @@ function currentItem(s: NavSection, hash: string): string | undefined {
     const href = `wiki.html#/${list === "items" ? `items/${b}` : list}`;
     return items.includes(href) ? href : undefined;
   }
-  return undefined;
+  // Sub-pages that are pages of their own (Battle: Simulator, Solver).
+  return items.find((i) => samePage(i, page));
 }
 
 /** The file name of a page path ("/merchant/wiki.html" → "wiki.html"; the site root → "index.html"). */
@@ -116,7 +124,10 @@ const samePage = (href: string, page: string) => (href === "./" ? "index.html" :
 export function currentNav(path: string, hash: string): { section?: string; href?: string } {
   const page = pageOf(path);
   for (const s of NAV) {
-    if (s.href && samePage(s.href, page)) return { section: s.id, href: s.groups ? currentItem(s, hash) : s.href };
+    // A section's page, or one of its sub-pages that is a page of its own (the Solver, U41).
+    if (s.href && (samePage(s.href, page) || itemsOf(s).some((i) => samePage(i.href, page)))) {
+      return { section: s.id, href: s.groups ? currentItem(s, page, hash) : s.href };
+    }
     if (!s.href) {
       const it = itemsOf(s).find((i) => samePage(i.href, page));
       if (it) return { section: s.id, href: it.href };
@@ -416,7 +427,11 @@ export function mark(): void {
   document.querySelectorAll<HTMLAnchorElement>("a[data-nav]").forEach((a) => {
     const top = a.classList.contains("menu-top") || a.classList.contains("drawer-top");
     const sec = a.closest<HTMLElement>("[data-section]")?.dataset.section;
-    if (a.dataset.nav === href) a.setAttribute("aria-current", "page");
+    // A section with sub-pages marks the sub-page as the page, its own entry as the section (Battle's top link and its
+    // Simulator are the same page, U41).
+    const subs = Boolean(NAV.find((s) => s.id === sec)?.groups);
+    if (top && sec === section && subs) a.setAttribute("aria-current", "true");
+    else if (a.dataset.nav === href) a.setAttribute("aria-current", "page");
     else if (top && sec === section) a.setAttribute("aria-current", "true"); // the section of the current sub-page
     else a.removeAttribute("aria-current");
   });
