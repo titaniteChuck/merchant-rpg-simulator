@@ -17,7 +17,7 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
@@ -254,11 +254,20 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
   ];
 }
 
-/** A hero's combat stats as a compact two-line table (labels, values); dashes for an empty slot. */
+/**
+ * A hero's combat stats as a compact two-line table (labels, values); dashes for an empty slot. The columns size to
+ * their values (style.css), so four-digit values ("1,183") stay whole and apart; from five digits a value is
+ * shortened ("12.3K") with the full one in its tooltip.
+ */
 function statStrip(raw: Any | null): HTMLElement {
   const st: Any = raw ? api.heroStats(api.newHero(raw)) : {};
+  const cell = (k: string, label: string) => {
+    if (!raw) return el("td", {}, "–");
+    const v = Number(st[k] ?? 0);
+    return Math.abs(v) >= 10_000 ? el("td", { title: `${label} ${fmt.format(v)}` }, fmtCompact.format(v)) : el("td", {}, fmt.format(v));
+  };
   return el("table", { class: "stat-strip" }, el("thead", {}, el("tr", {}, ...CARD_STATS.map(([, l]) => el("th", { scope: "col" }, l)))),
-    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k]) => el("td", {}, raw ? fmt.format(st[k] ?? 0) : "–")))));
+    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k, l]) => cell(k, l)))));
 }
 
 /**

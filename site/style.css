@@ -764,9 +764,14 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 .slot.locked { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow); }
 .slot-hint { margin: 0; }
 .party-note { margin: 0 0 10px; }
-.stat-strip { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; table-layout: fixed; }
-.stat-strip th { color: var(--muted); font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; padding: 0 2px; text-align: center; }
-.stat-strip td { text-align: center; padding: 1px 2px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; }
+/* Hero card stats: each column as wide as its value (auto layout, no wrap), the spare width shared out, at least 6px
+   between two values, so "1,183" and "1,159" never run together; battle.ts shortens five-digit values. */
+.stat-strip { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; table-layout: auto; }
+.stat-strip th, .stat-strip td { white-space: nowrap; text-align: center; padding: 1px 3px; }
+.stat-strip th:first-child, .stat-strip td:first-child { padding-left: 0; }
+.stat-strip th:last-child, .stat-strip td:last-child { padding-right: 0; }
+.stat-strip th { color: var(--muted); font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; padding-block: 0; }
+.stat-strip td { font-weight: 650; }
 .chips { display: flex; flex-direction: column; gap: 5px; }
 .skill-chips { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
 .skill-chip { position: relative; min-width: 0; padding: 3px 13px 3px 5px; border-radius: 6px; border: 1px solid var(--trim); background: var(--inset); color: var(--inset-fg);
@@ -1435,10 +1440,12 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* U36. Step 3 in three columns on a wide screen: party | opponent | 5-turn plan; party | opponent with the plan under
    them up to 1200px; stacked below 960px (party, opponent, plan). */
 .setup-grid.b3-grid { grid-template-columns: minmax(0, 1.4fr) minmax(230px, 240px) minmax(0, 1.5fr); gap: 14px; }
-/* Three columns: the hero cards' stat strip a little smaller, so four-digit values fit. */
+/* Three columns: the hero cards' stat strip a little smaller and tighter (4px between values), so four-digit values fit. */
 @media (min-width: 1201px) {
-  .setup-grid.b3-grid .stat-strip td { font-size: 0.7rem; padding: 1px 0; }
-  .setup-grid.b3-grid .stat-strip th { font-size: 0.58rem; padding: 0; }
+  .setup-grid.b3-grid .stat-strip { font-size: 0.7rem; }
+  .setup-grid.b3-grid .stat-strip th { font-size: 0.58rem; letter-spacing: .02em; }
+  .setup-grid.b3-grid .stat-strip :is(th, td):not(:first-child) { padding-left: 2px; }
+  .setup-grid.b3-grid .stat-strip :is(th, td):not(:last-child) { padding-right: 2px; }
 }
 @media (max-width: 1200px) {
   .setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
@@ -1466,8 +1473,12 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .pg-turn { align-self: center; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .pg-heads .pg-turn { align-self: end; }
 .pg-head { display: flex; flex-direction: column; min-width: 0; font-size: 0.72rem; padding: 0 0 2px 5px; border-left: 3px solid var(--c, var(--border)); }
-.pg-head.enemy { border-left-color: #ec4899; }
-.pg-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The enemy's header and cells also carry the old enemy-card class (.enemy: padding, 1rem name, card background):
+   undone here, so the name gets the same width and size as a hero's. The enemy's name wraps rather than cut. */
+.pg-head.enemy { border-left-color: #ec4899; background: none; border-width: 0 0 0 3px; border-radius: 0; box-shadow: none; padding: 0 0 2px 5px; font-size: 0.72rem; }
+.pg-cell.enemy { box-shadow: none; }
+.pg-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: inherit; }
+.pg-head.enemy strong { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
 .pg-cell { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 6px; font-size: 0.7rem; line-height: 1.22;
   background: var(--card-2); border: 1px solid var(--border); }
 .pg-cell.enemy { background: color-mix(in srgb, #ec4899 8%, var(--card-2)); }

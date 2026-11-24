@@ -29,6 +29,8 @@ function localFormat(opts: Intl.NumberFormatOptions): { format: (n: number) => s
 }
 export const fmt = localFormat({ maximumFractionDigits: 0 });
 export const fmt1 = localFormat({ maximumFractionDigits: 1, minimumFractionDigits: 1 });
+/** Short form for a tight spot: "12k", "1.2M" (give the full `fmt` value in a tooltip beside it). */
+export const fmtCompact = localFormat({ notation: "compact", maximumFractionDigits: 1 });
 export const pct = (x: number) => `${fmt1.format(x * 100)}%`;
 
 /** THE gold amount: "171,946 g" (whole gold; `decimals` 1 for a per-unit cost: "12.5 g"). "—" when not a number. */

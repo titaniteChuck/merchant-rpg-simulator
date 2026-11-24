@@ -138,7 +138,8 @@ flowchart LR
   mode, three columns (U36): the six hero slots (back row 1-3 | front row 1-3), the opponent card, then the 5-turn plan;
   up to 1200 px the plan goes under the party and opponent, below 960 px everything stacks (party, opponent, plan). Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
-  Mdef, Acc, Crit), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
+  Mdef, Acc, Crit; columns as wide as their values, five-digit values shortened to "12.3K" with the full value in a
+  tooltip), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
   whole row opens the wiki page via `clickableRow`, AP via `apBadge`): passive row (name, bonus), rotation rows (turn,
   skill, AP), and "x / y AP" beside the Rotation label (over budget: red, ⚠, the game then plays the default rotation).
   Editing in place, no fold-out: each row ends with a ⇄ control (a transparent `<select>` over the icon), which swaps
