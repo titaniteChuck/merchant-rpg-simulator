@@ -66,11 +66,15 @@ Rules:
 | E17 | **Top-K party search** (user): `searchParties` grows parties from min to max size until enough configurations win; each with rows/order, per-hero rotations (pre-filter + warm start) and, for maps, optional scrolls; ranked by win, then fewest heroes, then score. | Queued (engine, after E16) |
 | E18 | **Expansions library** (user): `tools/expansions.ts`: contentExpansion rules (Frozen: region 6 Frentir, Bard, prestige 3 / level 51–60, region-6 materials, L51–60 gear; Scribe: crafter 8, maps, scrolls, item ascension, essences, map materials, gear 764–780) and inferExpansions(save) from save signals (ownership itself lives in UserInfo.usr, which the site doesn't read); docs/game-economy/expansions. | Done (5c910f2) |
 | E19 | **Game translations export** (user): the install's Localization JSONs (EN, FR, DE, ES, BR, RU, IT, PL) trimmed to game-content names/descriptions → `inventory/i18n/<lc>.json`; `tools/i18n.ts` lookup. | Done (b85a0e4) |
-| U28 | **Expansion-aware site** (user decisions): ownership = inference from the save + manual "I own Frozen / Scribe" toggles; Frozen AND Scribe content hidden by default when not owned (a "show expansion content" toggle), always labelled with the expansion icon; a wiki Expansions page; the example save owns both. | E18, U24–U26 | Agent, branch `u28-expansions-ui` |
-| U29 | **Language picker** (user): game names and descriptions (items, skills, enemies, maps, classes, prefixes) follow the chosen language across the wiki and tools; the site's own UI stays English; English fallback; per-language lazy load. | E19, U28 | Queued |
-| U30 | **Wiki cross-links**: link stats and battle terms on existing wiki pages to the Stats/Battle reference anchors (list from U25: Eva → hit-chance, Def → defence, grade, luck, AP, ascension → essence, …). | U28 | Queued |
-| U31 | **Stats/Battle pages v2** (user): no title/description; topics as a sticky side panel (Topics button on mobile); no code-line citations on the page; "Two kinds of battle" section (quests vs Scribe maps). | - | Agent, branch `u31-wiki-reference-v2` |
-| U32 | **5-turn plan shows what the enemy does to the heroes** (user): enemy effects on heroes (force-action such as Drown → abilities disabled, stuns, stat debuffs) drawn on the hero cells of the turns they cover, with the skill crossed out and "Basic" shown; depends on correct effect windows (Drown: E17b check). | U28, E17b | Queued |
+| E20 | **Map-only content economics** (user): map bosses, Treasure Bushes and map-only drops need the whole map run (map craft cost + craft time + run time, map win rate), so no standalone "quest" for them in levelling/farming/profit; per-unit price of map-exclusive items; duplicate levelling bands merged; `questStats` / `mapRunStats` helpers (XP, time, XP/min). | Agent, branch `e20-map-economics` |
+| E21 | **Required front-middle slot** (user): some battles/maps require a hero in front 2; find the rule in the game, enforce it in every party search and evaluation, expose `requiredSlots`. | Queued (engine, after E17) |
+| U28 | **Expansion-aware site** (user decisions): ownership = inference from the save + manual "I own Frozen / Scribe" toggles; Frozen AND Scribe content hidden by default when not owned (a "show expansion content" toggle), always labelled with the expansion icon; a wiki Expansions page; the example save owns both. | E18, U24–U26 | Done (d055d55, d0dcbb8) |
+| U29 | **Language picker** (user): game names and descriptions (items, skills, enemies, maps, classes, prefixes) follow the chosen language across the wiki and tools; the site's own UI stays English; English fallback; per-language lazy load. | E19, U28 | Done (ab2a203) |
+| U30 | **Wiki cross-links**: link stats and battle terms on existing wiki pages to the Stats/Battle reference anchors (list from U25: Eva → hit-chance, Def → defence, grade, luck, AP, ascension → essence, …). | U28 | Agent, branch `u30-wiki-crosslinks` |
+| U31 | **Stats/Battle pages v2** (user): no title/description; topics as a sticky side panel (Topics button on mobile); no code-line citations on the page; "Two kinds of battle" section (quests vs Scribe maps). | - | Done (a28bdf2) |
+| U32 | **Battle page: plan effects + Clear all** (user): a "Clear all" button empties every hero slot; enemy effects on heroes (force-action such as Drown → abilities disabled, stuns, stat debuffs) drawn on the hero cells of the turns they cover, with the skill crossed out and "Basic" shown; depends on correct effect windows (Drown: E17b check). | U28, E17b | Queued |
+| U33 | **Quest XP, time and XP/min** (user): shown on wiki enemy pages and in battle results, from `questStats` (E20); map runs show craft + run time. Required front-middle slot marked in the battle UI (E21). | E20, E21 | Queued |
+| R1 | **Live site review** (user, while away): an agent browses the live site (home, save viewer, hero pages, battle, wiki; not the frozen pages) at 1280/375, dark/light, with/without the example save, several languages; reports inconsistencies between the "same" panels, visuals and improvements → a prioritised backlog for the user to review. | After U27, U30, U32 | Queued |
 
 ## UI lane
 
@@ -122,7 +126,7 @@ E2 reuses the map-run evaluation and scroll search from E1. U1 waits only for U0
 
 ## Later
 
-- **Frozen by the user (2026-11-23):** no new work on the Profit, Farming and Levelling pages for now.
+- **Frozen by the user (2026-11-23, extended 2026-11-24):** no new work on the Profit, Farming, Levelling and Class balance pages; they are also left out of reviews.
 
 - Economy model gaps: map suffix lowering the grade (E2 now simulates it), quest size ×N (E2 scales loot and time), Reset before a prefix (E7),
   enchant before or after ascending, bonus modifier odds from modded ingredients, customer preferences and haggling,

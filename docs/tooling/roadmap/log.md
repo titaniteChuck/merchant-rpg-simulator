@@ -42,3 +42,6 @@
 - **Update**: E19 translation export (agent) and U29 language picker queued (user: translate game names, site UI stays English).
 - **Update**: E18, E19, U24, U25, U26 done; U28 started (agent); U30 wiki cross-links queued.
 - **Update**: U27 spoiler guard; U31 started; U32 plan shows enemy effects on heroes (user).
+- **Update**: U28, U31 done; U29 language picker started (agent).
+- **Update**: U29 done; U30 started; R1 live-site review queued; Class balance joins the frozen pages.
+- **Update**: E20 map-only economics (agent), E21 required front-middle slot (engine), U32 + Clear all, U33 quest XP/time/XP-min (user).
