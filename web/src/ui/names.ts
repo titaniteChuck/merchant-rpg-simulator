@@ -89,10 +89,33 @@ export interface ItemMods {
 }
 
 /**
- * A prefix as it reads in brackets: its name in the current language, the English possessive dropped ("Defender's"
- * → "Defender", "Titan's" → "Titan"); "" for none.
+ * The leading article or preposition of a prefix stored in an "of the …" form (U34b: FR "du Défenseur", ES "de
+ * Defensor", IT "Del Difensore", BR "do Defensor"), per language. Elided forms (d', dell', de l') end in an
+ * apostrophe and run into the word; the others need a space after them. Longest first, so "de la" wins over "de".
  */
-export const prefixTag = (id: number | string | null | undefined): string => prefixName(id).replace(/['’]s$/, "");
+const PARTICLES: Record<string, string[]> = {
+  fr: ["de la", "de l'", "des", "du", "de", "d'"],
+  es: ["de las", "de los", "de la", "del", "de"],
+  it: ["della", "dello", "degli", "delle", "dell'", "del", "dei", "di", "da"],
+  br: ["dos", "das", "do", "da", "de"],
+};
+const PARTICLE_RE: Record<string, RegExp> = Object.fromEntries(Object.entries(PARTICLES).map(([lang, ps]) => [
+  lang,
+  new RegExp(`^(?:${ps.map((p) => (p.endsWith("'") ? `${p.slice(0, -1)}['’]\\s*` : `${p}\\s+`)).join("|")})`, "iu"),
+]));
+
+/**
+ * A prefix as it reads in brackets: its name in the current language, the English possessive dropped ("Defender's"
+ * → "Defender", "Titan's" → "Titan") and, in FR / ES / IT / BR, a leading article or preposition dropped with the
+ * first letter capitalised ("du Défenseur" → "Défenseur", "Di ghiaccio" → "Ghiaccio", "d'Expert" → "Expert");
+ * "" for none. Only this bracket form changes: prefixName and tr() keep the game's text.
+ */
+export function prefixTag(id: number | string | null | undefined): string {
+  const name = prefixName(id).replace(/['’]s$/, "");
+  const re = PARTICLE_RE[currentLanguage()];
+  const rest = re ? name.replace(re, "") : name;
+  return rest && rest !== name ? rest[0].toLocaleUpperCase(langTag()) + rest.slice(1) : name;
+}
 
 /** The parts of a modded item's name: [prefix tag, base name, suffix symbol] in the current language. */
 export function modItemParts(type: string, id: number | string, mods: ItemMods = {}): [string, string, string] {
@@ -103,7 +126,7 @@ export function modItemParts(type: string, id: number | string, mods: ItemMods =
  * THE name of a saved or generated item with its modifiers (U34), built from its parts so each one is translated on
  * its own: the prefix in brackets before the base name, the suffix symbol (never translated) after it.
  *
- *     modItemName("equipment", 372, { prefix: 25, suffix: 6 })  // "[Defender] Molten Platemail +6"; FR "[du Défenseur] Plate en Fusion +6"
+ *     modItemName("equipment", 372, { prefix: 25, suffix: 6 })  // "[Defender] Molten Platemail +6"; FR "[Défenseur] Plate en Fusion +6"
  *
  * Without modifiers it is the plain item name. Pass the save's item itself as `mods` ({itemType, id, prefix, suffix…}).
  */

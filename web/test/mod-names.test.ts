@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
 import { loadLanguage, setLanguage } from "../src/tools/i18n.ts";
 import { parseSave } from "../src/tools/save.ts";
-import { itemNameFromEnglish, modItemName, parseItemName, prefixTag } from "../src/ui/names.ts";
+import { itemNameFromEnglish, modItemName, parseItemName, prefixName, prefixTag } from "../src/ui/names.ts";
 import { heroViews, inventoryRows, toCsv } from "../src/ui/save-tables.ts";
 
 const read = (path: string) => JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8"));
@@ -28,9 +28,9 @@ test("English: prefix in brackets (no possessive), base name, suffix symbol", ()
 
 test("French: base name and prefix translated, the suffix symbol kept", () => {
   setLanguage("fr");
-  assert.equal(modItemName("equipment", PLATEMAIL, { prefix: DEFENDER, suffix: 6 }), "[du Défenseur] Plate en Fusion +6");
+  assert.equal(modItemName("equipment", PLATEMAIL, { prefix: DEFENDER, suffix: 6 }), "[Défenseur] Plate en Fusion +6");
   assert.equal(modItemName("equipment", SABATONS, { suffix: 6 }), "Sabatons du Scorpion +6");
-  assert.equal(modItemName("equipment", PLATEMAIL, { prefix: DEFENDER }), "[du Défenseur] Plate en Fusion");
+  assert.equal(modItemName("equipment", PLATEMAIL, { prefix: DEFENDER }), "[Défenseur] Plate en Fusion");
   assert.equal(modItemName("equipment", 1, { prefix: 1, suffix: 1 }), "[Brûlant] Dague en Fer +1");
   setLanguage("en");
 });
@@ -44,7 +44,7 @@ test("engine names (prefix and suffix in one English string) are split back and 
   assert.equal(itemNameFromEnglish("equipment", "Defender's Molten Platemail +6"), "[Defender] Molten Platemail +6");
   assert.equal(itemNameFromEnglish("equipment", "Scorpion Sabatons"), "Scorpion Sabatons");
   setLanguage("fr");
-  assert.equal(itemNameFromEnglish("equipment", "Defender's Molten Platemail +6"), "[du Défenseur] Plate en Fusion +6");
+  assert.equal(itemNameFromEnglish("equipment", "Defender's Molten Platemail +6"), "[Défenseur] Plate en Fusion +6");
   assert.equal(itemNameFromEnglish("equipment", "Scorpion Sabatons +6"), "Sabatons du Scorpion +6");
   assert.equal(itemNameFromEnglish("equipment", "No Such Thing +6"), "No Such Thing +6");
   setLanguage("en");
@@ -75,7 +75,47 @@ test("save viewer rows: inventory, counter, gear and the CSV use the same names"
   assert.match(toCsv(inv), /\n[^\n]*,\[Defender\] Molten Platemail \+6,/);
   setLanguage("fr");
   const fr = inventoryRows(sv);
-  assert.deepEqual(fr.map((r) => r.name), ["[du Défenseur] Plate en Fusion +6", "Sabatons du Scorpion +6", "[du Défenseur] Plate en Fusion"]);
+  assert.deepEqual(fr.map((r) => r.name), ["[Défenseur] Plate en Fusion +6", "Sabatons du Scorpion +6", "[Défenseur] Plate en Fusion"]);
   assert.equal(heroViews(sv)[0].gear[0].name, "Sabatons du Scorpion +6");
+  setLanguage("en");
+});
+
+// U34b: prefixes stored in an "of the …" form lose their leading article or preposition in brackets, first letter capitalised.
+for (const l of ["es", "it", "br", "de", "pl", "ru"]) loadLanguage(read(`inventory/i18n/${l}.json`));
+
+test("brackets drop a leading article or preposition (FR / ES / IT / BR), other prefixes unchanged", () => {
+  const cases: [string, number, string][] = [
+    ["fr", DEFENDER, "Défenseur"], ["fr", TITAN, "Titan"], ["fr", 30, "Protecteur"], ["fr", 36, "Expert"], ["fr", 38, "Maître"],
+    ["fr", 1, "Brûlant"], ["fr", 7, "Glacé"],
+    ["es", DEFENDER, "Defensor"], ["es", TITAN, "Titán"], ["es", 30, "Protector"], ["es", 36, "Experto"], ["es", 38, "Maestro"],
+    ["es", 1, "Ardiente"],
+    ["it", DEFENDER, "Difensore"], ["it", 8, "Ghiaccio"], ["it", 30, "Protettore"], ["it", 36, "Esperto"], ["it", 38, "Maestro"],
+    ["it", TITAN, "Titanico"], ["it", 1, "Ardente"],
+    ["br", DEFENDER, "Defensor"], ["br", TITAN, "Titã"], ["br", 30, "Protetor"], ["br", 36, "Perito"], ["br", 38, "Mestre"],
+    ["br", 1, "Ardente"],
+    // no particles handled in these languages: the game's name as it is
+    ["de", DEFENDER, "Verteidiger"], ["pl", DEFENDER, "Obrońcy"], ["ru", DEFENDER, "Защитника"],
+  ];
+  for (const [lang, id, want] of cases) {
+    setLanguage(lang);
+    assert.equal(prefixTag(id), want, `${lang} prefix ${id}`);
+  }
+  const platemail = (lang: string) => {
+    setLanguage(lang);
+    return modItemName("equipment", PLATEMAIL, { prefix: DEFENDER, suffix: 6 });
+  };
+  assert.equal(platemail("fr"), "[Défenseur] Plate en Fusion +6");
+  assert.equal(platemail("es"), "[Defensor] Cota de Placas Fundida +6");
+  assert.equal(platemail("it"), "[Difensore] Corazza a piastre fusa +6");
+  assert.equal(platemail("br"), "[Defensor] Placas Derretidas +6");
+  assert.equal(platemail("de"), "[Verteidiger] Geschmolzener Plattenpanzer +6");
+  setLanguage("en");
+});
+
+test("the raw prefix names (prefixName / tr) keep their particle", () => {
+  setLanguage("fr");
+  assert.equal(prefixName(DEFENDER), "du Défenseur");
+  setLanguage("it");
+  assert.equal(prefixName(8), "Di ghiaccio");
   setLanguage("en");
 });

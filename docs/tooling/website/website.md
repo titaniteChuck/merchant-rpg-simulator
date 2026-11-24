@@ -698,7 +698,8 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
 - Modded items (U34): an item with a prefix or suffix is named from its parts by ONE helper, `modItemName(type, id,
   {prefix, suffix})` in `names.ts`: the prefix in brackets before the base name, without the English possessive
   (`prefixTag`: "Defender's" → "Defender"), the suffix symbol after it, never translated: "[Defender] Molten Platemail
-  +6", in French "[du Défenseur] Plate en Fusion +6". Each part is translated on its own (a whole modded string has no
+  +6", in French "[Défenseur] Plate en Fusion +6" (U34b: in FR / ES / IT / BR `prefixTag` also drops a leading
+  article or preposition, "du Défenseur" → "Défenseur", "Di ghiaccio" → "Ghiaccio"). Each part is translated on its own (a whole modded string has no
   translation). The engine names a modded item in one English string ("Defender's Molten Platemail +6",
   `sim/equipment.ts`): `parseItemName` splits it back into id, prefix and suffix, and `itemNameFromEnglish` shows it
   with `modItemName`. Used by the save viewer (inventory, counter sales, maps, hero gear, crafters' jobs, CSV: same
