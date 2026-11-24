@@ -76,3 +76,4 @@
 - **Update**: R2-D done (248bfd9): Wiki on phones (review-r2); its own wiki sub-navigation rule dropped for R2-A's shared `.scroll-row`.
 - **Update**: L1 done (131325b): Levelling page first batch (review-levelling); Lua parity tests ran on the merge.
 - **Update**: L2 done (67f28f2): Levelling page second batch.
+- **Update**: P2 done (98af089): Profit page second batch; the default answer is built into the site (data/profit-default.json, 2.3 MB), not committed.
