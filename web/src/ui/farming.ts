@@ -13,6 +13,12 @@
  * Expansions (U28): quests, catalog maps and scrolls of expansions the visitor hides are not offered (the save's own
  * maps always are, unless Scribe is hidden: then no map at all, as on the Battle pages); the choices are rebuilt,
  * ticks kept, when the expansion switches change.
+ *
+ * Second batch (farming-view.ts): rare quests tagged "random offer" (F07); no headline card, win and grade before the
+ * value (F09); the source cell wraps and the party selects fit a phone (F11); the Rank box sits above the source
+ * lists, folds summed up as "Quests · 12 ticked" (F12); a note on the value when the save isn't in Standard mode
+ * (F19); a map row's time split into craft and run (F20); event bosses in their own unticked group (F22); a result
+ * dimmed with "rank again" once the party or the sources change (F23).
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -20,7 +26,8 @@ import type { FarmRow, FarmSource } from "../tools/farming.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import { $, bar, duration, el, fmt, fmt1, gold, GRADE_LETTERS, gradeBadge, goldNumber, pct, rateTone, select, table, tile } from "./dom.ts";
 import type { FarmRequest, FarmResponse } from "./farming-worker.ts";
-import { FARM_SLOTS, farmQuestIds, fightingSlots, readStoredParty, storedPartyWith } from "./farming-party.ts";
+import { FARM_SLOTS, farmQuestIds, fightingSlots, questGroups, readStoredParty, storedPartyWith, tickedByDefault } from "./farming-party.ts";
+import { foldSummary, RANDOM_OFFER, RANDOM_OFFER_TIP, setupSignature, timeTip, valueHelp } from "./farming-view.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
 import { helpTip } from "./wiki-help.ts";
@@ -110,7 +117,8 @@ interface SourceChoice {
 
 const questLabel = (id: number, rare: boolean) => {
   const q = G.questData[id];
-  return el("span", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), el("span", { class: "muted small" }, ` · Lv ${q.levelReq ?? "?"}${rare ? " · rare" : ""}`));
+  return el("span", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), el("span", { class: "muted small" }, ` · Lv ${q.levelReq ?? "?"}`),
+    ...(rare ? [" ", el("span", { class: "pill plain farm-random", title: RANDOM_OFFER_TIP }, RANDOM_OFFER)] : []));
 };
 
 function checkbox(label: Node | string, checked: boolean, value: string): HTMLLabelElement {
@@ -129,19 +137,16 @@ function renderSources(): void {
   const sv = state.sv!;
   const maxLevel = Math.max(...sv.raw.hero.map((h: Any) => h.level ?? 1));
   // Quests (F04, F05): quest-board quests up to level 60, no placeholder; grouped by level band, the ones near the
-  // party's level ticked.
-  const quests = farmQuestIds((id) => isVisible("enemy", id)).map((id) => [id, G.questData[id]] as [number, Any]);
-  const near = (q: Any) => (q.levelReq ?? 0) <= maxLevel && (q.levelReq ?? 0) >= maxLevel - 12;
-  const bands = new Map<number, [number, Any][]>();
-  for (const x of quests) {
-    const b = Math.floor((x[1].levelReq ?? 0) / 10) * 10;
-    bands.set(b, [...(bands.get(b) ?? []), x]);
-  }
-  const rare = checkbox("Rare variants", false, "rare");
-  const questBox = el("details", { class: "help" }, el("summary", {}, "Quests"),
-    ...[...bands].map(([b, list]) => el("fieldset", { class: "plain" }, el("legend", { class: "muted small" }, `Lv ${b}–${b + 9}`),
-      el("div", { class: "toolbar" }, ...list.map(([id, q]) => checkbox(el("span", {}, enemyName(id) ?? q.name,
-        el("span", { class: "muted small" }, ` Lv ${q.levelReq ?? "?"}`), badgeFor("enemy", id) ?? ""), near(q), `quest:${id}`))))),
+  // party's level ticked; event bosses in their own group, unticked (F22).
+  const quests = farmQuestIds((id) => isVisible("enemy", id));
+  const rare = checkbox(el("span", {}, "Rare variants ", el("span", { class: "pill plain farm-random", title: RANDOM_OFFER_TIP }, RANDOM_OFFER)), false, "rare");
+  const questBox = el("details", { class: "help farm-fold", "data-label": "Quests" }, el("summary", {}, "Quests"),
+    ...questGroups(quests).map((g) => el("fieldset", { class: "plain" }, el("legend", { class: "muted small" }, g.label),
+      el("div", { class: "toolbar" }, ...g.ids.map((id) => {
+        const q = G.questData[id];
+        return checkbox(el("span", {}, enemyName(id) ?? q.name,
+          el("span", { class: "muted small" }, ` Lv ${q.levelReq ?? "?"}`), badgeFor("enemy", id) ?? ""), tickedByDefault(id, maxLevel), `quest:${id}`);
+      })))),
     rare);
   // Maps you own, then catalog maps at ascension 0/1; nothing of maps with Scribe hidden (F15, as the Battle pages).
   const mapsOn = !isHidden("Scribe");
@@ -154,7 +159,7 @@ function renderSources(): void {
       el("div", { class: "toolbar" }, ...owned.map((it: Any, i: number) => checkbox(ownedMapLabel(it), true, `own:${i}`))));
   }
   if (catalog.length) {
-    mapBlocks.push(el("details", { class: "help" }, el("summary", {}, "Catalog maps"),
+    mapBlocks.push(el("details", { class: "help farm-fold", "data-label": "Catalog maps" }, el("summary", {}, "Catalog maps"),
       el("div", { class: "toolbar" }, ...catalog.flatMap(([id, m]) => [
         checkbox(el("span", {}, itemLink("map", id), el("span", { class: "muted small" }, ` Lv ${m.itemLevel ?? "?"}`), " ", gradeBadge("S")), false, `cat:${id}:0`),
         ...(isVisible("map", id, { ascension: 1 }) ? [checkbox(el("span", {}, itemLink("map", id, undefined, undefined, 1), " ", gradeBadge("S")), false, `cat:${id}:1`)] : []),
@@ -164,9 +169,19 @@ function renderSources(): void {
     const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
       .map((id): [string, string] => [String(id), itemName("consumable", id) ?? G.itemData.consumable[id].name])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "farm-scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
-    mapBlocks.push(el("div", { class: "toolbar", title: "Bought for every map run" }, el("span", { class: "muted small" }, "Scrolls"), ...scrolls));
+    mapBlocks.push(el("div", { class: "farm-scrolls", title: "Bought for every map run" }, el("span", { class: "muted small" }, "Scrolls"), ...scrolls));
   }
-  $("#sources").replaceChildren(el("h3", {}, "Quests"), questBox, ...mapBlocks);
+  $("#sources").replaceChildren(questBox, ...mapBlocks);
+  updateSummaries();
+}
+
+/** Each fold's summary with its count of ticked quests or maps (F12). */
+function updateSummaries(): void {
+  document.querySelectorAll<HTMLDetailsElement>("#sources details.farm-fold").forEach((d) => {
+    const n = d.querySelectorAll("input[type=checkbox]:checked:not([value=rare])").length;
+    const s = d.querySelector("summary");
+    if (s) s.textContent = foldSummary(d.dataset.label ?? "", n);
+  });
 }
 
 function chosenSources(): SourceChoice[] {
@@ -229,6 +244,8 @@ function dropWorker(): void {
 function run(): void {
   const out = $("#farm-results");
   drawLast = null;
+  shownSig = null;
+  out.classList.remove("farm-stale");
   const party = partyRequest();
   if (!FARM_SLOTS.some(({ key }) => state.slots[key] !== null && state.slots[key] !== undefined && !state.excluded[key])) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, "Put at least one hero in the party."));
@@ -241,6 +258,8 @@ function run(): void {
   }
   const n = Math.max(1, Math.min(1000, Math.trunc(Number($<HTMLInputElement>("#n").value) || 1)));
   const mapRuns = Math.max(1, Math.min(200, Math.trunc(Number($<HTMLInputElement>("#map-runs").value) || 1)));
+  const mode: string = state.sv!.raw.gameMode || "Standard";
+  const sig = currentSignature();
   if (state.busy) dropWorker(); // a run still going: start over
   const w = farmWorker();
   const btn = $<HTMLButtonElement>("#run");
@@ -269,7 +288,11 @@ function run(): void {
     finished();
     if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
     else {
-      drawLast = () => out.replaceChildren(...results(m.rows, choices));
+      shownSig = sig;
+      drawLast = () => {
+        out.replaceChildren(...results(m.rows, choices, mode));
+        refreshStale();
+      };
       drawLast();
     }
   };
@@ -283,27 +306,45 @@ function run(): void {
     const f = fightingSlots(c.source, state.slots, state.excluded);
     return Array.isArray(f) ? f : f.problem;
   });
-  const req: FarmRequest = { gameMode: state.sv!.raw.gameMode || "Standard", ...party, sources: choices.map((c) => c.source), fight, n, mapRuns };
+  const req: FarmRequest = { gameMode: mode, ...party, sources: choices.map((c) => c.source), fight, n, mapRuns };
   w.postMessage(req);
+}
+
+// ---------------------------------------------------------------- out-of-date result (F23)
+/** The setup the shown result was ranked from. */
+let shownSig: string | null = null;
+
+function currentSignature(): string {
+  return setupSignature({
+    slots: state.slots, excluded: state.excluded,
+    sources: [...document.querySelectorAll<HTMLInputElement>("#sources input[type=checkbox]:checked")].map((c) => c.value),
+    scrolls: [...document.querySelectorAll<HTMLSelectElement>("select.farm-scroll")].map((s) => s.value),
+    n: Number($<HTMLInputElement>("#n").value), mapRuns: Number($<HTMLInputElement>("#map-runs").value),
+  });
+}
+
+/** Dim the shown result, with a note, once the party or the sources no longer match it. */
+function refreshStale(): void {
+  const out = $("#farm-results");
+  const stale = Boolean(drawLast && shownSig !== null && !state.busy && currentSignature() !== shownSig);
+  out.classList.toggle("farm-stale", stale);
+  const note = out.querySelector(".farm-stale-note");
+  if (stale && !note) out.prepend(el("p", { class: "farm-stale-note", role: "status" }, "Party or sources changed: rank again"));
+  if (!stale) note?.remove();
 }
 
 // ---------------------------------------------------------------- results
 const perHour = (x: number) => `${gold(x)}/h`;
-const VALUE_HELP = "Loot sell value minus the run's cost (quest gold, map, scrolls, revives), plus essence at its cheapest " +
-  "production cost (profit model, grade 3), per hour of the party's time.";
 
-function results(rows: FarmRow[], choices: SourceChoice[]): HTMLElement[] {
+function results(rows: FarmRow[], choices: SourceChoice[], mode: string): HTMLElement[] {
   const all = rows.map((r, i) => ({ r, c: choices[i] }));
   const live = all.filter((x) => !x.r.blocked).sort((a, b) => b.r.value_per_hour - a.r.value_per_hour);
   const ranked = [...live, ...all.filter((x) => x.r.blocked)];
+  // F09: no headline card (the #1 tile says it); win and grade before the value
   const top: HTMLElement[] = [];
   if (live.length) {
     const best = live[0];
-    top.push(el("div", { class: "enemy farm-best" },
-      el("p", { class: "section-label" }, best.r.value_per_hour <= 0 ? "Every source here loses gold: the least costly" : "Best use of your heroes' time"),
-      el("div", { class: "toolbar" }, el("strong", { class: "farm-best-name" }, best.c.label()),
-        el("span", {}, el("strong", {}, perHour(best.r.value_per_hour)), " value"))),
-    el("div", { class: "tiles" }, ...live.slice(0, 3).map(({ r, c }, k) =>
+    top.push(el("div", { class: "tiles" }, ...live.slice(0, 3).map(({ r, c }, k) =>
       tile(`#${k + 1} · ${c.source.kind === "quest" ? "quest" : "map"}`, perHour(r.value_per_hour),
         `${pct(r.win)} wins · ${fmt1.format(r.essence_per_hour)} essence/h`,
         { icon: ["🥇", "🥈", "🥉"][k], tone: r.value_per_hour > 0 ? "good" : "bad",
@@ -330,21 +371,24 @@ function results(rows: FarmRow[], choices: SourceChoice[]): HTMLElement[] {
   const grid = table(data, [
     { key: "rank", label: "#", num: true, render: (x) => dash(x, () => String(x.rank)) },
     { key: "source", label: "Source", render: source, sortBy: (x) => x.name },
-    { key: "value", label: "Value / h", num: true, render: (x) => dash(x, () => el("strong", {}, fmt.format(Number(x.value)))) },
-    { key: "gold", label: "Gold / h", num: true, render: (x) => dash(x, () => fmt.format(Number(x.gold))) },
-    { key: "essence", label: "Essence / h", num: true, render: (x) => dash(x, () => fmt1.format(Number(x.essence))) },
     { key: "win", label: "Win", num: true, render: (x) => dash(x, () => el("span", { class: `rate ${rateTone(Number(x.win))}` }, pct(Number(x.win)))) },
     { key: "grade", label: "Grade", num: true, render: (x) => dash(x, () => Number(x.grade)
       ? el("span", { title: `Average grade ${fmt1.format(Number(x.grade))}` }, gradeBadge(GRADE_LETTERS[Math.min(4, Math.max(0, Math.round(Number(x.grade)) - 1))]))
       : "–") },
-    { key: "time", label: "Time / run", num: true, render: (x) => dash(x, () => duration(Number(x.time))) },
+    { key: "value", label: "Value / h", num: true, render: (x) => dash(x, () => el("strong", {}, fmt.format(Number(x.value)))) },
+    { key: "gold", label: "Gold / h", num: true, render: (x) => dash(x, () => fmt.format(Number(x.gold))) },
+    { key: "essence", label: "Essence / h", num: true, render: (x) => dash(x, () => fmt1.format(Number(x.essence))) },
+    { key: "time", label: "Time / run", num: true, render: (x) => dash(x, () => {
+      const tip = timeTip(rowOf(x));
+      return tip ? el("span", { title: tip }, duration(Number(x.time))) : duration(Number(x.time));
+    }) },
     { key: "cost", label: "Cost / run", num: true, render: (x) => dash(x, () => cost(rowOf(x))) },
     { key: "loot", label: "Loot / run", num: true, render: (x) => dash(x, () => fmt.format(Number(x.loot))) },
     { key: "ess_names", label: "Essence / run", sortBy: (x) => x.ess_run },
     { key: "deaths", label: "Deaths", num: true, render: (x) => dash(x, () => pct(Number(x.deaths))) },
   ], (x) => (x.blocked ? "farm-row-blocked" : ""));
   grid.classList.add("farm-table");
-  grid.querySelectorAll("th")[2]?.append(helpTip(VALUE_HELP, "Value / h"));
+  [...grid.querySelectorAll("th")].find((th) => th.textContent?.startsWith("Value / h"))?.append(helpTip(valueHelp(mode), "Value / h"));
   return [...top, grid];
 }
 
@@ -371,6 +415,9 @@ async function loadSave(text: string, name: string): Promise<void> {
   }
   $("#setup").hidden = false;
   $("#farm-results").replaceChildren();
+  $("#farm-results").classList.remove("farm-stale");
+  drawLast = null;
+  shownSig = null;
   renderParty();
   renderSources();
 }
@@ -384,6 +431,12 @@ function init(): void {
     },
   });
   $("#run").addEventListener("click", run);
+  // F12, F23: fold counts follow the ticks; a shown result goes out of date when the setup changes
+  $("#setup").addEventListener("change", () => {
+    updateSummaries();
+    refreshStale();
+  });
+  $("#setup").addEventListener("input", refreshStale);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
   // The expansion switches changed: rebuild the sources, keeping what was ticked and the scrolls.
   subscribe(rebuildSources);
@@ -407,6 +460,8 @@ function rebuildSources(): void {
   document.querySelectorAll<HTMLSelectElement>("select.farm-scroll").forEach((s, k) => {
     if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
   });
+  updateSummaries();
+  refreshStale();
 }
 
 init();

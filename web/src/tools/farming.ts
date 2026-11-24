@@ -23,7 +23,7 @@ import { checkAmount, fightSeed, partyProblem, SearchCancelled, type SearchContr
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 import { type Game, gameFromData } from "./gamedata.ts";
 import { craftGrade, questLoot, Solver, type SourceStat } from "./profit.ts";
-import { isMapOnlyQuest, mapCraftSeconds, mapsWithQuest } from "./quest-stats.ts";
+import { isMapOnlyQuest, mapCraftSeconds, mapsWithQuest, modeFactors } from "./quest-stats.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -72,7 +72,7 @@ export interface FarmRow {
   essence_value: number;
   /** Average hero death rate over the party. */
   death_rate: number;
-  /** XP per run and per hour, averaged over the party's heroes (with their expMod and the mode's questXpMod;
+  /** XP per run and per hour, averaged over the party's heroes (with their expMod and the mode's quest XP factor;
    * a hero at its tier's max level gains nothing in game). */
   xp_per_run: number;
   xp_per_hour: number;
@@ -184,6 +184,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
       // Quest:calculateExperience: round(exp / heroes) x amount per living hero of a won quest
       const share = Math.round(baseExp / Math.max(members.length, 1)) * amount;
       let xp = 0, revive = 0;
+      const xpMod = modeFactors(sim.mode).questXp; // F19: the save's mode (data.GameModsData questXpMod)
       for (let k = 0; k < n; k++) {
         step();
         const res = sim.fight(src.quest, party.front, party.back, { seed: fightSeed(seed0, k), isRare: src.rare ?? false, amount });
@@ -193,7 +194,7 @@ export function farmingReport(sim: Sim, party: { front: Row; back: Row }, source
           for (const h of res.heroes) {
             const m = members.find((x) => x.name === h.name && x.class === h.class);
             // Hero:addExperience: nothing at the tier's max level
-            if (!h.dead && m && m.level < D.maxHeroLevel[m.prestigeLevel]) xp += share * (1 + (m.expMod ?? 0) / 100) * D.questXpMod;
+            if (!h.dead && m && m.level < D.maxHeroLevel[m.prestigeLevel]) xp += share * (1 + (m.expMod ?? 0) / 100) * xpMod;
           }
         }
         // Quest:updateHeroAfterQuest: a lost quest kills every hero; a dead hero is revived for gold

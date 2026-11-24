@@ -1925,7 +1925,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
    results rules no longer apply); party row labels, ticked-out slots, can't-start rows, no inline styles. */
 .farm-row-label { min-width: 5.5em; }
 .farm-slot { display: inline-flex; align-items: center; gap: 4px; }
-.farm-best .farm-best-name { font-size: 1.15rem; }
 .farm-table .rate { color: var(--c); }
 .farm-table .farm-blocked { display: block; font-weight: 600; white-space: normal; }
 .farm-table tr.farm-row-blocked td { color: var(--muted); }
@@ -1968,3 +1967,23 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .hero-detail .gear-item .item, .hero-detail .gear-item a.wl { color: color-mix(in srgb, var(--r, var(--fg)) var(--ink), var(--fg)); }
 .section-label .help-tip { vertical-align: middle; }
 /* end r2-b */
+/* farming f2 */
+/* Farming planner, second batch (review F07, F11, F23): rare quests' "random offer" tag, the source cell and the
+   party selects on a phone, the map Scrolls row, a result dimmed once the setup changed. */
+.farm-random { padding: 0 7px; font-weight: 600; }
+.farm-table td:nth-child(2) { white-space: normal; min-width: 11em; }
+.farm-table td:nth-child(2) .nowrap { white-space: normal; }
+#farm-results.farm-stale > :not(.farm-stale-note) { opacity: 0.45; }
+.farm-stale-note { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; font-weight: 600;
+  background: color-mix(in srgb, #f59e0b 14%, var(--card)); border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border)); }
+/* map Scrolls: label then three equal selects on one row; on a phone the label above and the three below */
+.farm-scrolls { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; margin: 10px 0; }
+.farm-scrolls select { width: 100%; min-width: 0; }
+@media (max-width: 600px) {
+  .farm-scrolls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .farm-scrolls > span { grid-column: 1 / -1; }
+  #party .toolbar { flex-wrap: wrap; }
+  #party .toolbar select, #party .farm-slot { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+  #party .farm-slot select { flex: 1 1 auto; }
+}
+/* end farming f2 */

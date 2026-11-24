@@ -62,3 +62,38 @@ export function readStoredParty(text: string | null, heroes: number): StoredPart
 export function storedPartyWith(prev: Record<string, unknown> | null, slots: StoredParty["slots"], skills: StoredParty["skills"]): StoredParty {
   return { locked: {}, excluded: {}, ...(prev ?? {}), slots: { ...slots }, skills: { ...skills } } as StoredParty;
 }
+
+/** questType of the event bosses (the game's "Epic Boss": Galam, Cragus, Odin, Faust), only fought during an event. */
+export const EVENT_QUEST_TYPE = 6;
+export const isEventQuest = (id: number): boolean => G.questData?.[id]?.questType === EVENT_QUEST_TYPE;
+
+/** One fieldset of the quest list: a level band ("Lv 50–59") or the event bosses ("Event"). */
+export interface QuestGroup {
+  label: string;
+  ids: number[];
+}
+
+/** The quest list's groups (F22): the quests by level band of 10, then the event bosses in their own "Event" group. */
+export function questGroups(ids: number[]): QuestGroup[] {
+  const bands = new Map<number, number[]>();
+  const events: number[] = [];
+  for (const id of ids) {
+    if (isEventQuest(id)) {
+      events.push(id);
+      continue;
+    }
+    const b = Math.floor((Number(G.questData[id]?.levelReq) || 0) / 10) * 10;
+    bands.set(b, [...(bands.get(b) ?? []), id]);
+  }
+  return [...[...bands].sort((a, b) => a[0] - b[0]).map(([b, list]) => ({ label: `Lv ${b}–${b + 9}`, ids: list })),
+    ...(events.length ? [{ label: "Event", ids: events }] : [])];
+}
+
+/**
+ * Ticked when the list is first drawn: quests from 12 levels under the party's best hero up to its level. Event
+ * bosses start unticked (F22): they only come during an event.
+ */
+export function tickedByDefault(id: number, maxLevel: number): boolean {
+  const lv = Number(G.questData[id]?.levelReq) || 0;
+  return !isEventQuest(id) && lv <= maxLevel && lv >= maxLevel - 12;
+}

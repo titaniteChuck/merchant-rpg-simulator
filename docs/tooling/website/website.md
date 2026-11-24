@@ -919,21 +919,37 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   (size 2) with a full party: Front 2 and Back 1; a solo quest: the Front 1 hero. When the rules still fail
   (`problemOf`: Front 2 or Front 1 empty, all ticked out) the row reads "Can't start" with the reason, no figures,
   ranked last. `farmingReport` checks every source's party with `partyProblem` (option `partyFor`, row `blocked`).
+- Steps: 1 Party, 2 Rank (fights per quest, runs per map, the Rank button, then the results), 3 What to compare
+  (the source lists), so the Rank box sits above the long lists (review F12). On a phone the party selects take the
+  full width (F11). The three map Scrolls selects share one even row (label, then three equal columns; on a phone
+  the label above them).
 - Sources: quest-board quests up to level 60 without placeholders (`farmQuestIds`: `isFightable`, `isBoardQuest`;
-  no map bosses or Treasure Bushes, the map lists cover them), ticked around the heroes' level, rare variants
-  optional; owned maps, catalog maps at ascension 0/1 (grade S), up to 3 scrolls on every map run. With Scribe hidden,
-  or no map to pick, no map block and no scroll selects.
+  no map bosses or Treasure Bushes, the map lists cover them), by level band of 10, the ones from 12 levels under the
+  best hero up to its level ticked; event bosses (questType 6: Galam, Cragus, Odin, Faust) in their own last "Event"
+  group, unticked (`questGroups`, `tickedByDefault`, F22). Rare variants optional, tagged "random offer" in the list
+  and on their result rows (they only show up at random on the quest board, F07). Owned maps, catalog maps at
+  ascension 0/1 (grade S), up to 3 scrolls on every map run. Fold summaries count the ticks ("Quests · 12 ticked",
+  "Catalog maps · 0 ticked", F12). With Scribe hidden, or no map to pick, no map block and no scroll selects.
 - `farmingReport` (`web/src/tools/farming.ts`) simulates each source with its party (common seeds) and prices it with
   the profit `Solver` (grade 3); the page keeps its worker between runs, so the Solver is solved once (~3 s) and
   reused; Cancel, or a new run while one is busy, ends the worker. Defaults: 40 fights per quest, 30 runs per map.
 - Cost per run: quest gold, the map, the scrolls and the revive gold of the heroes who died (`cost.revive`; a lost
   quest kills the whole party), in the cell's tooltip; it comes off gold/h and value/h.
 - Ranked by value per hour (loot sell value minus the run's cost, plus essence at its production cost; the formula in
-  the column's "?"); headline "best use of your heroes' time", or "every source here loses gold". Grade as the
-  nearest letter badge (the average in its tooltip), time per run with `duration()`, sortable Source (shown name) and
-  Essence / run (total); a map row with runs the game's own code failed on shows "N of M runs". Results in
-  `#farm-results` (the Battle `#results` tile rules don't apply). Tests: `web/test/farming-worker.test.ts`,
-  `web/test/farming-f1.test.ts`. Review and open design choices: [review-farming](../roadmap/review-farming.md).
+  the column's "?", which adds "Prices follow Standard mode, not <mode>." for a save in another mode: the profit
+  Solver has no game mode, F19). Quest XP uses the mode's factor (`modeFactors`, F19). The three podium tiles, no
+  headline card (F09); columns #, Source, Win, Grade, Value / h, Gold / h, Essence / h, Time / run, Cost / run,
+  Loot / run, Essence / run, Deaths. Grade as the nearest letter badge (the average in its tooltip), time per run
+  with `duration()` (a map row's tooltip "Craft X + run Y", F20), sortable Source (shown name) and Essence / run
+  (total); the Source cell wraps (F11); a map row with runs the game's own code failed on shows "N of M runs".
+  Results in `#farm-results` (the Battle `#results` tile rules don't apply).
+- Out of date (F23): once the party, the ticked sources, the scrolls or the run counts differ from the shown result's
+  (`setupSignature` in `web/src/ui/farming-view.ts`), the result is dimmed under "Party or sources changed: rank
+  again"; going back to the same setup clears it.
+- Open (design choices of the review): the results layout and the phone column set (D1), party editing (D2), source
+  presets and region groups (D3), rare variants (D4), owned-map pricing (D5), run counts (D6), quest level rule (D7,
+  F08). Tests: `web/test/farming-worker.test.ts`, `web/test/farming-f1.test.ts`, `web/test/farming-f2.test.ts`.
+  Review: [review-farming](../roadmap/review-farming.md).
 
 ## Levelling page
 
