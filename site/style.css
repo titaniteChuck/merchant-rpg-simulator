@@ -1445,3 +1445,57 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   .qxp-controls { gap: 8px 12px; }
 }
 /* end quest xp */
+/* battle v4 */
+/* U36. Step 3 in three columns on a wide screen: party | opponent | 5-turn plan; party | opponent with the plan under
+   them up to 1200px; stacked below 960px (party, opponent, plan). */
+.setup-grid.b3-grid { grid-template-columns: minmax(0, 1.4fr) minmax(230px, 240px) minmax(0, 1.5fr); gap: 14px; }
+/* Three columns: the hero cards' stat strip a little smaller, so four-digit values fit. */
+@media (min-width: 1201px) {
+  .setup-grid.b3-grid .stat-strip td { font-size: 0.7rem; padding: 1px 0; }
+  .setup-grid.b3-grid .stat-strip th { font-size: 0.58rem; padding: 0; }
+}
+@media (max-width: 1200px) {
+  .setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
+  .setup-grid.b3-grid .plan-col { grid-column: 1 / -1; }
+}
+@media (max-width: 960px) { .setup-grid.b3-grid { grid-template-columns: minmax(0, 1fr); } }
+.plan-col { min-width: 0; }
+.plan-col:empty { display: none; }
+/* Hero cards: the include box at the top right; a hero left out is dimmed but keeps its slot. */
+.slot-tools { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.slot .include { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--card-2); cursor: pointer; }
+.slot .include input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.slot .include.capped, .slot .include.capped input { cursor: not-allowed; }
+.slot .include:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slot.excluded > :not(.slot-head), .slot.excluded .slot-name { opacity: 0.45; }
+.slot.excluded { border-style: dashed; }
+.out-badge { font-size: 0.66rem; letter-spacing: .03em; }
+.party-capped { margin: 0 0 10px; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #f59e0b;
+  background: color-mix(in srgb, #f59e0b 12%, transparent); }
+/* The 5-turn plan: turns down, actors across (timeline.ts partyPlan). */
+.pg-scroll { overflow-x: auto; padding-bottom: 2px; }
+.pg-grid { display: grid; gap: 3px; min-width: calc(26px + var(--pg-cols) * 64px); }
+.pg-row { display: grid; gap: 3px; grid-template-columns: 24px repeat(var(--pg-cols), minmax(0, 1fr)); }
+.pg-turn { align-self: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pg-heads .pg-turn { align-self: end; }
+.pg-head { display: flex; flex-direction: column; min-width: 0; font-size: 0.72rem; padding: 0 0 2px 5px; border-left: 3px solid var(--c, var(--border)); }
+.pg-head.enemy { border-left-color: #ec4899; }
+.pg-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-cell { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 6px; font-size: 0.7rem; line-height: 1.22;
+  background: var(--card-2); border: 1px solid var(--border); }
+.pg-cell.enemy { background: color-mix(in srgb, #ec4899 8%, var(--card-2)); }
+.pg-cell.hero.hit { background: color-mix(in srgb, #f59e0b 8%, var(--card-2)); }
+.pg-cell.hero.forced { border-color: color-mix(in srgb, #ef4444 65%, var(--border)); background: color-mix(in srgb, #ef4444 10%, var(--card-2)); }
+.pg-cell .tl-skill { white-space: normal; overflow-wrap: anywhere; }
+.pg-words { color: var(--muted); font-size: 0.64rem; cursor: help; }
+.pg-mark { display: block; font-size: 0.64rem; line-height: 1.2; padding: 1px 3px; border-radius: 5px; cursor: help; overflow-wrap: anywhere;
+  background: color-mix(in srgb, #f59e0b 20%, transparent); }
+.pg-mark.on-hero.k-force-action, .pg-mark.on-hero.k-stun { background: color-mix(in srgb, #ef4444 24%, transparent); font-weight: 650; }
+.pg-mark.own { background: color-mix(in srgb, #ec4899 20%, transparent); }
+.pg-mark.malus { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.plan-col .tl-note { margin-top: 6px; }
+@media (max-width: 600px) {
+  .pg-grid { min-width: calc(26px + var(--pg-cols) * 72px); }
+}
+/* end battle v4 */

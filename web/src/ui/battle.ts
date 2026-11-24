@@ -22,14 +22,15 @@ import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
-import { enemyStrip, loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
+import { loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
+import { enemyGroups, enemyStatMax, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
 import { initSaveSource } from "./save-source.ts";
-import { enemyLevelSort, enemyLevelText, enemyLink, href, isEnemy, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
+import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, timeText, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
-import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, passiveName, prefixName, skillName, suffixName } from "./names.ts";
+import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -43,13 +44,11 @@ type Opp = "quest" | "map";
  * and, for a search, one panel in battle-search.ts.
  */
 interface Mode { key: "simulate" | SearchKey; icon: string; label: string; hint: string; party: boolean; opp: Opp[] }
+// U36: two modes. Best gear, Best potion / enchant and Optimise everything left the page (their engine code stays).
 const MODES: Mode[] = [
   { key: "simulate", icon: "▶", label: "Simulate", hint: "Your party against an enemy or a map run, hundreds of times.", party: true, opp: ["quest", "map"] },
-  { key: "gear", icon: "🛡️", label: "Best gear", hint: "The best item in each slot for one hero, from what you own or the catalog.", party: true, opp: ["quest"] },
-  // U27: the solver (was Best party, Best rotation and Best scrolls), behind a spoiler guard (battle-search.ts).
-  { key: "party", icon: "👥", label: "Best party", hint: "The smallest parties that win: heroes, rows, rotations and scrolls. A spoiler: it gives the answer.", party: false, opp: ["quest", "map"] },
-  { key: "consumables", icon: "🧪", label: "Best potion / enchant", hint: "Which potion to drink, or enchant to add, for one hero against this opponent.", party: true, opp: ["quest", "map"] },
-  { key: "optimise", icon: "✨", label: "Optimise everything", hint: "Party, rotations, gear and scrolls tuned together within a time budget.", party: false, opp: ["quest", "map"] },
+  // U27: the solver (was Best party, Best rotation and Best scrolls; "Solve" since U36), behind a spoiler guard (battle-search.ts).
+  { key: "party", icon: "🧩", label: "Solve", hint: "The smallest parties that win: heroes, rows, rotations and scrolls. A spoiler: it gives the answer.", party: false, opp: ["quest", "map"] },
 ];
 const modeOf = (key: string) => MODES.find((m) => m.key === key) ?? MODES[0];
 const MODE_KEY = "battle-mode";
@@ -62,17 +61,19 @@ interface State {
   saveName: string;
   slots: Record<string, number | null>; // "front0" -> hero index in sv.raw.hero
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
-  /** Slots whose hero Best party / Optimise everything must keep (slot key -> true). */
+  /** Slots whose hero the solver must keep (slot key -> true). */
   locked: Record<string, boolean>;
+  /** U36: slots whose hero is ticked out on its card: it stays in the slot but doesn't fight (slot key -> true). */
+  excluded: Record<string, boolean>;
   worker: Worker | null;
 }
-const state: State = { mode: MODES[0], sv: null, saveName: "", slots: {}, skills: {}, locked: {}, worker: null };
+const state: State = { mode: MODES[0], sv: null, saveName: "", slots: {}, skills: {}, locked: {}, excluded: {}, worker: null };
 
 // The party and edited rotations, remembered per save in this browser (convenience only).
 const partyKey = () => `battle-party:${state.saveName}`;
 function persistParty(): void {
   try {
-    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, locked: state.locked }));
+    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, locked: state.locked, excluded: state.excluded }));
   } catch { /* storage blocked: the party just isn't remembered */ }
 }
 function restoreParty(heroes: number): void {
@@ -83,6 +84,7 @@ function restoreParty(heroes: number): void {
     state.slots = Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as State["slots"];
     state.skills = Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as State["skills"];
     state.locked = Object.fromEntries(Object.entries(p.locked ?? {}).filter(([, v]) => v === true)) as State["locked"];
+    state.excluded = Object.fromEntries(Object.entries(p.excluded ?? {}).filter(([, v]) => v === true)) as State["excluded"];
   } catch { /* ignore */ }
 }
 
@@ -105,21 +107,20 @@ const slotKey = (row: string, i: number) => `${row}${i}`;
 const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"} ${key.endsWith("1") ? 1 : key.endsWith("2") ? 2 : 3}`;
 
 // ---------------------------------------------------------------- choices
+/**
+ * The enemy picker (U36): by region and kind, region by region: "<Region>", "<Region> – Event", "<Region> – Map" (map
+ * bosses and map Treasure Bushes only), each by level (battle-setup.ts enemyGroups on wiki-data.ts regionOf).
+ */
 function questOptions(): [string, [string, string][]][] {
-  const byTier = new Map<string, [number, string, string][]>();
-  for (const [id, q] of Object.entries<Any>(G.questData)) {
-    // Placeholders are not fights (wiki-data PLACEHOLDER_QUEST_IDS); the quest bushes (gathering quests) are.
-    if (!q.enemyHp || !q.attackList || !q.name || !isEnemy(Number(id))) continue;
-    if (!isVisible("enemy", Number(id))) continue; // an expansion the visitor hides (Frentir, map bosses)
-    const lvl = enemyLevelSort(Number(id)); // a Treasure Bush: the lowest level of the maps it spawns in
-    const tier = `Level ${Math.floor(lvl / 10) * 10}–${Math.floor(lvl / 10) * 10 + 9}`;
+  const ids = Object.keys(G.questData).map(Number)
+    // Placeholders are not fights (wiki-data PLACEHOLDER_QUEST_IDS); the quest bushes (gathering quests) are. Nor is
+    // an expansion the visitor hides (Frentir, map bosses).
+    .filter((id) => isFightable(id) && isVisible("enemy", id));
+  return enemyGroups(ids).map((g) => [g.label, g.ids.map((id): [string, string] => {
+    const q = G.questData[id];
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${enemyName(id, true)}` : "";
-    const list = byTier.get(tier) ?? [];
-    list.push([lvl, id, `Lv ${enemyLevelText(Number(id))} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", Number(id)))}`]);
-    byTier.set(tier, list);
-  }
-  return [...byTier.entries()].sort((a, b) => a[1][0][0] - b[1][0][0])
-    .map(([tier, list]) => [tier, list.sort((a, b) => a[0] - b[0] || Number(a[1]) - Number(b[1])).map(([, id, l]) => [id, l])]);
+    return [String(id), `Lv ${enemyLevelText(id)} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", id))}`];
+  })]);
 }
 
 function mapOptions(sv: Save | null): [string, [string, string][]][] {
@@ -130,10 +131,9 @@ function mapOptions(sv: Save | null): [string, [string, string][]][] {
   const owned = sv?.mapInventory ?? [];
   if (owned.length) {
     groups.push(["Your maps", owned.map((m: Any, i: number): [string, string] => {
-      const name = itemName("map", m.id) ?? `map ${m.id}`;
-      const mods = [prefixName(m.prefix), m.suffix > 0 ? suffixName(m.suffix) : ""].filter(Boolean).join(" ");
-      // Options can't be outlined: the chosen map is shown outlined under the pickers (renderTarget).
-      return [`own:${i}`, `${name}${mods ? ` (${mods})` : ""} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
+      // U34 / U36: "[Prefix] Map +N", each part translated (names.ts modItemName). Options can't be outlined: the
+      // chosen map is shown outlined under the pickers (renderTarget).
+      return [`own:${i}`, `${modItemName("map", m.id, m)} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
     })]);
   }
   if (catalog.length) groups.push(["All maps (choose ascension and grade)", catalog]);
@@ -251,6 +251,18 @@ function statStrip(raw: Any | null): HTMLElement {
     el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k]) => el("td", {}, raw ? fmt.format(st[k] ?? 0) : "–")))));
 }
 
+/**
+ * U36: which filled slots fight. A hero ticked out on its card stays in its slot; over the opponent's size cap the
+ * first ones in the game's slot order are kept (the required slot first) and the rest are left out automatically.
+ */
+function fighting(): { included: Set<string>; capped: SlotRef[] } {
+  const filled: SlotRef[] = SLOTS.filter(([r, i]) => state.slots[slotKey(r, i)] !== null && state.slots[slotKey(r, i)] !== undefined)
+    .map(([row, i]) => ({ key: slotKey(row, i), row, i }));
+  const excluded = new Set(Object.keys(state.excluded).filter((k) => state.excluded[k]));
+  const r = includedSlots(filled, excluded, rulesOf(pageTarget()));
+  return { included: new Set(r.included.map((s) => s.key)), capped: r.capped };
+}
+
 /** The six slots, back row (left) and front row (right), every slot the same size, filled or not. In the modes that
  * choose the party (Best party, Optimise everything), empty slots are "to be found" and a filled slot can be locked:
  * the search keeps its hero. */
@@ -259,7 +271,12 @@ function renderParty(refreshSearch = true): void {
   const picks = !state.mode.party;
   // Party setup rules of the opponent (battle-rules.ts): required slot, solo quests, party size cap.
   const rules = rulesOf(pageTarget());
-  const filled = SLOTS.filter(([r, i]) => state.slots[slotKey(r, i)] !== null && state.slots[slotKey(r, i)] !== undefined).length;
+  // U36: heroes ticked out on their card stay in the slot without fighting; the size cap counts the others.
+  const fight = fighting();
+  const filled = SLOTS.filter(([r, i]) => {
+    const k = slotKey(r, i);
+    return state.slots[k] !== null && state.slots[k] !== undefined && !state.excluded[k];
+  }).length;
   const options: [string, string][] = [["", picks ? "— to be found —" : "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
   const slot = (row: "front" | "back", i: number) => {
     const key = slotKey(row, i);
@@ -270,8 +287,9 @@ function renderParty(refreshSearch = true): void {
     s.addEventListener("change", () => {
       const v = s.value === "" ? null : Number(s.value);
       // A hero can stand in one slot only: clear it elsewhere.
-      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) (state.slots[k] = null, delete state.locked[k]);
+      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) (state.slots[k] = null, delete state.locked[k], delete state.excluded[k]);
       state.slots[key] = v;
+      delete state.excluded[key]; // another hero (or none): it fights
       // Picking a hero by hand in a search mode locks it (the search keeps it); clearing a slot unlocks it.
       if (v === null) delete state.locked[key];
       else if (picks) state.locked[key] = true;
@@ -292,6 +310,26 @@ function renderParty(refreshSearch = true): void {
       });
       return b;
     })() : null;
+    // U36: the include box, top right: unticked, the hero stays in the slot but doesn't fight. Over the size cap the
+    // last ones (game slot order) are left out automatically: their box is unticked and disabled.
+    const capped = raw ? fight.capped.some((c) => c.key === key) : false;
+    const out = raw ? Boolean(state.excluded[key]) || capped : false;
+    const include = raw ? (() => {
+      const c = el("input", { type: "checkbox", class: "include-box" }) as HTMLInputElement;
+      c.checked = !out;
+      c.disabled = capped;
+      const what = capped ? `${raw.name} is left out: this quest takes at most ${rules.maxSize} hero${rules.maxSize === 1 ? "" : "es"} (untick another hero to bring this one in)`
+        : out ? `${raw.name} stays in the slot but doesn't fight (tick to include)` : `${raw.name} fights (untick to leave out without emptying the slot)`;
+      c.setAttribute("aria-label", `Include ${raw.name} in the battle`);
+      c.addEventListener("change", () => {
+        if (c.checked) delete state.excluded[key];
+        else state.excluded[key] = true;
+        persistParty();
+        renderParty();
+        document.querySelector<HTMLInputElement>(`[data-include="${key}"] input`)?.focus();
+      });
+      return el("label", { class: `include${capped ? " capped" : ""}`, title: what, "data-include": key }, c, el("span", { class: "visually-hidden" }, "Include"));
+    })() : null;
     // Rules: the required slot is flagged; an empty slot the opponent doesn't allow (solo quest, party full) is disabled.
     const required = rules.required.some((x) => x.row === row && x.i === i);
     const soloOff = rules.kind === "solo" && !required;
@@ -303,9 +341,10 @@ function renderParty(refreshSearch = true): void {
         : el("span", { class: "avatar off", "aria-hidden": "true" }, "?"),
       `${row === "front" ? "Front" : "Back"} ${i + 1}`,
       raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(off ? offText : picks ? "to be found" : "empty", "plain"),
+      ...(out ? [el("span", { class: "pill plain out-badge" }, capped ? "over the limit" : "left out")] : []),
       ...(required ? [el("span", { class: "pill t-orange req-badge", title: rules.kind === "solo" ? "A solo quest takes one hero, here" : "A party quest always fills this slot (it can be swapped, never emptied)" }, "required")] : [])),
-    ...(lock ? [lock] : []));
-    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}` },
+    el("span", { class: "slot-tools" }, ...(lock ? [lock] : []), ...(include ? [include] : [])));
+    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}` },
       head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
   };
   const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
@@ -321,6 +360,10 @@ function renderParty(refreshSearch = true): void {
     "The search fills the six slots. 🔒 Locked heroes stay in the party; pick a hero in a slot to lock it.")] : []),
   el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : [])),
   ...(rulesText(rules) ? [el("p", { class: "muted small party-rules" }, rulesText(rules))] : []),
+  // U36: the heroes left out over the size cap.
+  ...(fight.capped.length ? [el("p", { class: "small party-capped", role: "status" }, `ℹ️ This quest takes at most ${rules.maxSize} hero${rules.maxSize === 1 ? "" : "es"}: `
+    + `${fight.capped.map((c) => heroRaw(state.slots[c.key] ?? null)?.name ?? c.key).join(", ")} ${fight.capped.length === 1 ? "is" : "are"} left out (the last in slot order). `
+    + "Untick another hero to bring one in.")] : []),
   // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
   // party fill the slots themselves.
   ...((p) => (p && !picks ? [el("p", { class: "error small party-problem", role: "status" }, `⚠ ${p}`)] : []))(partyProblem()),
@@ -341,9 +384,10 @@ function pageTarget(): PageTarget | null {
 function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): string | null {
   // U33 fix: the slots hold hero indices and the engine's check reads an empty slot as falsy, so hero 0 (the save's
   // first hero) looked missing; each filled slot is passed as an object.
+  const inc = fighting().included;
   const key = (row: "front" | "back") => [0, 1, 2].map((i) => {
     const v = state.slots[slotKey(row, i)];
-    return v === null || v === undefined ? null : { hero: v };
+    return v === null || v === undefined || !inc.has(slotKey(row, i)) ? null : { hero: v };
   });
   return problemOf(pageTarget(), front ?? key("front"), back ?? key("back"));
 }
@@ -351,13 +395,15 @@ function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): st
 /** The "Put back the previous party" button after Clear all (until it is used or the slots change by hand). */
 let clearUndo: HTMLElement | null = null;
 function clearAll(): void {
-  const prev = { slots: { ...state.slots }, locked: { ...state.locked } };
+  const prev = { slots: { ...state.slots }, locked: { ...state.locked }, excluded: { ...state.excluded } };
   state.slots = {};
   state.locked = {};
+  state.excluded = {};
   const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
   b.addEventListener("click", () => {
     state.slots = prev.slots;
     state.locked = prev.locked;
+    state.excluded = prev.excluded;
     clearUndo = null;
     persistParty();
     renderParty();
@@ -373,19 +419,38 @@ function clearAll(): void {
 let search: { show(key: SearchKey | null): void; refresh(): void; relabel(): void } | null = null;
 const oppKind = (): Opp => ($<HTMLInputElement>("input[name=opp]:checked")?.value ?? "quest") as Opp;
 
-/** Largest base stat among the enemies of the same kind (quest, boss, party boss …) and level band (0-9, 10-19 …),
- * rare variants included: the enemy radar's rims, so the shape compares an enemy with its peers. */
-const enemyBest = new Map<string, Record<string, number>>();
-function enemyRims(d: Any): Record<string, number> {
-  const band = Math.floor((d.levelReq ?? 0) / 10), key = `${d.questType}:${band}`;
-  if (enemyBest.has(key)) return enemyBest.get(key)!;
-  const rims: Record<string, number> = {};
-  for (const [id, q] of Object.entries<Any>(G.questData)) {
-    if (!q.enemyHp || !q.attackList || !isEnemy(Number(id)) || q.questType !== d.questType || Math.floor((q.levelReq ?? 0) / 10) !== band) continue;
-    for (const [k] of ENEMY_STATS) rims[k] = Math.max(rims[k] ?? 0, q[k] ?? 0, q[`${k}B`] ?? 0);
+/**
+ * U36: the chosen opponent (quest or map, size, rare, map grade, ascension, scrolls), remembered in this browser across
+ * pages (localStorage `battle-opponent`, convenience only) and put back when the page is built again.
+ */
+const OPP_KEY = "battle-opponent";
+interface OppChoice { kind?: Opp; quest?: string; rare?: boolean; amount?: string; map?: string; asc?: string; grade?: string; scrolls?: string[] }
+/** False while onExpansions puts a choice back (the intermediate states are not remembered). */
+let saving = true;
+function saveOpponent(): void {
+  if (!saving) return;
+  try {
+    localStorage.setItem(OPP_KEY, JSON.stringify(currentOpponent()));
+  } catch { /* storage blocked: not remembered */ }
+}
+/** The opponent as the controls show it, or what was remembered when they aren't built yet. */
+function currentOpponent(): OppChoice {
+  const v = (sel: string) => document.querySelector<HTMLSelectElement>(sel)?.value;
+  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value);
+  const kind = oppKind();
+  // The other kind's choice stays as it was remembered.
+  const was = storedOpponent();
+  return kind === "quest"
+    ? { ...was, kind, quest: v("#quest"), rare: document.querySelector<HTMLInputElement>("#rare")?.checked ?? false, amount: v("#amount") }
+    : { ...was, kind, map: v("#map"), asc: v("#map-asc"), grade: v("#map-grade"), scrolls };
+}
+function storedOpponent(): OppChoice {
+  try {
+    const o = JSON.parse(localStorage.getItem(OPP_KEY) ?? "null");
+    return o && typeof o === "object" ? o : {};
+  } catch {
+    return {};
   }
-  enemyBest.set(key, rims);
-  return rims;
 }
 
 /** Set while the page redraws for another language: the search panel keeps its form (U29). */
@@ -409,8 +474,15 @@ function renderTarget(): void {
       if (!hasRare) rare.checked = false;
       syncAmount();
       const r = rare.checked, sfx = r ? "B" : "";
-      const rims = enemyRims(d);
-      const axes: RadarAxis[] = ENEMY_STATS.map(([k, label]) => ({ label, value: d[`${k}${sfx}`] ?? 0, max: rims[k] ?? 0 }));
+      // U36: every axis on the same scale for every enemy (the highest value of the stat in the game); the HP follows
+      // the quest size (one enemy with N× HP), so it can pass the rim.
+      const rims = enemyStatMax();
+      const n = Number(amount.value) || 1;
+      const axes: RadarAxis[] = ENEMY_STATS.map(([k, label]) => {
+        const hp = k === "enemyHp" && n > 1;
+        const value = (d[`${k}${sfx}`] ?? 0) * (hp ? n : 1);
+        return { label: hp ? `${label} ×${n}` : label, value, max: rims[k] ?? 0, best: "the strongest enemy" };
+      });
       card.className = `opp-card${r ? " rare" : ""}`;
       card.replaceChildren(
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
@@ -418,17 +490,17 @@ function renderTarget(): void {
             el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
               ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
         radar(axes, { title: `${enemyName(q.value, r)}'s stats`, size: 240 }),
-        el("p", { class: "muted small" }, `Rims: the strongest ${(d.title || "quest").toLowerCase()} enemy of level ${Math.floor((d.levelReq ?? 0) / 10) * 10}–${Math.floor((d.levelReq ?? 0) / 10) * 10 + 9}.`),
-        // The 5-turn timeline with effect windows (U11); the plain rotation without timeline data.
-        ...((tl) => tl ? [el("h4", {}, "Timeline"), enemyStrip(tl)]
-          : [el("h4", {}, "Skills"), el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))])(
-          timelineOf(Number(q.value), r)),
-        el("p", { class: "small" }, el("a", { href: href.enemy(Number(q.value)) }, "Enemy page in the wiki →")));
+        el("p", { class: "muted small" }, `Rims: the highest value of each stat among all enemies${n > 1 ? `; HP ×${n} for the quest size` : ""}.`),
+        // U36: the turns are in the 5-turn plan (third column); the plain rotation only without timeline data.
+        ...(timelineOf(Number(q.value), r) ? [] : [el("h4", {}, "Skills"),
+          el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))]));
+      saveOpponent();
     };
     // Another enemy may have other party rules (required slot, size cap): the slots are drawn again.
     q.addEventListener("change", () => (update(), renderParty()));
-    rare.addEventListener("change", () => (update(), renderPlan()));
-    amount.addEventListener("change", () => (syncAmount(), renderPlan()));
+    rare.addEventListener("change", () => (update(), renderParty(false)));
+    // The radar's HP follows the quest size.
+    amount.addEventListener("change", () => (update(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, q,
       el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
         el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount)), sizeNote), card);
@@ -451,8 +523,9 @@ function renderTarget(): void {
       const d: Any = G.itemData.map?.[id] ?? {};
       const a = own ? it?.prestigeLevel : Number(asc.value), g = own ? (it?.grade ?? 3) : Number(grade.value);
       const pre = own && it?.prefix ? prefixName(it.prefix) : "", suf = own && it?.suffix > 0 ? suffixName(it.suffix) : "";
-      // Plain catalog map: no label, so the link shows (and keeps in step) the map's name in the visitor's language.
-      const name = pre || suf ? [pre, itemName("map", id) ?? `map ${id}`, suf].filter(Boolean).join(" ") : undefined;
+      // Plain catalog map: no label, so the link shows (and keeps in step) the map's name in the visitor's language. A
+      // modded map (U34 / U36): "[Prefix] Map +N" from its translated parts (modItemName).
+      const name = pre || suf ? modItemName("map", id, it) : undefined;
       const bosses = seq<number>(d.bossList ?? {});
       const fact = (k: string, v: Node | string) => [el("dt", {}, k), el("dd", {}, v)];
       card.replaceChildren(
@@ -471,10 +544,12 @@ function renderTarget(): void {
           el("h4", {}, "Scrolls"), ...scrolls),
         el("p", { class: "muted small" }, "Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
           + "Base rooms and time, before the map's modifiers."));
+      saveOpponent();
     };
     m.addEventListener("change", sync);
     asc.addEventListener("change", sync);
     grade.addEventListener("change", sync);
+    for (const x of scrolls) x.addEventListener("change", saveOpponent);
     box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
     sync();
     $<HTMLInputElement>("#runs").value = "50";
@@ -518,10 +593,10 @@ function renderPlan(): void {
   if (oppKind() !== "quest" || !document.querySelector("#quest")) return;
   const t = targetOf().quest!;
   const members: PlanMember[] = partyOf().members.map((m) => ({
-    row: m.row, i: m.i, raw: m.raw,
+    row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class),
     rotation: state.skills[m.idx]?.attackList ?? api.newHero(m.raw).attackList.slice(1, 6),
   }));
-  if (!members.length) return;
+  // U36: the third column; the enemy's column alone while the party is empty.
   const plan = partyPlan(t, members);
   if (plan) box.append(el("h3", { class: "col-title" }, "🗓️ 5-turn plan"), plan);
 }
@@ -584,9 +659,11 @@ function partyOf() {
   const front: (Any | null)[] = [null, null, null], back: (Any | null)[] = [null, null, null];
   const skills = { front: [null, null, null] as (SkillChoice | null)[], back: [null, null, null] as (SkillChoice | null)[] };
   const members: PartyMember[] = [];
+  // U36: only the heroes that fight (ticked in, within the size cap); the others stay in their slot.
+  const inc = fighting().included;
   for (const [row, i] of SLOTS) {
     const idx = state.slots[slotKey(row, i)];
-    if (idx === null || idx === undefined) continue;
+    if (idx === null || idx === undefined || !inc.has(slotKey(row, i))) continue;
     (row === "front" ? front : back)[i] = sv.raw.hero[idx];
     (row === "front" ? skills.front : skills.back)[i] = state.skills[idx] ?? null;
     members.push({ row, i, idx, raw: sv.raw.hero[idx] });
@@ -830,7 +907,16 @@ function init(): void {
     },
   });
   loadWikiText();
-  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => r.addEventListener("change", renderTarget));
+  // Quest enemy ⇄ map run: the other kind comes back as it was last chosen (U36).
+  document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => r.addEventListener("change", () => {
+    saving = false;
+    try {
+      restoreOpponent(storedOpponent());
+    } finally {
+      saving = true;
+    }
+    saveOpponent();
+  }));
   search = initSearch({
     save: () => state.sv!,
     gameMode: () => state.sv?.raw.gameMode || "Standard",
@@ -847,6 +933,7 @@ function init(): void {
       const lockedIdx = new Set(Object.keys(state.locked).map((k) => state.slots[k]).filter((x): x is number => x !== null && x !== undefined));
       state.slots = {};
       state.locked = {};
+      state.excluded = {};
       front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
       back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
       for (const [k, v] of Object.entries(state.slots)) if (v !== null && lockedIdx.has(v)) state.locked[k] = true;
@@ -854,7 +941,7 @@ function init(): void {
       persistParty();
       renderParty(false);
     },
-    locks: () => Object.keys(state.locked).map((k) => heroRaw(state.slots[k] ?? null)?.id).filter((x): x is number => typeof x === "number"),
+    locks: () => Object.keys(state.locked).filter((k) => !state.excluded[k]).map((k) => heroRaw(state.slots[k] ?? null)?.id).filter((x): x is number => typeof x === "number"),
     poolSkills: () => Object.fromEntries(Object.entries(state.skills).map(([i, s]) => [state.sv!.raw.hero[Number(i)].id, s])),
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
@@ -900,10 +987,24 @@ function onLanguage(): void {
  */
 function onExpansions(): void {
   if (!state.sv) return;
-  const keep = (sel: string) => document.querySelector<HTMLSelectElement>(sel)?.value;
-  const was = { quest: keep("#quest"), rare: document.querySelector<HTMLInputElement>("#rare")?.checked, map: keep("#map"), asc: keep("#map-asc"), grade: keep("#map-grade") };
-  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value);
+  // The choice on screen, else (first build, U36) the one remembered from an earlier visit.
+  const built = Boolean(document.querySelector("#quest, #map"));
+  const was = built ? currentOpponent() : storedOpponent();
+  if (!built && was.kind) {
+    const r = document.querySelector<HTMLInputElement>(`input[name=opp][value=${was.kind}]`);
+    if (r) r.checked = true;
+  }
   syncOppKinds();
+  saving = false;
+  try {
+    restoreOpponent(was);
+  } finally {
+    saving = true;
+  }
+  saveOpponent();
+}
+
+function restoreOpponent(was: OppChoice): void {
   renderTarget();
   const put = (sel: string, v: string | undefined) => {
     const s = document.querySelector<HTMLSelectElement>(sel);
@@ -918,9 +1019,12 @@ function onExpansions(): void {
     rare.checked = true;
     rare.dispatchEvent(new Event("change"));
   }
+  // The quest size (U36: kept too; the sizes offered follow the party, so a size it can't take falls back to ×1).
+  put("#amount", was.amount);
   put("#map", was.map);
   put("#map-asc", was.asc);
   put("#map-grade", was.grade);
+  const scrolls = was.scrolls ?? [];
   document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => {
     if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
   });
