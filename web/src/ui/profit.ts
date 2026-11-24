@@ -3,15 +3,16 @@
  * The economy is solved by profitReport (web/src/tools/profit.ts) in a web worker (profit-worker.ts);
  * the page only filters and sorts the tables it sends back. A save opened from the top-bar Save dropdown marks the
  * items the player owns. With Scribe hidden there are no orbs or maps: no Orbs tab, orb sources, map-modifier chip,
- * ascension filter or "no orbs" tile.
+ * ascension filter or "no orbs" tile. With the default settings the page shows the answer the build precomputed
+ * (data/profit-default.json) and starts the worker only on a change.
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
 import { $, chipToggle, el, fmt1, gold, segField, segmented, tile } from "./dom.ts";
-import type { Orb, ProfitRequest, ProfitResponse, Row } from "./profit-worker.ts";
+import { isDefaultRequest, type Orb, type ProfitRequest, type ProfitResponse, type Row } from "./profit-worker.ts";
 import {
-  enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, type ProfitTab, profitTabs, rankedTable, type SortState, STRATEGY,
-  TAB_LABELS,
+  enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, MORE_STEP, type ProfitTab, profitTabs, rankedTable, type SortState,
+  STRATEGY, TAB_LABELS,
 } from "./profit-tables.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, REGIONS } from "./wiki-data.ts";
@@ -27,7 +28,7 @@ const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension
 
 type Result = Extract<ProfitResponse, { ok: true }>;
 
-const PAGE = 100; // rows shown before "Show all"
+const PAGE = 100; // rows shown before "Show more"
 const MAX_LEVEL = 60;
 
 interface Filters {
@@ -55,6 +56,10 @@ const state = {
   sort: { Items: { key: "best_profit", desc: true }, Enchanting: { key: "suffix_net", desc: true }, Orbs: { key: "cost_per_essence", desc: false } } as Record<string, SortState>,
   limit: { Items: PAGE, Enchanting: PAGE, Orbs: PAGE } as Record<string, number>,
   orbChoice: new Map<number, string>(), // essence id -> "mapId@asc"
+  /** Cost breakdowns open under their row ("type|id|asc"). */
+  whyOpen: new Set<string>(),
+  /** The precomputed answer for the default settings, reused when the settings go back to them. */
+  defaults: null as Result | null,
 };
 
 let dataReady: Promise<void> | null = null;
@@ -81,7 +86,7 @@ function request(): ProfitRequest {
   const s = state.settings;
   return {
     id: ++state.lastId, grade: Number(s.grade), luck: num("#luck", 0, 1000, 0), crafterLevel: num("#crafter", 1, 60, 60),
-    enchanterLevel: num("#enchanter", 0, 60, 60), mapMods: s.mapMods, alloc: s.alloc, essenceFrom,
+    enchanterLevel: num("#enchanter", 0, 60, 60), mapMods: s.mapMods, alloc: s.alloc, heroHourCost: num("#herohour", 0, 1_000_000, 0), essenceFrom,
   };
 }
 
@@ -105,17 +110,7 @@ function worker(): Worker {
     }
     if (r.id !== state.lastId) return;
     setBusy(false);
-    if (!r.ok) {
-      $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, `The calculation failed: ${r.error}`));
-      return;
-    }
-    state.result = r;
-    // A forced map whose recipe uses at least as many of its orb as a run yields has no price.
-    const stuck = r.orbs.filter((o) => state.orbChoice.has(o.id) && o.cost === null);
-    $("#status").replaceChildren(...stuck.map((o) => el("p", { class: "error", role: "alert" },
-      `${itemName("material", o.id) ?? o.name} can't come from ${mapLabel(state.orbChoice.get(o.id)!)} alone: a run yields fewer than its recipe uses.`)));
-    buildOrbSelects(r);
-    render();
+    accept(r);
   };
   w.onerror = (e) => {
     state.busy = false;
@@ -128,6 +123,39 @@ function worker(): Worker {
   return w;
 }
 
+/** Shows an answer (the worker's or the precomputed one). */
+function accept(r: ProfitResponse): void {
+  if (!r.ok) {
+    $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, `The calculation failed: ${r.error}`));
+    return;
+  }
+  state.result = r;
+  // A forced map whose recipe uses at least as many of its orb as a run yields has no price.
+  const stuck = r.orbs.filter((o) => state.orbChoice.has(o.id) && o.cost === null);
+  $("#status").replaceChildren(...stuck.map((o) => el("p", { class: "error", role: "alert" },
+    `${itemName("material", o.id) ?? o.name} can't come from ${mapLabel(state.orbChoice.get(o.id)!)} alone: a run yields fewer than its recipe uses.`)));
+  buildOrbSelects(r);
+  render();
+}
+
+/** First view: the build's answer for the default settings; the worker only if it is missing or the settings differ. */
+function firstView(): void {
+  const req = request();
+  if (!isDefaultRequest(req)) return compute();
+  setBusy(true);
+  fetch("data/profit-default.json").then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json() as Promise<Result>;
+  }).then((r) => {
+    state.defaults = r;
+    if (state.lastId !== req.id || state.busy) return; // the settings changed meanwhile
+    setBusy(false);
+    accept({ ...r, id: req.id });
+  }).catch(() => {
+    if (state.lastId === req.id && !state.busy) compute();
+  });
+}
+
 function post(req: ProfitRequest): void {
   state.busy = true;
   setBusy(true);
@@ -136,6 +164,13 @@ function post(req: ProfitRequest): void {
 
 function compute(): void {
   const req = request();
+  if (state.defaults && isDefaultRequest(req)) { // back to the defaults: no solve
+    state.pending = null;
+    state.busy = false;
+    setBusy(false);
+    accept({ ...state.defaults, id: req.id });
+    return;
+  }
   if (state.busy) state.pending = req;
   else post(req);
 }
@@ -260,13 +295,13 @@ function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; or
 // ---------------------------------------------------------------- panels
 function tableFor(tab: string, rows: Row[], cols: InfoColumn[]): HTMLElement {
   return rankedTable({
-    rows, cols, sort: state.sort[tab], limit: state.limit[tab],
+    rows, cols, sort: state.sort[tab], limit: state.limit[tab], costs: state.result?.costs, open: state.whyOpen,
     onSort: (s) => {
       state.sort[tab] = s;
       renderPanel(true);
     },
-    onShowAll: () => {
-      state.limit[tab] = Infinity;
+    onMore: () => {
+      state.limit[tab] += MORE_STEP;
       renderPanel(true);
     },
   });
@@ -438,7 +473,7 @@ function init(): void {
   subscribe(redraw);
   onLanguageChange(redraw);
   // item names and tooltips need the game data in the page too (the worker loads its own copy)
-  Promise.all([loadData(), languageReady]).then(compute).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
+  Promise.all([loadData(), languageReady]).then(firstView).catch((e) => $("#status").replaceChildren(el("p", { class: "error", role: "alert" }, String(e))));
 }
 
 if (typeof document !== "undefined") init();

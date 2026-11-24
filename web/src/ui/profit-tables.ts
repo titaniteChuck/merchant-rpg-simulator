@@ -1,10 +1,10 @@
 /**
  * Tables of the profit page: column sets with plain-language headers and the explanation shown on hover,
  * and a sortable table (dom.ts `table`) that keeps its sort when the rows are filtered and shows only the
- * first rows until asked for all.
+ * first rows, then more in steps of 300 (P2). "Cost to make" opens the cost breakdown under the row (P2, F22).
  */
 import { ascSwatch, type Column, duration, el, fmt, fmt1, gold, goldNumber, GRADE_LETTERS, gradeBadge, pct, type Row, table } from "./dom.ts";
-import type { Row as ProfitRow } from "./profit-worker.ts";
+import type { CostPart, Row as ProfitRow } from "./profit-worker.ts";
 import { tip } from "./tooltip.ts";
 import { itemLink } from "./wiki-data.ts";
 import { compareNames, crafterName, enemyName, ITEM_TYPE_LABELS, itemName } from "./names.ts";
@@ -69,12 +69,63 @@ export function howText(how: string, ref: number | null = null): string {
   }
   m = /^map loot (.+) \(valued at sell price\)$/.exec(how);
   if (m) return `Loot of ${named(ref !== null ? itemName("map", ref) : undefined, m[1])}`;
+  const mapAt = (name: string, asc: string | undefined) => named(ref !== null ? itemName("map", ref) : undefined, name) + (asc ? ` (ascension ${asc})` : "");
+  m = /^map run (.+?)(?: asc(\d))? \(([\d.]+)\/run;/.exec(how);
+  if (m) return `Map run: ${mapAt(m[1], m[2])}, ${fmt1.format(Number(m[3]))} per run`;
+  m = /^map (.+?)(?: asc(\d))?(?: enchanted (.+?))? \(([\d.]+) essence\/run\)/.exec(how);
+  if (m) return `Map: ${mapAt(m[1], m[2])}${m[3] ? `, enchanted ${m[3]}` : ""}, ${fmt.format(Number(m[4]))} per run`;
   return how.replace(/\basc(\d)\b/g, "ascension $1");
 }
 
-// Ascension is the name's outline (silver 1, gold 2), as on the other pages.
+/** The ascension next to the name, shown on a phone where the Asc column is out of view (P2). */
+export function ascBadge(asc: unknown): HTMLElement | null {
+  if (!(Number(asc) > 0)) return null;
+  const b = ascSwatch(asc);
+  b.classList.add("pf-asc-badge");
+  return b;
+}
+
+// Ascension is the name's outline (silver 1, gold 2), as on the other pages; on a phone also a badge.
 const itemCell = (r: Row) => el("span", { class: "nowrap" }, itemLink(String(r.type ?? "equipment"), Number(r.id), String(r.name), r.rarity, r.asc),
+  ...[ascBadge(r.asc)].filter((x) => x !== null),
   ...(Number(r.owned) > 0 ? [el("span", { class: "pf-owned", title: `You have ${r.owned}` }, `✓ ${fmt.format(Number(r.owned))}`)] : []));
+
+/** "type|id|asc", the key of a row's cost breakdown. */
+export const costKey = (r: Row): string => `${r.type ?? "equipment"}|${r.id}|${r.asc ?? 0}`;
+
+/** "Cost to make": a button that opens the breakdown under the row. */
+const costCell = (r: Row) => (isNum(r.cost)
+  ? el("button", { type: "button", class: "pf-why-btn", "data-why": costKey(r), "aria-expanded": "false" }, goldCell(r.cost))
+  : "—");
+
+const amount = (a: number) => (Number.isInteger(a) ? fmt.format(a) : fmt1.format(a));
+
+/**
+ * One unit's cost: where it comes from, then for a craft or an ascension the crafting gold and each part
+ * (amount × unit cost), a part that is itself made from parts opening the same way.
+ */
+export function whyPanel(costs: Record<string, CostPart>, key: string): HTMLElement {
+  const e = costs[key];
+  if (!e) return el("p", { class: "muted small" }, "No breakdown.");
+  const lines: HTMLElement[] = [];
+  if (e.gold) lines.push(el("li", {}, el("span", {}, "Crafting gold"), el("span", { class: "num" }, gold(e.gold))));
+  for (const [t, i, p, a] of e.parts ?? []) {
+    const k = `${t}|${i}|${p}`, part = costs[k];
+    const label = el("span", {}, `${amount(a)} × `, itemLink(t, i, undefined, undefined, p),
+      ...(part ? [el("span", { class: "muted small" }, ` · ${gold(part.cost, part.cost < 10 ? 1 : 0)} each · ${howText(part.how, part.ref)}`)] : []));
+    const total = el("span", { class: "num" }, part ? gold(a * part.cost) : "—");
+    if (part?.parts?.length) {
+      const d = el("details", {}, el("summary", {}, label, total)) as HTMLDetailsElement;
+      d.addEventListener("toggle", () => {
+        if (d.open && d.children.length === 1) d.append(whyPanel(costs, k));
+      });
+      lines.push(el("li", {}, d));
+    } else lines.push(el("li", {}, label, total));
+  }
+  return el("div", { class: "pf-why" },
+    el("p", {}, howText(e.how, e.ref)),
+    ...(lines.length ? [el("ul", {}, ...lines, el("li", { class: "pf-why-total" }, el("span", {}, "Total"), el("span", { class: "num" }, gold(e.cost))))] : []));
+}
 const ascCell = (r: Row) => ascSwatch(r.asc);
 
 /** What to make and sell, ranked. */
@@ -94,8 +145,8 @@ export function itemColumns(withOwned: boolean): InfoColumn[] {
       tip: "Base price of the plain item (no modifier), before haggling and customer preferences." },
     { key: "ev_sell", label: "Average sale", num: true, show: (v) => goldCell(v),
       tip: "Average price when you sell it as made: crafting sometimes adds modifiers, which sell for more." },
-    { key: "cost", label: "Cost to make", num: true, show: (v) => goldCell(v),
-      tip: "Full cost of one item made the cheapest way: crafting gold plus every ingredient at its own cheapest cost, orbs for ascending, quest or map costs for drops." },
+    { key: "cost", label: "Cost to make", num: true, show: (v) => goldCell(v), render: costCell,
+      tip: "Full cost of one item made the cheapest way: crafting gold plus every ingredient at its own cheapest cost, orbs for ascending, quest or map costs for drops. Click a value for its breakdown." },
     { key: "p_any", label: "Modifier chance", num: true, render: (r) => {
       if (!isNum(r.p_any) || r.p_any === 0) return el("span", { class: "muted" }, "—");
       const s = el("span", { class: "pf-odds" }, percent(r.p_any));
@@ -168,9 +219,28 @@ export interface RankedTableOptions {
   sort: SortState;
   /** Called when a header is clicked, with the new sort (the caller re-renders). */
   onSort: (s: SortState) => void;
-  /** Rows shown before "Show all". */
+  /** Rows shown; "Show N more" adds MORE_STEP. */
   limit: number;
-  onShowAll: () => void;
+  onMore: () => void;
+  /** Cost breakdowns ("Cost to make" buttons) and the keys whose breakdown is open (kept across re-renders). */
+  costs?: Record<string, CostPart>;
+  open?: Set<string>;
+}
+
+/** Rows added by one "Show more": a bounded render (F16), never the 2,000-row table at once. */
+export const MORE_STEP = 300;
+
+/** Opens or closes the breakdown row under the row of a "Cost to make" button. */
+function toggleWhy(btn: HTMLElement, costs: Record<string, CostPart>, open: Set<string> | undefined, on: boolean): void {
+  const tr = btn.closest("tr")!;
+  const key = btn.dataset.why!;
+  const next = tr.nextElementSibling;
+  if (next?.classList.contains("pf-why-row")) next.remove();
+  btn.setAttribute("aria-expanded", String(on));
+  if (on) open?.add(key);
+  else open?.delete(key);
+  if (!on) return;
+  tr.after(el("tr", { class: "pf-why-row" }, el("td", { colspan: String(tr.children.length) }, whyPanel(costs, key))));
 }
 
 /**
@@ -182,6 +252,15 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
   const shown = sorted.slice(0, o.limit);
   const wrap = table(shown as Row[], o.cols);
   wrap.classList.add("pf-table");
+  const costs = o.costs;
+  if (costs) {
+    const tbody = wrap.querySelector("tbody")!;
+    tbody.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-why]");
+      if (btn) toggleWhy(btn, costs, o.open, btn.getAttribute("aria-expanded") !== "true");
+    });
+    for (const btn of tbody.querySelectorAll<HTMLElement>("[data-why]")) if (o.open?.has(btn.dataset.why!)) toggleWhy(btn, costs, o.open, true);
+  } else wrap.querySelectorAll("[data-why]").forEach((b) => b.replaceWith(b.textContent ?? ""));
   const ths = wrap.querySelectorAll("th");
   o.cols.forEach((c, i) => {
     const th = ths[i];
@@ -196,7 +275,7 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
     btn.addEventListener("click", () => o.onSort({ key: c.key, desc: c.key === o.sort.key ? !o.sort.desc : Boolean(c.num) }));
   });
   if (sorted.length <= shown.length) return wrap;
-  const more = el("button", { type: "button", class: "secondary" }, `Show all ${fmt.format(sorted.length)} rows`);
-  more.addEventListener("click", o.onShowAll);
+  const more = el("button", { type: "button", class: "secondary" }, `Show ${fmt.format(Math.min(MORE_STEP, sorted.length - shown.length))} more`);
+  more.addEventListener("click", o.onMore);
   return el("div", {}, wrap, el("p", { class: "pf-more muted small" }, `First ${fmt.format(shown.length)} of ${fmt.format(sorted.length)}. `, more));
 }

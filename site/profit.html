@@ -30,6 +30,8 @@
           <input id="crafter" type="number" min="1" max="60" step="1" value="60" inputmode="numeric" title="Level of your crafters: it sets the craft grade and the odds of modifiers."></label>
         <label class="pf-field"><span>Enchanter level</span>
           <input id="enchanter" type="number" min="0" max="60" step="1" value="60" inputmode="numeric" title="Level of your Enchanter: it sets the odds of adding a modifier. 0 = no Enchanter."></label>
+        <label class="pf-field"><span>Hero time (g/h)</span>
+          <input id="herohour" type="number" min="0" step="10" value="0" inputmode="numeric" title="Gold one hour of your heroes' time is worth, added to every quest and map run. 0 = free."></label>
         <div class="pf-field"><span>Who pays for a run</span>
           <div id="alloc-seg"></div></div>
         <div id="mapmods-box" class="pf-check"></div>
@@ -56,7 +58,7 @@
           Ingredients are priced the same way, all the way down.</li>
         <li id="orb-note">Maps cost orbs to make and drop orbs, so the page solves both together until the prices settle (a few seconds).</li>
         <li>Prices are the game's base sell values, before haggling, customer preferences and shop bonuses.</li>
-        <li>Not counted: hero time, events and the weekly shop, modded ingredients, stronger enemies on enchanted maps.</li>
+        <li>Not counted: events and the weekly shop, modded ingredients, stronger enemies on enchanted maps; hero time only at the gold per hour you set.</li>
       </ul>
     </details>
   </main>

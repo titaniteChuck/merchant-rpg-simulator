@@ -17,3 +17,5 @@ cd "$ROOT/web"
 # nav.ts: the menus of every page (U35). node:* = CLI-only code paths (profit.ts main) that never run in a page.
 npx esbuild src/ui/nav.ts src/ui/save-viewer.ts src/ui/battle.ts src/ui/solver.ts src/ui/battle-worker.ts src/ui/wiki.ts src/ui/profit.ts src/ui/profit-worker.ts src/ui/farming.ts src/ui/farming-worker.ts src/ui/levelling.ts src/ui/levelling-worker.ts src/ui/class-balance.ts src/ui/class-balance-worker.ts \
   --bundle --format=esm --target=es2020 --platform=browser --external:'node:*' --minify --sourcemap --outdir="$OUT/js"
+# P2 (F16): the profit page's answer for its default settings, so a first visit solves nothing in the browser.
+node src/tools/export-profit-default.ts "$OUT/data/profit-default.json"

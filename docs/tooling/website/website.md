@@ -947,31 +947,43 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 `site/profit.html` + `web/src/ui/profit.ts` (page) + `web/src/ui/profit-tables.ts` (columns, sortable table) +
 `web/src/ui/profit-worker.ts` (web worker). Model: [profit calculator](../profit-calculator/profit-calculator.md).
 
-- The worker runs `profitReport(gameFromData(), options)` (3-5 s) and sends back plain rows (`PyFloat` -> number,
-  `""` -> null) plus one entry per orb (ascension tier, region, cheapest map). Settings changed while it solves are
-  queued; only the newest answer is shown. The results are dimmed with a spinner while it works.
+- The worker runs `profitReport(gameFromData(), options)` (1-5 s) and sends back plain rows (`PyFloat` -> number,
+  `""` -> null), one entry per orb (ascension tier, region, cheapest map) and `costs`, the cost breakdown of every
+  priced unit (`profitResponse`, `costBreakdown`). Settings changed while it solves are queued; only the newest answer
+  is shown. The results are dimmed with a spinner while it works.
+- Default settings (`DEFAULT_REQUEST`: grade B, luck 0, crafter and Enchanter 60, map modifiers on, Shared, hero time
+  0, no forced orb): the build writes their answer to `data/profit-default.json`
+  (`web/src/tools/export-profit-default.ts`, run by `assemble-site.sh`; about 2.3 MB, 250 KB gzipped), so a first
+  visit shows the tables without a solve; the worker starts on the first change, and going back to the defaults
+  reuses the file (`isDefaultRequest`). Without the file the page solves as before.
 - Max level 60: the worker drops every item, enchanting and orb-source row above level 60 (Hard and Weekly Boss Rush
   maps, level 70); the level filter runs 1–60.
 - Each item row carries `how_id`, the id its "Cheapest way" names (crafter, orb, quest or map), so the page shows the
   crafter, orb, enemy and map in the visitor's language (`names.ts`); the Type column uses `ITEM_TYPE_LABELS`, the orb
   tables the region name (`regionName`).
 - Options: run grade and who pays for a run (`alloc` Shared / Full) as `segmented()` controls, party luck, crafter
-  level, Enchanter level, "Count map modifiers" as a `chipToggle()`, and a forced map per orb (`essenceFrom`). Any
-  change recomputes. On a phone the options grid keeps two columns.
+  level, Enchanter level, hero time in gold per hour (the model's `heroHourCost`, added to every quest and map run;
+  0 by default), "Count map modifiers" as a `chipToggle()`, and a forced map per orb (`essenceFrom`). Any change
+  recomputes. On a phone the options grid keeps two columns.
 - Tiles: most profit, most profit without orbs.
 - Tabs "What to make", "Enchanting", "Orbs":
   - What to make: every item × ascension, sorted by `best_profit`; filter by name, type chips (Equipment,
     Consumables, Maps), ascension (`segmented` Any / 0 / 1 / 2), level range. Columns: profit and return of the best
     plan, best plan, sell value, average sale, cost to make, modifier chance (prefix / suffix / both on hover), craft
-    time, cheapest way to get it.
+    time, cheapest way to get it. A "Cost to make" value opens its breakdown in a row under the item (`whyPanel`):
+    the cheapest way, the crafting gold, each part as amount × unit cost with its own source, and the total; a part
+    made from parts opens the same way, one level at a time. Open breakdowns stay open across sorting and filtering.
+    Map-run sources read "Map run: <map>, 0.3 per run", orb maps "Map: <map>, 63 per run".
   - Enchanting: `buildEnchantRows` (suffix and prefix odds, tries, cost, net gain per equipment and ascension); the
     "Only gains" chip (on by default) keeps rows where a suffix or a prefix earns more than it costs.
   - Orbs: cheapest map per orb for ascension 1 and 2, then every map × orb (`buildEssenceRows`).
 - Numbers through `dom.ts`: `gold()` (cost per orb with one decimal), signed gold built on `goldNumber()`, `duration()`
   for craft time, `pct()` for shares.
 - Every column header explains its metric on hover or focus (`tooltip.ts`). Tables show 100 rows, then "First 100 of
-  N. Show all N rows"; the sort applies to the whole filtered list and survives filtering. Below 600 px the first
-  column (the item) stays in view when a table scrolls sideways.
+  N. Show 300 more", 300 rows per click (`MORE_STEP`), never the whole table at once; the sort applies to the whole
+  filtered list and survives filtering. Below 600 px the first column (the item) stays in view when a table scrolls
+  sideways, and an ascended item shows its ascension as a badge after its name (the Asc column is out of view there;
+  one row per item × ascension until [D5](../roadmap/review-profit.md#d5-ascension-rows)).
 - A save opened from the top-bar Save dropdown (or dropped on the page) marks the items the player owns ("You have"
   column, "Only what I own" chip), from `owned()` in `save.ts`, matched in the page: no recompute. The page has no save
   panel of its own (a hidden picker for `initSaveSource`).
@@ -980,6 +992,10 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - A forced orb source fails only when the map's recipe uses at least as many of that orb as a run yields (Treant /
   Golem Revenge and Archon's Reality with Glacial Essence, Vanquishers with Necro Essence): "<orb> can't come from
   <map> alone: a run yields fewer than its recipe uses."
+- Waiting on the review's design choices ([review](../roadmap/review-profit.md#needs-a-design-choice)): map-only drop
+  costing (D1), one cost story with the wiki (D2), ranking per hour (D3), columns (D4), ascension rows (D5), options on a
+  phone (D6), the Orbs tab (D7); settings from the save (F19) with D6; sticky headers while the page scrolls (F06)
+  with D4 / D6.
 - Open design choices (map-only drop costs, one cost rule with the wiki, ranking, columns, ascension rows, phone
   options, the Orbs tab): [Profit page review](../roadmap/review-profit.md#needs-a-design-choice).
 
