@@ -69,3 +69,4 @@
 - **Update**: Levelling page review written ([review-levelling](./review-levelling.md)): 26 findings, 10 feature ideas, 16-item first batch, 7 design choices; Murlok Monarch chaining covered (map runs 4× below the best quest).
 - **Update**: P1 done (11e2b36): Profit page first batch (review-profit B1–B12).
 - **Update**: F1 done (1668383): Farming page first batch (review-farming).
+- **Update**: R2-B done (1345f9b): Save viewer on phones (review-r2); the no-save picker label is the same in the static HTML of every save page.
