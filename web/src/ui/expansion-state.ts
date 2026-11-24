@@ -97,6 +97,12 @@ export const overrideOf = (x: Expansion): boolean | null => overrides[x] ?? null
 /** "Show expansion content": everything visible, owned or not. */
 export const showAll = (): boolean => showAllFlag;
 export const owns = (x: Expansion): boolean => owned.has(x);
+/**
+ * U42: the content of expansion `x` is hidden on the pages: not owned and "Show expansion content" off (the rule of
+ * isVisible, and of the Expansions page's "Not owned: its content is hidden"). The battle pages hide every map-run
+ * control with Scribe hidden.
+ */
+export const isHidden = (x: Expansion): boolean => !showAllFlag && !owned.has(x);
 /** The visitor owns every expansion of `needs`. */
 export const ownsAll = (needs: readonly Expansion[]): boolean => needs.every((x) => owned.has(x));
 

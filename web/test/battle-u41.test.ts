@@ -79,8 +79,8 @@ test("Solver: the spoiler guard first, then the opponent and the options, Result
   assert.doesNotMatch(search, /"✓ Loaded"|: "Load"\)|`Load setup/);
   const show = search.slice(search.indexOf("const showSetup"), search.indexOf("const paint"));
   assert.ok(show.indexOf("ctx.applyParty") < show.indexOf("ctx.onShow?.()"));
-  // The spoiler guard hides the opponent and options too, not only the later steps.
-  assert.match(read("site/style.css"), /#setup\.solve-guarded > section:not\(:first-child\), #setup\.solve-guarded \.solve-what \{ display: none; \}/);
+  // The spoiler guard hides the opponent and options too, not only the later steps (U42: they are a section of their own).
+  assert.match(read("site/style.css"), /#setup\.solve-guarded > section:not\(:first-child\) \{ display: none; \}/);
 });
 
 test("Solver: its party is its own; Open in Simulator copies the shown party over", () => {

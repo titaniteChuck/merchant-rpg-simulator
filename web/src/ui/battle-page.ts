@@ -6,9 +6,10 @@
  * it; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest enemy or a
  * map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  *
- * Solver: step 1 is the spoiler guard (battle-search.ts), then what to solve: the opponent (the Simulator's pickers)
- * and the solve options with "Solve"; step 2 the solver's results; step 3, the Party and Flow tabs, stays hidden
- * until a result's "Show" fills it (revealParty). Its party is its own, in memory only: the Simulator's remembered
+ * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
+ * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
+ * Solve and its progress; the results under it only once a solve is done; the Party and Flow tabs stay hidden until a
+ * result's "Show" fills them (revealParty). Its party is its own, in memory only: the Simulator's remembered
  * party changes only by "Open in Simulator" (battle-links.ts simulatorPartyFrom), which copies the shown party and
  * the opponent over and opens the Simulator. The Solver's opponent is remembered apart (`solver-opponent`).
  * Runs go to a web worker with the game's rules (TypeScript engine).
@@ -27,7 +28,7 @@ import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, toast, withAsc } from "./dom.ts";
-import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
+import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty } from "./battle-links.ts";
@@ -137,7 +138,7 @@ function questOptions(): [string, [string, string][]][] {
     // Placeholders are not fights (wiki-data PLACEHOLDER_QUEST_IDS); the quest bushes (gathering quests) are. Nor is
     // an expansion the visitor hides (Frentir, map bosses).
     .filter((id) => isFightable(id) && isVisible("enemy", id));
-  return enemyGroups(ids).map((g) => [g.label, g.ids.map((id): [string, string] => {
+  return enemyGroups(ids, !mapsHidden()).map((g) => [g.label, g.ids.map((id): [string, string] => {
     const q = G.questData[id];
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${enemyName(id, true)}` : "";
     return [String(id), `Lv ${enemyLevelText(id)} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", id))}`];
@@ -161,8 +162,15 @@ function mapOptions(sv: Save | null): [string, [string, string][]][] {
   return groups;
 }
 
-/** A map run can be set up: the save has maps, or some catalog map is visible (maps are Scribe content). */
-const mapsAvailable = (): boolean => mapOptions(state.sv).some(([, list]) => list.length > 0);
+/**
+ * U42: Scribe hidden (not owned, expansion content not shown): nothing of maps on either battle page, the save's own
+ * maps included: no Quest / Map toggle (quests only), no map pickers or scrolls, no "– Map" enemy groups, so no map
+ * bar or map-run results either. A remembered map run falls back to a quest (syncOppKinds); the expansion menu's
+ * changes arrive through subscribe(onExpansions).
+ */
+const mapsHidden = (): boolean => isHidden("Scribe");
+/** A map run can be set up: Scribe not hidden, and the save has maps or some catalog map is visible. */
+const mapsAvailable = (): boolean => !mapsHidden() && mapOptions(state.sv).some(([, list]) => list.length > 0);
 
 /** Hide "Map run" when no map can be picked (no Scribe, no maps in the save); fall back to the quest enemy. */
 function syncOppKinds(): boolean {
@@ -595,7 +603,7 @@ function renderTarget(): void {
     rare.addEventListener("change", () => (update(), renderParty(false)));
     // The radar's HP follows the quest size.
     amount.addEventListener("change", () => (update(), renderPlan()));
-    box.replaceChildren(el("div", { class: "opp-controls" }, q,
+    placeTarget(box, el("div", { class: "opp-controls" }, q,
       el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
         el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount), sizeNote)), card);
     update();
@@ -646,12 +654,24 @@ function renderTarget(): void {
     asc.addEventListener("change", () => (sync(), renderPlan()));
     grade.addEventListener("change", () => (sync(), renderPlan()));
     for (const x of scrolls) x.addEventListener("change", () => (saveOpponent(), renderPlan()));
-    box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
+    placeTarget(box, el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
     sync();
     setRuns("50");
   }
   // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
   renderParty(false);
+}
+
+/**
+ * U42: the opponent's pickers go in #target; its card too, unless the page has a #target-card apart (the Solver: the
+ * pickers in its Solve panel, the card beside the party a result's Show brings).
+ */
+function placeTarget(box: HTMLElement, controls: HTMLElement, card: HTMLElement): void {
+  const apart = document.querySelector<HTMLElement>("#target-card");
+  if (apart) {
+    box.replaceChildren(controls);
+    apart.replaceChildren(card);
+  } else box.replaceChildren(controls, card);
 }
 
 /**
@@ -1444,7 +1464,7 @@ export function initBattlePage(kind: PageKind): void {
   onLanguageChange(onLanguage);
 }
 
-/** The Solver's panel (battle-search.ts): its guard and options in step 1, its results in step 2, Show into step 3. */
+/** The Solver's panel (battle-search.ts): its guard, the Solve panel's options and progress, the results, Show into the tabs. */
 function initSolver(): void {
   $("#open-sim").addEventListener("click", openInSimulator);
   search = initSearch({
@@ -1476,7 +1496,7 @@ function initSolver(): void {
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
     },
-    onStart: revealResults,
+    // U42: no onStart (the progress is in the Solve panel; the results appear only once a solve is done).
     // U41: a result's Show (after its party is applied) brings the Party and Flow tabs.
     onShow: revealParty,
     rules: () => rulesOf(pageTarget()),

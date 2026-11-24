@@ -125,13 +125,26 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     [Menus](#menus)); the Battle link itself opens the Simulator.
   - Simulator (`battle.html`): no mode chooser. Step 1 is the Simulate box (Runs, ▶ Simulate), step 2 the Results,
     step 3 the Party and Flow tabs with the opponent in the Party tab, as below.
-  - Solver (`solver.html`): (1) "What to solve": the spoiler guard first; once accepted, the warning line, then the
-    opponent (the Simulator's own pickers and card: quest enemy or map run) beside a box with the solve options and
-    🔎 Solve; (2) Results, the solver's table; (3) "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
+  - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
+    then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
+    enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map), then smallest and
+    largest party, Include scrolls, the time budget in seconds and 🔎 Solve, "Leave heroes out" under them; a running
+    solve's progress bar, clock and Cancel show inside the panel. No enemy card and no tabs during setup: the
+    opponent card (radar, map facts, scroll pickers) is drawn into `#target-card`, the Party tab's right column, so it
+    shows with the party a result's Show brings (`placeTarget` in `battle-page.ts`; the Simulator has no
+    `#target-card` and keeps its card under its pickers). The results section (`#search-results`, full width, under
+    the panel) is hidden until a solve is done; a new solve hides the last results until it ends; a Cancel or an
+    error is a line in the panel. Then "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
     the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
     party (`SearchContext.onShow` → `revealParty`). Editing there works as on the Simulator (AP limit toast, include
     boxes, Flow edits, map room bar, remembered tab); 🔒 locks feed the next solve. Once shown it stays for later
-    solves; a new save or Forget hides it again. The Party tab holds the hero slots only (the opponent is in step 1).
+    solves; a new save or Forget hides it again.
+  - Scribe hidden (U42, both pages): when Scribe is not owned and "Show expansion content" is off (`isHidden("Scribe")`
+    in `expansion-state.ts`, the rule the wiki hides Scribe content by), nothing of maps shows, the save's own maps
+    included: no Quest / Map toggle at all (quests only), no map pickers, ascension or grade, no "Include scrolls" on
+    the Solver, no "<Region> – Map" groups in the enemy picker (`enemyGroups(ids, false)` in `battle-setup.ts`), and
+    so no map room bar or map-run results. A remembered map run falls back to a quest (`syncOppKinds`); turning
+    Scribe on or off in the expansion menu redraws at once (`subscribe(onExpansions)`).
   - Shared state: the Solver's party is its own and is kept in memory only (`persistParty` / `restoreParty` do
     nothing there), so Solver edits never change the Simulator's remembered party (`battle-party:<file>`). The
     Solver's opponent is remembered apart (`solver-opponent`, starting from the Simulator's `battle-opponent` on a
@@ -297,10 +310,12 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       localStorage `battle-solver-shown` (try/catch; with storage blocked it holds for the page view); the panel then
       starts with "⚠ Spoiler tool: it gives you the answer." and a "Hide it again" link (forgets the choice, stops a
       running search and clears its results). Until accepted (U39), the guard hides the whole rest of the Solve page:
-      the Results and step 3 (party, opponent, flow) are hidden (`SearchContext.guarded` → `#setup.solve-guarded`).
+      the Solve panel, the results and the Party and Flow tabs are hidden (U42: every section after the guard's) (`SearchContext.guarded` → `#setup.solve-guarded`).
     - Options: smallest and largest party (1 and 6, clamped to the quest's size cap, both 1 on a solo quest),
-      "Include scrolls" (map runs only; disabled with "(map runs only)" on a quest; off, the runs keep the scrolls of
-      step 3), time budget 60 s (default) or 120 s, "Leave heroes out".
+      "Include scrolls" (map runs only; disabled with "(map runs only)" on a quest; U42: off, a map run is solved with
+      no scrolls, since the card's scroll pickers are out of sight during setup), the time budget (U42: a number input
+      in seconds, 30 by default, 5 to 600; the search stops then and shows what it found), "Leave heroes out". The
+      options as last set survive the panel's rebuild when the opponent changes (for the page view).
     - Progress by stage ("solo", "size N": done / total) with the time used on the bar. Cancel stops softly: the page
       revokes a blob: URL that the worker's `shouldStop` reads with a synchronous request (at most every 250 ms;
       `SearchRequest.stopUrl`, `stopSignal` in `battle-worker.ts`), and the configurations found so far come back as a

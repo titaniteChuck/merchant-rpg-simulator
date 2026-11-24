@@ -10,6 +10,10 @@
  * warning line with "Hide it again" stays. U39: while the guard is up, the page hides all the rest of the Solver
  * (SearchContext.guarded): the opponent and options, the Results, the party and flow.
  *
+ * U42: the options sit in the page's one Solve panel (with the opponent's pickers): party sizes, Include scrolls, the
+ * time budget in seconds (30 by default) and Solve; a running solve's progress is in that panel, and the results
+ * section stays hidden until a solve is done.
+ *
  * U41: each result has a "Show" button (was "Load"): it puts the setup in the party (slots, rotations, passives,
  * scrolls), then SearchContext.onShow lets the page bring its Party and Flow tabs.
  *
@@ -28,9 +32,9 @@ import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { scrollCount, solveShortlist } from "./battle-setup.ts";
-import { bar, el, fmt, fmt1, pct, rateTone, select } from "./dom.ts";
+import { bar, el, fmt, fmt1, pct, rateTone } from "./dom.ts";
 import { itemLink } from "./wiki-data.ts";
-import { isVisible } from "./expansion-state.ts";
+import { isHidden, isVisible } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -99,6 +103,11 @@ function setSolverShown(on: boolean): void {
 }
 
 const GRADES = ["D", "C", "B", "A", "S"];
+
+/** U42: the solve time budget's range, in seconds. */
+const TIME_MIN = 5, TIME_MAX = 600;
+/** U42: the Solve panel's options as last set, for this page view (the form is rebuilt when the opponent changes). */
+const prefs: { min: number; max: number | null; scrolls: boolean; time: number } = { min: 1, max: null, scrolls: true, time: 30 };
 const num = (attrs: Record<string, string>, value: number) => {
   const i = el("input", { type: "number", min: "1", ...attrs }) as HTMLInputElement;
   i.value = String(value);
@@ -106,6 +115,9 @@ const num = (attrs: Record<string, string>, value: number) => {
 };
 const field = (label: string, input: HTMLElement) => el("label", { class: "check" }, el("span", { class: "muted small" }, label), input);
 const intOf = (i: HTMLInputElement, lo = 1, hi = 100000) => Math.max(lo, Math.min(hi, Math.trunc(Number(i.value) || lo)));
+
+/** "m:ss" of a duration in ms. */
+const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 
 const isMapEval = (ev: FightEval | MapEval): ev is MapEval => "cleared" in ev;
 
@@ -119,10 +131,10 @@ const HEAD_TIPS: Record<string, string> = {
 };
 
 /**
- * The search panels; show(key) puts the spoiler guard, or the warning line, in `mount` (the top of step 1), the
- * options and the Solve button in `form` (under the opponent; empty while the guard is up), and the progress and
- * results in `results` (the page's Results, step 2); refresh() rebuilds the panel after the party or the opponent
- * changed, keeping the results (and a running search) where they are.
+ * The search panels; show(key) puts the spoiler guard, or the warning line, in `mount` (the top of the page), the
+ * options, the Solve button and a running solve's progress in `form` (in the Solve panel, under the opponent's
+ * pickers; empty while the guard is up), and the results in `results` (hidden until a solve is done, U42); refresh()
+ * rebuilds the panel after the party or the opponent changed, keeping the results (and a running search) where they are.
  */
 export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLElement, results: HTMLElement): { show(key: SearchKey | null): void; refresh(): void; relabel(): void } {
   let worker: Worker | null = null;
@@ -130,6 +142,12 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
   let last: { out: HTMLElement; draw: (again: boolean) => Node[] } | null = null;
   let current: SearchKey | null = null;
   let out: HTMLElement = el("div", { class: "search-out" });
+  // U42: a solve's progress (and a Cancel, an error) is in the Solve panel, under the options: this line survives the
+  // form's rebuilds (refresh) while a search runs. The results (`results`) stay hidden until a solve is done.
+  const status = el("div", { class: "solve-status", "aria-live": "polite" });
+  const showResults = (on: boolean) => {
+    results.hidden = !on;
+  };
   const stopWorker = () => {
     worker?.terminate();
     worker = null;
@@ -139,25 +157,30 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     if (key !== current || !keep) {
       out = el("div", { class: "search-out" });
       results.replaceChildren(...(key ? [out] : []));
+      showResults(false);
+      status.replaceChildren();
     }
     current = key;
     mount.hidden = key === null;
     const panel = key ? solverPanel(out) : null;
     mount.replaceChildren(...(panel ? [panel.head] : []));
-    form.replaceChildren(...(panel?.form ? [panel.form] : []));
+    form.replaceChildren(...(panel?.form ? [panel.form, status] : []));
     // U39: until the spoiler guard is accepted, the page hides everything else of Solve (results, party, opponent, plan).
     ctx.guarded?.(key !== null && !solverShown());
   };
 
   /**
-   * Run a search in a fresh worker; progress and results go to `out`. `budgetMs`: the bar shows the time used.
-   * `soft`: Cancel asks the search to stop (SearchRequest.stopUrl) and its result, with what was found so far, is
-   * shown as usual; a worker that doesn't answer within 10 s is terminated.
+   * Run a search in a fresh worker. U42: its progress, a Cancel or an error go to the Solve panel's status line; the
+   * results go to `out`, and the results section shows only once they are there (a new solve hides the last ones).
+   * `budgetMs`: the bar shows the time used. `soft`: Cancel asks the search to stop (SearchRequest.stopUrl) and its
+   * result, with what was found so far, is shown as usual; a worker that doesn't answer within 10 s is terminated.
    */
   function runSearch(req: SearchRequest, out: HTMLElement, render: (m: Extract<SearchResponse, { type: "done" }>, again: boolean) => Node[],
     budgetMs?: number, soft = false): void {
     stopWorker();
     last = null;
+    showResults(false);
+    out.replaceChildren();
     const w = new Worker(new URL("js/battle-worker.js", document.baseURI), { type: "module" });
     worker = w;
     const stage = el("span", { class: "muted small" }, "Starting…");
@@ -179,23 +202,23 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         setTimeout(() => {
           if (worker !== w) return;
           stopWorker();
-          out.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
+          status.replaceChildren(el("p", { class: "muted small" }, "Cancelled."));
         }, 10000);
         return;
       }
       stopWorker();
-      out.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
+      status.replaceChildren(el("p", { class: "muted small" }, "Cancelled."));
     });
-    // With a time budget (optimise everything) the bar shows the time used; otherwise the current stage's progress.
+    // With a time budget the bar shows the time used ("0:12 of 0:30"); otherwise the current stage's progress.
     const clock = el("span", { class: "muted small" });
     const t0 = Date.now();
     const timer = budgetMs ? setInterval(() => {
       if (worker !== w) return clearInterval(timer);
       const used = Date.now() - t0;
-      clock.textContent = `${Math.floor(used / 60000)}:${String(Math.floor(used / 1000) % 60).padStart(2, "0")} of ${budgetMs / 60000} min`;
+      clock.textContent = `${mmss(used)} of ${mmss(budgetMs)}`;
       (prog.firstElementChild as HTMLElement).style.width = `${Math.min(100, (100 * used) / budgetMs)}%`;
     }, 500) : 0;
-    out.replaceChildren(el("div", { class: "search-progress" }, el("div", { class: "toolbar" }, stage, clock, cancel), prog));
+    status.replaceChildren(el("div", { class: "search-progress" }, el("div", { class: "toolbar" }, stage, clock, cancel), prog));
     ctx.onStart?.();
     w.onmessage = (e: MessageEvent<SearchResponse>) => {
       const m = e.data;
@@ -208,10 +231,12 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       if (timer) clearInterval(timer);
       release();
       stopWorker();
-      if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
+      if (m.type === "error") status.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
       else {
         const draw = (again: boolean) => [...render(m, again), el("p", { class: "muted small", title: "Fixed seeds: every candidate is tested on the same rolls." }, `Searched in ${fmt1.format(m.ms / 1000)} s.`)];
+        status.replaceChildren();
         out.replaceChildren(...draw(false));
+        showResults(true);
         last = { out, draw };
       }
     };
@@ -219,7 +244,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       if (timer) clearInterval(timer);
       release();
       stopWorker();
-      out.replaceChildren(el("p", { class: "error", role: "alert" }, `Search failed: ${e.message}`));
+      status.replaceChildren(el("p", { class: "error", role: "alert" }, `Search failed: ${e.message}`));
     };
     w.postMessage(req);
   }
@@ -253,6 +278,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       setSolverShown(false);
       stopWorker();
       last = null;
+      status.replaceChildren();
       show(null);
       show("party");
     });
@@ -263,15 +289,26 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     const isMap = Boolean(t.map);
     // The opponent's size cap (a party quest takes at most questSize heroes, a solo quest one).
     const cap = Math.max(1, Math.min(6, ctx.rules?.().maxSize ?? 6));
-    const minN = num({ "aria-label": "Smallest party", max: String(cap) }, 1), maxN = num({ "aria-label": "Largest party", max: String(cap) }, cap);
+    // U42: the options as last set (a new opponent rebuilds the form), within this opponent's cap.
+    const minN = num({ "aria-label": "Smallest party", max: String(cap) }, Math.min(prefs.min, cap)),
+      maxN = num({ "aria-label": "Largest party", max: String(cap) }, Math.min(prefs.max ?? cap, cap));
     if (cap === 1) minN.disabled = maxN.disabled = true;
     const capNote = cap < 6 ? [el("span", { class: "muted small" }, cap === 1 ? "solo quest: one hero" : `this quest takes at most ${cap} heroes`)] : [];
     const sc = el("input", { type: "checkbox" }) as HTMLInputElement;
-    sc.checked = isMap;
+    sc.checked = isMap && prefs.scrolls;
     sc.disabled = !isMap;
     const scLabel = el("label", { class: `check${isMap ? "" : " off"}` }, sc, " Include scrolls",
       ...(isMap ? [] : [el("span", { class: "muted small" }, " (map runs only)")]));
-    const budget = select({ "aria-label": "Time budget" }, [["60", "60 s"], ["120", "120 s"]]);
+    // U42: Scribe hidden (no maps on the page): no "Include scrolls" at all.
+    const scrollOpt = isHidden("Scribe") && !isMap ? [] : [scLabel];
+    // U42: the time budget, in seconds (30 by default): the search stops then and shows what it found.
+    const budget = el("input", { type: "number", class: "solve-time", min: String(TIME_MIN), max: String(TIME_MAX), step: "5",
+      "aria-label": "Time budget in seconds", title: `How long the search may run, ${TIME_MIN} to ${TIME_MAX} seconds: it then stops and shows the setups found so far.` }) as HTMLInputElement;
+    budget.value = String(prefs.time);
+    minN.addEventListener("change", () => (prefs.min = intOf(minN, 1, cap)));
+    maxN.addEventListener("change", () => (prefs.max = intOf(maxN, 1, cap)));
+    sc.addEventListener("change", () => (prefs.scrolls = sc.checked));
+    budget.addEventListener("change", () => (prefs.time = intOf(budget, TIME_MIN, TIME_MAX)));
     const excl = excludePicker(sv);
     const go = el("button", { type: "button", class: "primary" }, "🔎 Solve");
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
@@ -285,21 +322,27 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       if (lo > hi) [lo, hi] = [hi, lo];
       const locks = ctx.locks();
       if (locks.length > hi) {
-        out.replaceChildren(el("p", { class: "error", role: "alert" }, `${locks.length} heroes are locked: raise the largest party size to ${locks.length} or unlock some.`));
+        status.replaceChildren(el("p", { class: "error", role: "alert" }, `${locks.length} heroes are locked: raise the largest party size to ${locks.length} or unlock some.`));
         return;
       }
       const scrolls = isMap && sc.checked;
-      const budgetMs = Number(budget.value) * 1000;
+      prefs.time = intOf(budget, TIME_MIN, TIME_MAX);
+      budget.value = String(prefs.time);
+      const budgetMs = prefs.time * 1000;
+      // U42: without "Include scrolls" a map run uses none (the scroll pickers are on the card, out of sight until a Show).
+      const target = ctx.target();
+      if (target.map && !scrolls) target.map = { ...target.map, scrolls: [] };
       // Show state of this result (kept when it is drawn again in another language).
       const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
-      runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...ctx.target(),
+      runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...target,
         minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
       (r) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st) : []), budgetMs, true);
     });
     // R1 F20: how the solver works is in a "?" on the warning line, not a paragraph.
     warn.append(" ", helpTip(intro, "the solver"));
     return { head: warn, form: el("div", { class: "search-panel solver" },
-      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, scLabel, field("time", budget), excl.node, go)) };
+      el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, ...scrollOpt,
+        field("time budget (s)", budget), go), excl.node) };
   }
 
   /**

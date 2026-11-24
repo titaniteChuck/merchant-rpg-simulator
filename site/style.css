@@ -1759,7 +1759,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .opp-card .opp-hp { font-variant-numeric: tabular-nums; text-align: center; }
 .opp-card .opp-hp strong { font-size: 1.05rem; }
 /* The Solver's spoiler guard hides the whole rest of the page until accepted: only the guard shows (U41: the opponent and options too). */
-#setup.solve-guarded > section:not(:first-child), #setup.solve-guarded .solve-what { display: none; }
+#setup.solve-guarded > section:not(:first-child) { display: none; }
 /* The flow: a light gap and dashed gold line every 5 turns, where the rotations start again. */
 .pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
@@ -1880,16 +1880,23 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* u41 battle */
 /* U41: the Simulator's one-line hint above its Run box. */
 .run-hint { margin: 0; }
-/* The Solver's step 1: the opponent (the Simulator's pickers and card) and the options with Solve, side by side on a
-   wide screen, stacked below 960px; under the spoiler warning line. */
-.solve-what { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; margin-top: 10px; }
-@media (max-width: 960px) { .solve-what { grid-template-columns: minmax(0, 1fr); } }
-.solve-what .run-box { margin-top: 0; }
-.solve-opp { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.solve-opp .col-title { margin: 0; }
-.solve-opp .seg { align-self: flex-start; }
-/* Step 3 after a Show: the party alone (the opponent is in step 1), "Open in Simulator" beside the heading. */
-.setup-grid.b3-grid.solve-grid { grid-template-columns: minmax(0, 1fr); }
+/* After a Show: "Open in Simulator" beside the heading. */
 .party-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 44px 0 14px; }
 .party-box-head h2 { margin: 0; }
 /* end u41 battle */
+/* u42 solver */
+/* U42: the Solver's one full-width Solve panel: the quest / map toggle and its pickers on one wrapping row, then the
+   options, the time budget and Solve, then a running solve's progress; the results (full width) under it once done. */
+.solve-box { margin-top: 10px; }
+.solve-opp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.solve-opp-row #target { flex: 1 1 420px; min-width: 0; }
+.solve-box .opp-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.solve-box .opp-controls > select { width: auto; max-width: 100%; flex: 1 1 240px; }
+.seg.compact .seg-opt { padding: 4px 12px; font-size: 0.85rem; }
+.solve-box .search-form { margin: 0; align-items: center; }
+.solve-box .solve-time { width: 5.5em; }
+.solve-box .exclude { margin-top: 6px; }
+.solve-status:empty { display: none; }
+.solve-status p { margin: 0; }
+.solve-results { margin-top: 14px; }
+/* end u42 solver */

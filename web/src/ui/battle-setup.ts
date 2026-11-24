@@ -33,13 +33,17 @@ export interface EnemyGroup {
   ids: number[];
 }
 
-/** The picker's groups of these enemy ids, region by region (region, event, map), each by level then id. */
-export function enemyGroups(ids: number[]): EnemyGroup[] {
+/**
+ * The picker's groups of these enemy ids, region by region (region, event, map), each by level then id. `maps` false
+ * (U42: Scribe hidden): no "– Map" groups, the map bosses and map Treasure Bushes left out.
+ */
+export function enemyGroups(ids: number[], maps = true): EnemyGroup[] {
   const by = new Map<string, EnemyGroup>();
   for (const id of ids) {
     const r = regionOf("enemy", id);
     if (!r) continue;
     const group: 0 | 1 | 2 = r.group === "map" || isTreasureBush(id) ? 2 : r.group === "event" ? 1 : 0;
+    if (group === 2 && !maps) continue;
     const key = `${r.id}:${group}`;
     if (!by.has(key)) by.set(key, { region: r.id, group, label: `${r.full}${group === 1 ? " – Event" : group === 2 ? " – Map" : ""}`, ids: [] });
     by.get(key)!.ids.push(id);

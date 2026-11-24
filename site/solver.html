@@ -27,36 +27,27 @@
     <div id="loaded" aria-live="polite"></div>
 
     <div id="setup" hidden>
-      <!-- U41: the spoiler guard first; then what to solve (the opponent, the options, Solve). -->
-      <section>
-        <h2><span class="step">1</span> What to solve</h2>
-        <div id="search-panel"></div>
-        <div class="solve-what">
-          <div id="opp-col" class="solve-opp">
-            <h3 class="col-title">👹 Opponent</h3>
-            <div class="seg" id="opp-switch" role="radiogroup" aria-label="Opponent">
-              <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest enemy</span></label>
-              <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map run</span></label>
-            </div>
-            <div id="target"></div>
+      <!-- U42: the spoiler guard first; then one full-width Solve panel (the opponent's pickers, the options, the time
+           budget, Solve and its progress); the results under it only once a solve is done. -->
+      <section id="search-panel"></section>
+
+      <section id="solve-box" class="run-box solve-box" aria-label="Solve">
+        <div class="solve-opp-row">
+          <div class="seg compact" id="opp-switch" role="radiogroup" aria-label="Opponent">
+            <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest</span></label>
+            <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map</span></label>
           </div>
-          <div class="run-box" role="group" aria-label="Solve">
-            <h3 class="run-title">Solve</h3>
-            <div id="search-form"></div>
-          </div>
+          <div id="target"></div>
         </div>
+        <div id="search-form"></div>
       </section>
 
-      <section id="results-box" class="b3-results">
-        <h2 id="results-title"><span class="step">2</span> Results</h2>
-        <p id="results-empty" class="muted small">No solve yet. Each result's Show button opens its party below.</p>
-        <div id="search-results" aria-live="polite"></div>
-      </section>
+      <section id="search-results" class="b3-results solve-results" aria-live="polite" hidden></section>
 
       <!-- U41: no party panel until a result's Show. -->
       <section id="party-box" hidden>
         <div class="party-box-head">
-          <h2><span class="step">3</span> <span id="setup-title">Party and flow</span></h2>
+          <h2 id="setup-title">Party and flow</h2>
           <button id="open-sim" type="button" class="secondary" title="Copy this party, its rotations and the opponent to the Simulator (it replaces the Simulator's party for this save), then open it">▶ Open in Simulator</button>
         </div>
         <div class="tabs b3-tabs" role="tablist" aria-label="Views">
@@ -67,10 +58,15 @@
           <div class="flow-head"><h3 class="col-title">🗓️ The fight, turn by turn <span id="plan-help"></span></h3><div id="flow-opp" class="flow-opp"></div></div>
           <div id="plan"></div>
         </div>
-        <div id="setup-grid" class="setup-grid b3-grid solve-grid" role="tabpanel" aria-labelledby="tab-party">
+        <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
           <div id="party-col" class="party-col">
             <h3 class="col-title">👥 Party</h3>
             <div id="party"></div>
+          </div>
+          <!-- U42: the opponent card and radar (its pickers are in the Solve panel). -->
+          <div id="opp-col" class="opp-col">
+            <h3 class="col-title">👹 Opponent</h3>
+            <div id="target-card"></div>
           </div>
         </div>
       </section>
