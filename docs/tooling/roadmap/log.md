@@ -52,3 +52,4 @@
 - **Update**: User batch: U34 modded names, U35 menus + drawer, U36 battle page v4, E24 effect windows (four parallel agents).
 - **Update**: R1 review done: 45 findings in review-r1.md (2 high, 18 medium, 25 low); some covered by U35/U36.
 - **Update**: U34, U34b, E24 done; U35, U36 built and merging.
+- **Update**: User scheduled the whole R1 backlog: four parallel agents (R1-A battle, R1-B1 wiki world, R1-B2 wiki reference, R1-C shared UI).

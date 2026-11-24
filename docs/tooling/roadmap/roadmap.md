@@ -81,6 +81,10 @@ Rules:
 | U35 | **Menus** (user): regular header menus with section sub-menus (Wiki, Save…); burger + left drawer on mobile; frozen tools under "More". | - | Built (84ef8a3), merging after U36 |
 | U36 | **Battle page v4** (user): only Simulate and Solve; Solve shows ≤ 5 results within 25% of the best, never 0%; opponent remembered; enemy radar scaled to the global max per stat, HP follows quest size; include/exclude checkbox per hero card (extra heroes auto-disabled over the quest size); no timeline strip in the enemy panel; enemy picker grouped Region / Region – Event / Region – Map (map-exclusive only); 5-turn plan as a third column grid (heroes + enemy × turns), compact text, effect sources in brackets, heroes' effects on the enemy, no schedule score; translated skills. | - | Built (9b0e605, 8a1ca26), merging |
 | R1 | **Live site review** (user, while away): an agent browses the live site (home, save viewer, hero pages, battle, wiki; not the frozen pages) at 1280/375, dark/light, with/without the example save, several languages; reports inconsistencies between the "same" panels, visuals and improvements → a prioritised backlog for the user to review. | After U27, U30, U32 | Done: [findings](./review-r1.md) |
+| R1-A | **Review fixes, battle page** (user: "schedule all backlog"): F02 useful default opponent + party, F06, F11/F12 (battle part), F20, F22, F24, F29, F35, F36. | R1 | Agent, branch `r1a-battle` |
+| R1-B1 | **Review fixes, wiki enemies/maps/XP**: F03, F04, F08, F11 (lists), F14, F15, F16, F17, F19, F40 (enemy/map pages), F41, F42, F44. | R1 | Agent, branch `r1b1-wiki-world` |
+| R1-B2 | **Review fixes, wiki items/skills/classes/reference/expansions**: F07, F11 (skills/items), F18, F25, F26, F31, F33, F39, F40 (their pages), F43, F44 (Battle page). | R1 | Agent, branch `r1b2-wiki-ref` |
+| R1-C | **Review fixes, shared UI**: F05 grade contrast, F13 table headers, F27 one toggle style, F28 gold/time formats, F30 type labels, F32 home cards, F34 skip link, F35 orphan cards, F37 hero page AP, F38 save help, F45 save menu. | R1 | Agent, branch `r1c-global` |
 
 ## UI lane
 
