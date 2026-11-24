@@ -20,6 +20,8 @@ export interface RadarAxis {
   display?: string;
   /** who holds the rim value, for the tooltip */
   best?: string;
+  /** what the rim is, for the tooltip instead of "of the best (…)": "the scale (3,000: its highest stat)" (U39) */
+  rim?: string;
 }
 
 function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
@@ -95,7 +97,8 @@ export function radar(axes: RadarAxis[], opts: { title: string; size?: number; l
       strong.textContent = `${a.display ?? fmt.format(a.value)} ${a.label}`;
       const rest = document.createElement("span");
       rest.className = "muted";
-      rest.textContent = a.max > 0 ? ` · ${Math.round(frac(a) * 100)}% of the best (${fmt.format(a.max)}${a.best ? `, ${a.best}` : ""})` : "";
+      rest.textContent = a.max <= 0 ? "" : a.rim ? ` · ${Math.round(frac(a) * 100)}% of ${a.rim}`
+        : ` · ${Math.round(frac(a) * 100)}% of the best (${fmt.format(a.max)}${a.best ? `, ${a.best}` : ""})`;
       box.append(strong, rest);
       return box;
     });

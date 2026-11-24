@@ -1441,23 +1441,9 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 }
 /* end quest xp */
 /* battle v4 */
-/* U36. Step 3 in three columns on a wide screen: party | opponent | 5-turn plan; party | opponent with the plan under
-   them up to 1200px; stacked below 960px (party, opponent, plan). */
-.setup-grid.b3-grid { grid-template-columns: minmax(0, 1.4fr) minmax(230px, 240px) minmax(0, 1.5fr); gap: 14px; }
-/* Three columns: the hero cards' stat strip a little smaller and tighter (4px between values), so four-digit values fit. */
-@media (min-width: 1201px) {
-  .setup-grid.b3-grid .stat-strip { font-size: 0.7rem; }
-  .setup-grid.b3-grid .stat-strip th { font-size: 0.58rem; letter-spacing: .02em; }
-  .setup-grid.b3-grid .stat-strip :is(th, td):not(:first-child) { padding-left: 2px; }
-  .setup-grid.b3-grid .stat-strip :is(th, td):not(:last-child) { padding-right: 2px; }
-}
-@media (max-width: 1200px) {
-  .setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
-  .setup-grid.b3-grid .plan-col { grid-column: 1 / -1; }
-}
+/* U36 / U39. Step 3 in two columns: party | opponent (U39: the Party tab; the fight is in the Flow tab); stacked below 960px. */
+.setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; }
 @media (max-width: 960px) { .setup-grid.b3-grid { grid-template-columns: minmax(0, 1fr); } }
-.plan-col { min-width: 0; }
-.plan-col:empty { display: none; }
 /* Hero cards: the include box at the top right; a hero left out is dimmed but keeps its slot. */
 .slot-tools { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .slot .include { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px;
@@ -1495,7 +1481,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .pg-mark.on-hero.k-force-action, .pg-mark.on-hero.k-stun { background: color-mix(in srgb, #ef4444 24%, transparent); font-weight: 650; }
 .pg-mark.own { background: color-mix(in srgb, #ec4899 20%, transparent); }
 .pg-mark.malus { background: color-mix(in srgb, var(--good) 22%, transparent); }
-.plan-col .tl-note { margin-top: 6px; }
 @media (max-width: 600px) {
   .pg-grid { min-width: calc(40px + var(--pg-cols) * 72px); }
 }
@@ -1622,7 +1607,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 }
 /* F20: the "?" helps beside titles, controls and pills. */
 #amount-note { display: inline-flex; align-items: center; }
-.opp-card .pills .help-tip, .plan-col .col-title .help-tip { margin-left: 2px; }
+.opp-card .pills .help-tip { margin-left: 2px; }
 .spoiler-warn .help-tip { vertical-align: middle; }
 .run-line { margin-top: 6px; }
 /* F11: the rare pill in the plan's enemy column. */
@@ -1769,3 +1754,81 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .skills-unused { margin-top: 18px; }
 .skills-unused > summary { cursor: pointer; font-weight: 650; padding: 4px 0; }
 /* end r1 wiki ref */
+/* u39 battle */
+/* U39 (battle page). The enemy's HP as text above the radar (it left the radar; it follows the quest size). */
+.opp-card .opp-hp { font-variant-numeric: tabular-nums; text-align: center; }
+.opp-card .opp-hp strong { font-size: 1.05rem; }
+/* Solve's spoiler guard hides the whole rest of the page until accepted: only step 1 (the modes and the guard) shows. */
+#setup.solve-guarded > section:not(:first-child) { display: none; }
+/* The flow: a light gap and dashed gold line every 5 turns, where the rotations start again. */
+.pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; }
+.pg-cycle::before, .pg-cycle::after { content: ""; flex: 1; border-top: 1px dashed var(--trim); }
+/* The timeline chart (timeline.ts timelineChart): per turn, one line per action in action order, the actor's cell
+   tinted in its colour; damage and healing as the main text where they land; the effects once per turn, as chips
+   (variant C of the U39 prototypes: the cleanest of three). Columns line up with the heads (same 36px + gap 3px). */
+.tc-grid { min-width: calc(40px + var(--pg-cols) * 78px); }
+.tc-turn { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 3px; padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.tc-turnlab { padding-top: 3px; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.tc-lines { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tc-line { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; }
+.tc-cell { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 2px 4px; border-radius: 5px; min-height: 1.5em;
+  font-size: 0.7rem; line-height: 1.2; }
+.tc-cell.actor { background: color-mix(in srgb, var(--c, #ec4899) 22%, var(--card-2)); box-shadow: inset 3px 0 0 var(--c, #ec4899); }
+.tc-cell.actor.enemy { --c: #ec4899; }
+.tc-skill { font-weight: 650; overflow-wrap: anywhere; }
+.tc-skill a.wl.skill { color: var(--fg); }
+.tc-down { color: var(--muted); font-style: italic; font-weight: 500; }
+.tc-miss { color: var(--muted); font-style: italic; }
+.tc-dmg, .tc-heal { font-weight: 750; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.tc-dmg { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
+.tc-heal { color: color-mix(in srgb, var(--good) 85%, var(--fg)); }
+.tc-ko { font-size: 0.6rem; font-weight: 800; padding: 0 4px; border-radius: 4px; color: #fff; background: #b91c1c; }
+.tc-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; cursor: help; }
+.tc-dot.buff { background: var(--good); } .tc-dot.debuff { background: #ef4444; }
+.tc-status .tc-cell { min-height: 0; padding-block: 1px; }
+.tc-chip { display: inline-flex; align-items: baseline; gap: 3px; max-width: 100%; font-size: 0.6rem; line-height: 1.3; padding: 0 5px; border-radius: 999px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+.tc-chip.buff { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.tc-chip.debuff { background: color-mix(in srgb, #ef4444 30%, transparent); }
+.tc-left { font-size: 0.54rem; opacity: .8; font-variant-numeric: tabular-nums; }
+.tc-shared { justify-content: center; }
+.tc-all { font-size: 0.6rem; color: var(--muted); }
+.tc-planned .pg-cell { opacity: .8; }
+.tc-end { margin: 6px 0 2px; text-align: center; }
+/* Step 3's two views: Flow (the fight, the main working view) and Party (the cards). */
+.b3-tabs { margin: 0 0 12px; }
+.flow-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.flow-head .col-title { display: inline-flex; align-items: center; gap: 6px; }
+.flow-opp { font-size: 0.9rem; }
+.flow-note { margin: 0 0 8px; }
+/* The flow's edits: a small ▾ over a transparent select, faint until the cell or head is hovered or the ▾ focused. */
+.fl-edit { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 2px; vertical-align: middle;
+  border-radius: 5px; color: var(--muted); opacity: .45; flex: none; }
+.fl-edit select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.fl-caret { font-size: 0.7rem; line-height: 1; pointer-events: none; }
+:is(.tc-cell, .pg-cell, .pg-head):hover .fl-edit, .fl-edit:focus-within { opacity: 1; color: var(--fg); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.fl-edit:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* HP at the end of each turn: a thin bar and the number; "✝ down" once fallen. */
+.tc-hp { display: inline-flex; align-items: center; gap: 4px; width: 100%; font-size: 0.6rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+.tc-hpbar { flex: 1; min-width: 18px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
+.tc-hpbar > span { display: block; height: 100%; background: var(--good); }
+.tc-hp.mid .tc-hpbar > span { background: var(--mid); } .tc-hp.low .tc-hpbar > span { background: #ef4444; }
+.tc-hp.down { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
+.tc-result { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; text-align: center; font-weight: 750; }
+.tc-result.won { background: color-mix(in srgb, var(--good) 18%, transparent); }
+.tc-result.lost { background: color-mix(in srgb, #ef4444 18%, transparent); }
+.tc-more { display: block; margin: 10px auto; }
+/* Long fights: the page scrolls and the column heads stay at the top. On a narrow screen the chart scrolls sideways
+   in its own frame (which then scrolls down too, so the heads still stick). */
+.tc .pg-heads { position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 4px; box-shadow: 0 1px 0 var(--border); }
+.tc .tc-scroll { overflow: visible; }
+@media (max-width: 700px) { .tc .tc-scroll { overflow: auto; max-height: 85vh; overscroll-behavior: contain; } }
+/* Map runs: the battles of the run, in map order (scrolls sideways on a phone). */
+.room-bar { display: flex; gap: 4px; overflow-x: auto; padding: 4px; margin: 0 0 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); }
+.room-tab { flex: none; white-space: nowrap; border: 0; border-radius: 9px; background: none; color: var(--muted); padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
+.room-tab:hover { color: var(--fg); }
+.room-tab[aria-selected="true"] { color: #fff; background: var(--gradient); }
+.room-tab.st-0 { opacity: .6; }
+.room-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* end u39 battle */

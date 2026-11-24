@@ -68,7 +68,7 @@ export interface MapRunResult {
   time: number;
   grade: number;
   scrollsUsed?: { id: number; chargesUsed: number }[];
-  combats: { status: number; name: string; isRare: boolean }[];
+  combats: { status: number; name: string; isRare: boolean; questId?: number }[];
   rewards: { itemType: string; itemID: number; amount: number; prestigeLevel?: number }[];
   heroes: HeroResult[];
 }

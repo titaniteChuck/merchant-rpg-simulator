@@ -3,8 +3,8 @@
  * - enemyGroups(): the enemy picker's groups, by region and kind: "<Region>", "<Region> – Event", "<Region> – Map" for
  *   each region in turn (regionOf of wiki-data.ts). The Map group holds only what maps alone have: map bosses and the
  *   map Treasure Bushes.
- * - enemyStatMax(): the enemy radar's rims, the highest value of each stat over every enemy (rare variants included),
- *   computed once.
+ * - enemyRadar(): the enemy radar (U39): HP as text (times the quest size), the other stats on one common rim (the
+ *   enemy's highest of Atk, Matk, Def, Mdef), Eva on a fixed rim of 200.
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
  *   most 5.
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
@@ -49,17 +49,33 @@ export function enemyGroups(ids: number[]): EnemyGroup[] {
   return out;
 }
 
-let statMax: Record<string, number> | null = null;
-/** Highest base value of each radar stat (ENEMY_STATS keys) over every fightable enemy, rare variants included. */
-export function enemyStatMax(): Record<string, number> {
-  if (statMax) return statMax;
-  const out: Record<string, number> = {};
-  for (const [id, q] of Object.entries<Any>(G.questData ?? {})) {
-    if (!isFightable(Number(id))) continue;
-    for (const [k] of ENEMY_STATS) out[k] = Math.max(out[k] ?? 0, Number(q[k]) || 0, Number(q[`${k}B`]) || 0);
-  }
-  statMax = out;
-  return out;
+/** The evasion axis's rim (U39): always 200; an enemy with 200 or more sits on the rim. */
+export const EVA_RIM = 200;
+
+export interface EnemyRadar {
+  /** HP for the quest size (one enemy with `amount`× HP): shown as text, not on the radar. */
+  hp: number;
+  baseHp: number;
+  amount: number;
+  /** The other stats, in ENEMY_STATS order: Atk, Matk, Def and Mdef on one common rim (the highest of the four), Eva on 200. */
+  axes: { key: string; label: string; value: number; max: number }[];
+}
+
+/**
+ * The enemy radar (U39): HP left out (as text, with the quest size), the other axes on one scale, this enemy's own
+ * highest stat, so an enemy with huge stats (the Mighty Bush) no longer squashes everyone else's shape. Evasion has its
+ * own fixed rim, 200.
+ */
+export function enemyRadar(q: Any, rare = false, amount = 1): EnemyRadar {
+  const sfx = rare ? "B" : "";
+  const val = (k: string) => Number(q?.[`${k}${sfx}`]) || 0;
+  const n = Math.max(1, Math.trunc(amount) || 1);
+  const stats = ENEMY_STATS.filter(([k]) => k !== "enemyHp");
+  const common = Math.max(0, ...stats.filter(([k]) => k !== "enemyEva").map(([k]) => val(k)));
+  return {
+    hp: val("enemyHp") * n, baseHp: val("enemyHp"), amount: n,
+    axes: stats.map(([k, label]) => ({ key: k, label, value: val(k), max: k === "enemyEva" ? EVA_RIM : common })),
+  };
 }
 
 /** True when a rate prints as "0.0%" (the page's pct). */

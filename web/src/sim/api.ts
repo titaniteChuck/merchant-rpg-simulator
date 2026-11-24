@@ -45,10 +45,89 @@ export interface TraceEntry {
   enemyHP: number;
   hp: (number | false)[];
   effects: string[];
+  /**
+   * Display data (U39), never compared with the game's recordings. What the actor really played: the skill (another
+   * one than `act` under a forced action), false when an effect took its action (stun), null when it was dead.
+   */
+  did?: string | false | null;
+  /** Each fighter hit or healed during this action (0 = the enemy, 1-6 = party locations). */
+  hits?: TraceHit[];
+  /** The effects on every fighter after this action. */
+  fx?: TraceEffect[];
+  /** The actor's attacks that missed during this action. */
+  misses?: number;
+  /** Which battle of the traced run (0 = the first since traceStart): a map run fights one battle per room. */
+  battle?: number;
+  /** Every fighter's HP and max HP after this action, by location (0 = the enemy). */
+  life?: { who: number; hp: number; maxHP: number }[];
+}
+export interface TraceHit {
+  who: number;
+  /** Damage taken, and HP really healed (no overheal). */
+  dmg: number;
+  heal: number;
+  /** HP after the action. */
+  hp: number;
+  maxHP: number;
+}
+export interface TraceEffect {
+  who: number;
+  name: string;
+  debuff: boolean;
+  /** Turns left (the effect's own count), when it has one. */
+  turns?: number;
+  stats?: Record<string, number>;
 }
 let trace: TraceEntry[] | undefined;
 
-hooks.beforeAction = (c) => dealt(c);
+/** The fighters of a battle with their location (0 = the enemy). */
+function fighters(b: Battle): [number, Any][] {
+  const out: [number, Any][] = [[0, b.enemy]];
+  for (let i = 1; i <= 3; i++) {
+    if (b.backRow[i]) out.push([i * 2 - 1, b.backRow[i]]);
+    if (b.frontRow[i]) out.push([i * 2, b.frontRow[i]]);
+  }
+  return out;
+}
+const takenOf = (c: Any) => (c.combatStatistics.physicalDmgTaken ?? 0) + (c.combatStatistics.magicDmgTaken ?? 0);
+/** While tracing, before an action: every fighter's HP, damage taken and healing taken so far, and the actor's misses. */
+let snap: { at: Map<Any, [number, number, number]>; misses: number } | undefined;
+/** The battle the last traced action was in, and its number since traceStart (-1: none yet). */
+let traceBattle: { b?: Battle; no: number } = { no: -1 };
+
+/** What the trace adds for display (U39): reads the fighters, changes nothing. */
+function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" | "fx" | "misses" | "battle" | "life"> {
+  const hits: TraceHit[] = [], fx: TraceEffect[] = [];
+  for (const [who, f] of fighters(b)) {
+    const was = snap?.at.get(f);
+    if (was) {
+      const taken = Math.max(0, takenOf(f) - was[1]), healed = (f.combatStatistics.healingTaken ?? 0) - was[2];
+      const net = f.questHP - was[0];
+      // Damage from the damage taken (an HP loss without it, e.g. a sacrifice, counts too); healing as the HP it gave back.
+      const dmg = taken || Math.max(0, -net);
+      const heal = healed > 0 ? Math.max(0, net + dmg) : 0;
+      if (dmg > 0 || heal > 0) hits.push({ who, dmg: Math.round(dmg), heal: Math.round(heal), hp: f.questHP, maxHP: f.maxHP });
+    }
+    for (const e of f.effectList) {
+      const stats = e.stats && typeof e.stats === "object"
+        ? Object.fromEntries(Object.entries(e.stats).filter(([, v]) => typeof v === "number")) as Record<string, number> : undefined;
+      fx.push({ who, name: e.name ?? "?", debuff: Boolean(e.debuff), ...(typeof e.turns === "number" ? { turns: e.turns } : {}),
+        ...(stats && Object.keys(stats).length ? { stats } : {}) });
+    }
+  }
+  if (b !== traceBattle.b) traceBattle = { b, no: traceBattle.no + 1 };
+  const life = fighters(b).map(([who, f]) => ({ who, hp: f.questHP, maxHP: f.maxHP }));
+  return { did: c._did ?? null, hits, fx, misses: snap ? (c.combatStatistics.misses ?? 0) - snap.misses : 0, battle: traceBattle.no, life };
+}
+
+hooks.beforeAction = (c) => {
+  const b = current.battle;
+  if (trace && b) {
+    snap = { at: new Map(fighters(b).map(([, f]) => [f, [f.questHP, takenOf(f), f.combatStatistics.healingTaken ?? 0]])),
+      misses: c.combatStatistics.misses ?? 0 };
+  }
+  return dealt(c);
+};
 hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
   if (c._skillDmg) {
     c._skillDmg[name] = (c._skillDmg[name] ?? 0) + dealt(c) - before;
@@ -66,13 +145,16 @@ hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
     trace.push({
       turn: b.turns, who: c.partyLocation ?? 0, act: name, rng: rng.calls, enemyHP: b.enemy.questHP, hp,
       effects: c.effectList.map((e) => e.name ?? "?"),
+      ...traceDetail(b, c),
     });
+    snap = undefined;
   }
 };
 
 /** Record every action of the next fights (like sim.traceStart / sim.traceStop). */
 export function traceStart(): void {
   trace = [];
+  traceBattle = { no: -1 };
 }
 export function traceStop(): TraceEntry[] {
   const t = trace ?? [];

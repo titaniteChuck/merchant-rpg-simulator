@@ -6,14 +6,18 @@
  *   they cover, in hero-action turns: an effect on the enemy (reflect, shield, buff) covers the turns heroes act while
  *   it is on (facingTurns); an effect on the heroes (debuff, stun) covers the turns they act with it (ownerTurns).
  *   Offsets are from the cast turn, so a window can wrap from turn 5 to turn 1 (the rotation repeats).
- * - partyPlan() (battle page, U36): the 5-turn plan as a grid, one column per actor in action order (the heroes, then
- *   the enemy; the enemy first on questType 6) and one row per turn, from battle-plan.ts: compact words ("[Tidal Wave]
- *   atk −50%", "[Drown] → Basic"), the full sentence on hover. No schedule score.
+ * - partyPlan() (battle page's Flow tab, U36, U39): one column per actor in action order (the heroes, then the enemy;
+ *   the enemy first on questType 6). With a traced fight, every turn of it to the end, one line per action (flowChart);
+ *   without one, the rotation's 5 turns as planned, from battle-plan.ts: compact words ("[Tidal Wave] atk −50%",
+ *   "[Drown] → Basic"), the full sentence on hover. ▾ controls edit heroes and turns 1-5 (PlanEdit).
  * Every skill name shown (cells, bars, tooltips) goes through names.ts: it follows the language picker (U36).
  * Data: data/timelines.json (inventory/timelines.json), loaded once per page by loadTimelineData().
  */
 import { type EffectInfo, type EnemyTimeline, enemyTimeline, loadTimelines, type SkillTag } from "../tools/schedule.ts";
-import { compactEffect, type EnemyCell, type HeroCell, lasts, locationLabel, type PlanMark, type PlanMember, planGrid } from "./battle-plan.ts";
+import {
+  compactEffect, type EnemyCell, type HeroCell, lasts, locationLabel, type PlanColumn, type PlanMark, type PlanMember, planGrid, planTimeline,
+  type TimelineCell, type TimelineChip, type TimelineLine, type TimelineTurn, type TracedFight,
+} from "./battle-plan.ts";
 import { el } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
@@ -200,7 +204,32 @@ function wordsEl(words: { short: string; long: string }[]): HTMLElement[] {
   return [el("span", { class: "pg-words", title: words.map((w) => w.long).join(", ") }, short)];
 }
 
-function heroCellEl(c: HeroCell, loc: number): HTMLElement {
+/**
+ * U39: the flow diagram edits the party in place. Both views of the battle page change one party state through these
+ * (battle.ts, battle-edit.ts), then draw again and simulate again.
+ */
+export interface PlanEdit {
+  /** The hero choices for a party location's column ([value, label]) and its current value. */
+  heroes(loc: number): { options: [string, string][]; value: string };
+  setHero(loc: number, value: string): void;
+  /** The skills the hero at a location can play in its rotation ([skill, label]), or null. */
+  skills(loc: number): [string, string][] | null;
+  /** Rotation slot k (0-4) of the hero at a location. */
+  setSkill(loc: number, k: number, skill: string): void;
+}
+
+/**
+ * A small ▾ over a transparent <select> (U39): unobtrusive until hover or focus, keyboard-reachable (Tab, then the
+ * arrow keys or Enter). `focus`: a key the page uses to put the focus back after the redraw.
+ */
+function editControl(label: string, options: [string, string][], value: string, focus: string, onChange: (v: string) => void): HTMLElement {
+  const s = el("select", { "aria-label": label, class: "fl-select" }, ...options.map(([v, l]) => el("option", { value: v }, l))) as HTMLSelectElement;
+  s.value = value;
+  s.addEventListener("change", () => onChange(s.value));
+  return el("span", { class: "fl-edit", title: label, "data-flow-focus": focus }, el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"), s);
+}
+
+function heroCellEl(c: HeroCell, loc: number, edit?: PlanEdit): HTMLElement {
   const planned = skillLink(c.planned);
   const changed = c.does !== c.planned;
   const skill = changed
@@ -209,7 +238,16 @@ function heroCellEl(c: HeroCell, loc: number): HTMLElement {
         : `Abilities disabled by ${skillName(c.forcedBy ?? "")}: Basic attack only` }, c.does === null ? "stun" : "→ Basic"))
     : el("span", { class: "tl-skill" }, planned);
   return el("div", { class: `pg-cell hero${c.marks.length ? " hit" : ""}${changed ? " forced" : ""}`, role: "cell",
-    "aria-label": `${locationLabel(loc)}, turn ${c.turn}` }, skill, ...wordsEl(c.tags), ...c.marks.map((m) => markEl(m, "on-hero")));
+    "aria-label": `${locationLabel(loc)}, turn ${c.turn}` }, skill, ...skillEdit(edit, loc, c.turn, c.planned),
+  ...wordsEl(c.tags), ...c.marks.map((m) => markEl(m, "on-hero")));
+}
+
+/** The rotation slot's ▾ (turns 1-5 only: later turns repeat it). */
+function skillEdit(edit: PlanEdit | undefined, loc: number, turn: number, planned: string): HTMLElement[] {
+  const opts = turn <= 5 ? edit?.skills(loc) : null;
+  if (!edit || !opts) return [];
+  const list = opts.some(([v]) => v === planned) ? opts : [...opts, [planned, skillName(planned)] as [string, string]];
+  return [editControl(`${locationLabel(loc)}: turn ${turn} skill`, list, planned, `skill-${loc}-${turn}`, (v) => edit.setSkill(loc, turn - 1, v))];
 }
 
 function enemyCellEl(c: EnemyCell): HTMLElement {
@@ -219,34 +257,150 @@ function enemyCellEl(c: EnemyCell): HTMLElement {
     ...c.own.map((m) => markEl(m, "own")), ...c.maluses.map((m) => markEl(m, "malus")));
 }
 
+/** The column heads: the heroes (name, place; a ▾ to change the hero) and the enemy, in action order. */
+function planHeads(tl: EnemyTimeline, cols: PlanColumn[], edit?: PlanEdit): HTMLElement[] {
+  return cols.map((c) => {
+    if (c.kind === "enemy") {
+      // R1 F11: a rare variant by its own name and a "rare" pill, as the wiki lists it.
+      return el("div", { class: "pg-head enemy", role: "columnheader", title: tlName(tl) }, el("strong", {}, tlName(tl)),
+        el("span", { class: "muted small" }, "enemy", ...(tl.rare ? [" ", el("span", { class: "pill t-pink pg-rare" }, "rare")] : [])));
+    }
+    const h = edit?.heroes(c.loc!);
+    return el("div", { class: `pg-head hero cls-${c.member!.cls}`, role: "columnheader", title: `${c.member!.name}, ${locationLabel(c.loc!)}` },
+      el("strong", {}, c.member!.name, ...(h ? [editControl(`${locationLabel(c.loc!)}: hero`, h.options, h.value, `hero-${c.loc}`, (v) => edit!.setHero(c.loc!, v))] : [])),
+      el("span", { class: "muted small" }, locationLabel(c.loc!)));
+  });
+}
+
+// ---------------------------------------------------------------- the flow diagram (U39)
+const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+/** Past this many turns the rest of a fight waits behind a button (a 200-turn stalemate is thousands of lines). */
+export const FLOW_PAGE = 100;
+
+/** An effect chip: its name and turns left, the full sentence on hover. */
+function chipEl(c: TimelineChip): HTMLElement {
+  return el("span", { class: `tc-chip ${c.debuff ? "debuff" : "buff"}`, title: c.title, "aria-label": c.title }, c.label,
+    ...(c.turns !== undefined ? [el("span", { class: "tc-left", "aria-hidden": "true" }, String(c.turns))] : []));
+}
+
+/** The actor's cell: the skill it played (the planned one struck out under a stun or a forced action). */
+function actorEl(l: TimelineLine): HTMLElement[] {
+  if (l.did === null) return [el("span", { class: "tc-skill tc-down", title: "Down: no action" }, "down")];
+  const played = l.did === false ? null : l.did;
+  const skill = played === null
+    ? el("span", { class: "tc-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(l.planned)}` }, skillName(l.planned)), " ",
+      el("span", { class: "tl-forced", title: "Stunned: the action is lost" }, "stun"))
+    : played !== l.planned
+    ? el("span", { class: "tc-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(l.planned)}` }, skillName(l.planned)), " ",
+      el("span", { class: "tl-forced", title: "Forced: another action than the planned one" }, played === "Basic" ? "Basic" : skillLink(played)))
+    : el("span", { class: "tc-skill" }, played === "Basic" ? "Basic" : skillLink(played));
+  return [skill, ...(l.misses ? [el("span", { class: "tc-miss", title: `${l.misses} attack${l.misses > 1 ? "s" : ""} missed` }, "miss")] : [])];
+}
+
+/** What a fighter took during one action: damage, healing, KO, and a dot per effect that landed. */
+function takenEl(c: TimelineCell | undefined): HTMLElement[] {
+  if (!c) return [];
+  return [
+    ...(c.dmg ? [el("span", { class: "tc-dmg", title: `${fmtInt.format(c.dmg)} damage` }, `−${fmtInt.format(c.dmg)}`)] : []),
+    ...(c.heal ? [el("span", { class: "tc-heal", title: `${fmtInt.format(c.heal)} HP healed` }, `+${fmtInt.format(c.heal)}`)] : []),
+    ...(c.ko ? [el("span", { class: "tc-ko", title: "Falls" }, "✝ KO")] : []),
+    ...c.added.map((x) => el("span", { class: `tc-dot ${x.debuff ? "debuff" : "buff"}`, role: "img", title: `+ ${x.title}`, "aria-label": `+ ${x.title}` })),
+  ];
+}
+
+/** A fighter's HP at the end of a turn: a thin bar and the number; "down" once it fell. */
+function hpEl(v: { hp: number; maxHP: number } | undefined, name: string, turn: number): HTMLElement[] {
+  if (!v) return [];
+  if (v.hp <= 0) return [el("span", { class: "tc-hp down", title: `${name} is down (end of turn ${turn})` }, "✝ down")];
+  const f = v.maxHP > 0 ? Math.max(0, Math.min(1, v.hp / v.maxHP)) : 0;
+  const tone = f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
+  const text = `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP at the end of turn ${turn}`;
+  return [el("span", { class: `tc-hp ${tone}`, title: text, role: "img", "aria-label": text },
+    el("span", { class: "tc-hpbar", "aria-hidden": "true" }, el("span", { style: `width: ${(f * 100).toFixed(1)}%` })),
+    el("span", { class: "tc-hpnum", "aria-hidden": "true" }, fmtInt.format(v.hp)))];
+}
+
+/** The light line between two 5-turn rounds. */
+function roundDivider(round: number): HTMLElement {
+  const a = round * 5 + 1;
+  return el("div", { class: "pg-cycle", role: "row" }, el("span", { role: "cell" }, `↻ Turns ${a}–${a + 4}: the rotations again`));
+}
+
 /**
- * The party's 5-turn plan against the enemy's (U36): one column per actor in action order (heroes by party location,
- * then the enemy; the enemy first on questType 6), one row per turn. Hero cells: the planned skill (struck out under a
- * stun or a forced action), what it does, and the enemy's effects on that hero with their source. Enemy cells: its
- * skill, a compact summary, its buffs still on, and what the heroes put on it, with their source. Null without a
- * timeline for this enemy.
+ * The flow diagram (U39): every turn of one simulated fight, from turn 1 to its end. Per turn, one line per action in
+ * action order (the actor's column: the skill; the others: damage −, healing +, a dot where an effect landed), then
+ * each fighter's HP and effects at the end of the turn (one chip over the hero columns for an effect on every standing
+ * hero). Turns 1-5 carry the rotation's ▾ (with `edit`); a light divider every 5 turns; the result at the end.
  */
-export function partyPlan(quest: { id: number; rare: boolean }, members: PlanMember[]): HTMLElement | null {
+function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, edit?: PlanEdit): HTMLElement {
+  const whoOf = (c: PlanColumn) => (c.kind === "enemy" ? 0 : c.loc!);
+  const nameOf = (w: number) => (w ? cols.find((c) => c.loc === w)?.member?.name ?? locationLabel(w) : tlName(tl));
+  const occupied = cols.filter((c) => c.kind === "hero").map((c) => c.loc!);
+  const data = planTimeline(trace, occupied, nameOf);
+  const heroIdx = cols.map((c, k) => (c.kind === "hero" ? k : -1)).filter((k) => k >= 0);
+  const span = heroIdx.length ? `${heroIdx[0] + 1} / ${heroIdx[heroIdx.length - 1] + 2}` : "";
+  const turnEl = (t: TimelineTurn): HTMLElement[] => {
+    const rows: HTMLElement[] = t.lines.map((l) => el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c) => {
+      const w = whoOf(c), actor = w === l.who;
+      const cls = actor ? ` actor ${c.kind === "enemy" ? "enemy" : `cls-${c.member!.cls}`}` : "";
+      return el("div", { class: `tc-cell${cls}`, role: "cell" }, ...(actor ? actorEl(l) : []),
+        ...(actor && c.kind === "hero" ? skillEdit(edit, w, t.turn, l.planned) : []), ...takenEl(l.cells[w]));
+    })));
+    rows.push(el("div", { class: "tc-line tc-status", role: "row", "aria-label": `End of turn ${t.turn}: HP and effects` }, ...cols.map((c) =>
+      el("div", { class: "tc-cell", role: "cell" }, ...hpEl(t.hp[whoOf(c)], nameOf(whoOf(c)), t.turn), ...(t.status[whoOf(c)] ?? []).map(chipEl)))));
+    if (t.shared.length && span) {
+      rows.push(el("div", { class: "tc-line tc-status", role: "row", "aria-label": `End of turn ${t.turn}: effects on every hero` },
+        el("div", { class: "tc-cell tc-shared", role: "cell", style: `grid-column: ${span}` }, ...t.shared.map(chipEl),
+          el("span", { class: "tc-all" }, "every hero"))));
+    }
+    return [...(t.round > 0 && (t.turn - 1) % 5 === 0 ? [roundDivider(t.round)] : []),
+      el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup" },
+        el("div", { class: "tc-turnlab", role: "rowheader" }, `T${t.turn}`), el("div", { class: "tc-lines" }, ...rows))];
+  };
+  const result = el("p", { class: `tc-result ${data.won ? "won" : "lost"}`, role: "status" },
+    data.won ? `🏆 Won on turn ${data.lastTurn}` : data.capped ? `⏱ Stopped at the game's turn cap (${data.lastTurn} turns): lost`
+      : `💀 Lost on turn ${data.lastTurn}`);
+  const body = el("div", { class: "tc-body" }, ...data.turns.slice(0, FLOW_PAGE).flatMap(turnEl));
+  if (data.turns.length > FLOW_PAGE) {
+    const more = el("button", { type: "button", class: "secondary tc-more" }, `Show turns ${FLOW_PAGE + 1}–${data.lastTurn}`);
+    more.addEventListener("click", () => {
+      more.replaceWith(...data.turns.slice(FLOW_PAGE).flatMap(turnEl));
+    });
+    body.append(more);
+  }
+  body.append(result);
+  return el("div", { class: "tl pg tc", role: "group", "aria-label": "The fight, turn by turn and action by action" },
+    el("div", { class: "pg-scroll tc-scroll" }, el("div", { class: "pg-grid tc-grid", role: "table", style: `--pg-cols: ${cols.length}` },
+      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...planHeads(tl, cols, edit)),
+      body)));
+}
+
+/**
+ * The flow tab's diagram (U36 plan, U39 flow): one column per actor in action order (heroes by party location, then
+ * the enemy; the enemy first on questType 6). With a traced fight, its every turn (flowChart); without one (no party,
+ * or a party that can't fight), the rotation's 5 turns as planned: hero cells with the planned skill (struck out under
+ * a stun or a forced action) and the enemy's effects on that hero; enemy cells with its skill, its buffs still on and
+ * what the heroes put on it. `edit`: the ▾ controls. Null without a timeline for this enemy.
+ */
+export function partyPlan(quest: { id: number; rare: boolean }, members: PlanMember[], trace: TracedFight | null = null, edit?: PlanEdit): HTMLElement | null {
   const tl = timelineOf(quest.id, quest.rare);
   if (!tl) return null;
-  const cols = planGrid(tl, members).columns;
-  const head = cols.map((c) => c.kind === "enemy"
-    // R1 F11: a rare variant by its own name and a "rare" pill, as the wiki lists it.
-    ? el("div", { class: "pg-head enemy", role: "columnheader", title: tlName(tl) }, el("strong", {}, tlName(tl)),
-      el("span", { class: "muted small" }, "enemy", ...(tl.rare ? [" ", el("span", { class: "pill t-pink pg-rare" }, "rare")] : [])))
-    : el("div", { class: `pg-head hero cls-${c.member!.cls}`, role: "columnheader", title: `${c.member!.name}, ${locationLabel(c.loc!)}` },
-      el("strong", {}, c.member!.name), el("span", { class: "muted small" }, locationLabel(c.loc!))));
-  const rows = [1, 2, 3, 4, 5].map((t) => el("div", { class: "pg-row", role: "row" }, el("div", { class: "pg-turn", role: "rowheader" }, `T${t}`),
-    ...cols.map((c) => (c.kind === "enemy" ? enemyCellEl(c.cells[t - 1] as EnemyCell) : heroCellEl(c.cells[t - 1] as HeroCell, c.loc!)))));
-  return el("div", { class: "tl pg", role: "group", "aria-label": "The party's 5-turn plan against the enemy's" },
+  const cols = planGrid(tl, members, 5).columns;
+  if (trace && members.length) return flowChart(tl, cols, trace, edit);
+  const rows = cols[0].cells.map((_, k) => k + 1).map((t) => el("div", { class: "pg-row", role: "row" }, el("div", { class: "pg-turn", role: "rowheader" }, `T${t}`),
+    ...cols.map((c) => (c.kind === "enemy" ? enemyCellEl(c.cells[t - 1] as EnemyCell) : heroCellEl(c.cells[t - 1] as HeroCell, c.loc!, edit)))));
+  return el("div", { class: "tl pg", role: "group", "aria-label": "The party's rotation against the enemy's" },
     el("div", { class: "pg-scroll" }, el("div", { class: "pg-grid", role: "table", style: `--pg-cols: ${cols.length}` },
-      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...head), ...rows)));
+      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...planHeads(tl, cols, edit)), ...rows)));
 }
 
-/** How to read the plan (R1 F20: in the "?" beside the plan's title, not a caption under it). */
+/** How to read the flow (R1 F20: in the "?" beside its title, not a caption under it). */
 export function planNote(quest: { id: number; rare: boolean }): string {
   const tl = timelineOf(quest.id, quest.rare);
-  return `Each hero plays slot k of its rotation on turn k, left to right${tl?.enemyFirst ? ", after the enemy" : ", then the enemy"}; `
-    + "turn 6 is turn 1 again. [Skill]: where an effect comes from; hover a cell for the full text.";
+  return [`Each hero plays slot k of its rotation on turn k, left to right${tl?.enemyFirst ? ", after the enemy" : ", then the enemy"}; `
+    + "turn 6 is turn 1 again. Turns 1–5 are the rotation: ▾ changes a skill or a hero (the Party tab follows).",
+  "Each turn shows the fight action by action, one line per fighter in the order they act: the skill in the actor's column, the "
+    + "damage (−) or healing (+) in the column of whoever takes it, a dot where an effect lands. Under the lines, each fighter's HP "
+    + "and effects at the end of the turn, with their turns left.",
+  "Without a party that can fight, the rotation as planned. [Skill]: where an effect comes from. Hover anything for the full text."].join(" ");
 }
-

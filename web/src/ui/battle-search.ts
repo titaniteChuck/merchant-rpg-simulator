@@ -6,7 +6,8 @@
  *
  * U27: the solver is a spoiler (it gives the answer to a quest or map), so its panel starts hidden behind a
  * disclaimer; "Show me the solver anyway" is remembered in this browser (localStorage `battle-solver-shown`) and a
- * warning line with "Hide it again" stays.
+ * warning line with "Hide it again" stays. U39: while the guard is up, the page hides all the rest of the Solve page
+ * (SearchContext.guarded): the Results, the party and opponent, the plan.
  *
  * U36: the results table shows only the setups worth trying (battle-setup.ts solveShortlist): no 0 % result, within
  * 25 % of the best one found, at most 5.
@@ -58,6 +59,8 @@ export interface SearchContext {
   onStart?(): void;
   /** Switch to the Simulate mode (the spoiler guard's "Try Simulate first"). */
   goSimulate?(): void;
+  /** U39: the spoiler guard is up (true) or gone (false): the page hides or shows the rest of the Solve page. */
+  guarded?(on: boolean): void;
   /** The opponent's party setup rules (battle-rules.ts): the solver's size fields clamp to maxSize. */
   rules?(): PartyRules;
   /** Why a layout (save hero ids, null = empty) can't fight the opponent, or null: Load is offered only without one. */
@@ -130,6 +133,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     current = key;
     mount.hidden = key === null;
     mount.replaceChildren(...(key ? [solverPanel(out)] : []));
+    // U39: until the spoiler guard is accepted, the page hides everything else of Solve (results, party, opponent, plan).
+    ctx.guarded?.(key !== null && !solverShown());
   };
 
   /**

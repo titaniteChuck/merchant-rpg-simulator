@@ -51,7 +51,16 @@
 
       <section>
         <h2><span class="step">3</span> <span id="setup-title">Party and opponent</span></h2>
-        <div id="setup-grid" class="setup-grid b3-grid">
+        <!-- U39: two views of one party: the cards (Party) and the whole fight, turn by turn (Flow), both editable. -->
+        <div class="tabs b3-tabs" role="tablist" aria-label="Views">
+          <button id="tab-flow" type="button" role="tab" aria-selected="true" aria-controls="flow-panel" data-tab="flow">🗓️ Flow</button>
+          <button id="tab-party" type="button" role="tab" aria-selected="false" aria-controls="setup-grid" data-tab="party" tabindex="-1">👥 Party</button>
+        </div>
+        <div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow">
+          <div class="flow-head"><h3 class="col-title">🗓️ The fight, turn by turn <span id="plan-help"></span></h3><div id="flow-opp" class="flow-opp"></div></div>
+          <div id="plan"></div>
+        </div>
+        <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party" hidden>
           <div id="party-col" class="party-col">
             <h3 class="col-title">👥 Party</h3>
             <div id="party"></div>
@@ -64,7 +73,6 @@
             </div>
             <div id="target"></div>
           </div>
-          <div id="plan" class="plan-col"></div>
         </div>
       </section>
     </div>

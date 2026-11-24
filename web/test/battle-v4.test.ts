@@ -7,8 +7,8 @@ import * as api from "../src/sim/api.ts";
 import { G } from "../src/sim/data.ts";
 import { enemyTimeline, loadTimelines } from "../src/tools/schedule.ts";
 import { partyRules } from "../src/tools/combat.ts";
-import { enemyGroups, enemyStatMax, includedSlots, isFightable, solveShortlist } from "../src/ui/battle-setup.ts";
-import { compactEffect, type EnemyCell, type HeroCell, planGrid } from "../src/ui/battle-plan.ts";
+import { enemyGroups, enemyRadar, EVA_RIM, includedSlots, isFightable, solveShortlist } from "../src/ui/battle-setup.ts";
+import { compactEffect, type EnemyCell, type HeroCell, PLAN_TURNS, planGrid } from "../src/ui/battle-plan.ts";
 import { regionOf } from "../src/ui/wiki-data.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -42,15 +42,33 @@ test("enemy picker: region by region, Region / Event / Map, the Map group only m
   assert.ok(!groups.some((g) => /Level \d/.test(g.label)));
 });
 
-test("enemy radar rims: the highest value of each stat over every enemy, rare variants included", () => {
-  const max = enemyStatMax();
+test("enemy radar (U39): no HP axis, Atk/Matk/Def/Mdef on the enemy's own highest stat, Eva on 200", () => {
+  // Odin: atk 1500, matk 1000, def 800, mdef 450, eva 400, HP 140,000
+  const odin = enemyRadar(G.questData[72], false, 3);
+  assert.deepEqual(odin.axes.map((a) => a.label), ["Atk", "Matk", "Def", "Mdef", "Eva"]);
+  assert.ok(!odin.axes.some((a) => a.key === "enemyHp"));
+  for (const a of odin.axes.filter((x) => x.key !== "enemyEva")) assert.equal(a.max, 1500, a.label);
+  assert.equal(odin.axes.find((a) => a.key === "enemyEva")!.max, EVA_RIM);
+  assert.equal(EVA_RIM, 200);
+  // HP as text, times the quest size
+  assert.equal(odin.baseHp, 140000);
+  assert.equal(odin.hp, 420000);
+  assert.equal(odin.amount, 3);
+  // The Mighty Bush no longer sets anyone's rim: a weak enemy's shape fills its own scale
+  const wolf = enemyRadar(G.questData[81]);
+  assert.equal(wolf.axes.find((a) => a.key === "enemyAtk")!.max, 600);
+  assert.equal(wolf.hp, 17000);
+  // every enemy: the common rim is its highest of the four, and at least one axis reaches it
   for (const id of fightable()) {
-    const q = G.questData[id];
-    for (const k of ["enemyHp", "enemyAtk", "enemyMatk", "enemyDef", "enemyMdef", "enemyEva"]) {
-      assert.ok((q[k] ?? 0) <= max[k] && (q[`${k}B`] ?? 0) <= max[k], `${q.name} ${k}`);
+    for (const rare of [false, true]) {
+      const q = G.questData[id];
+      if (rare && q.enemyHpB === undefined) continue;
+      const r = enemyRadar(q, rare);
+      const four = r.axes.filter((a) => a.key !== "enemyEva");
+      const max = Math.max(...four.map((a) => a.value));
+      assert.ok(four.every((a) => a.max === max && a.value <= a.max), `${q.name}${rare ? " (rare)" : ""}`);
     }
   }
-  assert.ok(fightable().some((id) => G.questData[id].enemyHp === max.enemyHp || G.questData[id].enemyHpB === max.enemyHp));
 });
 
 test("solver shortlist: no 0 % result, within 25 % of the best, at most 5", () => {
@@ -105,11 +123,39 @@ test("plan grid: Murlok Monarch, heroes then the enemy, effects with their sourc
   assert.ok(enemy[0].maluses.some((m) => m.text === "[Sunder] def −40%"));
   // no dispel: Silence never happens (forced to Basic)
   assert.ok(!enemy.some((c) => c.maluses.some((m) => m.text.includes("dispel"))));
-  // Ancient Mist's evasion buff is still on in the next turns (own buffs, with their source)
-  const mist = enemy[0].own.find((m) => m.text === "[Ancient Mist] eva +50%");
+  // Ancient Mist's evasion buff is still on in the next turns (own buffs, with their source): U39, counted from the
+  // start of the fight, so not on turn 1 (nothing was cast before), and on turn 6 (the previous round's cast)
+  assert.ok(!enemy[0].own.some((m) => m.text === "[Ancient Mist] eva +50%"));
+  const mist = enemy[5].own.find((m) => m.text === "[Ancient Mist] eva +50%");
   assert.ok(mist);
+  assert.ok(mist.cast < 6);
   // E24: durations from the measured windows, in both sides' turns
   assert.match(mist.title, /3 enemy turns \(covers 4 hero turns\)/);
+});
+
+test("plan grid (U39): 10 turns, the rotation comes back on turns 6-10", () => {
+  const tl = enemyTimeline(92);
+  const rot = ["Sunder", "Basic", "Basic", "Silence", "Basic"];
+  const grid = planGrid(tl, [
+    { row: "front", i: 0, name: "Tank", cls: 1, rotation: ["Basic", "Basic", "Basic", "Basic", "Basic"] },
+    { row: "back", i: 0, name: "Rogue", cls: 2, rotation: rot },
+  ]);
+  assert.equal(PLAN_TURNS, 10);
+  for (const c of grid.columns) assert.deepEqual(c.cells.map((x) => x.turn), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  const rogue = grid.columns[0].cells as HeroCell[], enemy = grid.columns[2].cells as EnemyCell[];
+  // the same rotation twice, for the heroes and the enemy
+  assert.deepEqual(rogue.map((c) => c.planned), [...rot, ...rot]);
+  for (let t = 0; t < 5; t++) assert.equal(enemy[t + 5].skill, enemy[t].skill);
+  // Drown (T3) again on T8: Silence planned on T9 is forced to Basic too, and its marks name the cast turn
+  assert.equal(rogue[8].does, "Basic");
+  assert.equal(rogue[8].forcedBy, "Drown");
+  assert.ok(rogue[8].marks.some((m) => m.text === "[Drown] → Basic" && m.cast === 8));
+  // turn 1 carries nothing from an earlier round; turn 6 carries what the first round left on
+  assert.ok(enemy[0].own.length <= enemy[5].own.length);
+  // Sunder cast on turn 6 is on the enemy on turn 6 again
+  assert.ok(enemy[5].maluses.some((m) => m.text === "[Sunder] def −40%" && m.cast === 6));
+  // a shorter plan on request
+  assert.equal(planGrid(tl, [], 5).columns[0].cells.length, 5);
 });
 
 test("compact words for effects", () => {

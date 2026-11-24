@@ -2,7 +2,7 @@
  * Battle simulator page (site/battle.html), U26 order: step 1 picks a mode (MODES: simulate, or one of the searches)
  * and shows its options and Run button right there; step 2 is the Results (progress, then the outcome), right under
  * the Run button; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest
- * enemy or a map run) on the right, then the 5-turn plan. The searches fill step 3 with what they found.
+ * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable). The searches fill step 3 with what they found.
  * Runs go to a web worker with the game's rules (TypeScript engine).
  *
  * Expansions (U28): the enemy and map pickers and the scrolls leave out content of expansions the visitor hides
@@ -14,7 +14,8 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { maxQuestAmount, SCROLL_IDS } from "../tools/combat.ts";
 import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
-import type { MapSpec, Scroll } from "../tools/engine.ts";
+import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
+import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
@@ -22,13 +23,14 @@ import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
-import { loadTimelineData, partyPlan, planNote, type PlanMember, timelineOf } from "./timeline.ts";
-import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStatMax, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
+import { loadTimelineData, partyPlan, type PlanEdit, planNote, type PlanMember, timelineOf } from "./timeline.ts";
+import { mapRoomTabs } from "./battle-plan.ts";
+import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyRadar, EVA_RIM, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
+import { assignHero, setRotationSkill, slotKeyOfLoc } from "./battle-edit.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
-import { ENEMY_STATS } from "./wiki-enemies.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
@@ -194,6 +196,29 @@ function afterEdit(focusKey: string): void {
 }
 
 /**
+ * The skills a hero can put in a rotation slot, [skill, label with AP]: Basic and its unlocked skills. `current`: a
+ * skill it plays but hasn't unlocked (old save) stays listed, so the control shows the truth. Both tabs use it (U39).
+ */
+function rotationOptions(raw: Any | null, current?: string): [string, string][] {
+  if (!raw) return [];
+  const info = api.skillInfo(api.newHero(raw));
+  const unlocked: Any[] = info.skills.slice(0, info.unlocked);
+  const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${skillName(u.name)} (${u.ap} AP)`])];
+  if (current && current !== "Basic" && !unlocked.some((u) => u.name === current)) {
+    const ap = info.skills.find((x: Any) => x.name === current)?.ap ?? skillAp(current) ?? "?";
+    opts.push([current, `${skillName(current)} (${ap} AP)`]);
+  }
+  return opts;
+}
+
+/** The rotation and passive a hero (save index) plays: its edited one, else its save's. */
+function rotationOf(idx: number): SkillChoice {
+  const raw = state.sv!.raw.hero[idx];
+  const h = api.newHero(raw);
+  return { attackList: state.skills[idx]?.attackList ?? h.attackList.slice(1, 6), passive: state.skills[idx]?.passive ?? h.passiveSelect };
+}
+
+/**
  * Passive, then rotation, as the wiki / save viewer's ability rows (U22): the whole row opens the wiki page, the AP
  * as apBadge, the "x / y AP" budget beside the label; each row edits in place with its ⇄ control. An empty slot
  * (`raw` null) shows the same skeleton, greyed, so every slot has the same size.
@@ -220,18 +245,14 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
   if (raw) clickableRow(pRow, pLink);
 
   // Rotation rows: turn, skill, AP, ⇄.
-  const unlocked: Any[] = info ? info.skills.slice(0, info.unlocked) : [];
   const rows = rot.map((sk, k) => {
     const link = raw ? (sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk)) : el("span", { class: "muted" }, "—");
-    const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${skillName(u.name)} (${u.ap} AP)`])];
-    // A skill the hero plays but hasn't unlocked (old save) stays listed, so the control shows the truth.
-    if (raw && sk !== "Basic" && !unlocked.some((u) => u.name === sk)) opts.push([sk, `${skillName(sk)} (${apOf[sk] ?? "?"} AP)`]);
+    const opts = rotationOptions(raw, sk);
     const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
       el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
-        const next = [...rot];
-        next[k] = v;
-        edit(next, passive);
+        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts).
+        setRotationSkill(state, idx!, k, v, { attackList: rot, passive });
         afterEdit(`${key}-${k}`);
       }) : swapPlaceholder()));
     if (raw) clickableRow(tr, link);
@@ -304,14 +325,9 @@ function renderParty(refreshSearch = true): void {
     const idx = state.slots[key] ?? null;
     const raw = heroRaw(idx);
     s.addEventListener("change", () => {
-      const v = s.value === "" ? null : Number(s.value);
-      // A hero can stand in one slot only: clear it elsewhere.
-      if (v !== null) for (const k of Object.keys(state.slots)) if (state.slots[k] === v && k !== key) (state.slots[k] = null, delete state.locked[k], delete state.excluded[k]);
-      state.slots[key] = v;
-      delete state.excluded[key]; // another hero (or none): it fights
-      // Picking a hero by hand in a search mode locks it (the search keeps it); clearing a slot unlocks it.
-      if (v === null) delete state.locked[key];
-      else if (picks) state.locked[key] = true;
+      // U39: the same edit as the Flow tab's (battle-edit.ts): one slot per hero, the new hero fights, and in a search
+      // mode a hero picked by hand is locked.
+      assignHero(state, key, s.value === "" ? null : Number(s.value), picks);
       clearUndo = null;
       persistParty();
       renderParty();
@@ -493,16 +509,16 @@ function renderTarget(): void {
       rare.disabled = !hasRare;
       if (!hasRare) rare.checked = false;
       syncAmount();
-      const r = rare.checked, sfx = r ? "B" : "";
-      // U36: every axis on the same scale for every enemy (the highest value of the stat in the game); the HP follows
-      // the quest size (one enemy with N× HP), so it can pass the rim.
-      const rims = enemyStatMax();
+      const r = rare.checked;
+      // U39: HP as text (it follows the quest size: one enemy with N× HP); the radar's other axes share one rim, this
+      // enemy's highest stat, and Eva has its own, 200.
       const n = Number(amount.value) || 1;
-      const axes: RadarAxis[] = ENEMY_STATS.map(([k, label]) => {
-        const hp = k === "enemyHp" && n > 1;
-        const value = (d[`${k}${sfx}`] ?? 0) * (hp ? n : 1);
-        return { label: hp ? `${label} ×${n}` : label, value, max: rims[k] ?? 0, best: "the strongest enemy" };
-      });
+      const rd = enemyRadar(d, r, n);
+      const common = rd.axes.find((a) => a.key !== "enemyEva")?.max ?? 0;
+      const axes: RadarAxis[] = rd.axes.map((a) => ({ label: a.label, value: a.value, max: a.max,
+        rim: a.key === "enemyEva" ? `the scale (${fmt.format(EVA_RIM)}: 200 or more sits on the rim)` : `the scale (${fmt.format(common)}: its highest stat)` }));
+      const hpText = el("p", { class: "opp-hp" }, el("span", { class: "muted small" }, "HP "), el("strong", {}, fmt.format(rd.hp)),
+        ...(n > 1 ? [el("span", { class: "muted small" }, ` (${fmt.format(rd.baseHp)} ×${n}, quest size)`)] : []));
       card.className = `opp-card${r ? " rare" : ""}`;
       card.replaceChildren(
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
@@ -510,9 +526,11 @@ function renderTarget(): void {
             el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
               ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []),
               // R1 F20: the radar's scale in a "?", not a caption.
-              helpTip(`The radar's rims: the highest value of each stat among all enemies, rare variants included${n > 1 ? `. HP ×${n} for the quest size` : ""}.`, "the stats radar")))),
+              helpTip(`The radar's scale: Atk, Matk, Def and Mdef share one rim, this enemy's highest of the four (${fmt.format(common)}), `
+                + `so the shape shows what it is strong at. Eva's rim is ${EVA_RIM}: ${EVA_RIM} or more sits on the rim.`, "the stats radar")))),
+        hpText,
         radar(axes, { title: `${enemyName(q.value, r)}'s stats`, size: 240 }),
-        // U36: the turns are in the 5-turn plan (third column); the plain rotation only without timeline data.
+        // U36: the turns are in the plan (U39: the Flow tab); the plain rotation only without timeline data.
         ...(timelineOf(Number(q.value), r) ? [] : [el("h4", {}, "Skills"),
           el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))]));
       saveOpponent();
@@ -568,10 +586,11 @@ function renderTarget(): void {
           el("h4", {}, "Scrolls"), ...scrolls));
       saveOpponent();
     };
-    m.addEventListener("change", sync);
-    asc.addEventListener("change", sync);
-    grade.addEventListener("change", sync);
-    for (const x of scrolls) x.addEventListener("change", saveOpponent);
+    // U39: the Flow tab follows the map, its ascension, grade and scrolls (one traced run).
+    m.addEventListener("change", () => (sync(), renderPlan()));
+    asc.addEventListener("change", () => (sync(), renderPlan()));
+    grade.addEventListener("change", () => (sync(), renderPlan()));
+    for (const x of scrolls) x.addEventListener("change", () => (saveOpponent(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
     sync();
     $<HTMLInputElement>("#runs").value = "50";
@@ -626,22 +645,231 @@ function syncAmount(): void {
   }
 }
 
-// ---------------------------------------------------------------- party plan (U11)
-/** The party's 5-turn plan under the enemy's timeline, for the modes with a party, against a quest. */
+// ---------------------------------------------------------------- the two views: Flow and Party (U39)
+/**
+ * Step 3 has two tabs over one party state: Flow (the fight, turn by turn: the main working view) and Party (the hero
+ * cards and the opponent). Edits in either change the same state (battle-edit.ts), then both redraw and the flow is
+ * simulated again. The active tab is remembered for this browser tab (sessionStorage `battle-tab`; convenience only).
+ */
+type Tab = "flow" | "party";
+const TAB_KEY = "battle-tab";
+let tabChoice: Tab | null = null;
+function storedTab(): Tab {
+  if (tabChoice) return tabChoice;
+  try {
+    return sessionStorage.getItem(TAB_KEY) === "party" ? "party" : "flow";
+  } catch {
+    return "flow";
+  }
+}
+function showTab(tab: Tab, remember = true): void {
+  if (remember) {
+    tabChoice = tab;
+    try {
+      sessionStorage.setItem(TAB_KEY, tab);
+    } catch { /* not remembered: it holds until the page is left */ }
+  }
+  document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]").forEach((b) => {
+    const on = b.dataset.tab === tab;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  $("#flow-panel").hidden = tab !== "flow";
+  $("#setup-grid").hidden = tab !== "party";
+}
+function initTabs(): void {
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")];
+  for (const b of tabs) {
+    b.addEventListener("click", () => showTab(b.dataset.tab as Tab));
+    // The arrow keys move between the tabs (the tablist pattern).
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const next = tabs[(tabs.indexOf(b) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      showTab(next.dataset.tab as Tab);
+      next.focus();
+      e.preventDefault();
+    });
+  }
+  showTab(storedTab(), false);
+}
+
+/** The party's heroes as the engine takes them (edited rotations applied), for a traced fight or map run. */
+function engineParty(sim: Sim): [Any[], Any[]] {
+  const { front, back, skills } = partyOf();
+  const build = (raws: (Any | null)[], sk: (SkillChoice | null)[]) => raws.map((raw, i) => {
+    if (!raw) return null;
+    const h = sim.hero(raw);
+    if (sk[i]) sim.setSkills(h, sk[i]!.attackList, sk[i]!.passive);
+    return h;
+  });
+  return [build(front, skills.front), build(back, skills.back)];
+}
+
+/**
+ * U39: Simulate's first fight of this party against the quest (same seed, so the same rolls: hits, crits, misses),
+ * traced action by action (tools/fight-trace.ts); null when the party can't fight it (a rule, or an engine error).
+ */
+function planTrace(t: { id: number; rare: boolean; amount: number }): FightTrace | null {
+  if (partyProblem()) return null;
+  try {
+    const sim = new Sim(state.sv!.raw.gameMode || "Standard");
+    const [front, back] = engineParty(sim);
+    return traceFight(sim, t.id, front, back, { rare: t.rare, amount: t.amount });
+  } catch {
+    return null;
+  }
+}
+
+/** The Map run mode's first run of this party (same seed: same layout and rolls), every room traced; null when it can't run. */
+function mapTrace(m: { spec: MapSpec; scrolls: Scroll[] }): MapRoomTrace[] | string {
+  try {
+    const sim = new Sim(state.sv!.raw.gameMode || "Standard");
+    const [front, back] = engineParty(sim);
+    return traceMapRun(sim, m.spec, front, back, { scrolls: m.scrolls.length ? m.scrolls : null });
+  } catch (e) {
+    return String((e as Error)?.message ?? e).split("\n")[0];
+  }
+}
+
+/** The room shown in the flow of a map run, remembered while the same map stays chosen (sessionStorage). */
+const ROOM_KEY = "battle-flow-room";
+const mapKey = () => [document.querySelector<HTMLSelectElement>("#map")?.value, document.querySelector<HTMLSelectElement>("#map-asc")?.value,
+  document.querySelector<HTMLSelectElement>("#map-grade")?.value].join("|");
+let roomChoice: { map: string; room: number } | null = null;
+function storedRoom(): number {
+  let r = roomChoice;
+  if (!r) {
+    try {
+      r = JSON.parse(sessionStorage.getItem(ROOM_KEY) ?? "null");
+    } catch { /* none */ }
+  }
+  return r && r.map === mapKey() && Number.isInteger(r.room) ? r.room : 0;
+}
+function setRoom(room: number): void {
+  roomChoice = { map: mapKey(), room };
+  try {
+    sessionStorage.setItem(ROOM_KEY, JSON.stringify(roomChoice));
+  } catch { /* not remembered */ }
+}
+
+/** The flow's edits (the ▾ in its heads and in turns 1-5): the same edits as the Party tab's, then both redraw. */
+function planEdit(): PlanEdit {
+  const rules = rulesOf(pageTarget());
+  const refocus = (key: string) => document.querySelector<HTMLElement>(`[data-flow-focus="${key}"] select`)?.focus();
+  const idxAt = (loc: number) => state.slots[slotKeyOfLoc(loc)] ?? null;
+  return {
+    heroes: (loc) => {
+      const key = slotKeyOfLoc(loc);
+      // The party rules: the required slot (Front 2 on a party quest) is never emptied; swapping heroes keeps the size.
+      const required = rules.required.some((x) => slotKey(x.row, x.i) === key);
+      const options: [string, string][] = [...(required ? [] : [["", "— take out of the party —"] as [string, string]]),
+        ...state.sv!.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
+      return { options, value: String(idxAt(loc) ?? "") };
+    },
+    setHero: (loc, v) => {
+      assignHero(state, slotKeyOfLoc(loc), v === "" ? null : Number(v), !state.mode.party);
+      clearUndo = null;
+      persistParty();
+      renderParty();
+      refocus(`hero-${loc}`);
+    },
+    skills: (loc) => {
+      const idx = idxAt(loc);
+      return idx === null ? null : rotationOptions(state.sv!.raw.hero[idx]);
+    },
+    setSkill: (loc, k, skill) => {
+      const idx = idxAt(loc);
+      if (idx === null) return;
+      setRotationSkill(state, idx, k, skill, rotationOf(idx));
+      persistParty();
+      renderParty(false);
+      refocus(`skill-${loc}-${k + 1}`);
+    },
+  };
+}
+
+/** What the flow shows, and how (U39): one concrete run, Simulate's first. */
+const FLOW_NOTE = "One concrete fight: the first of Simulate's runs (same seed), so its hits, misses and critical hits are that run's rolls.";
+const MAP_FLOW_NOTE = "One concrete run: the first of the Map run's runs (same seed), so its layout, rolls and the HP carried from room to room are that run's.";
+
+/** The Flow tab: the opponent in one line, then the fight (a quest) or the room bar and a room's fight (a map run). */
 function renderPlan(): void {
   const box = document.querySelector<HTMLElement>("#plan");
   if (!box || !state.sv) return;
+  const opp = $("#flow-opp"), help = document.querySelector<HTMLElement>("#plan-help");
   box.replaceChildren();
-  if (oppKind() !== "quest" || !document.querySelector("#quest")) return;
-  const t = targetOf().quest!;
+  opp.replaceChildren();
+  help?.replaceChildren();
   const members: PlanMember[] = partyOf().members.map((m) => ({
-    row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class),
-    rotation: state.skills[m.idx]?.attackList ?? api.newHero(m.raw).attackList.slice(1, 6),
+    row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class), rotation: rotationOf(m.idx).attackList,
   }));
-  // U36: the third column; the enemy's column alone while the party is empty.
-  const plan = partyPlan(t, members);
-  // R1 F20: how to read it in a "?" beside the title, not a caption under the grid.
-  if (plan) box.append(el("h3", { class: "col-title" }, "🗓️ 5-turn plan ", helpTip(planNote(t), "the 5-turn plan")), plan);
+  const toParty = el("button", { type: "button", class: "link-btn" }, "change");
+  toParty.addEventListener("click", () => {
+    showTab("party");
+    document.querySelector<HTMLElement>("#tab-party")?.focus();
+  });
+  const problem = partyProblem();
+  const edit = planEdit();
+  if (oppKind() === "quest" && document.querySelector("#quest")) {
+    const t = targetOf().quest!;
+    opp.append(el("span", { class: "muted small" }, "vs "), enemyLink({ id: t.id, rare: t.rare }), t.amount > 1 ? ` ×${t.amount}` : "", " ", toParty);
+    const trace = members.length ? planTrace(t) : null;
+    const plan = partyPlan(t, members, trace, edit);
+    if (plan) {
+      box.append(...(trace ? [el("p", { class: "muted small flow-note" }, FLOW_NOTE)] : []),
+        ...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []), plan);
+      help?.append(helpTip(planNote(t), "the flow"));
+    } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
+    return;
+  }
+  if (oppKind() !== "map" || !document.querySelector("#map")) return;
+  const m = targetOf().map!;
+  opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""), " ", toParty);
+  if (!members.length || problem) {
+    box.append(el("p", { class: "muted" }, problem ? `⚠ ${problem}` : "Put heroes in the party (Party tab) to see the run."));
+    return;
+  }
+  const rooms = mapTrace(m);
+  if (typeof rooms === "string" || !rooms.length) {
+    box.append(el("p", { class: "error" }, `This map run could not be simulated${typeof rooms === "string" ? `: ${rooms}` : ""}.`));
+    return;
+  }
+  const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
+  let at = Math.min(storedRoom(), rooms.length - 1);
+  const view = el("div", { class: "flow-room" });
+  const bar = el("div", { class: "room-bar", role: "tablist", "aria-label": "The map's battles, in order" });
+  const draw = () => {
+    bar.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b, k) => {
+      b.setAttribute("aria-selected", String(k === at));
+      b.tabIndex = k === at ? 0 : -1;
+    });
+    const r = rooms[at];
+    const plan = partyPlan({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
+    view.replaceChildren(...(r.trace ? [] : [el("p", { class: "muted small" }, "Not reached in this run: the rotation as planned.")]),
+      plan ?? el("p", { class: "muted" }, "No timeline for this enemy yet."));
+    help?.replaceChildren(helpTip(planNote({ id: r.questId, rare: r.isRare }), "the flow"));
+  };
+  tabs.forEach((x, k) => {
+    const b = el("button", { type: "button", role: "tab", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
+      title: `${x.label}: ${["not reached in this run", "won", "lost"][x.status] ?? ""}` }, x.label,
+      ...(x.status === 2 ? [el("span", { "aria-hidden": "true" }, " 💀")] : []));
+    b.addEventListener("click", () => {
+      at = k;
+      setRoom(k);
+      draw();
+    });
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      at = (k + (e.key === "ArrowRight" ? 1 : rooms.length - 1)) % rooms.length;
+      setRoom(at);
+      draw();
+      bar.querySelectorAll<HTMLButtonElement>("[role=tab]")[at]?.focus();
+      e.preventDefault();
+    });
+    bar.append(b);
+  });
+  box.append(el("p", { class: "muted small flow-note" }, MAP_FLOW_NOTE), bar, view);
+  draw();
 }
 
 // ---------------------------------------------------------------- modes
@@ -1010,6 +1238,7 @@ function init(): void {
     state.mode = modeOf(localStorage.getItem(MODE_KEY) ?? "simulate");
   } catch { /* default mode */ }
   renderModes();
+  initTabs();
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
     onForget: () => {
@@ -1069,6 +1298,8 @@ function init(): void {
       setMode("simulate");
       r?.focus();
     },
+    // U39: Solve's spoiler guard hides the whole rest of the page (Results, party and opponent, the plan) until accepted.
+    guarded: (on) => $("#setup").classList.toggle("solve-guarded", on),
   }, $("#search-panel"), $("#search-results"));
   $("#run").addEventListener("click", run);
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));

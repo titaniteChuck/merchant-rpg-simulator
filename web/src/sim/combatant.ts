@@ -87,6 +87,8 @@ export class Combatant {
   }
 
   private _determineAction(turnNumber: number): Any {
+    // What the combatant really played (read by the trace only): the skill, false when stunned, null when dead.
+    this._did = null;
     if (truthy(this.reviveCooldown)) this.reviveCooldown = Math.max(0, this.reviveCooldown - 1);
     if (this.isDead) {
       this.isDead = true;
@@ -113,6 +115,7 @@ export class Combatant {
       actionName = finalActionName;
     }
     void triggerEffect;
+    this._did = actionName;
     const target = this.getTarget();
     let action: Any;
     if (actionName === false) {

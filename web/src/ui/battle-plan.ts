@@ -1,6 +1,8 @@
 /**
- * The battle page's 5-turn plan as data (U36), for timeline.ts to draw: a grid whose columns are the heroes in action
- * order plus the enemy, and whose rows are turns 1-5. Pure (no DOM), so Node tests can check it.
+ * The battle page's plan as data (U36), for timeline.ts to draw: a grid whose columns are the heroes in action
+ * order plus the enemy, and whose rows are turns 1-10 (U39: two rounds of the 5-turn rotation, counted from the start
+ * of the fight, so turn 1 carries nothing over and turns 6-10 show the rotation coming back with what round one left
+ * on). Pure (no DOM), so Node tests can check it.
  *
  * - Hero cells: the planned skill, what the hero really does (Basic under a forced action, nothing when stunned), and
  *   the enemy's effects on that hero for that turn, each with its SOURCE skill: "[Tidal Wave] atk −50%",
@@ -91,8 +93,14 @@ export function fxTargets(e: EffectInfo, occupied: number[]): number[] {
   return [];
 }
 
-/** The hero turns (1-5, from the cast) an enemy effect cast on `cast` covers: its owner's turns for the heroes. */
-const coveredTurns = (offsets: number[], cast: number) => [...new Set(offsets.map((o) => slotOf(cast + o)))];
+/** How many turns the plan shows (U39): two rounds of the 5-turn rotation, so turns 6-10 show it coming back. */
+export const PLAN_TURNS = 10;
+/** The turns of the plan (1..n). */
+const planTurns = (n: number) => Array.from({ length: n }, (_, k) => k + 1);
+/** The fight's turns (absolute, from 1) an effect cast on turn `cast` covers, offsets from the cast. */
+const coveredTurns = (offsets: number[], cast: number) => [...new Set(offsets.map((o) => cast + o))];
+/** The turns (absolute) the enemy casts its rotation's slot k (1-5) on, up to turn n. */
+const castsOf = (k: number, n: number) => planTurns(n).filter((t) => slotOf(t) === k);
 
 const turnsText = (n: number, who: string) => `${n} ${who} turn${n === 1 ? "" : "s"}`;
 /**
@@ -121,7 +129,7 @@ export interface PlanMark {
   text: string;
   title: string;
   kind: string;
-  /** Turn (1-5) of the cast. */
+  /** Turn of the fight (from 1) of the cast. */
   cast: number;
 }
 
@@ -129,10 +137,9 @@ const mark = (source: string, short: string, title: string, kind: string, cast: 
   ({ source, text: `[${skillName(source)}] ${short}`, title, kind, cast });
 
 /** Keep the latest cast of each marker (the same effect cast again replaces itself), in cast order. */
-function latest(marks: PlanMark[], turn: number, enemyFirst: boolean, heroCast: boolean): PlanMark[] {
-  // A hero's cast in this turn acts before the enemy (unless it acts first): distance 0. An enemy cast in this turn
-  // reaches the heroes from the next turn, so the same-turn cast is the oldest (distance 5), unless the enemy acts first.
-  const recent = (m: PlanMark) => ((turn - m.cast + 5) % 5) || (heroCast || enemyFirst ? 0 : 5);
+function latest(marks: PlanMark[], turn: number): PlanMark[] {
+  // U39: turns count from the start of the fight, so a cast is never after the turn it shows on.
+  const recent = (m: PlanMark) => turn - m.cast;
   const by = new Map<string, PlanMark>();
   for (const m of marks) {
     const was = by.get(m.text);
@@ -190,16 +197,19 @@ export interface PlanGrid {
   columns: PlanColumn[];
 }
 
-/** The enemy's effects on the hero at `loc` while it plays its slot `turn` (steady state: the 5-turn cycle repeats). */
+/**
+ * The enemy's effects on the hero at `loc` while it plays turn `turn` of the fight (U39: counted from turn 1, so turn 1
+ * carries nothing over; from turn 6 on, the casts of the previous round still on show again).
+ */
 export function enemyHitsOn(tl: EnemyTimeline, loc: number, turn: number, occupied: number[]): { cast: number; e: EffectInfo }[] {
   const out: { cast: number; e: EffectInfo }[] = [];
   tl.slots.forEach((s, k) => {
     for (const e of s.effects) {
       if (e.on !== "heroes" || !fxTargets(e, occupied).includes(loc)) continue;
-      if (coveredTurns(e.ownerTurns, k + 1).includes(turn)) out.push({ cast: k + 1, e });
+      for (const c of castsOf(k + 1, turn)) if (coveredTurns(e.ownerTurns, c).includes(turn)) out.push({ cast: c, e });
     }
   });
-  const recent = (h: { cast: number }) => ((turn - h.cast + 5) % 5) || (tl.enemyFirst ? 0 : 5);
+  const recent = (h: { cast: number }) => turn - h.cast;
   const byName = new Map<string, { cast: number; e: EffectInfo }>();
   for (const h of out) {
     const was = byName.get(h.e.name);
@@ -226,33 +236,34 @@ function enemySummary(s: EnemyTimeline["slots"][number]): { short: string; long:
  * the probe (caster first, the enemy last); the enemy's own actions (ownerTurns) shift one turn when it acts first.
  * Defensive maluses (def, mdef, eva, damage taken) count over the turns the heroes act against them (facingTurns).
  */
-export function planGrid(tl: EnemyTimeline, members: PlanMember[]): PlanGrid {
+export function planGrid(tl: EnemyTimeline, members: PlanMember[], n = PLAN_TURNS): PlanGrid {
   const byLoc = new Map(members.map((m) => [locationOf(m.row, m.i), m]));
   const occupied = [...byLoc.keys()].sort((a, b) => a - b);
   const foe = enemyName(tl.quest, tl.rare) ?? tl.name;
+  const slotName = (cast: number) => tl.slots[slotOf(cast) - 1].name;
   const heroCols: PlanColumn[] = occupied.map((loc) => {
     const m = byLoc.get(loc)!;
-    const cells: HeroCell[] = [1, 2, 3, 4, 5].map((t) => {
-      const planned = m.rotation[t - 1] || "Basic";
+    const cells: HeroCell[] = planTurns(n).map((t) => {
+      const planned = m.rotation[slotOf(t) - 1] || "Basic";
       const hits = enemyHitsOn(tl, loc, t, occupied);
       const stun = hits.find((h) => h.e.kind === "stun"), forced = hits.find((h) => h.e.kind === "force-action");
       const does = stun ? null : forced ? "Basic" : planned;
       const marks = hits.map((h) => {
-        const src = tl.slots[h.cast - 1].name;
+        const src = slotName(h.cast);
         const c = compactEffect(h.e);
-        const again = h.cast >= t && !(tl.enemyFirst && h.cast === t) ? " From the second cycle on (the rotation repeats)." : "";
         return mark(src, c.short, `${skillName(src)}, cast by ${foe} on turn ${h.cast}: ${c.long}, ${lasts(h.e, "hero")}.`
-          + `${h.e.removable ? " A cleanse removes it." : ""}${again}`, h.e.kind, h.cast);
+          + `${h.e.removable ? " A cleanse removes it." : ""}`, h.e.kind, h.cast);
       });
       const tags = does ? (skillProfile(does, "hero")?.tags ?? []).map((x) => compactTag(x, "hero")) : [];
-      return { turn: t, planned, does, ...(stun ? { stunBy: tl.slots[stun.cast - 1].name } : {}),
-        ...(forced ? { forcedBy: tl.slots[forced.cast - 1].name } : {}), tags, marks: latest(marks, t, tl.enemyFirst, false) };
+      return { turn: t, planned, does, ...(stun ? { stunBy: slotName(stun.cast) } : {}),
+        ...(forced ? { forcedBy: slotName(forced.cast) } : {}), tags, marks: latest(marks, t) };
     });
     return { kind: "hero", loc, member: m, cells };
   });
 
-  // What the heroes put on the enemy, by enemy turn.
-  const maluses: PlanMark[][] = [[], [], [], [], []];
+  // What the heroes put on the enemy, by enemy turn (index t - 1; turns past n are dropped).
+  const maluses: PlanMark[][] = planTurns(n).map(() => []);
+  const onTurn = (arr: PlanMark[][], t: number, m: PlanMark) => (t >= 1 && t <= n ? arr[t - 1].push(m) : 0);
   for (const col of heroCols) {
     for (const cell of col.cells as HeroCell[]) {
       const sk = cell.does;
@@ -265,40 +276,211 @@ export function planGrid(tl: EnemyTimeline, members: PlanMember[]): PlanGrid {
         const defensive = e.kind === "vulnerability" || (!!e.stats && Object.keys(e.stats).every((k) => ["def", "mdef", "eva"].includes(k)));
         let offs = defensive ? e.facingTurns : e.ownerTurns.map((o) => o + (tl.enemyFirst ? 1 : 0));
         if (e.until === "next-attack" || e.until === "next-hit") offs = offs.slice(0, 1);
-        const turns = e.until === "permanent" ? [1, 2, 3, 4, 5] : coveredTurns(offs, c);
+        // The enemy's first turn under it: the cast turn, or the next one when the enemy acts first.
+        const from = c + (tl.enemyFirst ? 1 : 0);
+        const turns = e.until === "permanent" ? planTurns(n).filter((t) => t >= from) : coveredTurns(offs, c);
         const x = compactEffect(e);
         for (const t of turns) {
-          maluses[t - 1].push(mark(sk, x.short, `${skillName(sk)}, cast by ${who} on turn ${c}: ${foe} ${x.long}, ${lasts(e, "enemy")}.`, e.kind, c));
+          onTurn(maluses, t, mark(sk, x.short, `${skillName(sk)}, cast by ${who} on turn ${c}: ${foe} ${x.long}, ${lasts(e, "enemy")}.`, e.kind, c));
         }
       }
-      const at = slotOf(c + (tl.enemyFirst ? 1 : 0));
-      if (p.tags.includes("dispel")) maluses[at - 1].push(mark(sk, "dispel", `${skillName(sk)}, cast by ${who} on turn ${c}: removes ${foe}'s buffs.`, "dispel", c));
-      if (p.tags.includes("cleanse")) maluses[at - 1].push(mark(sk, "cleanse", `${skillName(sk)}, cast by ${who} on turn ${c}: removes ${foe}'s debuffs from the heroes.`, "cleanse", c));
+      const at = c + (tl.enemyFirst ? 1 : 0);
+      if (p.tags.includes("dispel")) onTurn(maluses, at, mark(sk, "dispel", `${skillName(sk)}, cast by ${who} on turn ${c}: removes ${foe}'s buffs.`, "dispel", c));
+      if (p.tags.includes("cleanse")) onTurn(maluses, at, mark(sk, "cleanse", `${skillName(sk)}, cast by ${who} on turn ${c}: removes ${foe}'s debuffs from the heroes.`, "cleanse", c));
     }
   }
 
   // The enemy's own buffs from earlier casts, over the turns the heroes act against them (not the cast turn itself).
-  const own: PlanMark[][] = [[], [], [], [], []];
+  const own: PlanMark[][] = planTurns(n).map(() => []);
   tl.slots.forEach((s, k) => {
     for (const e of s.effects) {
       if (e.on !== "self" && e.on !== "party") continue;
       const x = compactEffect(e);
-      const turns = e.until === "permanent" ? [1, 2, 3, 4, 5] : coveredTurns(e.facingTurns.filter((o) => o > 0), k + 1);
-      for (const t of turns) {
-        if (t === k + 1) continue;
-        own[t - 1].push(mark(s.name, x.short, `${skillName(s.name)}, cast by ${foe} on turn ${k + 1}: ${x.long}, ${lasts(e, "enemy")}.`
-          + `${e.removable ? " A dispel removes it." : ""}`, e.kind, k + 1));
+      for (const c of castsOf(k + 1, n)) {
+        const turns = e.until === "permanent" ? planTurns(n).filter((t) => t > c) : coveredTurns(e.facingTurns.filter((o) => o > 0), c);
+        for (const t of turns) {
+          if (t === c) continue;
+          onTurn(own, t, mark(s.name, x.short, `${skillName(s.name)}, cast by ${foe} on turn ${c}: ${x.long}, ${lasts(e, "enemy")}.`
+            + `${e.removable ? " A dispel removes it." : ""}`, e.kind, c));
+        }
       }
     }
   });
 
   const enemyCol: PlanColumn = {
     kind: "enemy",
-    cells: tl.slots.map((s, k): EnemyCell => {
+    cells: planTurns(n).map((t): EnemyCell => {
+      const s = tl.slots[slotOf(t) - 1];
       const sum = enemySummary(s);
-      return { turn: k + 1, skill: s.name, short: sum.short, long: sum.long, own: latest(own[k], k + 1, tl.enemyFirst, false),
-        maluses: latest(maluses[k], k + 1, tl.enemyFirst, true) };
+      return { turn: t, skill: s.name, short: sum.short, long: sum.long, own: latest(own[t - 1], t), maluses: latest(maluses[t - 1], t) };
     }),
   };
   return { enemyFirst: tl.enemyFirst, columns: tl.enemyFirst ? [enemyCol, ...heroCols] : [...heroCols, enemyCol] };
 }
+
+// ---------------------------------------------------------------- the flow of one fight (U39)
+/*
+ * The flow diagram's data (U39), from one simulated fight (tools/fight-trace.ts: Simulate's first fight, or one room
+ * of the Map run mode's first run), every turn from 1 until the fight ends. Inside each turn, one line per action in
+ * the order the fighters act: the actor's column holds the skill it played (the planned one struck out under a stun or
+ * a forced action), each other column the damage or healing that fighter took, and a dot where an effect landed. Under
+ * the lines, each fighter's HP and its effects at the end of the turn, as chips; an effect on every standing hero is
+ * one chip over the hero columns. Turns 1-5 are the rotation (editable on the page); a light divider every 5 turns.
+ */
+export interface TimelineChip {
+  /** 0 = the enemy, 1-6 = party location, -1 = every hero. */
+  who: number;
+  /** Engine name (English) and its label in the visitor's language. */
+  name: string;
+  label: string;
+  debuff: boolean;
+  /** Turns left, when the effect counts them. */
+  turns?: number;
+  title: string;
+}
+export interface TimelineCell {
+  dmg: number;
+  heal: number;
+  /** The fighter fell during this action. */
+  ko: boolean;
+  /** Effects that landed on this fighter during this action (new, or cast again). */
+  added: TimelineChip[];
+}
+export interface TimelineLine {
+  /** 0 = the enemy, 1-6 = party location. */
+  who: number;
+  planned: string;
+  /** The skill played; false: stunned (the action is lost); null: down. */
+  did: string | false | null;
+  misses: number;
+  /** By fighter (0 = the enemy). */
+  cells: Record<number, TimelineCell>;
+}
+export interface TimelineTurn {
+  turn: number;
+  /** Turns 1-5: the rotation itself (the page edits it there); later turns repeat it. */
+  rotation: boolean;
+  /** The 5-turn round (0 = turns 1-5, 1 = turns 6-10 …): a divider between rounds. */
+  round: number;
+  /** The actions of this turn, in order. */
+  lines: TimelineLine[];
+  /** End of the turn: each fighter's HP, and its own effects (those on every standing hero are in `shared`). */
+  hp: Record<number, { hp: number; maxHP: number }>;
+  status: Record<number, TimelineChip[]>;
+  shared: TimelineChip[];
+}
+export interface PlanTimeline {
+  turns: TimelineTurn[];
+  /** How the fight ended: won, lost, or stopped at the game's turn cap (lost too, for the game). */
+  won: boolean;
+  capped: boolean;
+  lastTurn: number;
+}
+
+/** The game's turn cap (Battle.combatLoop): at 200 turns the fight stops, lost. */
+export const TURN_CAP = 200;
+
+type TracedFx = { who: number; name: string; debuff: boolean; turns?: number; stats?: Record<string, number> };
+/** What the timeline needs of a traced fight (tools/fight-trace.ts FightTrace). */
+export interface TracedFight {
+  won: boolean;
+  turns: number;
+  actions: { turn: number; who: number; planned: string; did: string | false | null; misses: number;
+    hits: { who: number; dmg: number; heal: number; hp: number }[]; fx: TracedFx[];
+    life?: { who: number; hp: number; maxHP: number }[] }[];
+}
+
+/**
+ * An effect's name in the visitor's language: effects are named after their skill ("Tidal Wave"), sometimes with a
+ * suffix ("Ancient Mist Eva↑"); the skill part is translated, the suffix kept.
+ */
+export function effectName(name: string): string {
+  const own = skillName(name);
+  if (own !== name) return own;
+  const words = name.split(" ");
+  for (let k = words.length - 1; k > 0; k--) {
+    const head = words.slice(0, k).join(" "), t = skillName(head);
+    if (t !== head) return `${t} ${words.slice(k).join(" ")}`;
+  }
+  return name;
+}
+
+function chipOf(f: TracedFx, who: (w: number) => string): TimelineChip {
+  const label = effectName(f.name);
+  const stats = Object.entries(f.stats ?? {}).filter(([, v]) => v !== 0).map(([k, v]) => compactStat(k, v).long);
+  const left = f.turns === undefined ? "" : `, ${f.turns} turn${f.turns === 1 ? "" : "s"} left`;
+  return { who: f.who, name: f.name, label, debuff: f.debuff, ...(f.turns === undefined ? {} : { turns: f.turns }),
+    title: `${label} on ${who(f.who)}: ${f.debuff ? "debuff" : "buff"}${stats.length ? ` (${stats.join(", ")})` : ""}${left}.` };
+}
+
+/** Effects still on: with 0 turns left an effect ends at its owner's next action, so it no longer shows. */
+const liveFx = (fx: TracedFx[]) => fx.filter((f) => f.turns === undefined || f.turns > 0);
+
+/**
+ * The flow of a traced fight, every turn from 1 to its end. `occupied`: the party locations in the fight (for "on
+ * every hero"); `who`: a fighter's name for the tooltips.
+ */
+export function planTimeline(trace: TracedFight, occupied: number[],
+  who: (w: number) => string = (w) => (w ? locationLabel(w) : "the enemy")): PlanTimeline {
+  const turns: TimelineTurn[] = [];
+  let prev: TracedFx[] = [];
+  const hp: Record<number, { hp: number; maxHP: number }> = {};
+  const byTurn = new Map<number, TracedFight["actions"]>();
+  for (const a of trace.actions) {
+    if (!byTurn.has(a.turn)) byTurn.set(a.turn, []);
+    byTurn.get(a.turn)!.push(a);
+  }
+  for (let t = 1; t <= trace.turns; t++) {
+    const acts = byTurn.get(t) ?? [];
+    const lines: TimelineLine[] = acts.map((a) => {
+      const before = new Map(liveFx(prev).map((f) => [`${f.who}|${f.name}`, f.turns ?? Infinity]));
+      const cells: Record<number, TimelineCell> = {};
+      const cell = (w: number) => (cells[w] ??= { dmg: 0, heal: 0, ko: false, added: [] });
+      // KO: standing before this action (HP before = after + damage − healing), down after it.
+      for (const h of a.hits) Object.assign(cell(h.who), { dmg: h.dmg, heal: h.heal, ko: h.hp <= 0 && h.hp + h.dmg - h.heal > 0 });
+      for (const f of liveFx(a.fx)) {
+        const was = before.get(`${f.who}|${f.name}`);
+        // New, or cast again (more turns left than before).
+        if (was === undefined || (f.turns ?? Infinity) > was) cell(f.who).added.push(chipOf(f, who));
+      }
+      for (const l of a.life ?? []) hp[l.who] = { hp: l.hp, maxHP: l.maxHP };
+      prev = a.fx;
+      return { who: a.who, planned: a.planned, did: a.did, misses: a.misses, cells };
+    });
+    const end = liveFx(prev);
+    const standing = occupied.filter((l) => l > 0 && (hp[l]?.hp ?? 1) > 0);
+    const names = [...new Set(end.filter((f) => f.who > 0).map((f) => f.name))];
+    const sharedNames = standing.length > 1 ? names.filter((nm) => standing.every((h) => end.some((f) => f.who === h && f.name === nm))) : [];
+    const shared = sharedNames.map((nm) => {
+      const on = end.filter((f) => f.who > 0 && f.name === nm);
+      const left = new Set(on.map((f) => f.turns));
+      // One chip for the party: its turns left only when every hero has the same.
+      return { ...chipOf({ ...on[0], turns: left.size === 1 ? on[0].turns : undefined }, () => "every hero"), who: -1 };
+    });
+    const status: Record<number, TimelineChip[]> = {};
+    for (const f of end) {
+      if (f.who > 0 && sharedNames.includes(f.name)) continue;
+      (status[f.who] ??= []).push(chipOf(f, who));
+    }
+    turns.push({ turn: t, rotation: t <= 5, round: Math.floor((t - 1) / 5), lines, hp: structuredClone(hp), status, shared });
+  }
+  return { turns, won: trace.won, capped: !trace.won && trace.turns >= TURN_CAP, lastTurn: trace.turns };
+}
+
+/** One entry of the flow's room bar (map runs): "1 · Wolf Pack" … "Boss · Murlok Monarch", in map order. */
+export interface RoomTab {
+  index: number;
+  label: string;
+  boss: boolean;
+  /** 0 not reached in this run, 1 won, 2 lost. */
+  status: number;
+}
+/** The room bar's entries, in map order; `name`: an enemy's name in the visitor's language. */
+export function mapRoomTabs(rooms: { questId: number; name: string; isRare: boolean; boss: boolean; status: number }[],
+  name: (questId: number, rare: boolean) => string | undefined = () => undefined): RoomTab[] {
+  return rooms.map((r, k) => {
+    const n = name(r.questId, r.isRare) ?? r.name;
+    return { index: k, label: r.boss ? `Boss · ${n}` : `${k + 1} · ${n}`, boss: r.boss, status: r.status };
+  });
+}
+

@@ -135,9 +135,9 @@ flowchart LR
   the search's panel and 🔎 Search. The output goes to the Results section, step 2 (`#results` for Simulate,
   `#search-results` for the searches: `initSearch(ctx, panelMount, resultsMount)`); rebuilding the panel after a party or
   opponent change keeps the results and a running search. Until a run, Results shows a one-line hint.
-- Step 3, party, opponent and plan (U15, reworked in U23 and U36; step 2 until U26), the same arrangement in every
-  mode, three columns (U36): the six hero slots (back row 1-3 | front row 1-3), the opponent card, then the 5-turn plan;
-  up to 1200 px the plan goes under the party and opponent, below 960 px everything stacks (party, opponent, plan). Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
+- Step 3, party, opponent and plan (U15, reworked in U23, U36 and U39; step 2 until U26), the same arrangement in every
+  mode: two tabs (U39), Flow (the fight turn by turn, see "Flow tab" below) and Party: the six hero slots (back row 1-3
+  | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
   Mdef, Acc, Crit; columns as wide as their values, five-digit values shortened to "12.3K" with the full value in a
   tooltip), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
@@ -171,9 +171,11 @@ flowchart LR
     - Picker (U36): grouped by region and kind, region by region: "<Region>", "<Region> – Event", "<Region> – Map"
       (`enemyGroups` in `ui/battle-setup.ts` on the wiki's `regionOf`); the Map group holds only map-exclusive
       monsters (map bosses and the map Treasure Bushes); each group by level. No level bands.
-    - Radar (U36): every axis scaled to the highest value of that stat among all enemies, rare variants included
-      (`enemyStatMax`, computed once), so shapes compare across the whole game; the HP axis follows the quest size
-      (×N: one enemy with N× HP, label "HP ×N"), redrawn when the size changes. Before U36: rims per kind and level band.
+    - Radar (U39, `enemyRadar` in `ui/battle-setup.ts`): no HP axis; the HP is a line of text above the radar that
+      follows the quest size ("HP 420,000 (140,000 ×3, quest size)"). Atk, Matk, Def and Mdef share one rim, this
+      enemy's highest of the four, so the shape shows what it is strong at (the Mighty Bush no longer squashes every
+      other shape); Eva's rim is always 200 and 200 or more sits on the rim (`EVA_RIM`). The vertex tooltips say "% of
+      the scale". U36 scaled each axis to the game-wide maximum; before U36: rims per kind and level band.
     - No timeline strip in the card (U36): the turns are in the plan; without timeline data the card lists the rotation.
     - Remembered (U36): the opponent (quest or map run, enemy, rare, size, map, grade, ascension, scrolls) is kept in
       localStorage `battle-opponent` (try/catch) and put back when the page is opened again; switching quest ⇄ map
@@ -245,7 +247,8 @@ flowchart LR
       at your own risk.") with "▶ Try Simulate first" and "Show me the solver anyway". Accepting is remembered in
       localStorage `battle-solver-shown` (try/catch; with storage blocked it holds for the page view); the panel then
       starts with "⚠ Spoiler tool: it gives you the answer." and a "Hide it again" link (forgets the choice, stops a
-      running search and clears its results).
+      running search and clears its results). Until accepted (U39), the guard hides the whole rest of the Solve page:
+      the Results and step 3 (party, opponent, flow) are hidden (`SearchContext.guarded` → `#setup.solve-guarded`).
     - Options: smallest and largest party (1 and 6, clamped to the quest's size cap, both 1 on a solo quest),
       "Include scrolls" (map runs only; disabled with "(map runs only)" on a quest; off, the runs keep the scrolls of
       step 3), time budget 60 s (default) or 120 s, "Leave heroes out".
@@ -340,6 +343,44 @@ flowchart LR
   - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only; gone with
     Optimise everything in U36).
   - Without the timeline data the pages fall back to the plain rotation list.
+  - Flow tab (U39, replaces the plan column of U36): step 3 has two tabs over ONE party state, 🗓️ Flow (the main
+    working view, first) and 👥 Party (the hero cards and the opponent card, as before). The active tab is remembered
+    for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit through `ui/battle-edit.ts`
+    (`assignHero`: one slot per hero, the new hero fights, a hand-picked hero locked in Solve; `setRotationSkill`), then
+    the page saves the party, redraws both tabs and traces the fight again.
+    - What it shows: the WHOLE fight, every turn from 1 until it ends (won, lost, or the game's 200-turn cap), one turn
+      under the other, from ONE concrete run: Simulate's first fight (seed `fightSeed(1, 0)`, the same rolls as the
+      first of Simulate's runs: hits, misses, critical hits, evasion). A one-line note above the chart says so. Combat
+      results are unchanged: the trace only reads the engine.
+    - Data: `traceFight` / `traceMapRun` in `tools/fight-trace.ts` on the engine's trace (`api.ts traceStart`), which
+      U39 extended with display-only fields per action: `did` (what the actor really played: another skill under a
+      forced action, `false` when stunned), `hits` (per fighter: damage taken and HP really healed), `fx` (the effects
+      on every fighter), `misses`, `life` (every fighter's HP and max HP) and `battle` (which battle of a map run).
+      `combatant.ts` records `_did`; nothing else in the engine changed. `planTimeline` in `ui/battle-plan.ts` turns
+      it into turns → lines → cells (pure, tested).
+    - Layout (prototype C of three, static HTML compared on a real Odin trace: chips on every line was unreadable,
+      per-line "new effect" chips repeated party buffs six times): per turn, one line per action in action order; the
+      actor's cell tinted in its class colour with the skill played (planned skill struck out under a stun or a
+      forced action, "miss" when an attack missed); damage (−, red) or healing (+, green) as the main text in the
+      column of whoever takes it, "✝ KO" on the hit that fells a fighter, a small dot where an effect lands (tooltip).
+      Under the lines, each fighter's HP at the end of the turn (thin bar + number, "✝ down" once fallen) and its
+      effects as chips with turns left; an effect on every standing hero is one chip over the hero columns ("every
+      hero"). A light dashed divider every 5 turns ("Turns 6–10: the rotations again"); the result at the end ("🏆 Won on
+      turn 4", "💀 Lost on turn 14", or the turn cap). Past 100 turns the rest waits behind "Show turns 101–N".
+    - Editing: each hero column head has a small ▾ (a transparent select, faint until hover or focus, keyboard
+      reachable) to change the slot's hero (the hero choices of the Party tab; the required Front 2 of a party quest
+      can't be emptied); in turns 1–5 each hero's actor cell has a ▾ for that rotation slot (Basic and the unlocked
+      skills with AP). Turns 6 and on are read-only (they repeat the rotation).
+    - Sticky column heads (the page scrolls normally); at 700 px and less the chart scrolls sideways in its own frame.
+    - Opponent: one line ("vs Odin ×3 · change", the link opens the Party tab). Without a party that can fight (no
+      heroes, or a party rule), the rotation's 5 turns as planned (`planGrid`) with the ▾ controls.
+    - Map runs: a horizontal bar above the chart lists the run's battles in map order ("1 · Treasure Bush" …
+      "Boss · Murlok Monarch"; `mapRoomTabs`), as the Map run mode's first run plays them (same seed: layout, rolls and
+      HP carried from room to room); picking one shows that battle's full fight from its real start state; rooms not
+      reached are dimmed and show the plan. Arrow keys move along the bar; it scrolls sideways on a phone. The room is
+      remembered while the same map, ascension and grade stay chosen (sessionStorage `battle-flow-room`).
+  - Plan grid (U39 before the Flow tab): `planGrid` counts turns from the start of the fight (turn 1 carries nothing
+    over; turn 6 on carries what round one left on) and takes a turn count (default 10).
 
 ## Wiki
 
