@@ -466,8 +466,22 @@ export function mapEnemies(m: Any): number[] {
 }
 
 // ---------------------------------------------------------------- texts
-/** A skill's effect: the wiki's English text, or the game's text in the visitor's language (U29). */
-export const skillDesc = (name: string): string => descOf("skill", name) ?? text.skills[name] ?? "";
+/**
+ * abilityData.desc is outdated for these skills: the English the wiki shows instead, checked against what the combat
+ * code does. The game's TextData (inventory/i18n/en.json) where it says the same; Absorb Atk / Matk are written here
+ * because TextData leaves out the 75 % cut of the hit.
+ */
+export const SKILL_DESC_FIX: Record<string, string> = {
+  "Absorb Atk": "Take Atk Dmg↓75% & heal .75x of it for 1 Turn", // heals 0.75 × the incoming atk (before Def), cuts it by 75 %
+  "Absorb Matk": "Take Matk Dmg↓75% & heal .75x of it for 1 Turn", // the same for matk (before Mdef)
+  "Demon Slash": "Deal 1.8x Atk & 1.2x Matk", // TextData (abilityData: 1.5x Atk)
+  "Disharmony": "Gain Matk↑50%. Give AOE Mdef↓60% (3 turns)", // TextData (abilityData: Mdef↓50%); the Matk buff stacks
+  "Siphon Soul": "Deal 1.5x Matk (AOE) Lifesteal 100%", // TextData (abilityData: 2x Matk)
+  "Sunder": "Deal 1.5x(Atk+Acc) & Give Def↓40% for 2 Turns", // TextData (abilityData: 1.4x)
+};
+
+/** A skill's effect: the wiki's English text (SKILL_DESC_FIX first), or the game's text in the visitor's language (U29). */
+export const skillDesc = (name: string): string => descOf("skill", name) ?? SKILL_DESC_FIX[name] ?? text.skills[name] ?? "";
 export const skillAp = (name: string): number | undefined => G.abilityData?.[name]?.apCost;
 export const passiveText = (name: string): string => statsText(G.passiveData?.[name]?.stats) || "no bonus";
 export const classText = (id: number): string => descOf("class", id) ?? (text.classes[id] ?? []).join(" ");

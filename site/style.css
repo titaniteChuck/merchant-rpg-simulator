@@ -1408,3 +1408,11 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   .spoiler-guard { padding: 12px; }
 }
 /* end battle solver + plan */
+/* wiki cross-links */
+/* U30. Links from the wiki pages to the Stats / Battle sections (statLink, battleLink): the term itself, or the last
+   line of a "?" popover ("How it's calculated →"). They stay quiet: the text's own colour, a dotted underline. */
+.help-more { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 0.8rem; }
+.help-more a.ref-link { color: var(--accent); font-weight: 600; border-bottom-color: transparent; }
+.help-more a.ref-link:hover, .help-more a.ref-link:focus-visible { border-bottom: 1px solid currentColor; }
+.facts dt a.ref-link, .cls-cards dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, legend a.ref-link { color: inherit; }
+/* end wiki cross-links */

@@ -3,14 +3,19 @@
  * on keyboard focus (also on a tap, Escape closes it). The text stays in the page as the button's accessible
  * description (aria-describedby → a hidden element), so screen readers get it without opening anything.
  * The explanations that used to sit under the titles live here now; the page itself keeps the data.
- * CSS: `.help-q`, `.help-pop` in the `wiki v5` block of site/style.css.
+ * U30: a "?" can end with links to the Stats / Battle reference sections (`refs`: "How it's calculated →" for one
+ * link, the topic names for several); the popover then stays open while the pointer is over it, so its links can be
+ * clicked, and Tab from the button reaches them.
+ * CSS: `.help-q`, `.help-pop` in the `wiki v5` block of site/style.css; `.help-more` in `wiki cross-links`.
  */
 import { el } from "./dom.ts";
 
 let seq = 0;
 let open: { btn: HTMLElement; pop: HTMLElement } | null = null;
+let closing: ReturnType<typeof setTimeout> | undefined;
 
 function close(): void {
+  clearTimeout(closing);
   if (!open) return;
   open.pop.hidden = true;
   open.btn.setAttribute("aria-expanded", "false");
@@ -18,6 +23,8 @@ function close(): void {
 }
 
 function show(btn: HTMLElement, pop: HTMLElement): void {
+  clearTimeout(closing);
+  if (open?.pop === pop) return;
   if (open && open.pop !== pop) close();
   pop.hidden = false;
   btn.setAttribute("aria-expanded", "true");
@@ -33,35 +40,57 @@ function show(btn: HTMLElement, pop: HTMLElement): void {
 }
 
 /**
- * A "?" button explaining `text` (a paragraph, or several as an array). `about` names what it explains, for the
- * button's label ("About Stats").
+ * The closing line of a "?" with links to the reference pages: one link reads "How it's calculated →" (Stats) or
+ * "How it works →" (Battle); several keep their own labels ("Hit chance → · Defence reduction →").
  */
-export function helpTip(text: string | string[], about = "this section"): HTMLElement {
+function moreLine(refs: HTMLAnchorElement[]): HTMLElement {
+  if (refs.length === 1) refs[0].textContent = refs[0].getAttribute("href")?.includes("#/battle/") ? "How it works →" : "How it's calculated →";
+  else for (const a of refs) a.append(" →");
+  return el("span", { class: "help-p help-more" }, ...refs.flatMap((a, i) => (i ? [" · ", a] : [a])));
+}
+
+/**
+ * A "?" button explaining `text` (a paragraph, or several as an array). `about` names what it explains, for the
+ * button's label ("About Stats"). `refs`: links to Stats / Battle sections (statLink, battleLink) on a last line.
+ */
+export function helpTip(text: string | string[], about = "this section", refs: HTMLAnchorElement[] = []): HTMLElement {
   const id = `help-${++seq}`;
   const paras = Array.isArray(text) ? text : [text];
-  const pop = el("span", { class: "help-pop", id, role: "tooltip" }, ...paras.map((p) => el("span", { class: "help-p" }, p)));
+  const pop = el("span", { class: "help-pop", id, ...(refs.length ? {} : { role: "tooltip" }) },
+    ...paras.map((p) => el("span", { class: "help-p" }, p)), ...(refs.length ? [moreLine(refs)] : []));
   pop.hidden = true;
   const btn = el("button", { type: "button", class: "help-q", "aria-label": `About ${about}`, "aria-describedby": id, "aria-expanded": "false" }, "?");
+  const inside = (n: EventTarget | null) => n instanceof Node && (n === btn || pop.contains(n));
+  // the mouse leaving the button or the popover: close a moment later, unless it went over the other one
+  const later = (e: Event) => {
+    if ((e as PointerEvent).pointerType !== "mouse" || inside(document.activeElement)) return;
+    clearTimeout(closing);
+    closing = setTimeout(() => open?.pop === pop && close(), 250);
+  };
   btn.addEventListener("pointerenter", () => show(btn, pop));
-  btn.addEventListener("pointerleave", (e) => {
-    if ((e as PointerEvent).pointerType === "mouse" && document.activeElement !== btn) close();
-  });
+  btn.addEventListener("pointerleave", later);
+  pop.addEventListener("pointerenter", () => clearTimeout(closing));
+  pop.addEventListener("pointerleave", later);
+  // a click on a link keeps the focus where it is (no blur closing the popover before the click lands)
+  pop.addEventListener("mousedown", (e) => e.preventDefault());
   btn.addEventListener("focus", () => show(btn, pop));
-  btn.addEventListener("blur", close);
+  btn.addEventListener("blur", (e) => !inside(e.relatedTarget) && close());
+  pop.addEventListener("focusout", (e) => !inside(e.relatedTarget) && close());
   btn.addEventListener("click", () => (open?.pop === pop && document.activeElement !== btn ? close() : show(btn, pop)));
   return el("span", { class: "help-tip" }, btn, pop);
 }
 
 /** Puts a "?" with `text` at the end of `heading` (a section banner) and returns the heading. */
-export function withHelp<T extends HTMLElement>(heading: T, text: string | string[], about = heading.textContent ?? "this section"): T {
-  heading.append(" ", helpTip(text, about.trim() || "this section"));
+export function withHelp<T extends HTMLElement>(heading: T, text: string | string[], about = heading.textContent ?? "this section",
+  refs: HTMLAnchorElement[] = []): T {
+  heading.append(" ", helpTip(text, about.trim() || "this section", refs));
   return heading;
 }
 
 /** Same, on the first heading of a section element built by the wiki's section(). */
-export function sectionHelp<T extends HTMLElement>(section: T, text: string | string[]): T {
+export function sectionHelp<T extends HTMLElement>(section: T, text: string | string[], refs: HTMLAnchorElement[] = []): T {
   const h = section.querySelector<HTMLElement>("h2, h3, h4");
-  if (h) withHelp(h, text);
+  if (h) withHelp(h, text, undefined, refs);
   return section;
 }
 

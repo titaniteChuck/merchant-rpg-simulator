@@ -285,3 +285,13 @@ export function goodAgainst(skill: string): Matchup[] {
   cache.set(skill, out);
   return out;
 }
+
+/** True for a hero skill that cleanses debuffs or dispels buffs (its "?" links to Battle › Buffs and debuffs). */
+export function removesEffects(skill: string): boolean {
+  try {
+    const tags = skillProfile(skill, "hero")?.tags ?? [];
+    return tags.includes("cleanse") || tags.includes("cleanse-self") || tags.includes("dispel");
+  } catch {
+    return false; // timelines not loaded
+  }
+}

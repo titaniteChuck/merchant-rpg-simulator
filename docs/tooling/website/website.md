@@ -409,6 +409,35 @@ flowchart LR
   `aria-describedby` (a hidden element), so screen readers read it on focus. Data-source notes are gone from the pages
   (the loot roll's "table “Region1Adv”", "(obj.combat.lootService)"). "Acts before the heroes every turn" became an
   "Acts" fact on the enemy page.
+- Cross-links to Stats and Battle (U30): the wiki pages link a term to the reference section that explains it,
+  instead of repeating the formula. Two quiet forms only: the term itself (a dotted-underline `statLink` /
+  `battleLink`, its tooltip the one-line formula), or a last line in a "?" popover ("How it's calculated →" /
+  "How it works →" for one link, the topic names with "→" for several: the `refs` argument of `helpTip`,
+  `withHelp`, `sectionHelp`). A "?" with links stays open while the pointer is over it (closes 250 ms after it
+  leaves both), a click on a link doesn't blur it shut, and Tab from the button reaches the links. Never a code
+  citation. Links per page:
+  - Enemy: Stats "?" → hit-chance (Eva), defence (Def, Mdef), quest-size (HP ×N); "Acts before the heroes" →
+    battle turn-order; Timeline "?" → battle rotation; drop tables' "by battle grade" header → grade; Drops "?" →
+    grade, luck, quest-size (the grade-bonus, parcel and luck formulas it repeated are gone); bush "quest size" →
+    quest-size; Maps "?" → map-essence.
+  - Item: "Sell value" → sell; "Bonus stats" fact and Stats by grade "?" → item-stats (the range formula is gone
+    from the "?"); the ascension switch's "Ascension" → essence; recipe cost and time → craft; Crafting chain "?" →
+    craft. Map: "Enemy modifier", "Essence per run" and the Boss / Room enemies / Treasure "?" → map-essence; "Sell
+    value" → sell.
+  - Skill: "AP cost" → ap; Good against "?" → battle rotation, effects, and buffs-debuffs for cleanse / dispel
+    skills (`removesEffects` in `wiki-skills.ts`).
+  - Class: HP and Crit stat cards → max-hp, crit; "Growth per level" "?" → hero-stats; the skills table's AP
+    header → ap.
+  - Home cards: Skills "action-point cost" → ap; Equipment "Bonus stats" → item-stats, "sell value" → sell; Maps
+    "map modifier" → map-essence; Classes "growth" → hero-stats.
+  - Link labels are site words (stat names stay English); game names in the same lines still go through `names.ts`.
+    `test/wiki-crosslinks.test.ts`: every `statLink` / `battleLink` / `sl` / `bl` target in `web/src/ui` is a real
+    section, and the pages above keep their links. CSS: the `wiki cross-links` block at the end of `site/style.css`.
+- Skill descriptions (U30): `abilityData.desc` (the wiki's English) is outdated for six skills; `SKILL_DESC_FIX` in
+  `wiki-data.ts` overrides it in English, checked against the combat code: Demon Slash (1.8× Atk + 1.2× Matk),
+  Disharmony (Mdef −60 %), Siphon Soul (1.5× Matk), Sunder (1.5× (Atk + Acc)) take the game's TextData
+  (`inventory/i18n/en.json`); Absorb Atk / Matk are rewritten ("Take Atk Dmg↓75% & heal .75x of it for 1 Turn":
+  TextData leaves out the 75 % cut). Other languages already use TextData. `test/skill-desc.test.ts`.
 - Good against (U24): every enemy at once, no top 10 / "Show all".
 - Treasure Bushes (U24): quests 99–104 were never in `NON_ENEMY_QUEST_IDS` and the Enemies list did hold all six
   (levels 10–60). What hid them: the list sorted by quest id put them at the very end, all named "Treasure Bush", and

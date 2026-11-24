@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Website](./index.md) > Update Log
 
 ## 2026-11-24
+- **Update**: Wiki cross-links (U30): enemy, item, map, skill and class pages and the wiki home link terms to their Stats / Battle sections (the term itself, or "How it's calculated →" in a "?" popover, which now stays open for its links); repeated formulas shortened; six outdated skill descriptions corrected (`SKILL_DESC_FIX`); see [Wiki](./website.md#wiki).
 - **Update**: Languages (U29): game names and descriptions in the language picked in the top bar ("EN ▾", 8 languages, `site/theme.js`), the site's text in English; one helper module (`names.ts`) for every name, `language.ts` loads `data/i18n/<lc>.json` lazily and redraws pages in place; search matches both names, sorting follows the language; see [Languages](./website.md#languages).
 
 ## 2026-11-23

@@ -17,6 +17,8 @@ import { radar, type RadarAxis } from "./radar.ts";
 import { classes } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
 import { className } from "./names.ts";
+import { withHelp } from "./wiki-help.ts";
+import { type StatTopic, statLink } from "./wiki-ref.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -27,6 +29,8 @@ export const GROWTH: Growth[] = [["hpPlv", "hp", "HP"], ["atkPlv", "atk", "Atk"]
   ["defPlv", "def", "Def"], ["mdefPlv", "mdef", "Mdef"], ["critPlv", "crit", "Crit"]];
 /** Charted stats: Crit left out of the curves and the radar (on request; the cards still show it). */
 export const CHARTED = GROWTH.filter(([, b]) => b !== "crit");
+/** U30: stat cards whose label links to its own Stats section (the others: the growth "?"). */
+const CARD_TOPIC: Record<string, StatTopic> = { hp: "max-hp", crit: "crit" };
 
 const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -88,7 +92,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     el("dl", { class: "facts cls-cards" }, ...GROWTH.map((g) => {
       const dd = el("dd", {});
       cardVals.set(g[1], dd);
-      return el("div", {}, el("dt", {}, g[2]), dd);
+      return el("div", {}, el("dt", {}, CARD_TOPIC[g[1]] ? statLink(CARD_TOPIC[g[1]], g[2]) : g[2]), dd);
     })));
 
   // ---- picker: ascension switch + level slider
@@ -158,7 +162,8 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
   const block = el("div", { class: "cls-v3" }, picker,
     el("div", { class: "cls-stats" },
       el("div", { class: "cls-radar" }, radarHolder),
-      el("div", { class: "cls-growth" }, el("h3", { class: "wiki-banner sub" }, "Growth per level"), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
+      el("div", { class: "cls-growth" }, withHelp(el("h3", { class: "wiki-banner sub" }, "Growth per level"),
+        "The class's own stats: base + growth × level, before gear, potions, passive and attribute points.", "growth per level", [statLink("hero-stats")]), legend, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
   cards.classList.add("cls-v3");
 
   function set(s: Selection, quiet = false): void {

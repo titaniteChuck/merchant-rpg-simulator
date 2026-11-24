@@ -11,6 +11,7 @@ import {
   skillDesc, skillLink,
 } from "./wiki-data.ts";
 import { sectionHelp, withHelp } from "./wiki-help.ts";
+import { battleLink, statLink } from "./wiki-ref.ts";
 import { isVisible } from "./expansion-state.ts";
 import { hiddenNote } from "./expansion-menu.ts";
 import { rarityChip } from "./wiki-items.ts";
@@ -146,10 +147,13 @@ const dash = (num = false) => el("td", { class: num ? "num muted" : "muted" }, "
 const itemCell = (type: string, id: number) => el("td", {}, el("span", { class: "loot-item" }, itemLink(type, id)));
 const rarityCell = (type: string, id: number) => el("td", { class: "loot-rar" }, rarityChip(item(type, id)?.rarity));
 
-/** A static drop table: two header rows (the grade columns grouped under `group`), then the rows. */
+/**
+ * A static drop table: two header rows (the grade columns grouped under "`group` by battle grade", the words "battle
+ * grade" linked to Stats › Grade), then the rows.
+ */
 function lootGrid(firstCols: [string, boolean][], group: string, rows: HTMLTableRowElement[]): HTMLElement {
   const head1 = el("tr", {}, ...firstCols.map(([c, num]) => el("th", { scope: "col", rowspan: "2", class: num ? "num" : "" }, c)),
-    el("th", { scope: "colgroup", colspan: String(LOOT_GRADES.length), class: "grp" }, group));
+    el("th", { scope: "colgroup", colspan: String(LOOT_GRADES.length), class: "grp" }, `${group} by `, statLink("grade", "battle grade")));
   const head2 = el("tr", {}, ...LOOT_GRADES.map((g) => el("th", { scope: "col", class: "num", title: `Grade ${GRADE_LETTERS[g - 1]}` },
     gradeBadge(GRADE_LETTERS[g - 1]))));
   return el("div", { class: "table-wrap loot-wrap" }, el("table", { class: "loot-table" }, el("thead", {}, head1, head2), el("tbody", {}, ...rows)));
@@ -157,7 +161,7 @@ function lootGrid(firstCols: [string, boolean][], group: string, rows: HTMLTable
 
 /** "Every win": each fixed material, its chance at grade B and its amount range per grade (hover: the odds). */
 function everyWinTable(fixed: [number, number, number][]): HTMLElement {
-  return lootGrid([["Item", false], ["Rarity", false], ["Chance", true]], "Amount by battle grade", fixed.map(([mid, lo, hi]) => {
+  return lootGrid([["Item", false], ["Rarity", false], ["Chance", true]], "Amount", fixed.map(([mid, lo, hi]) => {
     const byGrade = LOOT_GRADES.map((g) => fixedAmounts([mid, lo, hi], g));
     const got = 100 * (1 - (byGrade[BASE_GRADE - 1].get(0) ?? 0));
     return el("tr", {}, itemCell("material", mid), rarityCell("material", mid), el("td", { class: "num", title: "At grade B" }, pctText(got)),
@@ -180,7 +184,7 @@ function rollTable(name: string): HTMLElement {
   const nothing = el("tr", { class: "loot-none" }, el("td", {}, el("span", { class: "loot-item" }, "Nothing")), dash(), dash(true), ...pcts(t.nothing));
   const rows = t.rows.map((r) => el("tr", {}, itemCell(r.type, r.id), rarityCell(r.type, r.id),
     el("td", { class: "num", title: amountOddsText(r.amounts) }, amountRange(r.amounts)), ...pcts(r.chance)));
-  return lootGrid([["Item", false], ["Rarity", false], ["Amount", true]], "Chance by battle grade", [nothing, ...rows]);
+  return lootGrid([["Item", false], ["Rarity", false], ["Amount", true]], "Chance", [nothing, ...rows]);
 }
 
 function dropsBlock(id: number, rare: boolean): HTMLElement {
@@ -194,14 +198,13 @@ function dropsBlock(id: number, rare: boolean): HTMLElement {
 
 const TIMELINE_HELP = "One skill per turn, turns 1–5, then the rotation starts over. Each card is the skill of that turn and "
   + "what it does; click a card for the skill's page.";
+/** U30: the grade and luck formulas live on Stats › Grade and Stats › Luck (the "?" links there). */
 const DROPS_HELP = [
-  "Per win against one enemy (a map room), party luck 0.",
-  "Every win: the amount range × the grade bonus (D–S ×0.6, ×0.75, ×1, ×1.25, ×1.5), rounded, at most 5. Chance is at grade B; "
-  + "hover an amount for its odds.",
-  "Each loot roll gives one row, or nothing: the grade scales the “nothing” odds (D–S ×1.25, ×1.1, ×1, ×0.9, ×0.75), so the "
-  + "item chances move with it. Each grade column adds up to 100 %.",
-  "Party luck adds to every-win amounts (+1 per 10 luck) and takes from the “nothing” odds one for one.",
+  "Per win against one enemy (a map room, or a quest at ×1), party luck 0.",
+  "Every win: an amount range per grade, at most 5. Chance is at grade B; hover an amount for its odds.",
+  "Each loot roll gives one row, or nothing; each grade column adds up to 100 %. Party luck raises both.",
 ];
+const dropsRefs = () => [statLink("grade", "Grade"), statLink("luck", "Luck"), statLink("quest-size", "Quest size ×N")];
 
 /** One card per variant: the 5-turn timeline (each turn with its skill's effect), then drops. */
 function variantCard(id: number, rare: boolean): HTMLElement {
@@ -209,9 +212,9 @@ function variantCard(id: number, rare: boolean): HTMLElement {
   const tl = timelineOf(id, rare);
   return el("div", { class: `enemy-variant${rare ? " rare" : ""}` },
     el("h3", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), ...(rare ? [" ", pill("rare", "t-pink")] : [])),
-    withHelp(banner("Timeline"), tl ? [TIMELINE_HELP, stripNote(tl)] : TIMELINE_HELP, "the timeline"),
+    withHelp(banner("Timeline"), tl ? [TIMELINE_HELP, stripNote(tl)] : TIMELINE_HELP, "the timeline", [battleLink("rotation")]),
     tl ? enemyStrip(tl, { note: false }) : rotationList(id, rare),
-    withHelp(banner("Drops"), DROPS_HELP, "the drops"), dropsBlock(id, rare));
+    withHelp(banner("Drops"), DROPS_HELP, "the drops", dropsRefs()), dropsBlock(id, rare));
 }
 
 /** The maps the enemy appears in; maps the visitor hides (no Scribe expansion) are counted in a note (U28). */
@@ -252,9 +255,12 @@ function mapsHelp(id: number): string[] {
  * Where a bush is fought: a quest bush (gathering quest) is the first battle of its region's quest board, fought on its
  * own like any quest; a map Treasure Bush hides in a random room of the maps of its level band (Scribe content).
  */
-function bushWhere(id: number): string | undefined {
+function bushWhere(id: number): HTMLElement | string | undefined {
   const region = regionOf("enemy", id)?.full ?? "its region";
-  if (isGathering(id)) return `On the quest board of ${region}: its first battle, fought on its own like any quest (quest size up to ×5 with an ascended hero).`;
+  if (isGathering(id)) {
+    return el("span", {}, `On the quest board of ${region}: its first battle, fought on its own like any quest (`,
+      statLink("quest-size", "quest size"), " up to ×5 with an ascended hero).");
+  }
   if (isTreasureBush(id)) return `Only in maps (Scribe expansion): it hides in a random room of the maps of level ${enemyLevelText(id)}, at map grade B or better. Never on the quest board.`;
   return undefined;
 }
@@ -267,7 +273,7 @@ function bushDrops(id: number): HTMLElement | undefined {
   return el("span", {}, ...fixed.flatMap((n, i) => [...(i ? [", "] : []), n]), el("span", { class: "muted small" }, ` · ${what}`));
 }
 
-type Facts = (pairs: [string, Node | string | number | undefined | null][]) => HTMLElement;
+type Facts = (pairs: [string | Node, Node | string | number | undefined | null][]) => HTMLElement;
 type Section = (title: string, ...kids: (Node | string)[]) => HTMLElement;
 
 /** An enemy page's body, below its title. */
@@ -282,12 +288,13 @@ export function enemyBody(id: number, facts: Facts, section: Section): HTMLEleme
       // A bush: the maps it spawns in (their levels), its quest level only as a detail (U28 follow-up).
       ["Level", isTreasureBush(id) ? `maps level ${enemyLevelText(id)} (quest level ${q.levelReq})` : q.levelReq], ["Region", regionChip(regionOf("enemy", id), true)],
       ["Fought", bushWhere(id)], ["Mainly drops", bushDrops(id)],
-      ["Party", q.party ? `${q.questSize ?? "?"} heroes` : "solo"], ["Acts", first ? "before the heroes, every turn" : undefined],
+      ["Party", q.party ? `${q.questSize ?? "?"} heroes` : "solo"], ["Acts", first ? battleLink("turn-order", "before the heroes, every turn") : undefined],
       ["Rare variant", rare ? el("span", {}, enemyLink({ id, rare: true }), q.abRand ? el("span", { class: "muted small" }, ` · about ${q.abRand}% of its map rooms`) : "") : undefined],
       ["Maps", roles.length ? `${roles.length}${bossOf ? ` (boss in ${bossOf})` : ""}` : "none"]]),
-    sectionHelp(section("Stats", statsTable(id)), "Quest stats, before any map multiplier, grade or game mode."),
+    sectionHelp(section("Stats", statsTable(id)), "Quest stats, before any map multiplier, grade or game mode.",
+      [statLink("hit-chance", "Eva: hit chance"), statLink("defence", "Def, Mdef: defence"), statLink("quest-size", "HP: quest size ×N")]),
     section("Timeline and drops",
       el("div", { class: "enemy-variants" }, variantCard(id, false), ...(rare ? [variantCard(id, true)] : []))),
-    roles.length ? sectionHelp(section(`Maps (${roles.length})`, mapsTable(id)), mapsHelp(id)) : section("Maps", mapsTable(id)),
+    roles.length ? sectionHelp(section(`Maps (${roles.length})`, mapsTable(id)), mapsHelp(id), [statLink("map-essence")]) : section("Maps", mapsTable(id)),
   ];
 }
