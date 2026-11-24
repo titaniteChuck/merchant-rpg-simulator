@@ -45,3 +45,6 @@
 - **Update**: U28, U31 done; U29 language picker started (agent).
 - **Update**: U29 done; U30 started; R1 live-site review queued; Class balance joins the frozen pages.
 - **Update**: E20 map-only economics (agent), E21 required front-middle slot (engine), U32 + Clear all, U33 quest XP/time/XP-min (user).
+- **Update**: E17 done; U27 + U32 started (one agent); E21 in progress.
+- **Update**: U27+U32 built; E22 engine follow-ups.
+- **Update**: E20, E21 done; U27/U32 rebasing onto E21; engine session offline (E22 queued).
