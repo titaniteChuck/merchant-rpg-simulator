@@ -1210,7 +1210,9 @@ flowchart LR
   the same keys and ARIA. The wiki dropdown shows its groups in four columns under a
   Search row. A mouse opens a dropdown on hover too; a click elsewhere, Tab out of it or Escape (focus back on ▾)
   closes it; Down / Up on ▾ open it on the current (or last) link; Up / Down / Home / End move inside; Left / Right
-  move between the top entries. A dropdown that would pass the right edge shifts left. The current section gets
+  move between the top entries. Every top-bar dropdown (these, the Save dropdown and the language menu) stays inside
+  the window with 8 px clear on both sides, at every width: no wider than `100vw - 16px` (CSS), shifted sideways by
+  `keepInView` (`save-menu.ts`, a CSS translate; `theme.js` repeats the rule for the language menu). The current section gets
   `.is-current` (darker, gold underline); its own link `aria-current="true"` when a sub-page is current.
 - Save dropdown (U44): ONE "📜 … ▾" button in the right side of the top bar holds the save's choice and actions and
   the save viewer's pages; the main menu has no "Save ▾" and the drawer no Save section (phones keep the top-bar
@@ -1222,6 +1224,9 @@ flowchart LR
   `expansion-menu.ts` `mountExpansionChip` (no save, on a page that reads one or shows expansion content) and
   `save-menu.ts` `mountNavSaveChip` (put by `nav.ts` on every page: on Home, and until a page puts its own;
   `placeChip` swaps it out). `save-menu.ts` also holds `savePagesGroup`, `fitMenu`, `menuKeys` (Up / Down / Escape).
+  On the Save pages the button itself is the current section (they have no menu or drawer entry): `aria-current="true"`
+  and the current main-menu entry's look (`saveChipButton`, `markSaveChip` from `mark()`); check-site takes it, or the
+  dropdown's current link, as the current marker. Tests `web/test/nav-u44-fix.test.ts`.
 - Second row (desktop): the current section's sub-pages as chips under the top bar (`nav.subnav`, the former wiki
   chips' look; groups split by a thin bar), only for a section with a page of its own and sub-pages: Save and Wiki.
   U44: none on the Battle pages (Battle has no page of its own). It replaces the wiki's static chip row and the save

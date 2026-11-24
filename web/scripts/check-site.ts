@@ -4,7 +4,9 @@
  * (404s, favicon included), a page wider than the viewport, (600 px and less, U20) a row that wraps: the top bar and
  * the tab rows must each be ONE line, or (U35) broken menus: above 760 px the main menu shows, marks the current page
  * and each dropdown opens on screen and closes with Escape; at 760 px and less only the burger shows, and it opens the
- * left drawer (on screen, current page marked, focus inside) that Escape closes.
+ * left drawer (on screen, current page marked, focus inside) that Escape closes. At every width the top-bar Save
+ * dropdown opens and closes with Escape, and every dropdown keeps 8 px from both window edges; on the Save pages (no
+ * menu or drawer entry since U44) the Save button is marked current (aria-current) and counts as the current marker.
  *
  *   cd web && npm run site && node scripts/check-site.ts            # all pages, all variants
  *   node scripts/check-site.ts --only battle,wiki --jobs 2 --save ../saves/snapshot/PlayerData.txt --widths 414
@@ -113,17 +115,34 @@ const PROBE = `(() => {
     const shown = (el) => !!el && !!el.offsetParent;
     const key = (el, k) => el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
     const onScreen = (el, what) => { const r = el.getBoundingClientRect(); if (r.left < -1 || r.right > cw + 1) nav.push(what + " off screen (" + Math.round(r.left) + "–" + Math.round(r.right) + "px)"); };
+    // A top-bar dropdown keeps 8 px from both window edges (U44 fix).
+    const inMargins = (el, what) => { const r = el.getBoundingClientRect(); if (r.left < 7 || r.right > cw - 7) nav.push(what + " not 8 px inside the window (" + Math.round(r.left) + "–" + Math.round(r.right) + "px of " + cw + ")"); };
     const burger = document.querySelector(".nav-burger"), main = document.querySelector(".mainnav"), drawer = document.querySelector("#nav-drawer");
+    // The Save pages have no main-menu or drawer entry (U44): the top-bar Save button is their current section, and
+    // its dropdown marks the page. It must be marked there.
+    const saveBtn = document.querySelector(".topbar .save-chip-btn");
+    const savePage = document.documentElement.dataset.navSection === "save";
+    const saveCurrent = () => !!document.querySelector('.topbar .save-chip-btn[aria-current], .topbar .save-menu [aria-current="page"]');
+    if (savePage && !(saveBtn && saveBtn.hasAttribute("aria-current"))) nav.push("Save page: the top-bar Save button is not marked current");
+    if (!saveBtn) nav.push("no Save dropdown in the top bar");
+    else {
+      saveBtn.click();
+      const menu = saveBtn.parentElement.querySelector(".save-menu");
+      if (saveBtn.getAttribute("aria-expanded") !== "true" || !shown(menu)) nav.push("the Save dropdown does not open");
+      else inMargins(menu, "the Save dropdown");
+      key(saveBtn, "Escape");
+      if (saveBtn.getAttribute("aria-expanded") !== "false" || shown(menu)) nav.push("the Save dropdown does not close on Escape");
+    }
     if (!burger || !main || !drawer) nav.push("menus not built (js/nav.js)");
     else if (cw > 760) {
       if (!shown(main)) nav.push("main menu hidden");
       if (shown(burger)) nav.push("burger shown");
-      if (!main.querySelector('[aria-current="page"], .is-current')) nav.push("no current section in the main menu");
+      if (!main.querySelector('[aria-current="page"], .is-current') && !saveCurrent()) nav.push("no current section in the main menu");
       for (const b of main.querySelectorAll(".menu-caret")) {
         b.click();
         const pop = document.getElementById(b.getAttribute("aria-controls"));
         if (b.getAttribute("aria-expanded") !== "true" || !shown(pop)) nav.push("dropdown " + b.getAttribute("aria-controls") + " does not open");
-        else onScreen(pop, "dropdown " + pop.id);
+        else inMargins(pop, "dropdown " + pop.id);
         key(b, "Escape");
         if (b.getAttribute("aria-expanded") !== "false" || shown(pop)) nav.push("dropdown " + b.getAttribute("aria-controls") + " does not close on Escape");
       }
@@ -136,7 +155,7 @@ const PROBE = `(() => {
         if (!drawer.open || burger.getAttribute("aria-expanded") !== "true") nav.push("the burger does not open the drawer");
         else {
           onScreen(drawer, "drawer");
-          if (!drawer.querySelector('[aria-current="page"], .is-current')) nav.push("no current page in the drawer");
+          if (!drawer.querySelector('[aria-current="page"], .is-current') && !saveCurrent()) nav.push("no current page in the drawer");
           if (!drawer.contains(document.activeElement)) nav.push("focus not in the open drawer");
           key(drawer, "Escape");
           if (drawer.open || burger.getAttribute("aria-expanded") !== "false") nav.push("the drawer does not close on Escape");

@@ -135,6 +135,12 @@
       }
       fill();
       menu.hidden = false;
+      // Inside the window, 8 px from both edges (as save-menu.ts keepInView does for the other top-bar menus).
+      menu.style.translate = "";
+      const r = menu.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+      let dx = Math.min(0, vw - 8 - r.right);
+      if (r.left + dx < 8) dx = 8 - r.left;
+      if (Math.round(dx)) menu.style.translate = `${Math.round(dx)}px 0`;
       b.setAttribute("aria-expanded", "true");
       (items().find((x) => x.getAttribute("aria-checked") === "true") ?? items()[0])?.focus();
     };

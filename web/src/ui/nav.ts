@@ -24,7 +24,7 @@ import { mountScrollMemory } from "./scroll-memory.ts";
 
 export { currentNav, itemsOf, NAV, pageOf, type NavGroup, type NavItem, type NavSection } from "./nav-data.ts";
 import { currentNav, NAV, type NavItem, type NavSection } from "./nav-data.ts";
-import { mountNavSaveChip } from "./save-menu.ts";
+import { keepInView, markSaveChip, mountNavSaveChip } from "./save-menu.ts";
 
 // ---------------------------------------------------------------- DOM
 const PHONE = "(max-width: 760px)";
@@ -121,10 +121,7 @@ function wireMenuBar(nav: HTMLElement): void {
       pop.hidden = false;
       btn.setAttribute("aria-expanded", "true");
       li.classList.add("open");
-      // Keep the dropdown on screen: shift it left when it would pass the right edge.
-      pop.style.left = "";
-      const over = pop.getBoundingClientRect().right - (document.documentElement.clientWidth - 8);
-      if (over > 0) pop.style.left = `${-over}px`;
+      keepInView(pop); // on screen, 8 px from both edges (shared with the Save dropdown, save-menu.ts)
     }
     const ls = linksOf(li);
     const cur = ls.find((a) => a.getAttribute("aria-current") === "page");
@@ -329,6 +326,7 @@ export function mark(): void {
     else a.removeAttribute("aria-current");
   });
   document.querySelectorAll<HTMLElement>(".menu-item, .drawer-sec").forEach((x) => x.classList.toggle("is-current", x.dataset.section === section));
+  markSaveChip(); // the Save pages' section is the top-bar Save button (no menu entry since U44)
 }
 
 /** The id the skip link jumps to: the page's <main> (given this id when it has none). */

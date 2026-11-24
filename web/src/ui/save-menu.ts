@@ -46,8 +46,36 @@ export function savePagesGroup(onPick?: () => void): HTMLElement {
     menuTitle("Save pages"), ...links);
 }
 
-/** Keep an open top-bar menu inside the window: at most the height left under it, scrolling inside (R1 F45). */
+/** The clear space kept between an open top-bar menu and the window's left and right edges (px). */
+export const MENU_MARGIN = 8;
+
+/**
+ * How far (px, + to the right) to move a box spanning [left, right] so it sits inside [margin, width - margin]; 0 when
+ * it already does. When it is wider than that, its left edge wins (its start, the menu's titles, stays readable).
+ */
+export function shiftIntoView(left: number, right: number, width: number, margin = MENU_MARGIN): number {
+  let dx = Math.min(0, width - margin - right);
+  if (left + dx < margin) dx = margin - left;
+  return Math.round(dx) || 0;
+}
+
+/**
+ * Keep an open top-bar dropdown inside the window's width: shift it sideways (CSS translate, whatever its anchor) so
+ * it keeps MENU_MARGIN from both edges. Its width is capped in style.css (max-width: 100vw minus both margins).
+ */
+export function keepInView(menu: HTMLElement): void {
+  menu.style.translate = "";
+  const r = menu.getBoundingClientRect();
+  const dx = shiftIntoView(r.left, r.right, document.documentElement.clientWidth);
+  if (dx) menu.style.translate = `${dx}px 0`;
+}
+
+/**
+ * Keep an open top-bar menu inside the window: within its width (keepInView), and at most the height left under it,
+ * scrolling inside (R1 F45).
+ */
 export function fitMenu(menu: HTMLElement): void {
+  keepInView(menu);
   menu.style.maxHeight = "";
   const top = menu.getBoundingClientRect().top;
   menu.style.maxHeight = `${Math.max(160, window.innerHeight - top - 12)}px`;
@@ -71,10 +99,31 @@ export function menuKeys(chip: HTMLElement, menu: HTMLElement, button: HTMLEleme
   });
 }
 
-/** The Save dropdown's button: "📜 <name> ▾" (the name hidden on phones). */
+/** True on the save viewer's pages, whose section is the Save dropdown (they have no main-menu or drawer entry). */
+export const onSavePage = (): boolean => currentNav(location.pathname, location.hash).section === "save";
+
+/**
+ * Marks every Save dropdown button as the current section on the save viewer's pages (aria-current="true", styled like
+ * a current main-menu entry), unmarks it elsewhere. nav.ts mark() calls it on load and at every hashchange; a button
+ * built later is marked by saveChipButton.
+ */
+export function markSaveChip(): void {
+  const here = onSavePage();
+  document.querySelectorAll<HTMLElement>(".save-chip-btn").forEach((b) => {
+    if (here) b.setAttribute("aria-current", "true");
+    else b.removeAttribute("aria-current");
+  });
+}
+
+/**
+ * The Save dropdown's button: "📜 <name> ▾" (the name hidden on phones). On the save viewer's pages it is marked as
+ * the current section (markSaveChip).
+ */
 export function saveChipButton(name: string, title: string, ...extra: Node[]): HTMLButtonElement {
-  return mk("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false", title },
+  const b = mk("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false", title },
     "📜 ", mk("span", { class: "save-chip-name" }, name), ...extra, " ▾");
+  if (onSavePage()) b.setAttribute("aria-current", "true");
+  return b;
 }
 
 /** Puts a Save dropdown (chip) in the top bar, before the GitHub link; false when the page has no top bar. */
