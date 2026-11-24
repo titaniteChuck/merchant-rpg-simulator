@@ -100,6 +100,7 @@ Rules:
 | P1 | **Profit page, first batch** ([review-profit](./review-profit.md) B1–B12): no level-70 content, shared formatters and toggles, Scribe-hidden orb UI, explanation sentences removed, translated names, phone layout with a sticky first column, Only gains in Enchanting, no in-page save panel. | review-profit | Done (11e2b36) |
 | F1 | **Farming page, first batch** ([review-farming](./review-farming.md)): legal party per quest (size and required slot, like the Simulator), Battle locks kept, revive gold subtracted, quest-board quests only, worker kept alive, grade badges, shared helpers, no explanation sentences, Scribe-hidden maps, sortable Source / Essence, 30 runs per map. | review-farming | Done (1668383) |
 | R2-B | **Save viewer on phones** ([review-r2](./review-r2.md)): one-line inventory filter, compact hero stat grid with a folded radar, one-line passive, merged Basic turns, themed gear cards with outline legend, crafter headers Lv / Asc 1 / Asc 2, two-button no-save picker on every save page, tooltips instead of paragraphs, one-line empty states. | review-r2 | Done (1345f9b) |
+| F2 | **Farming page, second batch** ([review-farming](./review-farming.md)): random-offer tag on rare variants, Win and Grade beside Source, steps Party then Rank then sources with tick counts, event bosses grouped and unticked, stale results dimmed, craft time tooltip, game-mode note, even Scrolls row. | F1 | Done (7d2ccf3) |
 
 ## UI lane
 
