@@ -73,3 +73,4 @@
 - **Update**: F2 done (7d2ccf3): Farming page second batch (review-farming).
 - **Update**: R2-A done (acc3cbd): Home, menus, footer and formats on phones (review-r2).
 - **Update**: R2-C done (c30d660): Simulator and Solver on phones (review-r2). Its room-bar fade script is kept beside R2-A's CSS-only .scroll-row fades (works without scroll timelines; tested).
+- **Update**: R2-D done (248bfd9): Wiki on phones (review-r2); its own wiki sub-navigation rule dropped for R2-A's shared `.scroll-row`.
