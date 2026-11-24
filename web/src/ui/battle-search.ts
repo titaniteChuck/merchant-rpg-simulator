@@ -24,6 +24,7 @@ import { solveShortlist } from "./battle-setup.ts";
 import { bar, el, fmt, fmt1, pct, rateTone, select } from "./dom.ts";
 import { itemLink } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
+import { helpTip } from "./wiki-help.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -96,6 +97,14 @@ const field = (label: string, input: HTMLElement) => el("label", { class: "check
 const intOf = (i: HTMLInputElement, lo = 1, hi = 100000) => Math.max(lo, Math.min(hi, Math.trunc(Number(i.value) || lo)));
 
 const isMapEval = (ev: FightEval | MapEval): ev is MapEval => "cleared" in ev;
+
+/** The solver table's column tooltips (R1 F20: no notes under the table). */
+const HEAD_TIPS: Record<string, string> = {
+  "Party": "Rough: only screened (default rows, the heroes' own rotations); party sizes far from winning are not tuned.",
+  "Lowest enemy HP": "The lowest point the enemy's HP reached, on average (0 % = killed).",
+  "Progress": "Rooms cleared per run.",
+  "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one).",
+};
 
 /**
  * The search panels; show(key) puts one in `mount` (step 1, under the mode cards) and its progress and results in
@@ -184,7 +193,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       stopWorker();
       if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
       else {
-        const draw = (again: boolean) => [...render(m, again), el("p", { class: "muted small" }, `Searched in ${fmt1.format(m.ms / 1000)} s with fixed seeds: every candidate is tested on the same rolls.`)];
+        const draw = (again: boolean) => [...render(m, again), el("p", { class: "muted small", title: "Fixed seeds: every candidate is tested on the same rolls." }, `Searched in ${fmt1.format(m.ms / 1000)} s.`)];
         out.replaceChildren(...draw(false));
         last = { out, draw };
       }
@@ -269,7 +278,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
       (r) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st) : []), budgetMs, true);
     });
-    return el("div", { class: "search-panel solver" }, warn, el("p", { class: "muted small" }, intro),
+    // R1 F20: how the solver works is in a "?" on the warning line, not a paragraph.
+    warn.append(" ", helpTip(intro, "the solver"));
+    return el("div", { class: "search-panel solver" }, warn,
       el("div", { class: "toolbar search-form" }, field("smallest party", minN), field("largest party", maxN), ...capNote, scLabel, field("time", budget), excl.node, go));
   }
 
@@ -334,7 +345,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         // After Load: what is in the slots, and the undo (once used, it stays as "✓ Previous party back").
         ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, ...(st.loaded >= 0 ? [`✓ Setup #${st.loaded + 1} is in the party slots below. `] : []), st.undo)] : []),
         el("div", { class: "table-wrap" }, el("table", { class: "solver-table" },
-          el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}) }, h)))),
+          el("thead", {}, el("tr", {}, ...head.map((h) => el("th", { scope: "col", ...(nums.has(h) ? { class: "num" } : {}), ...(HEAD_TIPS[h] ? { title: HEAD_TIPS[h] } : {}) }, h)))),
           el("tbody", {}, ...rows))));
     };
     if (!res.results.length) {
@@ -351,8 +362,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
       el("p", { class: "small" }, wins ? `${wins} setup${wins === 1 ? "" : "s"} win${wins === 1 ? "s" : ""} 90 % of the fights or more.`
         : "No setup wins 90 % of the time yet: the closest ones are listed."),
       box,
-      el("p", { class: "muted small" }, `${fmt.format(res.tried)} evaluations; ${shown.length < res.results.length ? `${res.results.length - shown.length} weaker setup${res.results.length - shown.length === 1 ? "" : "s"} (more than 25 % behind the best, or 0 %) not shown. ` : ""}${isMap ? "Progress: rooms cleared per run." : "Lowest enemy HP: the lowest point the enemy's HP reached, on average (0 % = killed)."} `
-        + "Rough: only screened (default rows, the heroes' own rotations); the sizes far from winning are not tuned."),
+      // R1 F20: one line; what the columns mean is in the headers' tooltips.
+      el("p", { class: "muted small" }, `${fmt.format(res.tried)} evaluations${shown.length < res.results.length ? ` · ${res.results.length - shown.length} weaker setup${res.results.length - shown.length === 1 ? "" : "s"} not shown` : ""}.`),
     ];
   }
 

@@ -35,9 +35,8 @@
           <h3 id="run-title" class="run-title">Simulate</h3>
           <div class="simulate">
             <div class="toolbar">
-              <label class="check">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
+              <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
               <button id="run" type="button" class="primary">▶ Simulate</button>
-              <span class="muted small">Same seeds every time, so changes you make are compared fairly. Results appear right below.</span>
             </div>
           </div>
           <div id="search-panel" hidden></div>
@@ -46,7 +45,7 @@
 
       <section id="results-box" class="b3-results">
         <h2 id="results-title"><span class="step">2</span> Results</h2>
-        <p id="results-empty" class="muted small">Run the mode chosen above (▶ Simulate or 🔎 Search): its progress and results appear here.</p>
+        <p id="results-empty" class="muted small">No run yet.</p>
         <section id="results" aria-live="polite"></section>
         <div id="search-results" aria-live="polite"></div>
       </section>

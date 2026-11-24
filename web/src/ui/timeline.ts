@@ -231,15 +231,22 @@ export function partyPlan(quest: { id: number; rare: boolean }, members: PlanMem
   if (!tl) return null;
   const cols = planGrid(tl, members).columns;
   const head = cols.map((c) => c.kind === "enemy"
-    ? el("div", { class: "pg-head enemy", role: "columnheader" }, el("strong", {}, tlName(tl)), el("span", { class: "muted small" }, "enemy"))
+    // R1 F11: a rare variant by its own name and a "rare" pill, as the wiki lists it.
+    ? el("div", { class: "pg-head enemy", role: "columnheader", title: tlName(tl) }, el("strong", {}, tlName(tl)),
+      el("span", { class: "muted small" }, "enemy", ...(tl.rare ? [" ", el("span", { class: "pill t-pink pg-rare" }, "rare")] : [])))
     : el("div", { class: `pg-head hero cls-${c.member!.cls}`, role: "columnheader", title: `${c.member!.name}, ${locationLabel(c.loc!)}` },
       el("strong", {}, c.member!.name), el("span", { class: "muted small" }, locationLabel(c.loc!))));
   const rows = [1, 2, 3, 4, 5].map((t) => el("div", { class: "pg-row", role: "row" }, el("div", { class: "pg-turn", role: "rowheader" }, `T${t}`),
     ...cols.map((c) => (c.kind === "enemy" ? enemyCellEl(c.cells[t - 1] as EnemyCell) : heroCellEl(c.cells[t - 1] as HeroCell, c.loc!)))));
   return el("div", { class: "tl pg", role: "group", "aria-label": "The party's 5-turn plan against the enemy's" },
     el("div", { class: "pg-scroll" }, el("div", { class: "pg-grid", role: "table", style: `--pg-cols: ${cols.length}` },
-      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...head), ...rows)),
-    el("p", { class: "muted small tl-note" }, `Each hero plays slot k of its rotation on turn k, left to right${tl.enemyFirst ? ", after the enemy" : ", then the enemy"}; `
-      + "turn 6 is turn 1 again. [Skill]: where an effect comes from; hover for the full text."));
+      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...head), ...rows)));
+}
+
+/** How to read the plan (R1 F20: in the "?" beside the plan's title, not a caption under it). */
+export function planNote(quest: { id: number; rare: boolean }): string {
+  const tl = timelineOf(quest.id, quest.rare);
+  return `Each hero plays slot k of its rotation on turn k, left to right${tl?.enemyFirst ? ", after the enemy" : ", then the enemy"}; `
+    + "turn 6 is turn 1 again. [Skill]: where an effect comes from; hover a cell for the full text.";
 }
 

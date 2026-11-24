@@ -125,10 +125,21 @@ export interface MapRunContext {
   mode?: string;
 }
 
-/** Craft time, simulated run time and XP per hero per run (every room won) of a map Simulate result. */
-export function mapResultXp(ev: { time_h: number }, c: MapRunContext) {
+/**
+ * Craft time, simulated run time and XP per hero per run of a map Simulate result. A room's XP is given only when it
+ * is won (campaign.ts resetHero), so the XP is the full run's (`xpFull`, every room won) times the share of rooms
+ * cleared on average (`cleared`, R1 F06): a run lost in room 3 doesn't count the rooms after it. `xpPerHero` is null
+ * when no room is ever won (the page shows "—"). Without `cleared` every room counts (the wiki's figure).
+ */
+export function mapResultXp(ev: { time_h: number; cleared?: number }, c: MapRunContext) {
   const s = mapRunStats(c.map, { grade: c.grade, asc: c.asc, heroes: c.heroes, runSeconds: ev.time_h * 3600, mode: c.mode });
-  return { craftSeconds: s.craftSeconds, runSeconds: s.runSeconds, seconds: s.seconds, xpPerHero: s.xpPerHero, xpPerMin: s.xpPerMin };
+  const share = Math.max(0, Math.min(1, ev.cleared ?? 1));
+  const won = share * s.xpPerHero;
+  const none = share < 5e-4;
+  return {
+    craftSeconds: s.craftSeconds, runSeconds: s.runSeconds, seconds: s.seconds, xpFull: s.xpPerHero, cleared: share,
+    xpPerHero: none ? null : won, xpPerMin: none ? null : s.xpPerMin * share,
+  };
 }
 
 /** "45 s", "1 min 40 s" (under 10 min), "12 min", "1 h 57 min", "2 d 3 h". */

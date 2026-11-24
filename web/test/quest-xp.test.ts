@@ -90,6 +90,14 @@ test("battle results: simulated fight time, quest time and XP / min", () => {
   const m = mapResultXp({ time_h: 1.5 }, { map: 7, grade: 3, asc: 0, heroes: 3 });
   const ms = mapRunStats(7, { grade: 3, heroes: 3, runSeconds: 5400 });
   assert.deepEqual([m.runSeconds, m.craftSeconds, m.xpPerHero, m.xpPerMin], [5400, ms.craftSeconds, ms.xpPerHero, ms.xpPerMin]);
+  // R1 F06: only the rooms won give XP: 40 % of the rooms cleared on average = 40 % of the XP; none = no figure
+  const part = mapResultXp({ time_h: 1.5, cleared: 0.4 }, { map: 7, grade: 3, asc: 0, heroes: 3 });
+  assert.ok(Math.abs(part.xpPerHero! - 0.4 * ms.xpPerHero) < 1e-9);
+  assert.ok(Math.abs(part.xpPerMin! - 0.4 * ms.xpPerMin) < 1e-9);
+  assert.equal(part.xpFull, ms.xpPerHero);
+  const none = mapResultXp({ time_h: 0.2, cleared: 0 }, { map: 7, grade: 3, asc: 0, heroes: 3 });
+  assert.equal(none.xpPerHero, null);
+  assert.equal(none.xpPerMin, null);
 });
 
 test("time and XP text", () => {

@@ -12,7 +12,8 @@
 import { G } from "../sim/data.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { locationOf } from "./battle-plan.ts";
-import { enemyLevelSort, isEnemy, isTreasureBush, regionOf } from "./wiki-data.ts";
+import { isBoardQuest } from "../tools/quest-stats.ts";
+import { enemyLevelSort, isEnemy, isGathering, isTreasureBush, regionOf, regionOfLevel } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -94,4 +95,72 @@ export function includedSlots(filled: SlotRef[], excluded: ReadonlySet<string>, 
   const order = filled.filter((s) => !excluded.has(s.key))
     .sort((a, b) => Number(required(b)) - Number(required(a)) || locationOf(a.row, a.i) - locationOf(b.row, b.i));
   return { included: order.slice(0, rules.maxSize), capped: order.slice(rules.maxSize) };
+}
+
+// ---------------------------------------------------------------- R1: a useful start for a fresh save (F02)
+/**
+ * The opponent of a fresh save (nothing remembered, R1 F02): the toughest quest-board enemy of the region the save's
+ * strongest heroes are in (regionOfLevel of the highest hero level), at or below that level: the highest level first,
+ * then the strongest (HP × attack). Gathering quests (bushes), bosses (Epic, Final, event bosses: a start, not a wall),
+ * map-only enemies and what `visible` leaves out are skipped. With nothing in that region, the toughest such quest anywhere at or below the level; null
+ * when nothing fits.
+ */
+export function defaultQuest(maxLevel: number, visible: (id: number) => boolean = () => true): number | null {
+  const power = (id: number) => {
+    const q = G.questData[id];
+    return (Number(q.enemyHp) || 0) * ((Number(q.enemyAtk) || 0) + (Number(q.enemyMatk) || 0));
+  };
+  const ok = Object.keys(G.questData ?? {}).map(Number).filter((id) => {
+    const q = G.questData[id];
+    return isFightable(id) && isBoardQuest(id) && !isGathering(id) && !isTreasureBush(id) && q.questType !== 6
+      && !/boss/i.test(String(q.title ?? "")) && (Number(q.levelReq) || 0) <= maxLevel && visible(id);
+  });
+  const best = (ids: number[]) => ids.sort((a, b) => (Number(G.questData[b].levelReq) || 0) - (Number(G.questData[a].levelReq) || 0)
+    || power(b) - power(a) || a - b)[0] ?? null;
+  const region = regionOfLevel(maxLevel);
+  return best(ok.filter((id) => regionOf("enemy", id)?.id === region)) ?? best(ok);
+}
+
+export interface HeroPick {
+  /** Index in the save's hero list. */
+  idx: number;
+  level: number;
+  prestige: number;
+  maxHP: number;
+}
+
+/**
+ * A fresh save's party (R1 F02) under the opponent's rules: the strongest heroes (ascension, level, max HP), as many as
+ * the opponent takes (`rules.maxSize`), the toughest (max HP) in front. Slots are filled in this order: the required
+ * slot first (Front 2 on a party quest, Front 1 on a solo quest), then Front 1, Front 3, Front 2, Back 1, Back 2,
+ * Back 3. Returns slot key ("front1") -> hero index.
+ */
+export function defaultSlots(heroes: HeroPick[], rules: PartyRules): Record<string, number> {
+  const chosen = [...heroes].sort((a, b) => b.prestige - a.prestige || b.level - a.level || b.maxHP - a.maxHP || a.idx - b.idx)
+    .slice(0, Math.max(0, Math.min(6, rules.maxSize)))
+    .sort((a, b) => b.maxHP - a.maxHP || a.idx - b.idx);
+  const order = [...rules.required.map((s) => `${s.row}${s.i}`), "front0", "front2", "front1", "back0", "back1", "back2"]
+    .filter((k, n, all) => all.indexOf(k) === n);
+  const out: Record<string, number> = {};
+  chosen.forEach((h, k) => (out[order[k]] = h.idx));
+  return out;
+}
+
+// ---------------------------------------------------------------- R1: damage without overkill (F22)
+/** The enemy's max HP in a quest result (enemy_dmg_total / enemy_dmg_total_frac: the same every fight), or null. */
+export function enemyMaxHp(ev: { enemy_dmg_total?: number; enemy_dmg_total_frac?: number }): number | null {
+  const frac = ev.enemy_dmg_total_frac ?? 0;
+  return frac > 0 && ev.enemy_dmg_total ? ev.enemy_dmg_total / frac : null;
+}
+
+/**
+ * The damage per fight that really came off the enemy (R1 F22): the heroes' damage counts the overkill of the last
+ * hits (1,391 + 2,237 against Maexna's 250 HP), so the party's total is capped at the enemy's max HP and each hero
+ * keeps its share. Returns hero slot -> [effective, dealt]; dealt unchanged when the max HP is unknown or not passed.
+ */
+export function effectiveDamage(ev: { heroes: Record<string, { dmg: number }>; enemy_dmg_total?: number; enemy_dmg_total_frac?: number }): Record<string, [number, number]> {
+  const sum = Object.values(ev.heroes).reduce((s, h) => s + h.dmg, 0);
+  const maxHp = enemyMaxHp(ev) ?? 0;
+  const k = maxHp > 0 && sum > maxHp ? maxHp / sum : 1;
+  return Object.fromEntries(Object.entries(ev.heroes).map(([slot, h]) => [slot, [h.dmg * k, h.dmg]]));
 }

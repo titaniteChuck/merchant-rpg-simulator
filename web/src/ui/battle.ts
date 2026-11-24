@@ -22,8 +22,10 @@ import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
-import { loadTimelineData, partyPlan, type PlanMember, timelineOf } from "./timeline.ts";
-import { enemyGroups, enemyStatMax, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
+import { loadTimelineData, partyPlan, planNote, type PlanMember, timelineOf } from "./timeline.ts";
+import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStatMax, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
+import { helpTip } from "./wiki-help.ts";
+import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
@@ -43,12 +45,15 @@ type Opp = "quest" | "map";
  * default); `search`: the search panel of battle-search.ts (none = the plain simulation). A new mode is one row here
  * and, for a search, one panel in battle-search.ts.
  */
-interface Mode { key: "simulate" | SearchKey; icon: string; label: string; hint: string; party: boolean; opp: Opp[] }
+interface Mode { key: "simulate" | SearchKey; icon: string; label: string; hint: string; about: string; party: boolean; opp: Opp[] }
 // U36: two modes. Best gear, Best potion / enchant and Optimise everything left the page (their engine code stays).
 const MODES: Mode[] = [
-  { key: "simulate", icon: "▶", label: "Simulate", hint: "Your party against an enemy or a map run, hundreds of times.", party: true, opp: ["quest", "map"] },
+  // R1 F20: one-line hints (the card's title has the long one).
+  { key: "simulate", icon: "▶", label: "Simulate", hint: "Your party, hundreds of fights.", party: true, opp: ["quest", "map"],
+    about: "Your party against an enemy or a map run, hundreds of times, on the same rolls every time." },
   // U27: the solver (was Best party, Best rotation and Best scrolls; "Solve" since U36), behind a spoiler guard (battle-search.ts).
-  { key: "party", icon: "🧩", label: "Solve", hint: "The smallest parties that win: heroes, rows, rotations and scrolls. A spoiler: it gives the answer.", party: false, opp: ["quest", "map"] },
+  { key: "party", icon: "🧩", label: "Solve", hint: "Finds the parties that win (spoiler).", party: false, opp: ["quest", "map"],
+    about: "The smallest parties that win: heroes, rows, rotations and scrolls. A spoiler: it gives the answer." },
 ];
 const modeOf = (key: string) => MODES.find((m) => m.key === key) ?? MODES[0];
 const MODE_KEY = "battle-mode";
@@ -76,16 +81,21 @@ function persistParty(): void {
     localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, locked: state.locked, excluded: state.excluded }));
   } catch { /* storage blocked: the party just isn't remembered */ }
 }
-function restoreParty(heroes: number): void {
+/** Put back this save's remembered party; false when none was remembered (a fresh save, R1 F02). */
+function restoreParty(heroes: number): boolean {
   try {
     const p = JSON.parse(localStorage.getItem(partyKey()) ?? "null");
-    if (!p) return;
+    if (!p) return false;
     const ok = (i: unknown) => i === null || (typeof i === "number" && i >= 0 && i < heroes);
     state.slots = Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as State["slots"];
     state.skills = Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as State["skills"];
     state.locked = Object.fromEntries(Object.entries(p.locked ?? {}).filter(([, v]) => v === true)) as State["locked"];
     state.excluded = Object.fromEntries(Object.entries(p.excluded ?? {}).filter(([, v]) => v === true)) as State["excluded"];
-  } catch { /* ignore */ }
+    return true;
+  } catch {
+    // Storage blocked: like a fresh save. Broken JSON: start over too.
+    return false;
+  }
 }
 
 /** The combat stats on a hero card, in the game's order. */
@@ -347,9 +357,10 @@ function renderParty(refreshSearch = true): void {
     return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}` },
       head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
   };
+  // R1 F20: what the rows mean is in the heading's tooltip, not a line under it.
   const cols = (["back", "front"] as const).map((row) => el("div", { class: "party-row" },
-    el("h3", {}, row === "front" ? "🛡️ Front row" : "🏹 Back row",
-      el("span", { class: "muted small" }, row === "front" ? "enemies hit the front row while anyone stands in it" : "safe until the front row falls")),
+    el("h3", { title: row === "front" ? "Enemies hit the front row while anyone stands in it." : "Safe until the front row falls." },
+      row === "front" ? "🛡️ Front row" : "🏹 Back row"),
     el("div", { class: "slots" }, ...[0, 1, 2].map((i) => slot(row, i)))));
   // U32: "Clear all" empties the six slots, with the same undo as a search's Load.
   const clear = el("button", { type: "button", class: "secondary clear-all" }, "🧹 Clear all");
@@ -357,13 +368,12 @@ function renderParty(refreshSearch = true): void {
   if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
   clear.addEventListener("click", clearAll);
   $("#party").replaceChildren(...(picks ? [el("p", { class: "muted small party-note" },
-    "The search fills the six slots. 🔒 Locked heroes stay in the party; pick a hero in a slot to lock it.")] : []),
+    "The search fills the slots; 🔒 keeps a hero.")] : []),
   el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : [])),
   ...(rulesText(rules) ? [el("p", { class: "muted small party-rules" }, rulesText(rules))] : []),
   // U36: the heroes left out over the size cap.
-  ...(fight.capped.length ? [el("p", { class: "small party-capped", role: "status" }, `ℹ️ This quest takes at most ${rules.maxSize} hero${rules.maxSize === 1 ? "" : "es"}: `
-    + `${fight.capped.map((c) => heroRaw(state.slots[c.key] ?? null)?.name ?? c.key).join(", ")} ${fight.capped.length === 1 ? "is" : "are"} left out (the last in slot order). `
-    + "Untick another hero to bring one in.")] : []),
+  ...(fight.capped.length ? [el("p", { class: "small party-capped", role: "status", title: "The last ones in slot order are left out. Untick another hero to bring one in." },
+    `ℹ️ At most ${rules.maxSize}: ${fight.capped.map((c) => heroRaw(state.slots[c.key] ?? null)?.name ?? c.key).join(", ")} left out.`)] : []),
   // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
   // party fill the slots themselves.
   ...((p) => (p && !picks ? [el("p", { class: "error small party-problem", role: "status" }, `⚠ ${p}`)] : []))(partyProblem()),
@@ -465,7 +475,8 @@ function renderTarget(): void {
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
     const rare = el("input", { type: "checkbox", id: "rare" }) as HTMLInputElement;
     const amount = select({ id: "amount", "aria-label": "Quest size" }, [["1", "×1"]]);
-    const sizeNote = el("p", { id: "amount-note", class: "muted small" });
+    // R1 F20: the quest size's explanation is in a "?" (syncAmount fills it), not a paragraph.
+    const sizeNote = el("span", { id: "amount-note" });
     const card = el("article", { class: "opp-card" });
     const update = () => {
       const d = G.questData[q.value];
@@ -488,9 +499,10 @@ function renderTarget(): void {
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
           el("div", {}, el("h3", {}, enemyLink({ id: Number(q.value), rare: r })),
             el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
-              ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : [])))),
+              ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []),
+              // R1 F20: the radar's scale in a "?", not a caption.
+              helpTip(`The radar's rims: the highest value of each stat among all enemies, rare variants included${n > 1 ? `. HP ×${n} for the quest size` : ""}.`, "the stats radar")))),
         radar(axes, { title: `${enemyName(q.value, r)}'s stats`, size: 240 }),
-        el("p", { class: "muted small" }, `Rims: the highest value of each stat among all enemies${n > 1 ? `; HP ×${n} for the quest size` : ""}.`),
         // U36: the turns are in the 5-turn plan (third column); the plain rotation only without timeline data.
         ...(timelineOf(Number(q.value), r) ? [] : [el("h4", {}, "Skills"),
           el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))]));
@@ -503,7 +515,7 @@ function renderTarget(): void {
     amount.addEventListener("change", () => (update(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, q,
       el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
-        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount)), sizeNote), card);
+        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount), sizeNote)), card);
     update();
     $<HTMLInputElement>("#runs").value = "200";
   } else {
@@ -532,18 +544,19 @@ function renderTarget(): void {
         el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "🗺️"),
           el("div", {}, el("h3", {}, itemLink("map", id, name, undefined, a, { always: own })),
             el("div", { class: "pills" }, pill(`level ${d.itemLevel ?? "?"}`, "plain"), gradeBadge(GRADES[g - 1] ?? String(g)),
-              ...(own ? [pill("yours", "t-green")] : [])))),
+              ...(own ? [pill("yours", "t-green")] : []),
+              // R1 F20: what a run is, in a "?" instead of a paragraph under the card.
+              helpTip("Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
+                + "Rooms and time are the map's own, before its prefix and suffix.", "map runs")))),
         el("dl", { class: "facts" },
-          ...fact("Rooms", String(d.baseEnemyAmount ?? "?")),
+          ...fact("Rooms", roomsFact(id, g)),
           ...fact("Time", d.baseMapTime ? `${fmt.format(d.baseMapTime / 60)} min` : "?"),
           ...fact("Enemy power", `×${d.enemyMod ?? 1}`),
           ...fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
             ? el("span", {}, ...bosses.flatMap((b, k) => [...(k ? [", "] : []), enemyLink({ id: b })])) : "none"),
           ...(pre || suf ? fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · ")) : [])),
         el("div", { class: "opp-scrolls" },
-          el("h4", {}, "Scrolls"), ...scrolls),
-        el("p", { class: "muted small" }, "Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
-          + "Base rooms and time, before the map's modifiers."));
+          el("h4", {}, "Scrolls"), ...scrolls));
       saveOpponent();
     };
     m.addEventListener("change", sync);
@@ -556,6 +569,23 @@ function renderTarget(): void {
   }
   // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
   renderParty(false);
+}
+
+/**
+ * R1 F29: the map card's rooms, counted as the results count them: the rooms at this grade (boss included, ±1 by
+ * grade) plus the treasure rooms expected per run ("9 + 0.9 treasure"), the tooltip saying what is counted.
+ */
+function roomsFact(id: number, grade: number): HTMLElement {
+  let rooms: number, treasure = 0;
+  try {
+    rooms = mapRooms(id, grade);
+    treasure = mapTreasure(id, grade)?.perRun ?? 0;
+  } catch {
+    return el("span", {}, "?");
+  }
+  const t = treasure >= 0.05 ? ` + ${fmt1.format(treasure)} treasure` : "";
+  return el("span", { title: `${rooms} rooms at grade ${GRADES[grade - 1] ?? grade}, the boss included${t ? `, and ${fmt1.format(treasure)} treasure room${treasure === 1 ? "" : "s"} per run on average` : ""}. `
+    + "The results count every room a run meets (treasure rooms and boss included), so their average can differ a little." }, `${rooms}${t}`);
 }
 
 /**
@@ -575,12 +605,15 @@ function syncAmount(): void {
   amount.value = String(Math.min(was, max));
   amount.disabled = max === 1;
   const n = Number(amount.value);
+  // R1 F20 / F36: the explanation in a "?"; the cap only once the party has heroes (before, it depends on them).
   if (note) {
-    note.textContent = rare ? "Quest size: a rare quest is always ×1."
-      : !state.mode.party ? `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}. `
-        + `Up to ×${max} with your strongest hero; parties that can't take this size are skipped.`
-      : `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}. `
-        + `Up to ×${max} for this party (highest hero ascension: prestige × 2 − 1).`;
+    const what = `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}.`;
+    const heroes = state.mode.party ? partyOf().members.length : state.sv.raw.hero.length;
+    const cap = rare ? "A rare quest is always ×1."
+      : !heroes ? "The largest size depends on your heroes' ascension tier."
+      : !state.mode.party ? `Up to ×${max} with your strongest hero; parties that can't take this size are skipped.`
+      : `Up to ×${max} for this party: its highest hero ascension sets the cap.`;
+    note.replaceChildren(helpTip([what, cap], "the quest size"));
   }
 }
 
@@ -598,7 +631,8 @@ function renderPlan(): void {
   }));
   // U36: the third column; the enemy's column alone while the party is empty.
   const plan = partyPlan(t, members);
-  if (plan) box.append(el("h3", { class: "col-title" }, "🗓️ 5-turn plan"), plan);
+  // R1 F20: how to read it in a "?" beside the title, not a caption under the grid.
+  if (plan) box.append(el("h3", { class: "col-title" }, "🗓️ 5-turn plan ", helpTip(planNote(t), "the 5-turn plan")), plan);
 }
 
 // ---------------------------------------------------------------- modes
@@ -608,7 +642,7 @@ function renderModes(): void {
     const r = el("input", { type: "radio", name: "what", value: m.key }) as HTMLInputElement;
     r.checked = m.key === state.mode.key;
     r.addEventListener("change", () => setMode(m.key));
-    return el("label", { class: "mode-card", title: m.hint }, r, el("span", { class: "mode-ico", "aria-hidden": "true" }, m.icon),
+    return el("label", { class: "mode-card", title: m.about }, r, el("span", { class: "mode-ico", "aria-hidden": "true" }, m.icon),
       el("span", { class: "mode-text" }, el("strong", {}, m.label), el("span", { class: "muted small" }, m.hint)));
   }));
 }
@@ -776,30 +810,45 @@ function run(): void {
 /** Average grade (1..5) as the nearest letter. */
 const gradeOf = (g: number) => GRADES[Math.min(4, Math.max(0, Math.round(g) - 1))];
 
-function heroTable(heroes: Record<string, HeroEval>, unit: string): HTMLElement {
+/**
+ * Per hero: damage, taken, healing, death rate, damage by skill. R1 F22: against a quest (`quest`: the result) the
+ * damage is what really came off the enemy, the party's total capped at the enemy's max HP (effectiveDamage); the
+ * damage dealt, overkill included, is in the cell's tooltip. A map run keeps the damage dealt (its rooms differ).
+ */
+function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: FightEval): HTMLElement {
   const order = ["front1", "front2", "front3", "back1", "back2", "back3"];
+  const eff = quest ? effectiveDamage(quest) : null;
+  const maxHp = quest ? enemyMaxHp(quest) : null;
   const rows: Row[] = order.filter((k) => heroes[k]).map((k) => {
     const h = heroes[k];
     const top = Object.entries(h.skillDmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
       .map(([sk, v]) => `${skillName(sk)} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
     const raw = heroRaw(state.slots[`${k.replace(/\d$/, "")}${Number(k.slice(-1)) - 1}`] ?? null);
-    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
+    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: eff?.[k]?.[0] ?? h.dmg, dealt: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
   });
-  return table(rows, [
+  const dmgTip = eff && maxHp ? `Damage that came off the enemy: the party's total is capped at its ${fmt.format(maxHp)} HP (no overkill), each hero keeping its share. `
+    + "Hover a number for the damage dealt, overkill included." : "Damage dealt, overkill included.";
+  const t = table(rows, [
     { key: "slot", label: "Slot" },
     { key: "name", label: "Hero", render: (r) => el("span", { class: `nowrap cls-${r.cls}` }, pill(String(r.name))) },
-    { key: "dmg", label: `Damage / ${unit}`, num: true }, { key: "taken", label: "Taken", num: true },
+    { key: "dmg", label: `Damage / ${unit}`, num: true, render: (r) => (eff && Number(r.dealt) > Number(r.dmg) + 0.5
+      ? el("span", { title: `${fmt.format(Number(r.dealt))} dealt, overkill included` }, fmt.format(Number(r.dmg)))
+      : fmt.format(Number(r.dmg))) },
+    { key: "taken", label: "Taken", num: true },
     { key: "heal", label: "Healing", num: true }, { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
     { key: "skills", label: "Damage by skill (uses)" },
   ]);
+  const head = [...t.querySelectorAll<HTMLElement>("th")].find((th) => th.textContent === `Damage / ${unit}`);
+  if (head) head.title = dmgTip;
+  return t;
 }
 
 /**
  * U33: the XP and time tiles, a second row under the outcome tiles (same tile size), then a line linking to the Stats
  * sections (Experience, Quest and map time, Craft).
  */
-const xpRow = (tiles: HTMLElement[], lead: string, craft = false): HTMLElement[] => (tiles.length ? [
-  el("div", { class: "tiles qxp-tiles", role: "group", "aria-label": "XP and time" }, ...tiles),
+const xpRow = (items: HTMLElement[], lead: string, craft = false): HTMLElement[] => (items.length ? [
+  tiles({ class: "qxp-tiles", role: "group", "aria-label": "XP and time" }, ...items),
   el("p", { class: "muted small qxp-refs" }, lead, " ", statLink("xp", "XP"), " · ", statLink("time", "time"),
     ...(craft ? [" · ", statLink("craft", "craft")] : [])),
 ] : []);
@@ -809,28 +858,34 @@ function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
   if (!c) return [];
   const x = questResultXp(ev, c);
   const at = `at grade ${GRADES[x.grade - 1]}${ev.win ? "" : " (never won)"}`;
+  // R1 F06: XP comes only with a win; a quest never won shows none.
+  const won = ev.win > 0;
   return [
-    tile("XP per hero", xpText(x.xpPerHero), `each hero alive after a win, ${c.heroes} in the party`, { icon: "🎓", tone: "t-violet" }),
+    tile("XP per hero", won ? xpText(x.xpPerHero) : "—", won ? `each hero alive after a win, ${c.heroes} in the party` : "no fight won", { icon: "🎓", tone: "t-violet" }),
     tile("Quest time", timeText(x.seconds), `fight ${timeText(x.battleSeconds)} + quest ${timeText(x.questSeconds)}, ${at}`, { icon: "⌛", tone: "t-blue" }),
-    tile("XP / min", xpText(x.xpPerMin), "per hero, over the quest time", { icon: "📈", tone: "t-green" }),
+    tile("XP / min", won ? xpText(x.xpPerMin) : "—", won ? "per hero, over the quest time" : "no fight won", { icon: "📈", tone: "t-green" }),
   ];
 }
 
 /** U33: craft time, run time, XP per hero per run and XP / min (craft + run) of a map result. */
 function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
   if (!c) return [];
+  // R1 F06: only the rooms won give XP (the share of rooms cleared on average); "—" when none is ever won.
   const x = mapResultXp(ev, c);
+  const all = x.cleared >= 0.9995;
+  const xpHint = x.xpPerHero === null ? "no room won"
+    : all ? `per run, every room won, ${c.heroes} in the party` : `per run, the rooms won (${pct(x.cleared)}), ${c.heroes} in the party`;
   return [
     tile("Craft time", timeText(x.craftSeconds), "the map, and the lower maps its recipe uses", { icon: "🔨", tone: "t-slate" }),
     tile("Run time", timeText(x.runSeconds), "per run, simulated", { icon: "⏱️", tone: "t-blue" }),
-    tile("XP per hero", xpText(x.xpPerHero), `per run, every room won, ${c.heroes} in the party`, { icon: "🎓", tone: "t-violet" }),
-    tile("XP / min", xpText(x.xpPerMin), "per hero, over craft + run", { icon: "📈", tone: "t-green" }),
+    tile("XP per hero", x.xpPerHero === null ? "—" : xpText(x.xpPerHero), xpHint, { icon: "🎓", tone: "t-violet" }),
+    tile("XP / min", x.xpPerMin === null ? "—" : xpText(x.xpPerMin), x.xpPerMin === null ? "no room won" : "per hero, over craft + run", { icon: "📈", tone: "t-green" }),
   ];
 }
 
 function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): HTMLElement[] {
   return [
-    el("div", { class: "tiles" },
+    tiles({},
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
       tile("Turns", fmt1.format(ev.turns), ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", { icon: "⏱️", tone: "t-blue" }),
       tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
@@ -838,33 +893,51 @@ function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = n
         ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
-    ...xpRow(questXpTiles(ev, ctx), "XP before XP bonuses; time with the party's speed. How they work:"),
-    heroTable(ev.heroes, "fight"),
-    el("p", { class: "muted small" }, `${ev.n} fights in ${fmt.format(ms)} ms, seeds 1–${ev.n}: every setting is tested on the same rolls.`),
+    ...xpRow(questXpTiles(ev, ctx), "Before XP bonuses:"),
+    heroTable(ev.heroes, "fight", ev),
+    runLine(`${fmt.format(ev.n)} fights · ${fmt.format(ms)} ms`, ev.n),
   ];
 }
+
+/** R1 F20: the run's size and time in one short line; the seeds in its tooltip. */
+const runLine = (text: string, seeds: number) => el("p", { class: "muted small run-line", title: `Seeds 1–${seeds}: every setting is tested on the same rolls.` }, text);
+
+/** R1 F35: a tile grid knows its tile count (CSS balances the rows: no lone tile on the last one). */
+function tiles(attrs: Record<string, string>, ...items: HTMLElement[]): HTMLElement {
+  const g = el("div", { ...attrs, class: `tiles${attrs.class ? ` ${attrs.class}` : ""}` }, ...items);
+  g.style.setProperty("--n", String(items.length));
+  g.dataset.n = String(items.length);
+  return g;
+}
+
+const withTitle = (e: HTMLElement, title: string): HTMLElement => {
+  e.title = title;
+  return e;
+};
 
 function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): HTMLElement[] {
   const ess = Object.entries(ev.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", ") || "none";
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
   const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
   return [
-    el("div", { class: "tiles" },
+    tiles({},
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
-      tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
+      // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the tooltip.
+      withTitle(tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms (avg)`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
+        "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."),
       tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
       ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" })]),
       tile("Loot value", `${fmt.format(ev.loot_value)} g`, "base sell value per run", { icon: "💰", tone: "t-orange" }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
-    ...xpRow(mapXpTiles(ev, ctx), "XP before XP bonuses, every room won; craft time at the map's grade. How they work:", true),
+    ...xpRow(mapXpTiles(ev, ctx), "Before XP bonuses:", true),
     el("p", { class: "result-note" }, el("strong", {}, "✨ Essence per run: "), ess),
     ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
     ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
     ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
     ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
     heroTable(ev.heroes, "run"),
-    el("p", { class: "muted small" }, `${ev.n} map runs in ${fmt.format(ms)} ms, seeds 1–${ev.n + ev.errors}: every setting is tested on the same rolls.`),
+    runLine(`${fmt.format(ev.n)} map runs · ${fmt.format(ms)} ms`, ev.n + ev.errors),
   ];
 }
 
@@ -885,12 +958,42 @@ async function loadSave(text: string, name: string): Promise<void> {
   state.saveName = name;
   state.slots = {};
   state.skills = {};
-  restoreParty(sv.raw.hero.length);
+  const remembered = restoreParty(sv.raw.hero.length);
   $("#setup").hidden = false;
   lastResult = null;
   $("#results").replaceChildren();
   renderParty();
-  setMode(state.mode.key);
+  setMode(state.mode.key); // builds the opponent: the remembered one, else a useful one (onExpansions)
+  if (!remembered) fillParty();
+}
+
+/**
+ * R1 F02: a save opened here for the first time starts with a party, not six empty slots: its strongest heroes, as
+ * many as the opponent takes, the toughest in front, the required slot first (battle-setup.ts defaultSlots).
+ */
+function fillParty(): void {
+  const sv = state.sv;
+  if (!sv) return;
+  const heroes = sv.raw.hero.map((h: Any, idx: number) => {
+    let maxHP = 0;
+    try {
+      maxHP = Number(api.heroStats(api.newHero(h)).maxHP) || 0;
+    } catch { /* unknown class: last in line */ }
+    return { idx, level: Number(h.level) || 0, prestige: Number(h.prestigeLevel) || 0, maxHP };
+  });
+  state.slots = defaultSlots(heroes, rulesOf(pageTarget()));
+  state.locked = {};
+  state.excluded = {};
+  persistParty();
+  renderParty();
+}
+
+/** R1 F02: the quest a save starts on when no opponent is remembered (defaultQuest: its strongest heroes' region). */
+function startQuest(): string | undefined {
+  const top = Math.max(0, ...(state.sv?.raw.hero ?? []).map((h: Any) => Number(h.level) || 0));
+  // The base game's quests first (an expansion's enemy only when nothing else fits).
+  const id = defaultQuest(top, (q) => isVisible("enemy", q) && !needsOf("enemy", q).length) ?? defaultQuest(top, (q) => isVisible("enemy", q));
+  return id === null ? undefined : String(id);
 }
 
 function init(): void {
@@ -911,7 +1014,9 @@ function init(): void {
   document.querySelectorAll<HTMLInputElement>("input[name=opp]").forEach((r) => r.addEventListener("change", () => {
     saving = false;
     try {
-      restoreOpponent(storedOpponent());
+      const o = storedOpponent();
+      o.quest ??= startQuest(); // R1 F02: never back to the first bush of the list
+      restoreOpponent(o);
     } finally {
       saving = true;
     }
@@ -990,6 +1095,8 @@ function onExpansions(): void {
   // The choice on screen, else (first build, U36) the one remembered from an earlier visit.
   const built = Boolean(document.querySelector("#quest, #map"));
   const was = built ? currentOpponent() : storedOpponent();
+  // R1 F02: nothing remembered: a quest that fits the save's heroes, not the first bush of the list.
+  if (!built && !was.quest) was.quest = startQuest();
   if (!built && was.kind) {
     const r = document.querySelector<HTMLInputElement>(`input[name=opp][value=${was.kind}]`);
     if (r) r.checked = true;

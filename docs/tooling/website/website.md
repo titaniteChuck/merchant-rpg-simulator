@@ -157,7 +157,7 @@ flowchart LR
     heroes (2-6; Desolation Wolf takes 3); a solo quest takes exactly one hero, in Front 1; a map run has no rule. The
     required slot has a "required" badge and an outline; empty slots the opponent doesn't allow are greyed and
     disabled ("solo: Front 1 only", "at most N heroes"); a line under Clear all states the rule, and what keeps the
-    party from fighting (`partyProblem`'s text, e.g. "quest 81 (Desolation Wolf) takes at most 3 heroes, not 4") is shown
+    party from fighting (the page's own words since R1 F24, e.g. "Desolation Wolf takes at most 3 heroes, not 4.") is shown
     inline and stops ▶ Simulate before the worker runs.
   - The opponent:
   - Quest enemy: enemy link to its wiki page (the only link: no "Enemy page in the wiki →" line since U36), level, rare
@@ -172,6 +172,24 @@ flowchart LR
     - Remembered (U36): the opponent (quest or map run, enemy, rare, size, map, grade, ascension, scrolls) is kept in
       localStorage `battle-opponent` (try/catch) and put back when the page is opened again; switching quest ⇄ map
       brings back the other kind's last choice. A remembered size the party can't take falls back to ×1.
+    - Fresh start (R1 F02): with no remembered quest, the page opens on `defaultQuest` (`ui/battle-setup.ts`): the
+      toughest quest-board enemy (highest level, then HP × attack) of the region of the save's highest hero level, at
+      or below that level; gathering bushes, Treasure Bushes, event bosses and Epic / Final bosses are skipped, the base
+      game first (an expansion's enemy only when nothing else fits). A save with no remembered party (localStorage
+      `battle-party:<file>`) gets `defaultSlots`: its strongest heroes (ascension, level, max HP), as many as the
+      opponent takes, the toughest in front, filled from the required slot (Front 2 / Front 1 solo) then Front 1, Front 3,
+      Front 2, Back 1-3. So no party warning shows before the visitor acts (example save: Cerberus, five heroes).
+  - Party problem text (R1 F24): `problemOf` in `ui/battle-rules.ts` asks the engine (`partyProblem`) whether the layout
+    can start and writes the reason itself from `partyRules` (`problemText`): the enemy's name in the visitor's
+    language (`enemyName`), never a quest id ("Put a hero in Front 2: the game always fills it for Loup de la
+    désolation."). The engine's English text stays for logs and worker errors.
+  - Short text (R1 F20): one-line mode hints (the long one in the card's tooltip); the quest size, the radar's rims,
+    what a map run is, how to read the plan and how the solver works are in "?" helps (`helpTip` of `wiki-help.ts`),
+    the rows' meaning, the run's seeds and the solver's columns in tooltips; "No run yet." until a run. The quest-size
+    help states the cap only once the party has heroes ("The largest size depends on your heroes' ascension tier"
+    before, R1 F36). Clear all is disabled while every slot is empty.
+  - Map card rooms (R1 F29): "10 + 1.0 treasure": `mapRooms` at the map's grade (boss included) plus the treasure rooms
+    expected per run (`mapTreasure`), as the results' "of 11.1 rooms (avg)" counts them; both tooltips say so.
   - Quest size ×1 to ×max: one enemy with N× HP, N× loot and N× quest time, max = `maxQuestAmount` of the party
     (highest hero prestige × 2 − 1); a rare quest is always ×1. Best party and Optimise everything allow up to the
     strongest hero of the save; the searches skip parties that can't take the size.
@@ -183,6 +201,13 @@ flowchart LR
   map 22, 20 runs).
 - Results: win rate, turns, grade, enemy HP removed, party HP left; for maps progress, loot value, essence,
   where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
+  - Damage without overkill (R1 F22): against a quest, "Damage / fight" is what came off the enemy: the party's total
+    capped at the enemy's max HP (`enemy_dmg_total / enemy_dmg_total_frac`), each hero keeping its share
+    (`effectiveDamage` in `ui/battle-setup.ts`); a cell's tooltip gives the damage dealt with overkill, the header's
+    says how it's counted. Map runs and "Damage by skill" keep the damage dealt.
+  - Tile grids (R1 F35): `tiles()` in `battle.ts` sets `data-n`; above 1100 px the U33 grid, narrower 5 or 6 tiles in
+    3 columns, on a phone 2 columns with an odd count's first tile across both: never a lone tile on the last row. The
+    two mode cards always share one row. The run line is short ("200 fights · 1,159 ms", seeds in its tooltip).
 - XP and time (U33, `ui/quest-xp.ts`): a second row of tiles under the outcome (`.qxp-tiles`, the same tile size), then
   a line linking Stats › Experience / Quest and map time (/ Craft). Quest: XP per hero (`questStats`, the party's size,
   no XP bonus), quest time = the simulated fight + the quest's own time at the average grade when won (else B), with
@@ -191,7 +216,9 @@ flowchart LR
   one enemy action a turn, minus its last one in a win unless it acts first, × 5 s, + 5 s a turn): FightEval has no
   action count. Map: craft time (the map and the lower maps of its recipe, `mapRunStats`), the simulated run time,
   XP per hero per run (every room won) and XP / min over craft + run (Murlok Madness Map at B, two heroes: 13 min +
-  2 h 4 min, 15,015 XP, 110 / min). What the result is about (quest, size, rare, party size and speed; map, grade,
+  2 h 4 min, 15,015 XP, 110 / min). R1 F06: a room's XP comes only with its win, so the map's XP is the full run's
+  times the share of rooms cleared on average (`mapResultXp` `cleared`; hint "the rooms won (53.8 %)"), "—" when no
+  room is ever won; a quest never won shows "—" for XP per hero and XP / min. What the result is about (quest, size, rare, party size and speed; map, grade,
   ascension) is taken when the run starts (`runContext`), so changing the opponent afterwards doesn't change it.
 - Party check fix (U33): `partyProblem` in `battle.ts` passes the filled slots as objects; it passed hero indices, and
   the engine's check (`partyProblem` in `tools/combat.ts`, a falsy test) read the save's first hero (index 0) as an

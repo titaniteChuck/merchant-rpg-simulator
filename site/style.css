@@ -1603,3 +1603,27 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   .menu-caret svg, .drawer-caret svg { transition: none; }
 }
 /* end menus + drawer */
+
+/* r1 battle */
+/* R1-A (battle page). F35: the two mode cards share one row at every width (no lone card). */
+#modes.mode-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* F35: result tiles (battle.ts tiles() sets data-n / --n): wide, the U33 grid (same tile size in both rows); narrower,
+   balanced rows: 5 or 6 tiles in 3 columns, up to 4 in one row; on a phone two columns, an odd count's first tile
+   (the win rate) spans both, so the last row is never a lone tile. */
+.b3-results .tiles[data-n] { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
+@media (max-width: 1100px) {
+  .b3-results .tiles[data-n] { grid-template-columns: repeat(var(--cols, var(--n)), minmax(0, 1fr)); }
+  .b3-results .tiles[data-n="5"], .b3-results .tiles[data-n="6"] { --cols: 3; }
+}
+@media (max-width: 560px) {
+  .b3-results .tiles[data-n] { --cols: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .b3-results .tiles[data-n="3"] > .tile:first-child, .b3-results .tiles[data-n="5"] > .tile:first-child { grid-column: span 2; }
+}
+/* F20: the "?" helps beside titles, controls and pills. */
+#amount-note { display: inline-flex; align-items: center; }
+.opp-card .pills .help-tip, .plan-col .col-title .help-tip { margin-left: 2px; }
+.spoiler-warn .help-tip { vertical-align: middle; }
+.run-line { margin-top: 6px; }
+/* F11: the rare pill in the plan's enemy column. */
+.pg-head .pg-rare { font-size: 0.62rem; padding: 0 5px; vertical-align: middle; }
+/* end r1 battle */
