@@ -236,7 +236,27 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   every setting is compared on the same rolls). Checked equal to the former command-line tools (quest 80, 200 fights;
   map 22, 20 runs).
 - Results: win rate, turns, grade, enemy HP removed, party HP left; for maps progress, loot value, essence,
-  where runs are lost, scroll charges; per hero damage, taken, healing, death rate, damage by skill.
+  where runs are lost, scroll charges; per hero damage, taken, healing, HP left, death rate, damage by skill.
+  - Compact first (U43, `ui/battle-results.ts` `compactResult`): a result shows only the Win rate and Grade when won
+    tiles (`.result-summary`), then "Show details" with the run line beside it; the button opens the rest (the other
+    tiles, the XP / map-run row, the notes, the per-hero table) and becomes "Hide details". Open or closed is
+    remembered for the browser tab (sessionStorage `battle-results-details`, try/catch; closed by default and when
+    storage fails). The Simulator's tiles are compact (`#results .tiles`: smaller padding and type, as many per row
+    as fit, at least 168 px each; the balanced-row rules of R1 F35 no longer apply there). The link line under the XP
+    row reads "How these are counted:" (no "Before XP bonuses").
+  - Turns (U43): quests, the average with "N when won", the longest fight and the game's cap, "max 37 of 200 turns
+    (at 200 the enemy wins)", and, when fights reached it, "N of M fights (x %) reached turn 200 and were lost" (the
+    tile turns red). Maps: "Turns per room" (average over the rooms fought), the average per run, the longest single
+    room across runs with the cap, and the runs stopped by it (a capped room is a lost room, so at most one per run).
+    The cap is the engine's `TURN_CAP` (`sim/battle.ts`, Battle:combatLoop): see [Combat](../../combat/combat.md#battle-loop).
+    Stats: `turns_max`, `turns_capped` (FightEval), `room_turns`, `run_turns`, `room_turns_max`, `rooms_capped`
+    (MapEval); each map room records its `turns` (`Combat.turns`, the `combats` of a map-run result; read by the
+    statistics only, the Lua parity script skips it as TS-only).
+  - HP left per hero (U43): the summary table's "HP left" column is each hero's HP at the end of the fight (a map run:
+    of the whole run, HP carried over), 0 when dead, as a percent of max HP averaged over the runs; its tooltip gives
+    the average HP and max HP (`hp_left`, `hp_left_frac`, `max_hp` in HeroEval, `heroAccumulator`).
+  - Essence per run (U43): a tile of the map-run row, after Craft time, Run time, XP per hero and XP / min, one essence
+    per line ("from the runs won" when not every run is won); in the first row when the run has no XP figures.
   - Damage without overkill (R1 F22): against a quest, "Damage / fight" is what came off the enemy: the party's total
     capped at the enemy's max HP (`enemy_dmg_total / enemy_dmg_total_frac`), each hero keeping its share
     (`effectiveDamage` in `ui/battle-setup.ts`); a cell's tooltip gives the damage dealt with overkill, the header's

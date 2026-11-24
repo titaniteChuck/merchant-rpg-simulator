@@ -306,6 +306,8 @@ export interface Combat {
   grade?: number;
   walkTime?: number;
   timeTaken?: number;
+  /** Turns the room's battle lasted (read only by the result statistics). */
+  turns?: number;
 }
 
 function resetHero(hero: Any, isWin: boolean, exp: number): void {
@@ -395,6 +397,7 @@ export class Campaign {
         resetHero(battle.backRow[i], isWin, exp);
       }
     }
+    currentCombat.turns = battle.turns;
     currentCombat.walkTime = determineMapWalkTime(battle, this.walkBaseTime, this.mapStats.speed);
     currentCombat.status = isWin ? COMBAT_STATUS_WIN : COMBAT_STATUS_LOSE;
     currentCombat.grade = determineBattleGrade(battle, questId, isRare);

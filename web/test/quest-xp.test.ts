@@ -66,10 +66,10 @@ test("map-only enemies: the maps they are fought in, craft + run time and XP per
 });
 
 const fight = (o: Partial<FightEval>): FightEval => ({
-  n: 1, win: 1, turns: 4, turns_win: 4, grade: 4.4, enemy_dmg: 1, enemy_dmg_peak: 1, enemy_dmg_total: 0, enemy_dmg_total_frac: 1, hp_left: 1, score: 0,
+  n: 1, win: 1, turns: 4, turns_win: 4, turns_max: 4, turns_capped: 0, grade: 4.4, enemy_dmg: 1, enemy_dmg_peak: 1, enemy_dmg_total: 0, enemy_dmg_total_frac: 1, hp_left: 1, score: 0,
   heroes: {
-    front1: { name: "A", dmg: 0, taken: 0, heal: 0, deaths: 0, death_rate: 0, skillDmg: {}, skillUses: { Basic: 2, Slash: 2 } },
-    front2: { name: "B", dmg: 0, taken: 0, heal: 0, deaths: 0, death_rate: 0, skillDmg: {}, skillUses: { Basic: 4 } },
+    front1: { name: "A", dmg: 0, taken: 0, heal: 0, deaths: 0, death_rate: 0, hp_left: 0, hp_left_frac: 0, max_hp: 100, skillDmg: {}, skillUses: { Basic: 2, Slash: 2 } },
+    front2: { name: "B", dmg: 0, taken: 0, heal: 0, deaths: 0, death_rate: 0, hp_left: 0, hp_left_frac: 0, max_hp: 100, skillDmg: {}, skillUses: { Basic: 4 } },
   }, ...o,
 });
 

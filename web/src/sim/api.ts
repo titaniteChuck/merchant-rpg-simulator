@@ -559,7 +559,7 @@ export function mapRun(spec: MapSpec | string, front: (Hero | null | undefined)[
   let cleared = 0;
   for (const c of camp.combats) {
     out.combats.push({ questId: c.questId, name: G.questData[c.questId].name, isRare: Boolean(c.isRare),
-      status: c.status, grade: c.grade ?? 0 });
+      status: c.status, grade: c.grade ?? 0, ...(c.turns !== undefined ? { turns: c.turns } : {}) });
     if (c.status === 1) cleared++;
     out.time = out.time + (c.timeTaken ?? 0) + (c.walkTime ?? 0);
   }

@@ -42,6 +42,7 @@ import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill,
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
+import { cappedNote, compactResult, essenceLines, hpLeftCell, turnCapNote } from "./battle-results.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
@@ -1199,7 +1200,8 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
     const top = Object.entries(h.skillDmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
       .map(([sk, v]) => `${skillName(sk)} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
     const raw = heroRaw(state.slots[`${k.replace(/\d$/, "")}${Number(k.slice(-1)) - 1}`] ?? null);
-    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: eff?.[k]?.[0] ?? h.dmg, dealt: h.dmg, taken: h.taken, heal: h.heal, death_rate: h.death_rate, skills: top };
+    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: eff?.[k]?.[0] ?? h.dmg, dealt: h.dmg, taken: h.taken, heal: h.heal,
+      hp_left: h.hp_left_frac, hp_tip: hpLeftCell(h, quest ? "fight" : "run").title, death_rate: h.death_rate, skills: top };
   });
   const dmgTip = eff && maxHp ? `Damage that came off the enemy: the party's total is capped at its ${fmt.format(maxHp)} HP (no overkill), each hero keeping its share. `
     + "Hover a number for the damage dealt, overkill included." : "Damage dealt, overkill included.";
@@ -1210,7 +1212,10 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
       ? el("span", { title: `${fmt.format(Number(r.dealt))} dealt, overkill included` }, fmt.format(Number(r.dmg)))
       : fmt.format(Number(r.dmg))) },
     { key: "taken", label: "Taken", num: true },
-    { key: "heal", label: "Healing", num: true }, { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
+    { key: "heal", label: "Healing", num: true },
+    // U43: HP left at the end (a map run: of the whole run), the HP in the tooltip.
+    { key: "hp_left", label: "HP left", num: true, render: (r) => el("span", { title: String(r.hp_tip) }, pct(Number(r.hp_left))) },
+    { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
     { key: "skills", label: "Damage by skill (uses)" },
   ]);
   const head = [...t.querySelectorAll<HTMLElement>("th")].find((th) => th.textContent === `Damage / ${unit}`);
@@ -1222,9 +1227,9 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
  * U33: the XP and time tiles, a second row under the outcome tiles (same tile size), then a line linking to the Stats
  * sections (Experience, Quest and map time, Craft).
  */
-const xpRow = (items: HTMLElement[], lead: string, craft = false): HTMLElement[] => (items.length ? [
-  tiles({ class: "qxp-tiles", role: "group", "aria-label": "XP and time" }, ...items),
-  el("p", { class: "muted small qxp-refs" }, lead, " ", statLink("xp", "XP"), " · ", statLink("time", "time"),
+const xpRow = (items: HTMLElement[], craft = false): HTMLElement[] => (items.length ? [
+  tiles({ class: "qxp-tiles", role: "group", "aria-label": craft ? "Map run" : "XP and time" }, ...items),
+  el("p", { class: "muted small qxp-refs" }, "How these are counted:", " ", statLink("xp", "XP"), " · ", statLink("time", "time"),
     ...(craft ? [" · ", statLink("craft", "craft")] : [])),
 ] : []);
 
@@ -1258,21 +1263,34 @@ function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
   ];
 }
 
+/**
+ * U43: compact first. The win rate and the average grade; "Show details" opens the rest (compactResult). Turns: the
+ * average, the longest fight and the game's cap (a fight still running at turn 200 is lost).
+ */
 function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): HTMLElement[] {
-  return [
-    tiles({},
+  const turnHint = [ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", turnCapNote(ev.turns_max),
+    cappedNote(ev.turns_capped, ev.n, "fights")].filter(Boolean).join(" · ");
+  return compactResult(
+    tiles({ class: "result-summary" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
-      tile("Turns", fmt1.format(ev.turns), ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", { icon: "⏱️", tone: "t-blue" }),
-      tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
-      tile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
-        ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
-      tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+      gradeTile(ev.win, ev.grade),
     ),
-    ...xpRow(questXpTiles(ev, ctx), "Before XP bonuses:"),
-    heroTable(ev.heroes, "fight", ev),
+    [
+      tiles({},
+        tile("Turns", fmt1.format(ev.turns), turnHint, { icon: "⏱️", tone: ev.turns_capped ? "bad" : "t-blue" }),
+        tile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
+          ? `lowest point ${pct(ev.enemy_dmg_peak)} (it heals back)` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
+        tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+      ),
+      ...xpRow(questXpTiles(ev, ctx)),
+      heroTable(ev.heroes, "fight", ev),
+    ],
     runLine(`${fmt.format(ev.n)} fights · ${fmt.format(ms)} ms`, ev.n),
-  ];
+  );
 }
+
+const gradeTile = (win: number, grade: number) =>
+  tile("Grade when won", win ? gradeOf(grade) : "–", win ? `average ${fmt1.format(grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" });
 
 /** R1 F20: the run's size and time in one short line; the seeds in its tooltip. */
 const runLine = (text: string, seeds: number) => el("p", { class: "muted small run-line", title: `Seeds 1–${seeds}: every setting is tested on the same rolls.` }, text);
@@ -1290,30 +1308,44 @@ const withTitle = (e: HTMLElement, title: string): HTMLElement => {
   return e;
 };
 
+/**
+ * U43: as questResults. The essence per run is a tile of the map-run row (craft, run time, XP), or of the first row
+ * when there are no XP figures. Turns per room: the average, per run in the hint, the longest room and the cap.
+ */
 function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): HTMLElement[] {
-  const ess = Object.entries(ev.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", ") || "none";
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
   const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
-  return [
-    tiles({},
+  const essence = tile("Essence per run",
+    el("span", { class: "tile-lines" }, ...essenceLines(ev.essence, (k) => itemNameFromEnglish("material", k)).map((t) => el("span", {}, t))),
+    ev.win < 1 ? "from the runs won" : undefined, { icon: "✨", tone: "t-violet" });
+  const turnHint = [`${fmt1.format(ev.run_turns)} per run`, `longest room: ${turnCapNote(ev.room_turns_max)}`,
+    cappedNote(ev.rooms_capped, ev.n, "runs")].filter(Boolean).join(" · ");
+  const xp = mapXpTiles(ev, ctx);
+  return compactResult(
+    tiles({ class: "result-summary" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
-      // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the tooltip.
-      withTitle(tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms (avg)`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
-        "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."),
-      tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
-      ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" })]),
-      tile("Loot value", gold(ev.loot_value), "base sell value per run", { icon: "💰", tone: "t-orange" }),
-      tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+      gradeTile(ev.win, ev.grade),
     ),
-    ...xpRow(mapXpTiles(ev, ctx), "Before XP bonuses:", true),
-    el("p", { class: "result-note" }, el("strong", {}, "✨ Essence per run: "), ess),
-    ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
-    ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
-    ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
-    ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
-    heroTable(ev.heroes, "run"),
+    [
+      tiles({},
+        // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the tooltip.
+        withTitle(tile("Progress", pct(ev.cleared), `of ${fmt1.format(ev.rooms)} rooms (avg)`, { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
+          "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."),
+        tile("Turns per room", fmt1.format(ev.room_turns), turnHint, { icon: "⏱️", tone: ev.rooms_capped ? "bad" : "t-blue" }),
+        ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⌛", tone: "t-blue" })]),
+        tile("Loot value", gold(ev.loot_value), "base sell value per run", { icon: "💰", tone: "t-orange" }),
+        tile("Party HP left", pct(ev.hp_left), "at the end of the run", { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
+        ...(xp.length ? [] : [essence]),
+      ),
+      ...xpRow(xp.length ? [...xp, essence] : [], true),
+      ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
+      ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
+      ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
+      ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
+      heroTable(ev.heroes, "run"),
+    ],
     runLine(`${fmt.format(ev.n)} map runs · ${fmt.format(ms)} ms`, ev.n + ev.errors),
-  ];
+  );
 }
 
 // ---------------------------------------------------------------- page

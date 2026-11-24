@@ -10,6 +10,12 @@ type Any = any;
 /** The battle currently in combatLoop (read by the trace hook). */
 export const current: { battle?: Battle } = {};
 
+/**
+ * Battle:combatLoop: once a turn ends with the turn counter at 200 the fight stops as a loss ("fatigue": hasWon false,
+ * grade 0), checked after the win test, so an enemy that falls on turn 200 still counts as a loss.
+ */
+export const TURN_CAP = 200;
+
 /** enemiesService.hasFirstAttack */
 export function hasFirstAttack(enemy: Any): boolean {
   const enemyType = enemy instanceof Enemy ? enemy.enemyType : enemy.questType;
@@ -88,7 +94,7 @@ export class Battle {
         this.hasWon = true;
         this.isRunning = false;
       }
-      if (this.turns >= 200) {
+      if (this.turns >= TURN_CAP) {
         this.isRunning = false;
         this.hasWon = false;
         this.grade = 0;

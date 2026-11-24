@@ -11,6 +11,8 @@
  * so comparisons are fair even with few fights.
  */
 import { G } from "../sim/data.ts";
+import { TURN_CAP } from "../sim/battle.ts";
+export { TURN_CAP };
 import { gameFromData, pyRound } from "./gamedata.ts";
 import { Solver } from "./profit.ts";
 import { itemName, type Hero, type MapSpec, type Row, type Scroll, sellValue, Sim } from "./engine.ts";
@@ -64,11 +66,20 @@ interface HeroAcc {
   taken: number;
   heal: number;
   deaths: number;
+  /** Sums over the fights / runs: HP at the end (0 when dead), that HP as a share of max HP, max HP. */
+  hpEnd: number;
+  hpEndFrac: number;
+  maxHP: number;
   skillDmg: Record<string, number>;
   skillUses: Record<string, number>;
 }
-export interface HeroEval extends HeroAcc {
+export interface HeroEval extends Omit<HeroAcc, "hpEnd" | "hpEndFrac" | "maxHP"> {
   death_rate: number;
+  /** Averages: HP at the end of the fight (a map run: of the whole run; 0 when dead), that HP as a share of max HP
+   * (averaged per fight), and max HP. */
+  hp_left: number;
+  hp_left_frac: number;
+  max_hp: number;
 }
 
 function heroAccumulator() {
@@ -76,21 +87,26 @@ function heroAccumulator() {
   return {
     add(h: Any, withClass: boolean) {
       let ph = perHero.get(h.slot);
-      if (!ph) perHero.set(h.slot, ph = { name: h.name, dmg: 0, taken: 0, heal: 0, deaths: 0, skillDmg: {}, skillUses: {} });
+      if (!ph) perHero.set(h.slot, ph = { name: h.name, dmg: 0, taken: 0, heal: 0, deaths: 0, hpEnd: 0, hpEndFrac: 0, maxHP: 0, skillDmg: {}, skillUses: {} });
       ph.name = h.name;
       if (withClass) ph.class = h.class;
       ph.dmg += h.physicalDmgDealt + h.magicDmgDealt;
       ph.taken += h.dmgTaken;
       ph.heal += h.healingDone;
       ph.deaths += h.dead ? 1 : 0;
+      const hp = Math.max(Number(h.hp) || 0, 0), max = Number(h.maxHP) || 0;
+      ph.hpEnd += hp;
+      ph.maxHP += max;
+      ph.hpEndFrac += max > 0 ? Math.min(hp / max, 1) : 0;
       for (const [sk, v] of Object.entries(h.skillDmg ?? {})) ph.skillDmg[sk] = (ph.skillDmg[sk] ?? 0) + (v as number);
       for (const [sk, v] of Object.entries(h.skillUses ?? {})) ph.skillUses[sk] = (ph.skillUses[sk] ?? 0) + (v as number);
     },
     result(n: number): Record<string, HeroEval> {
       const out: Record<string, HeroEval> = {};
       const per = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, x / n]));
-      for (const [slot, v] of perHero) {
+      for (const [slot, { hpEnd, hpEndFrac, maxHP, ...v }] of perHero) {
         out[slot] = { ...v, dmg: v.dmg / n, taken: v.taken / n, heal: v.heal / n, death_rate: v.deaths / n,
+          hp_left: hpEnd / n, hp_left_frac: hpEndFrac / n, max_hp: maxHP / n,
           skillDmg: per(v.skillDmg), skillUses: per(v.skillUses) };
       }
       return out;
@@ -103,6 +119,9 @@ export interface FightEval {
   win: number;
   turns: number;
   turns_win: number | null;
+  /** Longest fight, in turns, and the fights stopped by the turn cap (TURN_CAP: a loss). */
+  turns_max: number;
+  turns_capped: number;
   grade: number;
   /** Share of the enemy's HP removed at the end of the fight (0 when it healed back to full). */
   enemy_dmg: number;
@@ -164,6 +183,7 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   }
   const out: FightEval = {
     n, win: wins / n, turns: mean(turns), turns_win: turnsWin.length ? mean(turnsWin) : null,
+    turns_max: turns.length ? Math.max(...turns) : 0, turns_capped: turns.filter((t) => t >= TURN_CAP).length,
     grade: grades.length ? mean(grades) : 0, enemy_dmg: mean(enemyFrac), enemy_dmg_peak: mean(peakFrac),
     enemy_dmg_total: mean(dmgTotal), enemy_dmg_total_frac: mean(dmgFrac), hp_left: mean(hpFrac),
     heroes: acc.result(n), score: 0,
@@ -235,6 +255,12 @@ export interface MapEval {
   grade: number;
   time_h: number;
   hp_left: number;
+  /** Turns of the rooms fought: average per room, average per run (all its rooms), the longest room, and the rooms
+   * stopped by the turn cap (TURN_CAP: a loss, so the run ends there). */
+  room_turns: number;
+  run_turns: number;
+  room_turns_max: number;
+  rooms_capped: number;
   loot_value: number;
   essence: Record<string, number>;
   fail_room: Record<string, number>;
@@ -250,6 +276,7 @@ export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 
   let wins = 0, escapes = 0;
   const cleared: number[] = [], grades: number[] = [], times: number[] = [], hpLeft: number[] = [], rooms: number[] = [];
   const lootValue: number[] = [], errors: string[] = [];
+  const roomTurns: number[] = [], runTurns: number[] = [];
   const failRoom: Record<string, number> = {}, charges = new Map<number, number>(), essence: Record<string, number> = {};
   const acc = heroAccumulator();
   for (let k = 0; k < n; k++) {
@@ -267,6 +294,9 @@ export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 
     for (const sc of res.scrollsUsed ?? []) charges.set(sc.id, (charges.get(sc.id) ?? 0) + sc.chargesUsed);
     cleared.push((res.cleared + (res.lastEnemyRemoved ?? 0)) / res.rooms);
     times.push(res.time);
+    const fought = res.combats.map((c) => c.turns).filter((t): t is number => t !== undefined);
+    roomTurns.push(...fought);
+    runTurns.push(sum(fought));
     if (res.won) {
       wins++;
       grades.push(res.grade);
@@ -298,7 +328,10 @@ export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 
     escaped: escapes / nOk, charges_used: [...charges].map(([id, v]) => [id, v / nOk]),
     n: nOk, win: wins / nOk, cleared: mean(cleared), rooms: mean(rooms),
     grade: grades.length ? mean(grades) : 0, time_h: mean(times) / 3600,
-    hp_left: mean(hpLeft), loot_value: mean(lootValue), essence: per(essence),
+    hp_left: mean(hpLeft),
+    room_turns: roomTurns.length ? mean(roomTurns) : 0, run_turns: mean(runTurns),
+    room_turns_max: roomTurns.reduce((a, b) => Math.max(a, b), 0), rooms_capped: roomTurns.filter((t) => t >= TURN_CAP).length,
+    loot_value: mean(lootValue), essence: per(essence),
     fail_room: Object.fromEntries(Object.entries(failRoom).sort((a, b) => b[1] - a[1])),
     heroes: acc.result(nOk), score: 0,
   };

@@ -19,35 +19,40 @@
     "name": "Forest Treant",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 6,
     "name": "Wild Boar",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 8,
     "name": "Goblin Enchanter",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 9,
     "name": "Goblin Chieftain",
     "isRare": true,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 3
    },
    {
     "questId": 10,
     "name": "Maexna",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 3
    }
   ],
   "rewards": [
@@ -308,42 +313,48 @@
     "name": "Moss Golem",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 6,
     "name": "Wild Boar",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 8,
     "name": "Goblin Enchanter",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 99,
     "name": "Treasure Bush",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 9
    },
    {
     "questId": 9,
     "name": "Goblin Chieftain",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 2
    },
    {
     "questId": 10,
     "name": "Maexna",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 3
    }
   ],
   "rewards": [
@@ -616,42 +627,48 @@
     "name": "Highland Titan",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 24,
     "name": "Aldur Ram",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 26,
     "name": "Gnoll Hunter",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 27,
     "name": "Gnoll Shaman",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 28,
     "name": "Gnoll Overlord",
     "isRare": true,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 6
    },
    {
     "questId": 29,
     "name": "Ares",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 3
    }
   ],
   "rewards": [
@@ -954,49 +971,56 @@
     "name": "Treasure Bush",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 4
    },
    {
     "questId": 22,
     "name": "Highland Titan",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 25,
     "name": "Highland Tunneler",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 26,
     "name": "Gnoll Hunter",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 27,
     "name": "Gnoll Shaman",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 28,
     "name": "Gnoll Overlord",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 4
    },
    {
     "questId": 29,
     "name": "Ares",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 4
    }
   ],
   "rewards": [
@@ -1314,28 +1338,32 @@
     "name": "Dark Colossus",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 2
    },
    {
     "questId": 33,
     "name": "Nightmare Scorpion",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 7
    },
    {
     "questId": 34,
     "name": "Night Beast",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 9
    },
    {
     "questId": 35,
     "name": "Undead Warrior",
     "isRare": false,
     "status": 2,
-    "grade": 0
+    "grade": 0,
+    "turns": 4
    },
    {
     "questId": 36,
@@ -1635,35 +1663,40 @@
     "name": "Treasure Bush",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 7
    },
    {
     "questId": 31,
     "name": "Dark Colossus",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 2
    },
    {
     "questId": 32,
     "name": "Haunted Harwood",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 2
    },
    {
     "questId": 34,
     "name": "Night Beast",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 7
    },
    {
     "questId": 35,
     "name": "Undead Warrior",
     "isRare": false,
     "status": 2,
-    "grade": 0
+    "grade": 0,
+    "turns": 9
    },
    {
     "questId": 36,
@@ -1962,56 +1995,64 @@
     "name": "Molten Giant",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 44,
     "name": "Volcanic Lumberer",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 46,
     "name": "Lava Beast",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 48,
     "name": "Demon Warrior",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 49,
     "name": "Infernal Guardian",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 51,
     "name": "Phoenix",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 52,
     "name": "Cerberus",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 56,
     "name": "Firelord Ozai",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 10
    }
   ],
   "rewards": [
@@ -2345,56 +2386,64 @@
     "name": "Molten Giant",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 44,
     "name": "Volcanic Lumberer",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 47,
     "name": "Fire Wyrm",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 48,
     "name": "Demon Warrior",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 49,
     "name": "Infernal Guardian",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 50,
     "name": "Demon Mage",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 51,
     "name": "Phoenix",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 1
    },
    {
     "questId": 56,
     "name": "Firelord Ozai",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 10
    }
   ],
   "rewards": [
@@ -2736,28 +2785,32 @@
     "name": "Glacial Goliath",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 5
    },
    {
     "questId": 79,
     "name": "Mourning Balwood",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 6
    },
    {
     "questId": 80,
     "name": "Nightmare Bison",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 17
    },
    {
     "questId": 81,
     "name": "Desolation Wolf",
     "isRare": false,
     "status": 2,
-    "grade": 0
+    "grade": 0,
+    "turns": 14
    },
    {
     "questId": 82,
@@ -3056,28 +3109,32 @@
     "name": "Glacial Goliath",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 6
    },
    {
     "questId": 79,
     "name": "Mourning Balwood",
     "isRare": false,
     "status": 1,
-    "grade": 5
+    "grade": 5,
+    "turns": 6
    },
    {
     "questId": 80,
     "name": "Nightmare Bison",
     "isRare": true,
     "status": 1,
-    "grade": 4
+    "grade": 4,
+    "turns": 21
    },
    {
     "questId": 81,
     "name": "Desolation Wolf",
     "isRare": true,
     "status": 2,
-    "grade": 0
+    "grade": 0,
+    "turns": 9
    },
    {
     "questId": 82,

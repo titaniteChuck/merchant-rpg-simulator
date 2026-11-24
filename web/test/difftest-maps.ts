@@ -42,7 +42,7 @@ function diffEntry(exp: Any, got: TraceEntry | undefined, rngOffset: number): st
 }
 
 /** Result fields the TypeScript engine adds and the Lua recorder never produced (nothing to compare). */
-const TS_ONLY = new Set(["xp"]);
+const TS_ONLY = new Set(["xp", "turns"]);
 
 /** Deep compare of the whole result (lists in order, numbers with a float tolerance). */
 function deepDiff(exp: Any, got: Any, path: string): string | undefined {

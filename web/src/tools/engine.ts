@@ -68,7 +68,8 @@ export interface MapRunResult {
   time: number;
   grade: number;
   scrollsUsed?: { id: number; chargesUsed: number }[];
-  combats: { status: number; name: string; isRare: boolean; questId?: number }[];
+  /** `turns`: how long the room's battle lasted (rooms never fought have none). */
+  combats: { status: number; name: string; isRare: boolean; questId?: number; turns?: number }[];
   rewards: { itemType: string; itemID: number; amount: number; prestigeLevel?: number }[];
   heroes: HeroResult[];
 }

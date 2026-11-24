@@ -41,6 +41,10 @@ flowchart LR
   F -->|no| T
 ```
 
+- Turn cap (Lua 3.18 `Battle:combatLoop`, engine `TURN_CAP`): when a turn ends with the counter at 200 the fight
+  stops and the enemy wins (`hasWon` false, grade 0, logged as "fatigue"). It is checked after the win test and
+  overrides it: an enemy that falls on turn 200 itself still counts as a loss. In a map run that room is lost, so
+  the run ends there. The Simulator shows the longest fight against this cap.
 - Order: enemy first only if `questType == 6` (first attack), then back 1, front 1, back 2, front 2, back 3, front 3, enemy.
   The order is fixed once at the start (`determineTurnOrder`); a dead combatant's turn is skipped.
 - The end of the fight is checked only once the whole turn is played (`Battle.combatLoop`, `obj.combat.Battle.lua:82`–`:94`),
