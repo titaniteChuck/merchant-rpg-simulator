@@ -96,7 +96,7 @@ export const PLACEHOLDER_QUEST_IDS = new Set<number>([39, 40, 41, 58, 59, 60, 75
 
 /**
  * The quest bushes (gathering quests, questType 1, nickname "Gathering"): the first battle of each region's quest
- * board, fought on their own like any quest; no attack (enemyAtk / Matk 0), they drop mosses and roots for potions.
+ * board, fought on their own like any quest; no attack (enemyAtk / Matk 0), they drop herbs (a moss and a root) for potions.
  * 1 Forest (Tuvale, level 1), 11 Yarsol (10), 21 Aldur (20), 30 Vulkrum (30), 42 Grimhal (40), 77 Hoarfrost (Frentir,
  * 51). Until U28 they were left out of the wiki with the placeholders; they are enemies again, labelled "Quest bush".
  * Not to be mixed with the map Treasure Bushes 99–104 (isTreasureBush), which hide in map rooms.
@@ -292,20 +292,21 @@ function enemyRegion(id: number): Region | null {
   if (q.questType === 8 && q.title !== "Treasure Bush") {
     const boss = items("map").filter(([, m]) => seq<number>(m.bossList ?? {}).includes(id))
       .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || a[0] - b[0])[0];
-    if (boss) return mkRegion(mapRegionId(boss[1]), "map", () => `map boss, met only in maps: first in ${itemName("map", boss[0])}`);
+    // R1 F40: neutral "Label: name" formats, no English glue words around translated names.
+    if (boss) return mkRegion(mapRegionId(boss[1]), "map", () => `First map: ${itemName("map", boss[0])}`);
   }
   const name = () => regionShort(q.region);
-  if (q.questType === 6) return mkRegion(q.region, "event", () => `event boss: the event sends you to ${name()}`);
+  if (q.questType === 6) return mkRegion(q.region, "event", () => `Event: ${name()}`);
   const bush = bushLevels(id);
-  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", () => `bush of maps level ${bush.lo}–${bush.hi}`);
-  if (q.title === "Treasure Bush") return mkRegion(q.region, "region", () => `hides in ${name()}'s maps`);
-  if (q.region !== undefined) return mkRegion(q.region, "region", () => `on ${name()}'s quest board`);
-  return mkRegion(regionOfLevel(q.levelReq), "region", () => `level ${q.levelReq}`);
+  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", () => `Bush of maps Lv ${bush.lo}–${bush.hi}`);
+  if (q.title === "Treasure Bush") return mkRegion(q.region, "region", () => `Maps: ${name()}`);
+  if (q.region !== undefined) return mkRegion(q.region, "region", () => `Board: ${name()}`);
+  return mkRegion(regionOfLevel(q.levelReq), "region", () => `Lv ${q.levelReq}`);
 }
 
 function mapRegion(id: number): Region | null {
   const m = item("map", id);
-  return m ? mkRegion(mapRegionId(m), "region", () => `map level ${m.itemLevel ?? 0}`) : null;
+  return m ? mkRegion(mapRegionId(m), "region", () => `Map Lv ${m.itemLevel ?? 0}`) : null;
 }
 
 let sourcesOf: Map<string, { fixed: number[]; loot: number[] }> | null = null;
@@ -340,8 +341,8 @@ function itemRegion(type: string, id: number): Region | null {
   const it = item(type, id);
   if (!it) return null;
   const src = itemSources().get(`${type}:${id}`);
-  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", () => "where it drops every win");
-  if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", () => "where it drops");
+  if (src?.fixed.length) return mkRegion(Math.min(...src.fixed), "region", () => "Where it drops every win");
+  if (src?.loot.length) return mkRegion(Math.min(...src.loot), "region", () => "Where it drops");
   const band = regionOfLevel(it.itemLevel ?? 0);
   const counts = new Map<number, number>();
   for (const [t, mid] of recipe(type, id)) {
@@ -350,9 +351,9 @@ function itemRegion(type: string, id: number): Region | null {
   }
   if (counts.size) {
     const best = [...counts].sort((a, b) => b[1] - a[1] || Math.abs(a[0] - band) - Math.abs(b[0] - band) || a[0] - b[0])[0][0];
-    return mkRegion(best, "region", () => "where its recipe's materials come from");
+    return mkRegion(best, "region", () => "Where its recipe's materials come from");
   }
-  return mkRegion(band, "region", () => `item level ${it.itemLevel ?? 0}`);
+  return mkRegion(band, "region", () => `Item Lv ${it.itemLevel ?? 0}`);
 }
 
 const GROUP_TAG: Record<RegionGroup, string> = { region: "", event: "event", map: "map boss" };
@@ -363,14 +364,15 @@ export const regionText = (r: Region | null): string => (r ? [r.name, ...(r.name
 
 /**
  * The region as a small chip in its colour (+ "event" / "map boss"); the tooltip says how it was decided. A region
- * behind an expansion (6, Frentir: the Frozen Tome) carries its badge (U28).
+ * behind an expansion (6, Frentir: the Frozen Tome) carries its badge (U28). `tag: false` leaves out the group tag
+ * (R1 F41: an enemy page's Kind card already says "Map boss" or "Event boss").
  */
-export function regionChip(r: Region | null, withWhy = false): HTMLElement {
+export function regionChip(r: Region | null, withWhy = false, o: { tag?: boolean } = {}): HTMLElement {
   if (!r) return el("span", { class: "muted" }, "–");
   const needs = needsOf("region", r.id);
-  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full}: ${r.why}${needs.length ? `. ${expansionNote(needs)}` : ""}` }, r.name,
+  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full} · ${r.why}${needs.length ? `. ${expansionNote(needs)}` : ""}` }, r.name,
     ...(needs.length ? [expansionBadge(needs)] : []));
-  const tag = GROUP_TAG[r.group] ? [el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : [];
+  const tag = GROUP_TAG[r.group] && o.tag !== false ? [el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : [];
   return el("span", { class: "region-cell" }, chip, ...tag, ...(withWhy ? [el("span", { class: "muted small" }, ` ${r.why}`)] : []));
 }
 
@@ -495,6 +497,15 @@ export function itemText(type: string, id: number): string {
   return lines.join(" ").replace(/\{(\w+)\}/g, (_, k) => (it?.stat?.[k] !== undefined ? fmt.format(it.stat[k]) : `{${k}}`)).trim();
 }
 
+/**
+ * A map's flavour sentence alone (R1 F17). The game's map text ends with "Boss: … Mod: Nx" in every language
+ * ("Boss : … Mod : 8x", "Jefe: …", "Босс: … Мод: 11x"); that tail names the boss loosely (Goblin King for Goblin
+ * Warlord, Archon Prime…) and repeats the modifier, so the page takes both from the data instead.
+ */
+export function mapFlavour(id: number): string {
+  return itemText("map", id).replace(/\s*[^\s:]+\s?:\s.*\s[^\s:]+\s?:\s*[\d.,]+\s*x\s*$/su, "").trim();
+}
+
 /** One-line summary for tooltips and lists. */
 export function itemSummary(type: string, id: number): string {
   const it = item(type, id);
@@ -612,8 +623,8 @@ export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts
   if (needs.length && !opts.always && !isVisible("enemy", e.id)) return placeholderFor("enemy", e.id);
   if (!isEnemy(e.id)) return withBadge(el("span", { class: "wl" }, name), needs);
   const maps = enemyMaps(e.id);
-  const kind = () => `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps level ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · level ${q.levelReq}` : ""}`;
-  const where = () => (maps.length ? `Appears in ${maps.map((m) => itemName("map", m)).join(", ")}.` : "Quest only, in no map.");
+  const kind = () => `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps Lv ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · Lv ${q.levelReq}` : ""}`;
+  const where = () => (maps.length ? `Maps: ${maps.map((m) => itemName("map", m)).join(", ")}` : "Quest only, in no map.");
   const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
   if (plain) markName(a, e.rare ? "enemyB" : "enemy", e.id);
   tip(a, () => tipBox(plain ? enemyName(e.id, !!e.rare) ?? name : name, kind(), where(), "", needs));

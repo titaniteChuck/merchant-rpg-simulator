@@ -1627,3 +1627,18 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* F11: the rare pill in the plan's enemy column. */
 .pg-head .pg-rare { font-size: 0.62rem; padding: 0 5px; vertical-align: middle; }
 /* end r1 battle */
+/* r1 wiki world */
+/* R1-B1 (live-site review R1): wiki enemy, map and XP fixes.
+   F04: the XP table is as wide as its columns need (no 720 px cap), scrolling in its frame when the page is narrower.
+   F14: its numbers centred like the other tables (th.num / td.num rule of the tables block). */
+.qxp-wrap { max-width: 100%; width: max-content; }
+.qxp-table th.num, .qxp-table td.num { text-align: center; }
+.qxp-left { margin: 6px 0 0; }
+/* F16: a map page's "Essence per run" card wraps its names inside the card. */
+.facts .ess-fact .nowrap { white-space: normal; }
+/* F19: compact bush facts ("Quest board · 1st battle", the drops and their type). */
+.facts .fact-compact .muted { font-weight: 400; }
+/* F15: a wiki list whose every row is hidden expansion content: one empty state. */
+.wiki-empty { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
+.wiki-empty p { margin: 0 0 10px; }
+/* end r1 wiki world */

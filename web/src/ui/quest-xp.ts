@@ -10,7 +10,8 @@
  */
 import { G } from "../sim/data.ts";
 import { type FightEval, maxQuestAmount, partyRules } from "../tools/combat.ts";
-import { isBoardQuest, isMapOnlyQuest, mapRunStats, mapsWithQuest, questStats } from "../tools/quest-stats.ts";
+import { isBoardQuest, isCraftableMap, isMapOnlyQuest, mapEnemyPool, mapRunStats, mapsWithQuest, questStats } from "../tools/quest-stats.ts";
+import { seq } from "../sim/lua.ts";
 import { isVisible } from "./expansion-state.ts";
 
 /** Default grade of the wiki figures (B) and the letters of the switcher. */
@@ -70,10 +71,11 @@ export interface MapXpRow {
 /**
  * The maps a map-only enemy is fought in, at map grade `grade` (= its craft grade) and ascension `asc`, with the run's
  * craft time, run time (walking; the fights add to it) and XP per hero. Maps the visitor hides (expansions) are left
- * out; `hidden` counts them.
+ * out; `hidden` counts them. `uncraftable` lists the visible maps that hold the enemy (boss or room) but that no crafter
+ * can make (R1 F42: the level-70 maps, dormant data), so the page can say why they are not in the rows.
  */
-export function mapXpRows(quest: number, o: { grade?: number; asc?: number; heroes?: number; mode?: string } = {}): { rows: MapXpRow[]; hidden: number } {
-  if (!isMapOnlyQuest(quest)) return { rows: [], hidden: 0 };
+export function mapXpRows(quest: number, o: { grade?: number; asc?: number; heroes?: number; mode?: string } = {}): { rows: MapXpRow[]; hidden: number; uncraftable: number[] } {
+  if (!isMapOnlyQuest(quest)) return { rows: [], hidden: 0, uncraftable: [] };
   const grade = o.grade ?? XP_DEFAULT_GRADE;
   const all = mapsWithQuest(quest, grade);
   const shown = all.filter((a) => isVisible("map", a.map));
@@ -81,7 +83,13 @@ export function mapXpRows(quest: number, o: { grade?: number; asc?: number; hero
     const s = mapRunStats(a.map, { grade, asc: o.asc ?? 0, heroes: o.heroes ?? 1, mode: o.mode });
     return { map: a.map, role: a.role, perRun: a.perRun, craftSeconds: s.craftSeconds, runSeconds: s.runSeconds, xpPerHero: s.xpPerHero, xpPerMin: s.xpPerMin };
   });
-  return { rows, hidden: all.length - shown.length };
+  return { rows, hidden: all.length - shown.length, uncraftable: uncraftableMapsWith(quest).filter((m) => isVisible("map", m)) };
+}
+
+/** Maps whose boss list or room pool holds `quest` but that no crafter can make (isCraftableMap), in id order. */
+export function uncraftableMapsWith(quest: number): number[] {
+  return Object.keys(G.itemData?.map ?? {}).map(Number).sort((a, b) => a - b).filter((k) => !isCraftableMap(k)
+    && (seq<number>(G.itemData.map[k]?.bossList ?? {}).includes(quest) || mapEnemyPool(k).includes(quest)));
 }
 
 /**

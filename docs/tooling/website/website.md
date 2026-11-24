@@ -364,11 +364,11 @@ flowchart LR
   "nickname MissNo" in the data.
 - Quest bushes (U28 follow-up, user): the gathering quests (questType 1: 1 Forest, 11 Yarsol, 21 Aldur, 30 Vulkrum,
   42 Grimhal, 77 Hoarfrost) are the first battle of each region's quest board, fought on their own like any quest (no
-  attack; they drop mosses and roots for potions). They were excluded with the placeholders; they are enemies again
+  attack; they drop herbs, a moss and a root, for potions). They were excluded with the placeholders; they are enemies again
   (`isGathering`), kind "Quest bush". The Enemies list's Kind column now reads Quest bush · Quest · Boss · Party Boss ·
   Event boss (questType 6, the game's "Epic Boss") · Map boss · Map treasure bush (`enemyKind`). Both bush kinds' pages
-  add "Fought" (quest board, first battle / random room of the maps of its band, Scribe) and "Mainly drops" (the
-  every-win materials and what they are for). Included in the skills' enemy lists (they use Basic) and the battle
+  add "Fought" (quest board, first battle / map rooms at grade B+; short facts since R1-B1) and "Mainly drops" (the
+  every-win materials and their game type). Included in the skills' enemy lists (they use Basic) and the battle
   picker; left out of "Good against" (nothing to answer: they never hit), the class balance and the levelling
   reference quests (no threat).
 - Class page (U6a, reworked in U19, `web/src/ui/wiki-classes.ts`): stat cards at the top (HP, Atk, Matk, Acc, Crit, Def,
@@ -589,6 +589,31 @@ flowchart LR
     Goons of Evil Map (boss in 33% of runs) 57 min + 3 h, 26,472, 112 / min. Maps hidden by the expansion settings
     are left out with the "N hidden" note; a Treasure Bush at grade D or C says it needs B or better.
   - CSS: the `quest xp` block at the end of `site/style.css`. Tests: `test/quest-xp.test.ts`.
+- Live-site review R1, wiki world (R1-B1, `test/wiki-world.test.ts`, CSS `r1 wiki world` block at the end of
+  `site/style.css`):
+  - XP block: the grade, party and ascension picks are kept per enemy for the session (`xpPicksOf` in
+    `wiki-enemies.ts`), so a language change or an expansion switch no longer resets them (F03). The table is as wide
+    as its columns (no 720 px cap; it scrolls in its frame on a phone) and its numbers are centred like every other
+    table (F04, F14). Map-only enemies: the maps that hold the enemy but no crafter can make (the level-70 maps,
+    `uncraftableMapsWith` in `quest-xp.ts`) are named under the table, "Left out, not craftable (level 70)" (F42).
+  - Enemy facts: the Maps card reads "6 · 1 craftable" (and "boss in N" only when the enemy is not the boss of all of
+    them, `mapsFact`); the Maps section marks each uncraftable map "not craftable" (F42). Map bosses and Treasure
+    Bushes have no Party card (a map room) and the Region card has no "map boss" / "event" tag next to the Kind card
+    (`regionChip(r, why, { tag: false })`), its reason shown only for a map boss ("First map: …") (F41).
+  - Bush facts are short (F19): Fought "Quest board · 1st battle" or "Map rooms · grade B+" (linked to Battle › Two
+    kinds of battle / Map runs); Mainly drops = the every-win materials and their game type from the data
+    (`bushDropKinds`: quest bushes "herbs", a moss and a root; Treasure Bushes "crystals, gems") (F44).
+  - Neutral formats around translated names (F40): "Lv 9" (lead line, tooltips, Level card "Maps Lv 1–10 · quest
+    Lv 10"), region reasons "Board: <region>", "Event: <region>", "First map: <map>", "Map Lv N", tooltips
+    "<region> · <reason>", enemy tooltips "Maps: <names>".
+  - Rare variants (F11): the variant's own name and a small "rare" pill everywhere on the enemy and map pages, the
+    Enemies list's Rare variant column, the Rare variant card and the home search (was the kind "Enemy (rare)").
+  - Map page: the lead is the flavour sentence only (`mapFlavour` in `wiki-data.ts` drops the game's "Boss: … Mod: Nx"
+    tail in every language; it named bosses loosely, "Goblin King" for Goblin Warlord) (F17); the Essence per run card
+    wraps its names inside the card (F16).
+  - A wiki list whose every row is hidden expansion content (the Maps list without Scribe) shows one empty state:
+    "All 32 maps are expansion content you don't own…", a link to the Expansions page and "Show expansion content"
+    (no filter, "0 of 0", badge line or empty table) (F15). The home Enemies card says the quest bushes are included (F08).
 
 ## Profit page
 

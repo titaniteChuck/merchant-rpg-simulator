@@ -3,6 +3,7 @@
 [Root](./index.md) > Update Log
 
 ## 2026-11-24
+- **Website**: Wiki world fixes from the live-site review R1 (R1-B1): enemy, map, bush and XP findings F03, F04, F08, F11, F14–F17, F19, F40–F42, F44.
 - **Website**: Modded item names (U34): "[Prefix] Item +N", each part in the visitor's language (the suffix symbol never translated), from one helper across the save viewer, its CSV and the battle search results.
 - **Website**: Quest XP and time (U33): enemy pages show XP per hero, time and XP / min (quests by size, grade and party; map-only enemies through their maps' craft + run time); battle results show XP and quest / run time; the levelling plan names map steps by their map.
 - **Website**: Battle page (U27): one "Best party" solver on `searchParties` replaces Best party, Best rotation and Best scrolls: min / max party size, include scrolls (maps), 60 / 120 s budget, a top-10 table with Load and undo, Cancel keeps the partial results; hidden behind a spoiler guard ("Show me the solver anyway", remembered, with a warning line and "Hide it again").

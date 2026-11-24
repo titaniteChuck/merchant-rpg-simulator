@@ -54,7 +54,7 @@ test("a Treasure Bush shows the level range of the maps it spawns in (not its qu
   assert.deepEqual(bushMaps(99).map((id) => G.itemData.map[id].name), ["Tuvale Map", "Hard Tuvale Map", "Goblin's Feast Map", "Yarsol Map"]);
   const r = regionOf("enemy", 99)!;
   assert.equal(r.name, "Tuvale");
-  assert.match(r.why, /bush of maps level 1–10/);
+  assert.match(r.why, /Bush of maps Lv 1–10/); // R1 F40: neutral "Lv" format
   // sorted by the lowest map level: the first Tuvale enemy, not after the level-9 ones
   assert.equal(enemyLevelSort(99), 1);
   assert.deepEqual([100, 101, 102, 103, 104].map(enemyLevelText), ["13–20", "23–30", "35–40", "45–50", "52–60"]);

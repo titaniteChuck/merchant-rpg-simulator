@@ -24,12 +24,12 @@ import { classStats, tiersOf } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, rarityChip } from "./wiki-items.ts";
 import { goodAgainst, removesEffects, turnMarks } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
-import { enemyBody, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
+import { enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
 import { sectionHelp } from "./wiki-help.ts";
 import { battlePage, BATTLE_SECTIONS } from "./wiki-battle.ts"; // U25 reference pages
 import { statsPage, STATS_SECTIONS } from "./wiki-stats.ts";
 import { expansionsPage } from "./wiki-expansions.ts";
-import { type ContentKind, type Expansion, isVisible, needsOf, partitionVisible, subscribe, syncWithStoredSave } from "./expansion-state.ts";
+import { type ContentKind, type Expansion, isVisible, needsOf, partitionVisible, setShowAll, subscribe, syncWithStoredSave } from "./expansion-state.ts";
 import { hiddenBody, hiddenNote, mountExpansionChip } from "./expansion-menu.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import { className, crafterName as crafterOf, enemyName, itemName, passiveName, searchText, skillName } from "./names.ts";
@@ -37,7 +37,7 @@ import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
   recipe, regionChip, regionOf, regionSortKey, regionText, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText,
-  treasureBushOf, usedInRecipes, enemyKind, enemyLevelText, isGathering, isTreasureBush,
+  treasureBushOf, usedInRecipes, enemyLevelText, isGathering, mapFlavour,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -80,7 +80,8 @@ const CATEGORIES: [string, string, string, () => number, About][] = [
     () => ["Dungeon maps: rooms of enemies, a boss and essence at the end. Enemy power is the quest's stats × the ",
       statLink("map-essence", "map modifier"), "."]],
   ["#/enemies", "👹", "Enemies", () => visibleEnemyIds().length,
-    "Every quest and map enemy with its base stats (before a map's multiplier). Gathering and placeholder quests are left out."],
+    // R1 F08: the quest bushes (gathering quests) are listed since the U28 follow-up; only the placeholders are not.
+    "Every quest and map enemy with its base stats (before a map's multiplier), the quest bushes included."],
   ["#/classes", "🛡️", "Classes", () => visibleClasses().length,
     () => ["The hero classes, their base stats, ", statLink("hero-stats", "growth"), ", skills and passives."]],
   ["#/stats", "🧮", "Stats", () => STATS_SECTIONS.length, "How every number is calculated: hero stats, damage, hit and crit, luck, grade, XP, item stats, selling, crafting, essence."],
@@ -114,6 +115,8 @@ function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInput
  * `rowClass`: a class per row (U24: `reg-N`, so region-sorted lists rule a line where the region changes).
  */
 function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) => String(r.name), rowClass?: (r: Row) => string, hidden = 0): HTMLElement {
+  // R1 F15: everything hidden (the Maps list without Scribe): one empty state, no filter, count or empty table.
+  if (!rows.length && hidden) return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title), emptyList(title, hidden));
   const holder = el("div");
   const count = el("span", { class: "muted small" });
   const show = (q: string) => {
@@ -125,6 +128,17 @@ function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) 
   const note = hiddenNote(hidden, title.toLowerCase());
   return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
     el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count), ...(note ? [note] : []), holder);
+}
+
+/** A list whose every row is expansion content the visitor hides: what hides it and the one action that shows it. */
+function emptyList(title: string, hidden: number): HTMLElement {
+  const show = el("button", { type: "button", class: "secondary" }, "Show expansion content");
+  show.addEventListener("click", () => setShowAll(true));
+  const what = title.toLowerCase();
+  return el("div", { class: "wiki-empty" },
+    el("p", {}, `All ${fmt.format(hidden)} ${what} are expansion content you don't own, so the site hides them. `,
+      el("a", { href: "#/expansions" }, "What the expansions add"), "."),
+    show);
 }
 
 /** A detail page of content the visitor hides (U28): its name and badge, why it's hidden and how to see it. */
@@ -144,7 +158,8 @@ function home(): HTMLElement {
     ...visibleClasses().map(([id, c]) => ({ label: searchText(className(id), c.name), kind: "Class", node: () => classLink(id) })),
     ...visibleEnemyIds().flatMap((id) => [false, ...(hasRare(id) ? [true] : [])].map((rare) => {
       const en = rare ? quest(id).nameB : quest(id).name;
-      return { label: searchText(enemyName(id, rare), en), kind: rare ? "Enemy (rare)" : "Enemy", node: () => enemyLink({ id, rare }) };
+      // R1 F11: the rare variant's own name and the small "rare" pill, as everywhere in the wiki.
+      return { label: searchText(enemyName(id, rare), en), kind: "Enemy", node: () => rare ? el("span", { class: "nowrap" }, enemyLink({ id, rare }), " ", pill("rare", "t-pink")) : enemyLink({ id, rare }) };
     })),
   ];
   const search = filterBox("Search skills, items, maps, enemies…", (q) => {
@@ -451,11 +466,13 @@ function mapPage(id: number): HTMLElement {
   const bush = treasureBushOf(m.itemLevel ?? 0);
   const modHelp = `Stats include the map's ×${mod} modifier (before ascension, grade and suffix).`;
   return el("div", {}, crumbs(["Maps", "#/maps"], itemName("map", id) ?? m.name), el("h1", {}, itemLink("map", id)),
-    ...(itemText("map", id) ? [el("p", { class: "lead" }, itemText("map", id))] : []),
+    // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Boss table has them).
+    ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
     facts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
       ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
       [statLink("map-essence", "Enemy modifier"), `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
-      [statLink("map-essence", "Essence per run"), el("span", {}, ...essenceOf(m))],
+      // R1 F16: the essence names wrap inside the card ("500 × Essence de la forêt" in French).
+      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essenceOf(m))],
       [statLink("sell", "Sell value"), safeSell("map", id, 0) !== null ? `${fmt.format(safeSell("map", id, 0)!)} g` : undefined]]),
     sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")), modHelp, [statLink("map-essence")]),
     sectionHelp(section("Room enemies", enemyTable(mapEnemies(m), mod)), modHelp, [statLink("map-essence")]),
@@ -479,7 +496,7 @@ function enemyPage(id: number): HTMLElement {
   const name = enemyName(id) ?? q.name;
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
-    el("p", { class: "lead" }, [enemyKind(id), isTreasureBush(id) ? `in maps of level ${enemyLevelText(id)}` : `level ${q.levelReq}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ")),
+    el("p", { class: "lead" }, enemyLead(id)),
     ...enemyBody(id, facts, section));
 }
 
