@@ -58,3 +58,4 @@
 - **Update**: R1-E done (a6abccb): battle hero card stats kept apart, long stats shortened with a tooltip, plan enemy header shows the full name.
 - **Update**: user batch scheduled as U37 (wiki tables), U38 (page load and scroll), U39 (battle radar, plan drawer, timeline). No routine browser sweeps from now on; full passes at milestones.
 - **Update**: U37 (aa0c517), U38 (dcf36b4) and U39 (8516f7c) done; U39 ships the battle Flow tab (the whole fight turn by turn) in place of the plan drawer, which never shipped on its own.
+- **Update**: U37, U38, U39 live. User round 2 on the Battle Flow scheduled as U40, solver scroll ranking as E25.
