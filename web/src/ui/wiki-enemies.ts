@@ -5,7 +5,7 @@
  */
 import { enemyStrip, stripNote, timelineOf } from "./timeline.ts";
 import { seq } from "../sim/lua.ts";
-import { el, fmt, gradeBadge, GRADE_LETTERS, pill, type Row, table, withAsc } from "./dom.ts";
+import { duration, el, fmt, gradeBadge, GRADE_LETTERS, pill, type Row, segField, segmented, table, withAsc } from "./dom.ts";
 import {
   enemyDrops, enemyIds, enemyKind, enemyLevelSort, enemyLevelText, isGathering, isTreasureBush, enemyLink, enemyMapRoles, hasRare, item, itemLink, quest, regionChip, regionOf, regionSortKey, regionText,
   skillDesc, skillLink,
@@ -18,7 +18,7 @@ import { rarityChip } from "./wiki-items.ts";
 import { enemyName, itemName, skillName } from "./names.ts";
 import { amountOddsText, amountRange, BASE_GRADE, fixedAmounts, LOOT_GRADES, lootTable, pctText } from "./wiki-loot.ts";
 import { isBoardQuest, isCraftableMap, isMapOnlyQuest } from "../tools/quest-stats.ts";
-import { mapXpRows, partySizes, questXpRows, timeText, XP_DEFAULT_GRADE, xpText } from "./quest-xp.ts";
+import { mapXpRows, partySizes, questXpRows, XP_DEFAULT_GRADE, xpText } from "./quest-xp.ts";
 
 /** Why a map is marked "not craftable" (R1 F42; docs/game-economy/maps/maps.md, Level-70 maps). */
 const UNCRAFTABLE_TITLE = "Level 70: above the crafters' level cap (60), so no one can make it. Dormant game data.";
@@ -275,44 +275,44 @@ function bushWhere(id: number): HTMLElement | undefined {
 
 /**
  * The game's material types of a bush's every-win drops, plural, in first-drop order (R1 F44): the quest bushes give
- * "herbs" (a moss and a root, potion ingredients), the Treasure Bushes "crystals, gems". From the data (subType), so
- * the wording can't drift from the game.
+ * "herbs" (a moss and a root, potion ingredients), the Treasure Bushes "crystals", "gems" (a region's crystal and its
+ * gem, e.g. Forest Crystal and Emerald). From the data (subType), so the wording can't drift from the game.
  */
 export function bushDropKinds(id: number): string[] {
   const kinds = enemyDrops(id, false).fixed.map(([mid]) => String(item("material", mid)?.subType ?? "")).filter(Boolean);
   return [...new Set(kinds)].map((k) => (k.endsWith("s") ? k : `${k}s`));
 }
 
-/** What a bush mainly drops: its every-win materials, then their game type ("herbs"). */
+/** The same as words: "herbs", "crystals and gems", "ores, metals and bars". */
+export function bushDropText(id: number): string {
+  const k = bushDropKinds(id);
+  return k.length > 1 ? `${k.slice(0, -1).join(", ")} and ${k[k.length - 1]}` : k[0] ?? "";
+}
+
+/** What a bush mainly drops: its every-win materials, then their game type ("herbs", "crystals and gems"). */
 function bushDrops(id: number): HTMLElement | undefined {
   if (!isGathering(id) && !isTreasureBush(id)) return undefined;
   const fixed = enemyDrops(id, false).fixed.map(([mid]) => itemLink("material", mid));
-  const kinds = bushDropKinds(id);
+  const kinds = bushDropText(id);
   return el("span", { class: "fact-compact" }, ...fixed.flatMap((n, i) => [...(i ? [", "] : []), n]),
-    ...(kinds.length ? [el("span", { class: "muted small" }, ` · ${kinds.join(", ")}`)] : []));
+    ...(kinds ? [el("span", { class: "muted small" }, ` · ${kinds}`)] : []));
 }
 
 // ---------------------------------------------------------------- XP and time (U33)
 /**
- * A row of toggle buttons (one pressed): grade D–S, party size, map ascension. `label` names the group for screen
- * readers; `onPick` gets the picked value.
+ * A named segmented control (dom.ts segmented, R1-D): grade D–S, party size, map ascension. The radios are named after
+ * the group (one XP block per page); `onPick` gets the picked value.
  */
 function toggleGroup(label: string, options: [number, Node | string][], value: number, onPick: (v: number) => void): HTMLElement {
-  const group = el("div", { class: "qxp-toggle", role: "group", "aria-label": label },
-    el("span", { class: "qxp-toggle-label muted small", "aria-hidden": "true" }, label));
-  for (const [v, text] of options) {
-    const b = el("button", { type: "button", "aria-pressed": String(v === value) }, text);
-    b.addEventListener("click", () => onPick(v));
-    group.append(b);
-  }
-  return group;
+  return segField(label, segmented(`qxp-${label.toLowerCase()}`, label,
+    options.map(([v, text]) => ({ value: String(v), label: text })), String(value), (v) => onPick(Number(v))));
 }
 
-/** Redraw a block after a toggle, keeping the keyboard focus on the toggle group that was used. */
+/** Redraw a block after a pick, keeping the keyboard focus on the control that was used. */
 function redraw(box: HTMLElement, draw: () => void): void {
-  const group = (document.activeElement as HTMLElement | null)?.closest(".qxp-toggle")?.getAttribute("aria-label");
+  const name = (document.activeElement as HTMLInputElement | null)?.closest(".seg") ? (document.activeElement as HTMLInputElement).name : "";
   draw();
-  if (group) box.querySelector<HTMLElement>(`.qxp-toggle[aria-label="${group}"] button[aria-pressed="true"]`)?.focus();
+  if (name) box.querySelector<HTMLElement>(`input[name="${name}"]:checked`)?.focus();
 }
 
 const gradeToggle = (grade: number, onPick: (v: number) => void) =>
@@ -364,7 +364,7 @@ function questXpBlock(id: number): HTMLElement {
     const rows = questXpRows(id, { grade, heroes }).map((r) => el("tr", r.rare ? { class: "rare" } : {},
       el("td", {}, el("span", { class: "nowrap" }, `×${r.amount}`, ...(r.rare ? [" ", pill("rare", "t-pink")]
         : r.tier > 1 ? [el("span", { class: "muted small" }, ` · tier ${r.tier}`)] : []))),
-      numCell(xpText(r.xpPerHero)), numCell(timeText(r.seconds), `${fmt.format(r.seconds)} s`), numCell(xpText(r.xpPerMin))));
+      numCell(xpText(r.xpPerHero)), numCell(duration(r.seconds), `${fmt.format(r.seconds)} s`), numCell(xpText(r.xpPerMin))));
     box.replaceChildren(
       el("div", { class: "qxp-controls" }, gradeToggle(grade, (v) => (grade = v, redraw(box, draw))),
         ...(sizes.length > 1 ? [partyToggle(sizes, heroes, (v) => (heroes = v, redraw(box, draw)))] : [el("span", { class: "muted small" }, "Solo quest: 1 hero")])),
@@ -408,7 +408,7 @@ function mapXpBlock(id: number): HTMLElement {
       ...(rows.length ? [xpTable([["Map", false], ["As", false], [statLink("craft", "Craft"), true], [statLink("time", "Run"), true],
         [statLink("xp", "XP per hero / run"), true], ["XP / min", true]], rows.map((r) => el("tr", {},
         el("td", {}, itemLink("map", r.map, undefined, undefined, asc)), el("td", {}, roleCell(r.role, r.perRun)),
-        numCell(timeText(r.craftSeconds)), numCell(timeText(r.runSeconds)), numCell(xpText(r.xpPerHero)), numCell(xpText(r.xpPerMin)))))] : []),
+        numCell(duration(r.craftSeconds)), numCell(duration(r.runSeconds)), numCell(xpText(r.xpPerHero)), numCell(xpText(r.xpPerMin)))))] : []),
       ...(left ? [left] : []), ...(note ? [note] : []));
   };
   draw();

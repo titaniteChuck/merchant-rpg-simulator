@@ -11,7 +11,7 @@
  * Colours: ascension 0 in the page's standard colour, 1 silver, 2 gold (the ascension outline tokens of style.css).
  */
 import { G } from "../sim/data.ts";
-import { ascText, el } from "./dom.ts";
+import { ascText, el, segField, segmented } from "./dom.ts";
 import { group, type LineChart, lineChart } from "./line-chart.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { classes } from "./wiki-data.ts";
@@ -96,17 +96,16 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     })));
 
   // ---- picker: ascension switch + level slider
-  const radios = tiers.map((p) => {
-    const input = el("input", { type: "radio", name: `cls-asc-${id}`, value: String(p - 1) }) as HTMLInputElement;
-    input.addEventListener("change", () => set({ level: sel.level, asc: p - 1 }));
-    return el("label", { class: `asc-opt tier-${p - 1}`, title: `${ascName(p - 1)}: up to level ${tierMaxLevel(p)}` }, input, String(p - 1));
-  });
+  const ascSeg = segmented(`cls-asc-${id}`, "Ascension", tiers.map((p) => ({
+    value: String(p - 1), label: String(p - 1), cls: `asc-opt tier-${p - 1}`, title: `${ascName(p - 1)}: up to level ${tierMaxLevel(p)}`,
+  })), String(sel.asc), (v) => set({ level: sel.level, asc: Number(v) }));
+  const radios = [...ascSeg.querySelectorAll<HTMLInputElement>("input")];
   const slider = el("input", { type: "range", min: "1", step: "1", "aria-label": "Level" }) as HTMLInputElement;
   const out = el("output", { class: "cls-lv-out" });
   slider.addEventListener("input", () => set({ level: Number(slider.value), asc: sel.asc }));
   let lvBox: HTMLElement;
   const picker = el("div", { class: "cls-pick" },
-    ...(tiers.length > 1 ? [el("fieldset", { class: "cls-asc" }, el("legend", { class: "muted small" }, "Ascension"), el("div", { class: "mode-switch" }, ...radios))] : []),
+    ...(tiers.length > 1 ? [segField("Ascension", ascSeg, "cls-asc")] : []),
     lvBox = el("label", { class: "cls-lv" }, el("span", { class: "muted small" }, "Level"), slider, out));
 
   // ---- radar: every ascension at the selected level (each capped at its tier's max), the selected one on top
@@ -172,7 +171,7 @@ export function classStats(id: number, start: Partial<Selection> = {}, onSelect?
     const p = sel.asc + 1;
     for (const g of GROWTH) cardVals.get(g[1])!.textContent = dec.format(statAt(c, g, p, sel.level));
     cardHead.replaceChildren(el("strong", {}, `Level ${sel.level}`), `, ${ascText(sel.asc)} · no gear, passive or attribute points`);
-    radios.forEach((r, k) => ((r.querySelector("input") as HTMLInputElement).checked = tiers[k] === p));
+    radios.forEach((r, k) => (r.checked = tiers[k] === p));
     lvBox.className = `cls-lv tier-${sel.asc}`;
     slider.max = String(tierMaxLevel(p));
     slider.value = String(sel.level);

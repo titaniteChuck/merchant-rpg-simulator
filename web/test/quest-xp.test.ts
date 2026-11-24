@@ -6,9 +6,10 @@ import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
 import type { FightEval } from "../src/tools/combat.ts";
 import { mapRunStats, questStats } from "../src/tools/quest-stats.ts";
+import { duration } from "../src/ui/dom.ts";
 import { setShowAll } from "../src/ui/expansion-state.ts";
 import {
-  fightBattleSeconds, mapResultXp, mapXpRows, partySizes, questResultXp, questSizes, questXpRows, timeText, xpText,
+  fightBattleSeconds, mapResultXp, mapXpRows, partySizes, questResultXp, questSizes, questXpRows, xpText,
 } from "../src/ui/quest-xp.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -101,7 +102,7 @@ test("battle results: simulated fight time, quest time and XP / min", () => {
 });
 
 test("time and XP text", () => {
-  assert.deepEqual([45, 100, 300, 500, 765, 7200, 10800 + 600, 90000].map(timeText),
+  assert.deepEqual([45, 100, 300, 500, 765, 7200, 10800 + 600, 90000].map((s) => duration(s)),
     ["45 s", "1 min 40 s", "5 min", "8 min 20 s", "13 min", "2 h", "3 h 10 min", "1 d 1 h"]);
   assert.deepEqual([240, 30030.4, 2.345, 0].map(xpText), ["240", "30,030", "2.3", "0"]);
 });

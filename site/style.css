@@ -511,10 +511,8 @@ span.wl.enemy-link { border-bottom: 0; }
 .cls-radar, .cls-growth { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; min-width: 0; }
 .cls-radar .radar-fig { max-width: 280px; }
 .cls-radar figcaption { text-align: center; margin-top: 4px; }
-.cls-asc { border: 0; margin: 0 0 6px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.cls-asc legend { float: left; padding: 0; margin-right: 10px; line-height: 38px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 0.72rem; }
-.cls-asc .mode-switch { box-shadow: none; }
-.cls-asc .mode-switch label { padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.cls-asc { margin: 0 0 6px; justify-content: center; }
+.cls-asc .seg-opt { padding: 4px 12px; font-variant-numeric: tabular-nums; }
 .cls-growth h3 { margin: 0 0 2px; font-size: 1rem; }
 .lc-legend { margin: 0 0 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .lc-key { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--fg); }
@@ -623,7 +621,7 @@ a.secondary-link:hover { text-decoration: underline; }
 .col-title { margin: 0 0 10px; font-size: 1rem; }
 .opp-col { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
 @media (max-width: 960px) { .opp-col { position: static; } }
-.opp-col .mode-switch { align-self: flex-start; box-shadow: none; }
+.opp-col .seg { align-self: flex-start; }
 .opp-controls { display: flex; flex-direction: column; gap: 8px; }
 .opp-controls > select { width: 100%; }
 .opp-controls .toolbar { margin: 0; }
@@ -831,7 +829,7 @@ h2, h3 { color: var(--fg); }
 /* Standard (0) in the skill blue: the U16 accent is gold, too close to the gold ascension. */
 :root, :root[data-theme="light"] { --v3-asc0: var(--skill); --v3-asc1: var(--silver-lo); --v3-asc2: var(--gold-mid); }
 :root[data-theme="dark"] { --v3-asc1: var(--silver-mid); --v3-asc2: var(--gold-mid); }
-:root[data-theme="dark"] .cls-v3 .mode-switch .asc-opt.tier-0:has(input:checked) { color: #14161f; }
+:root[data-theme="dark"] .cls-v3 .seg .asc-opt.tier-0:has(input:checked) { color: #14161f; }
 .cls-v3 .tier-0 { --lc: var(--v3-asc0); } .cls-v3 .tier-1 { --lc: var(--v3-asc1); } .cls-v3 .tier-2 { --lc: var(--v3-asc2); }
 .cls-v3 .lc-line.tier-2 { stroke-width: 2.75; }
 .lc-mark { fill: var(--card); stroke: var(--lc); stroke-width: 2.25; }
@@ -847,10 +845,10 @@ h2, h3 { color: var(--fg); }
 .cls-lv { display: flex; align-items: center; gap: 10px; flex: 1 1 240px; min-width: 0; }
 .cls-lv input[type="range"] { flex: 1; min-width: 0; accent-color: var(--lc, var(--accent)); }
 .cls-lv-out { min-width: 4.5em; font-weight: 750; font-variant-numeric: tabular-nums; }
-.cls-v3 .mode-switch .asc-opt:has(input:checked) { background: var(--lc); color: #fff; }
-.cls-v3 .mode-switch .asc-opt.tier-1:has(input:checked), .cls-v3 .mode-switch .asc-opt.tier-2:has(input:checked) { color: #14161f; }
-.cls-v3 .mode-switch .asc-opt.tier-1:has(input:checked) { background: linear-gradient(135deg, var(--silver-hi), var(--silver-mid) 45%, var(--silver-lo)); }
-.cls-v3 .mode-switch .asc-opt.tier-2:has(input:checked) { background: linear-gradient(135deg, var(--gold-hi), var(--gold-mid) 45%, var(--gold-lo)); }
+.cls-v3 .seg .asc-opt:has(input:checked) { background: var(--lc); color: #fff; }
+.cls-v3 .seg .asc-opt.tier-1:has(input:checked), .cls-v3 .seg .asc-opt.tier-2:has(input:checked) { color: #14161f; }
+.cls-v3 .seg .asc-opt.tier-1:has(input:checked) { background: linear-gradient(135deg, var(--silver-hi), var(--silver-mid) 45%, var(--silver-lo)); }
+.cls-v3 .seg .asc-opt.tier-2:has(input:checked) { background: linear-gradient(135deg, var(--gold-hi), var(--gold-mid) 45%, var(--gold-lo)); }
 .cls-cards-wrap { margin-top: 18px; }
 .cls-cards-head { margin: 0 0 -10px; }
 .cls-cards { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
@@ -1269,10 +1267,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .xp-section .xp-lists { display: flex; flex-direction: column; gap: 6px; }
 .xp-list summary { cursor: pointer; font-weight: 650; padding: 4px 0; }
 .xp-list ul { margin: 6px 0 10px; }
-.xp-controls { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; }
-.xp-controls p { margin: 0 0 8px; }
-.xp-controls ul { margin: 0 0 8px; }
-.xp-switch .xp-badge { margin-left: 0; }
+.xp-controls { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 0 0 12px; }
 .xp-hidden-page { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; }
 .xp-hidden-page .toolbar { margin: 8px 0 0; }
 .xp-hidden-page .xp-badge { margin-left: 0; }
@@ -1306,8 +1301,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .ref-kind { padding: 12px 16px; border-radius: 10px; background: var(--card); border: 1px solid var(--border); border-top: 4px solid var(--trim); min-width: 0; }
 .ref-body .ref-kind h3 { margin: 0 0 6px; font-size: 1.02rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ref-kind ul { margin: 6px 0; }
-.ref-kind-tag { font-size: 0.7rem; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; padding: 1px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--fg); }
 .ref-kind-more { margin: 8px 0 0; font-size: 0.9rem; }
 @media (max-width: 760px) {
   .ref-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
@@ -1414,20 +1407,13 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .help-more { margin-top: 2px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 0.8rem; }
 .help-more a.ref-link { color: var(--accent); font-weight: 600; border-bottom-color: transparent; }
 .help-more a.ref-link:hover, .help-more a.ref-link:focus-visible { border-bottom: 1px solid currentColor; }
-.facts dt a.ref-link, .cls-cards dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, legend a.ref-link { color: inherit; }
+.facts dt a.ref-link, .cls-cards dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, .seg-label a.ref-link { color: inherit; }
 /* end wiki cross-links */
 /* quest xp */
 /* U33. Enemy pages' "XP and time" section (wiki-enemies.ts: questXpBlock, mapXpBlock): grade / party / ascension
    toggles, then a small table; the battle results' XP tiles reuse .tiles and add only the links line (.qxp-refs). */
 .qxp-controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 4px 0 10px; }
-.qxp-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.qxp-toggle-label { margin-right: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 0.72rem; }
-.qxp-toggle button { padding: 3px 9px; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; background: var(--card-2); color: var(--muted); }
-.qxp-toggle button:hover { border-color: var(--accent); }
-.qxp-toggle button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg);
-  background: color-mix(in srgb, var(--accent) 18%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent); }
-.qxp-toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.qxp-toggle button .grade { min-width: 18px; height: 18px; }
+.qxp-controls .seg-opt .grade { min-width: 18px; height: 18px; }
 .qxp-wrap { max-width: 720px; }
 .qxp-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 .qxp-table th, .qxp-table td { padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); text-align: left; }
@@ -1475,9 +1461,9 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   background: color-mix(in srgb, #f59e0b 12%, transparent); }
 /* The 5-turn plan: turns down, actors across (timeline.ts partyPlan). */
 .pg-scroll { overflow-x: auto; padding-bottom: 2px; }
-.pg-grid { display: grid; gap: 3px; min-width: calc(26px + var(--pg-cols) * 64px); }
-.pg-row { display: grid; gap: 3px; grid-template-columns: 24px repeat(var(--pg-cols), minmax(0, 1fr)); }
-.pg-turn { align-self: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.pg-grid { display: grid; gap: 3px; min-width: calc(40px + var(--pg-cols) * 64px); }
+.pg-row { display: grid; gap: 3px; grid-template-columns: 36px repeat(var(--pg-cols), minmax(0, 1fr)); }
+.pg-turn { align-self: center; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .pg-heads .pg-turn { align-self: end; }
 .pg-head { display: flex; flex-direction: column; min-width: 0; font-size: 0.72rem; padding: 0 0 2px 5px; border-left: 3px solid var(--c, var(--border)); }
 .pg-head.enemy { border-left-color: #ec4899; }
@@ -1496,7 +1482,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .pg-mark.malus { background: color-mix(in srgb, var(--good) 22%, transparent); }
 .plan-col .tl-note { margin-top: 6px; }
 @media (max-width: 600px) {
-  .pg-grid { min-width: calc(26px + var(--pg-cols) * 72px); }
+  .pg-grid { min-width: calc(40px + var(--pg-cols) * 72px); }
 }
 /* end battle v4 */
 /* menus + drawer */
@@ -1634,8 +1620,12 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .qxp-wrap { max-width: 100%; width: max-content; }
 .qxp-table th.num, .qxp-table td.num { text-align: center; }
 .qxp-left { margin: 6px 0 0; }
-/* F16: a map page's "Essence per run" card wraps its names inside the card. */
-.facts .ess-fact .nowrap { white-space: normal; }
+/* F16: a map page's "Essence per run" card wraps its names inside the card. R1-D: one essence per line, and the
+   expansion icons wrap with the name instead of running past the card's edge. */
+.facts .ess-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.facts .ess-fact .nowrap { white-space: normal; min-width: 0; }
+.facts .ess-fact .xp-badge { display: inline; white-space: normal; }
+.facts .ess-fact .xp-ico { display: inline-block; vertical-align: -0.12em; }
 /* F19: compact bush facts ("Quest board · 1st battle", the drops and their type). */
 .facts .fact-compact .muted { font-weight: 400; }
 /* F15: a wiki list whose every row is hidden expansion content: one empty state. */
@@ -1662,33 +1652,33 @@ thead th .grade, thead th .xp-badge { letter-spacing: 0; text-transform: none; }
 thead th abbr { text-decoration: none; }
 
 /* F27: ONE segmented control (one choice out of a few) and ONE on / off chip.
-   Segmented: .seg > .seg-opt (radio in a label, dom.ts segmented()); the older .mode-switch (labels with radios) and
-   .qxp-toggle (buttons with aria-pressed) share the look: joined options, the picked one gold-edged on a gold tint. */
+   Segmented: .seg > .seg-opt (radio in a label, dom.ts segmented()), named by .seg-field / .seg-label (segField());
+   the frozen Profit page's static .mode-switch shares the look: joined options, the picked one gold-edged on a gold tint. */
+.seg-field { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.seg-label { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 0.72rem; }
 .seg, .mode-switch { display: inline-flex; flex-wrap: nowrap; align-items: stretch; gap: 0; padding: 0; border: 0; border-radius: 0;
   background: none; box-shadow: none; max-width: 100%; }
-.seg-opt, .mode-switch > label, .qxp-toggle > button {
+.seg-opt, .mode-switch > label {
   position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 0 0 -1px; padding: 5px 12px;
   border: 1px solid var(--border); border-radius: 0; background: var(--card-2); color: var(--muted);
   font: inherit; font-size: 0.88rem; font-weight: 650; line-height: 1.3; cursor: pointer; white-space: nowrap; }
-/* One row: in a narrow box (the battle opponent column, a phone) an option's text wraps inside it, the row never breaks. */
+/* .mode-switch: one row, an option's text wraps inside it in a narrow box. */
 .seg-opt, .mode-switch > label { flex: 0 1 auto; min-width: 0; white-space: normal; text-align: center; justify-content: center; }
 /* A long .seg (six kinds) may still wrap on a phone, as whole options. */
 .seg { flex-wrap: wrap; row-gap: 4px; }
 .seg-opt { white-space: nowrap; }
-.seg-opt:first-of-type, .mode-switch > label:first-of-type, .qxp-toggle > button:first-of-type { margin-left: 0; border-radius: 9px 0 0 9px; }
-.seg-opt:last-of-type, .mode-switch > label:last-of-type, .qxp-toggle > button:last-of-type { border-radius: 0 9px 9px 0; }
-.seg-opt:only-of-type, .mode-switch > label:only-of-type, .qxp-toggle > button:only-of-type { border-radius: 9px; }
-.seg-opt:hover, .mode-switch > label:hover, .qxp-toggle > button:hover { color: var(--fg); z-index: 1; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.seg-opt:first-of-type, .mode-switch > label:first-of-type { margin-left: 0; border-radius: 9px 0 0 9px; }
+.seg-opt:last-of-type, .mode-switch > label:last-of-type { border-radius: 0 9px 9px 0; }
+.seg-opt:only-of-type, .mode-switch > label:only-of-type { border-radius: 9px; }
+.seg-opt:hover, .mode-switch > label:hover { color: var(--fg); z-index: 1; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
 .seg-opt input, .mode-switch input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-.seg-opt:has(input:checked), .mode-switch > label:has(input:checked), .qxp-toggle > button[aria-pressed="true"] {
+.seg-opt:has(input:checked), .mode-switch > label:has(input:checked) {
   z-index: 2; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
-.seg-opt:has(input:focus-visible), .mode-switch > label:has(input:focus-visible), .qxp-toggle > button:focus-visible {
+.seg-opt:has(input:focus-visible), .mode-switch > label:has(input:focus-visible) {
   z-index: 3; outline: 2px solid var(--accent); outline-offset: 2px; }
-.qxp-toggle { gap: 0; }
-.qxp-toggle .qxp-toggle-label { margin-right: 8px; }
 /* The class page's ascension picker keeps its tier colour (standard / silver / gold) as the picked option's edge. */
-.cls-v3 .mode-switch .asc-opt:has(input:checked),
-:root[data-theme="dark"] .cls-v3 .mode-switch .asc-opt.tier-0:has(input:checked) {
+.cls-v3 .seg .asc-opt:has(input:checked),
+:root[data-theme="dark"] .cls-v3 .seg .asc-opt.tier-0:has(input:checked) {
   color: var(--fg); border-color: var(--lc); background: color-mix(in srgb, var(--lc) 24%, var(--card)); box-shadow: inset 0 -3px 0 var(--lc); }
 /* On / off chip: a pill, gold edge and tint when on. */
 .chip-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border: 1px solid var(--border); border-radius: 999px;

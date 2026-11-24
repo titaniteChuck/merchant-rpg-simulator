@@ -17,7 +17,7 @@ import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, el, expansionMark, fmt, fmt1, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
+import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tile, withAsc } from "./dom.ts";
 import { isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember, type SearchKey } from "./battle-search.ts";
@@ -29,7 +29,7 @@ import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { ENEMY_STATS } from "./wiki-enemies.ts";
-import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, timeText, xpText } from "./quest-xp.ts";
+import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
@@ -550,7 +550,7 @@ function renderTarget(): void {
                 + "Rooms and time are the map's own, before its prefix and suffix.", "map runs")))),
         el("dl", { class: "facts" },
           ...fact("Rooms", roomsFact(id, g)),
-          ...fact("Time", d.baseMapTime ? `${fmt.format(d.baseMapTime / 60)} min` : "?"),
+          ...fact("Time", d.baseMapTime ? duration(d.baseMapTime) : "?"),
           ...fact("Enemy power", `×${d.enemyMod ?? 1}`),
           ...fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
             ? el("span", {}, ...bosses.flatMap((b, k) => [...(k ? [", "] : []), enemyLink({ id: b })])) : "none"),
@@ -862,7 +862,7 @@ function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
   const won = ev.win > 0;
   return [
     tile("XP per hero", won ? xpText(x.xpPerHero) : "—", won ? `each hero alive after a win, ${c.heroes} in the party` : "no fight won", { icon: "🎓", tone: "t-violet" }),
-    tile("Quest time", timeText(x.seconds), `fight ${timeText(x.battleSeconds)} + quest ${timeText(x.questSeconds)}, ${at}`, { icon: "⌛", tone: "t-blue" }),
+    tile("Quest time", duration(x.seconds), `fight ${duration(x.battleSeconds)} + quest ${duration(x.questSeconds)}, ${at}`, { icon: "⌛", tone: "t-blue" }),
     tile("XP / min", won ? xpText(x.xpPerMin) : "—", won ? "per hero, over the quest time" : "no fight won", { icon: "📈", tone: "t-green" }),
   ];
 }
@@ -876,8 +876,8 @@ function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
   const xpHint = x.xpPerHero === null ? "no room won"
     : all ? `per run, every room won, ${c.heroes} in the party` : `per run, the rooms won (${pct(x.cleared)}), ${c.heroes} in the party`;
   return [
-    tile("Craft time", timeText(x.craftSeconds), "the map, and the lower maps its recipe uses", { icon: "🔨", tone: "t-slate" }),
-    tile("Run time", timeText(x.runSeconds), "per run, simulated", { icon: "⏱️", tone: "t-blue" }),
+    tile("Craft time", duration(x.craftSeconds), "the map, and the lower maps its recipe uses", { icon: "🔨", tone: "t-slate" }),
+    tile("Run time", duration(x.runSeconds), "per run, simulated", { icon: "⏱️", tone: "t-blue" }),
     tile("XP per hero", x.xpPerHero === null ? "—" : xpText(x.xpPerHero), xpHint, { icon: "🎓", tone: "t-violet" }),
     tile("XP / min", x.xpPerMin === null ? "—" : xpText(x.xpPerMin), x.xpPerMin === null ? "no room won" : "per hero, over craft + run", { icon: "📈", tone: "t-green" }),
   ];
@@ -927,7 +927,7 @@ function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): 
         "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."),
       tile("Grade when won", ev.win ? gradeOf(ev.grade) : "–", ev.win ? `average ${fmt1.format(ev.grade)} (D = 1 … S = 5)` : undefined, { icon: "⭐", tone: "t-gold" }),
       ...(ctx ? [] : [tile("Time", `${fmt1.format(ev.time_h)} h`, "per run", { icon: "⏱️", tone: "t-blue" })]),
-      tile("Loot value", `${fmt.format(ev.loot_value)} g`, "base sell value per run", { icon: "💰", tone: "t-orange" }),
+      tile("Loot value", gold(ev.loot_value), "base sell value per run", { icon: "💰", tone: "t-orange" }),
       tile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
     ),
     ...xpRow(mapXpTiles(ev, ctx), "Before XP bonuses:", true),

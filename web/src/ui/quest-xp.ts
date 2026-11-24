@@ -150,20 +150,6 @@ export function mapResultXp(ev: { time_h: number; cleared?: number }, c: MapRunC
   };
 }
 
-/** "45 s", "1 min 40 s" (under 10 min), "12 min", "1 h 57 min", "2 d 3 h". */
-export function timeText(sec: number): string {
-  if (!Number.isFinite(sec)) return "?";
-  const s = Math.round(sec);
-  if (s < 60) return `${s} s`;
-  if (s < 600) return s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60), r = m % 60;
-  if (h < 24) return r ? `${h} h ${r} min` : `${h} h`;
-  const d = Math.floor(h / 24), rh = h % 24;
-  return rh ? `${d} d ${rh} h` : `${d} d`;
-}
-
 /** XP figures: whole numbers, one decimal under 10 (XP per minute of a long quest). */
 export function xpText(x: number): string {
   if (!Number.isFinite(x)) return "?";

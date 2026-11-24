@@ -17,7 +17,7 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
-import { $, type Column, el, expansionBadge, fmt, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
+import { $, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table, withAsc } from "./dom.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, tiersOf } from "./wiki-classes.ts";
@@ -32,11 +32,11 @@ import { expansionsPage } from "./wiki-expansions.ts";
 import { type ContentKind, type Expansion, isVisible, needsOf, partitionVisible, setShowAll, subscribe, syncWithStoredSave } from "./expansion-state.ts";
 import { hiddenBody, hiddenNote, mountExpansionChip } from "./expansion-menu.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
-import { className, crafterName as crafterOf, enemyName, itemName, passiveName, searchText, skillName } from "./names.ts";
+import { className, crafterName as crafterOf, enemyName, ITEM_TYPE_LABELS, ITEM_TYPE_PLURALS, itemName, itemTypeText, passiveName, searchText, skillName, subtypeLabel } from "./names.ts";
 import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
-  isEnemy, item, itemLink, items, itemText, itemTypeLabel, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
-  recipe, regionChip, regionOf, regionSortKey, regionText, SLOT_NAMES, skillAp, skillDesc, skillLink, skillNames, statText,
+  isEnemy, item, itemLink, items, itemText, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
+  recipe, regionChip, regionOf, regionSortKey, regionText, skillAp, skillDesc, skillLink, skillNames, statText,
   treasureBushOf, usedInRecipes, enemyLevelText, isGathering, mapFlavour,
 } from "./wiki-data.ts";
 
@@ -154,7 +154,7 @@ function home(): HTMLElement {
     ...skillNames().map((n) => ({ label: searchText(skillName(n), n), kind: "Skill", node: () => skillLink(n) })),
     ...passiveNames().map((n) => ({ label: searchText(passiveName(n), n), kind: "Passive", node: () => passiveLink(n) })),
     ...(["equipment", "consumable", "material", "map"] as const).flatMap((t) =>
-      visibleItems(t).map(([id, it]) => ({ label: searchText(itemName(t, id), it.name), kind: itemTypeLabel[t], node: () => itemLink(t, id) }))),
+      visibleItems(t).map(([id, it]) => ({ label: searchText(itemName(t, id), it.name), kind: ITEM_TYPE_LABELS[t], node: () => itemLink(t, id) }))),
     ...visibleClasses().map(([id, c]) => ({ label: searchText(className(id), c.name), kind: "Class", node: () => classLink(id) })),
     ...visibleEnemyIds().flatMap((id) => [false, ...(hasRare(id) ? [true] : [])].map((rare) => {
       const en = rare ? quest(id).nameB : quest(id).name;
@@ -296,7 +296,7 @@ function itemsPage(type: string): HTMLElement {
   const rows: Row[] = shown.map(([id, it]): Row => {
     const reg = regionOf(type as "equipment", id);
     return {
-      id, name: itemName(type, id) ?? it.name, en: it.name, kind: eq ? SLOT_NAMES[it.itemSlot] ?? "" : it.subType ?? "", sub: it.subType ?? "",
+      id, name: itemName(type, id) ?? it.name, en: it.name, kind: eq ? slotName(it.itemSlot) ?? "" : itemTypeText(type, it.subType), sub: subtypeLabel(it.subType),
       level: it.itemLevel ?? null, rarity: it.rarity ?? null, value: safeSell(type, id, 0),
       made: it.crafterID ? crafterName(it.crafterID) : "drop", bonus: eq ? bonusLines(it).join(", ") : "",
       summary: eq ? it.subType ?? "" : itemText(type, id),
@@ -315,7 +315,7 @@ function itemsPage(type: string): HTMLElement {
     { key: "value", label: "Sell value", num: true, render: (r) => (r.value === null ? "–" : sellNode(type, Number(r.id), Number(r.value))) },
     ...(!eq ? [{ key: "summary", label: "Description" }] : []),
   ];
-  return listPage(eq ? "Equipment" : `${itemTypeLabel[type]}s`, rows, cols,
+  return listPage(ITEM_TYPE_PLURALS[type], rows, cols,
     (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length);
 }
 
@@ -378,15 +378,12 @@ function gradeRows(id: number, asc: number): HTMLElement {
 function gradeTable(id: number): HTMLElement {
   const holder = el("div");
   // U28: ascension 1-2 is Scribe content (and level 51+ items need the Frozen essences): only the visible ones.
-  const radios = [0, 1, 2].filter((a) => !a || isVisible("equipment", id, { ascension: a })).map((a) => {
-    const input = el("input", { type: "radio", name: "item-asc", value: String(a) }) as HTMLInputElement;
-    input.checked = a === 0;
-    input.addEventListener("change", () => holder.replaceChildren(gradeRows(id, a)));
-    return el("label", { class: `asc-opt tier-${a}`, title: `Ascension ${a}` }, input, String(a));
-  });
+  const ascs = [0, 1, 2].filter((a) => !a || isVisible("equipment", id, { ascension: a }));
+  const seg = segmented("item-asc", "Ascension", ascs.map((a) => ({ value: String(a), label: String(a), cls: `asc-opt tier-${a}`, title: `Ascension ${a}` })),
+    "0", (v) => holder.replaceChildren(gradeRows(id, Number(v))));
   holder.replaceChildren(gradeRows(id, 0));
   return el("div", { class: "cls-v3" },
-    ...(radios.length > 1 ? [el("fieldset", { class: "cls-asc item-asc" }, el("legend", { class: "muted small" }, statLink("essence", "Ascension")), el("div", { class: "mode-switch" }, ...radios))] : []),
+    ...(ascs.length > 1 ? [segField(statLink("essence", "Ascension"), seg, "cls-asc item-asc")] : []),
     holder);
 }
 const GRADE_HELP = "Freshly crafted by a level-60 crafter, no prefix or suffix. Bonus stats roll in the range shown. Trinkets carry bonus stats only.";
@@ -405,17 +402,17 @@ function itemPage(type: string, id: number): HTMLElement {
   if (!it) return notFound(`${type} #${id}`);
   const listHref = `#/items/${type}`;
   if (!isVisible(type as ContentKind, id)) {
-    return hiddenPage([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name, "", needsOf(type as ContentKind, id));
+    return hiddenPage([ITEM_TYPE_PLURALS[type], listHref], itemName(type, id) ?? it.name, "", needsOf(type as ContentKind, id));
   }
   // R1 F18: no lead line when the Effect card says the same ("Restores 40 health" beside "+40 HP")
   const effect = type === "consumable" && Object.keys(it.stat ?? {}).length > 0;
   const desc = effect ? "" : itemText(type, id);
   const kids: (Node | string)[] = [
-    crumbs([itemTypeLabel[type] === "Equipment" ? "Equipment" : `${itemTypeLabel[type]}s`, listHref], itemName(type, id) ?? it.name),
+    crumbs([ITEM_TYPE_PLURALS[type], listHref], itemName(type, id) ?? it.name),
     el("h1", {}, itemLink(type, id)),
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
     facts([
-      ["Type", type === "equipment" ? `${SLOT_NAMES[it.itemSlot] ?? ""} · ${it.subType ?? ""}` : it.subType ?? itemTypeLabel[type]],
+      ["Type", itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined)],
       ["Level", it.itemLevel], ["Region", regionChip(regionOf(type as "equipment", id), true)], ["Rarity", rarityChip(it.rarity)], ["Made by", it.crafterID ? `${crafterName(it.crafterID)} (level ${it.itemLevel ?? 0})` : undefined],
       [statLink("sell", "Sell value"), [0, 1, 2].map((a) => safeSell(type, id, a)).every((v) => v === null) ? undefined
         : el("span", { class: "stack" }, ...[0, 1, 2].filter((a) => (type !== "material" || a === 0) && (!a || isVisible(type as ContentKind, id, { ascension: a }))).map((a) => {
@@ -447,11 +444,13 @@ function itemPage(type: string, id: number): HTMLElement {
 }
 
 // ---------------------------------------------------------------- maps
-function essenceOf(m: Any): (Node | string)[] {
+/** "50 × Forest Essence" per essence of a map run. */
+function essenceParts(m: Any): HTMLElement[] {
   const br = seq<number>(m.baseReward ?? {});
   const half = Math.floor(br.length / 2);
-  return joinNodes(Array.from({ length: half }, (_, i) => el("span", { class: "nowrap" }, `${br[i + half]} × `, itemLink("material", br[i]))));
+  return Array.from({ length: half }, (_, i) => el("span", { class: "nowrap" }, `${br[i + half]} × `, itemLink("material", br[i])));
 }
+const essenceOf = (m: Any): (Node | string)[] => joinNodes(essenceParts(m));
 
 function mapsPage(): HTMLElement {
   const all = items("map");
@@ -466,7 +465,7 @@ function mapsPage(): HTMLElement {
   return listPage("Maps", rows, [
     { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) },
     { key: "region", label: "Region", render: (r) => regionChip(regionOf("map", Number(r.id))) }, { key: "level", label: "Level", num: true },
-    { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Minutes", num: true }, { key: "mod", label: "Enemy ×", num: true },
+    { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Base time", num: true, show: (v) => (typeof v === "number" ? duration(v * 60) : "") }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
     { key: "essence", label: "Essence per run", render: (r) => el("span", {}, ...essenceOf(item("map", Number(r.id)))) },
   ], (r) => `${searchText(String(r.name), String(r.en))} ${r.boss} ${r.regionName}`, regionRowClass, all.length - rows.length);
@@ -484,11 +483,11 @@ function mapPage(id: number): HTMLElement {
     // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Boss table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
     facts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(m.rarity)], ["Rooms", m.baseEnemyAmount],
-      ["Base time", m.baseMapTime ? `${fmt.format(m.baseMapTime / 60)} min` : undefined],
+      ["Base time", m.baseMapTime ? duration(m.baseMapTime) : undefined],
       [statLink("map-essence", "Enemy modifier"), `×${mod}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
       // R1 F16: the essence names wrap inside the card ("500 × Essence de la forêt" in French).
-      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essenceOf(m))],
-      [statLink("sell", "Sell value"), safeSell("map", id, 0) !== null ? `${fmt.format(safeSell("map", id, 0)!)} g` : undefined]]),
+      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essenceParts(m))],
+      [statLink("sell", "Sell value"), safeSell("map", id, 0) !== null ? gold(safeSell("map", id, 0)) : undefined]]),
     sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, bosses.length ? enemyTable(bosses, mod) : none("No boss.")), modHelp, [statLink("map-essence")]),
     sectionHelp(section("Room enemies", enemyTable(mapEnemies(m), mod)), modHelp, [statLink("map-essence")]),
     // U24: the Treasure Bush of the map's level band (added to a room at run time, so not in the map's own lists)

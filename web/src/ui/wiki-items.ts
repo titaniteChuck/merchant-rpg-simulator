@@ -5,7 +5,7 @@
 import { G } from "../sim/data.ts";
 import { D, getBonusPrestige, getStatRange } from "../sim/defaults.ts";
 import { seq } from "../sim/lua.ts";
-import { duration, el, fmt } from "./dom.ts";
+import { el, fmt, gold } from "./dom.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -200,16 +200,6 @@ export function recipeTree(type: string, id: number, amount = 1, seen: Set<strin
   };
 }
 
-/**
- * "15 s", "1 min 30 s", "12 min", "1 h 57 min", "2 d 3 h". R1 F07: the site's duration (dom.ts `duration`, R1-C), except
- * that under 10 minutes the seconds stay.
- */
-export function durationText(sec: number): string {
-  const s = Math.max(0, Math.round(sec));
-  if (s >= 60 && s < 600 && s % 60) return `${Math.floor(s / 60)} min ${s % 60} s`;
-  return duration(s);
-}
-
 // ---------------------------------------------------------------- selling
 /**
  * R1 F43. The game's sell value of a stackable (obj.Item getSellValue) is round((sell[1] + sell[2]) / 2) × amount, the
@@ -236,6 +226,6 @@ export function sellTip(type: string, id: number, asc = 0): string {
 export function sellNode(type: string, id: number, value: number, asc = 0): HTMLElement {
   const r = sellRange(type, id, asc);
   const tip = sellTip(type, id, asc);
-  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, `${fmt.format(value)} g`,
+  return el("span", { class: "nowrap sell-val", ...(tip ? { title: tip } : {}) }, gold(value),
     ...(r && tip ? [el("span", { class: "sell-range" }, `${fmt.format(r[0])}–${fmt.format(r[1])}`)] : []));
 }

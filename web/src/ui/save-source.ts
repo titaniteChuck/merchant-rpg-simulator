@@ -1,7 +1,7 @@
 /**
  * Where a page gets the save from: the one already opened on any page of the site (kept in this browser by
  * save-store.ts), or a file the visitor picks or drops. Before a save is loaded the page shows its big drop zone.
- * Once one is loaded, the drop zone and the save help (elements marked data-save-help) are hidden and a small
+ * Once one is loaded, the drop zone and the save help (saveHelp) are hidden and a small
  * "📜 PlayerData.txt ▾" button in the top bar takes over: its menu says when the save was opened and offers
  * Reload (same file, no dialog when the browser kept its handle), Choose another file and Forget. Dropping a file
  * anywhere on the page still works.
@@ -17,7 +17,7 @@
  * R1: the save menu is three groups split by separators (Save file; Expansions; the page's own entries such as the
  * save viewer's "Export (CSV)", folded under their title) and never taller than the window (it scrolls inside). The
  * "Where is my save file?" help is one component (saveHelp), put under the drop zone of every page that calls
- * initSaveSource; a help still in a page's HTML (data-save-help) is replaced by it.
+ * initSaveSource (the pages' HTML has none of its own).
  */
 import { el } from "./dom.ts";
 import { expansionMenuSection, fitMenu, menuKeys, mountExpansionChip, unmountExpansionChip } from "./expansion-menu.ts";
@@ -58,13 +58,12 @@ export interface SaveSourceOptions {
 }
 
 /**
- * THE "Where is my save file?" help (R1 F38): one folded section, the same on every page with a drop zone. Marked
- * data-save-help, so it hides once a save is loaded. initSaveSource puts it under the drop zone and replaces any
- * help the page's HTML still carries.
+ * THE "Where is my save file?" help (R1 F38): one folded section, the same on every page with a drop zone.
+ * initSaveSource puts it under the drop zone and hides it once a save is loaded.
  */
 export function saveHelp(): HTMLElement {
   const code = (t: string) => el("code", {}, t);
-  return el("details", { class: "help save-help", "data-save-help": "" },
+  return el("details", { class: "help save-help" },
     el("summary", {}, "Where is my save file?"),
     el("ul", {},
       el("li", {}, el("strong", {}, "Windows: "), code("%APPDATA%\\Retora\\Merchant\\Documents"),
@@ -84,9 +83,8 @@ function age(ms: number): string {
 
 export function initSaveSource(o: SaveSourceOptions): void {
   const showError = (msg: string) => o.status.replaceChildren(el("p", { class: "error", role: "alert" }, msg));
-  // The drop zone, with the <details> that wraps it on some pages, and the page's save help.
+  // The drop zone, with the <details> that wraps it on some pages.
   const dropBlock = (o.drop.closest("details") as HTMLElement | null) ?? o.drop;
-  const helps = () => [...document.querySelectorAll<HTMLElement>("[data-save-help]")];
   let chip: HTMLElement | null = null;
 
   // "Try with an example save", right under the drop zone (outside its <label>, so it doesn't open the file dialog).
@@ -96,14 +94,14 @@ export function initSaveSource(o: SaveSourceOptions): void {
     el("span", { class: "muted small" }, "No save at hand? Use an anonymised one from a real game."));
   o.drop.after(exampleRow);
   exampleBtn.addEventListener("click", () => useExample());
-  // The one save help, under the example row; a help the page still has in its HTML gives way to it (R1 F38).
-  document.querySelectorAll("[data-save-help]").forEach((h) => h.remove());
-  exampleRow.after(saveHelp());
+  // The one save help, under the example row (R1 F38).
+  const help = saveHelp();
+  exampleRow.after(help);
 
   const setLoaded = (loaded: boolean) => {
     dropBlock.hidden = loaded;
     exampleRow.hidden = loaded;
-    for (const h of helps()) h.hidden = loaded;
+    help.hidden = loaded;
     if (!loaded) {
       chip?.remove();
       chip = null;

@@ -44,6 +44,8 @@ export function itemName(type: string, id: number | string): string | undefined 
 // ---------------------------------------------------------------- item types (R1 F30)
 /** The four item kinds as the site names them. */
 export const ITEM_TYPE_LABELS: Record<string, string> = { equipment: "Equipment", consumable: "Consumable", material: "Material", map: "Map" };
+/** The same as list and menu titles. */
+export const ITEM_TYPE_PLURALS: Record<string, string> = { equipment: "Equipment", consumable: "Consumables", material: "Materials", map: "Maps" };
 
 /**
  * An item subtype as the site shows it: the game's subType with a capital first letter ("essence" → "Essence",
@@ -57,11 +59,12 @@ export function subtypeLabel(sub: unknown): string {
 }
 
 /**
- * The type line of an item: "Head · Hood" for equipment (its slot, then subtype), "Essence", "Health" … for the rest;
- * the kind ("Material") when there is no subtype. `slot` is the slot's name, from the caller (dom.ts GEAR_SLOT_NAMES).
+ * The type line of an item: "Head · Hood" for equipment (its slot, then subtype; a trinket of kind Trinket says
+ * "Trinket" once), "Essence", "Health" … for the rest; the kind ("Material") when there is no subtype. `slot` is the
+ * slot's name, from the caller (dom.ts slotName).
  */
 export function itemTypeText(type: string, sub: unknown, slot?: string): string {
-  const s = subtypeLabel(sub);
+  const s = subtypeLabel(sub) === slot ? "" : subtypeLabel(sub);
   if (type === "map") return ITEM_TYPE_LABELS.map; // every map's subType is "Map"
   return [slot, s].filter(Boolean).join(" · ") || ITEM_TYPE_LABELS[type] || subtypeLabel(type);
 }

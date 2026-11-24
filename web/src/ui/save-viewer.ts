@@ -6,7 +6,7 @@ import * as api from "../sim/api.ts";
 import { itemName as englishItemName } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
-import { itemName as shownItemName } from "./names.ts";
+import { ITEM_TYPE_PLURALS, itemName as shownItemName } from "./names.ts";
 import {
   $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, duration, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gold, gradeBadge,
   heroAsc, pill, type Row as Cells, segmented, table, withAsc,
@@ -192,7 +192,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
           return el("div", {}, el("dt", {}, STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `×${x.toFixed(2)}` : fmt.format(x)));
         })))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
-  // Two columns: weapon, head, chest | bracers, feet, talisman (gearGrid in dom.ts).
+  // Two columns: weapon, head, body | hands, feet, trinket (gearGrid in dom.ts).
   const gear = gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
     el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`, title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}` },
       el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
@@ -257,8 +257,9 @@ function renderInventory(sv: Save): HTMLElement {
   // The kind filter as the shared segmented control (R1 F27).
   const kind = { value: "all" };
   const kinds = segmented("inv-kind", "Item kind", [
-    { value: "all", label: "All" }, { value: "equipment", label: "Equipment" }, { value: "consumable", label: "Consumables" },
-    { value: "material", label: "Materials" }, { value: "map", label: "Maps" }, { value: "counter", label: "On the counter" },
+    { value: "all", label: "All" },
+    ...["equipment", "consumable", "material", "map"].map((t) => ({ value: t, label: ITEM_TYPE_PLURALS[t] })),
+    { value: "counter", label: "On the counter" },
   ], kind.value, (v) => {
     kind.value = v;
     update();

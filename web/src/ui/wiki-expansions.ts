@@ -8,10 +8,11 @@ import { G } from "../sim/data.ts";
 import { EXPANSIONS } from "../tools/expansions.ts";
 import { el, EXPANSION_LABEL, expansionBadge } from "./dom.ts";
 import {
-  type Expansion, inferredState, needsOf, overrideOf, owns, setOverride, setOwned, setShowAll, showAll,
+  type Expansion, inferredState, needsOf, overrideOf, owns, showAll,
 } from "./expansion-state.ts";
-import { classes, classLink, enemyIds, enemyLink, ITEM_TYPES, itemLink, items, itemTypeLabel, quest } from "./wiki-data.ts";
+import { classes, classLink, enemyIds, enemyLink, ITEM_TYPES, itemLink, items, quest } from "./wiki-data.ts";
 import { sectionHelp } from "./wiki-help.ts";
+import { ITEM_TYPE_PLURALS } from "./names.ts";
 
 const XP: Expansion[] = ["Frozen", "Scribe"];
 type Group = "frozen" | "scribe" | "both";
@@ -65,8 +66,6 @@ function gated(): Record<Group, Gated> {
   return out;
 }
 
-const plural: Record<string, string> = { equipment: "Equipment", consumable: "Consumables", material: "Materials", map: "Maps" };
-
 /** "Enemies (16)" with every name linked (always the real link: this page lists them on purpose). */
 function listBlock(label: string, nodes: HTMLElement[]): HTMLElement | null {
   if (!nodes.length) return null;
@@ -80,7 +79,7 @@ function groupSection(g: Group, needs: Expansion[], title: string): HTMLElement 
   const lists = [
     listBlock("Enemies", c.enemies.map((id) => enemyLink({ id }, { always: true }))),
     listBlock("Hero classes", c.classes.map((id) => classLink(id, { always: true }))),
-    ...(["map", "equipment", "consumable", "material"] as const).map((t) => listBlock(plural[t] ?? itemTypeLabel[t], c.items[t].map((id) => itemLink(t, id, undefined, undefined, undefined, { always: true })))),
+    ...(["map", "equipment", "consumable", "material"] as const).map((t) => listBlock(ITEM_TYPE_PLURALS[t], c.items[t].map((id) => itemLink(t, id, undefined, undefined, undefined, { always: true })))),
   ].filter((x): x is HTMLElement => x !== null);
   const own = needs.every((x) => owns(x));
   // R1 F26: laid out like the other wiki pages, as cards (no lead paragraph, no free-standing bullets and headings).
@@ -97,28 +96,18 @@ function groupSection(g: Group, needs: Expansion[], title: string): HTMLElement 
         el("dd", {}, lists.length ? el("div", { class: "xp-lists" }, ...lists) : "Nothing listed."))));
 }
 
-/** The visitor's switches, as plain checkboxes (the same state as the expansions menu in the top bar). */
-function controls(): HTMLElement {
+/**
+ * Where the visitor stands, in one line, and a pointer to the switches (R1 F45 / R1-D): the expansions menu of the top
+ * bar has them, with the save's evidence in its hover text, so this page doesn't repeat them.
+ */
+function status(): HTMLElement {
   const inf = inferredState();
-  const box = (label: (Node | string)[], on: boolean, set: (v: boolean) => void, hint: string) => {
-    const c = el("input", { type: "checkbox" }) as HTMLInputElement;
-    c.checked = on;
-    c.addEventListener("change", () => set(c.checked));
-    return el("label", { class: "check xp-switch", title: hint }, c, ...label);
-  };
-  const reset = el("button", { type: "button", class: "link-btn" }, "Use the save's guess again");
-  reset.addEventListener("click", () => XP.forEach((x) => setOverride(x, null)));
-  const anyOverride = XP.some((x) => overrideOf(x) !== null);
-  return el("div", { class: "xp-controls" },
-    el("p", {}, inf.source === null ? "No save loaded: the site assumes you own no expansion until you say so."
-      : `Guessed from ${inf.source}: ${inf.owned.length ? inf.owned.map((x) => EXPANSIONS[x].name).join(" and ") : "no expansion proven"}.`),
-    ...(inf.evidence.length ? [el("ul", { class: "small muted" }, ...inf.evidence.map((e) => el("li", {},
-      e.expansion === "either" ? "One of the two: " : `${EXPANSIONS[e.expansion].name}: `, e.reason)))] : []),
-    el("div", { class: "toolbar" },
-      ...XP.map((x) => box([expansionBadge([x]), ` I own ${EXPANSIONS[x].name}`], owns(x), (v) => setOwned(x, v),
-        overrideOf(x) !== null ? "Set by hand" : inf.source ? "From the save's guess" : "No save loaded")),
-      box([" Show expansion content"], showAll(), setShowAll, "Show the content of every expansion, owned or not")),
-    ...(anyOverride ? [el("p", { class: "small" }, "Some switches are set by hand. ", reset)] : []));
+  const owned = XP.filter((x) => owns(x));
+  const byHand = XP.some((x) => overrideOf(x) !== null);
+  const now = owned.length ? `You own ${owned.map((x) => EXPANSIONS[x].name).join(" and ")}` : "You own no expansion";
+  const from = byHand ? " (set by hand)" : inf.source === null ? " (no save loaded)" : ` (guessed from ${inf.source})`;
+  return el("p", { class: "xp-controls" }, `${now}${from}${showAll() ? "; expansion content is shown anyway" : ""}. `,
+    "Change it in the ", el("strong", {}, "Expansions"), " menu of the top bar.");
 }
 
 export function expansionsPage(topic?: string): HTMLElement {
@@ -131,7 +120,7 @@ export function expansionsPage(topic?: string): HTMLElement {
     // R1 F26: like the other wiki tabs, no visible title or intro (the wiki home card describes the page); the
     // explanations sit behind the section's "?".
     el("h1", { class: "sr-only" }, "Expansions"),
-    sectionHelp(el("section", { class: "wiki-section", id: "xp-site" }, el("h2", { class: "wiki-banner" }, "Your expansions"), controls()), [
+    sectionHelp(el("section", { class: "wiki-section", id: "xp-site" }, el("h2", { class: "wiki-banner" }, "Your expansions"), status()), [
       `Merchant has two paid expansions, the Frozen Tome and Scribe (the “everything” bundle has both; boost potions are a separate `
         + `purchase). Content that needs one carries its icon everywhere on the site: ❄ ${EXPANSION_LABEL.Frozen}, ✒ ${EXPANSION_LABEL.Scribe}.`,
       "Content of an expansion you don't own is hidden on every page: wiki lists, the battle pickers, the searches' candidates, "
@@ -139,7 +128,7 @@ export function expansionsPage(topic?: string): HTMLElement {
         + "“expansion content” entry, so the numbers still add up.",
       "Ownership is a guess from your save. The game keeps your purchases in another file (UserInfo.usr), which the site never "
         + "reads, so the save can only prove you own an expansion (a Bard, a hero above level 50 or in Frentir, maps, ascended items, essences, "
-        + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand here or in the expansions menu of the top bar.",
+        + "more than 13 heroes…), never that you don't. If it guesses wrong, set it by hand in the Expansions menu of the top bar.",
       `An item counts as expansion content when none of its sources (quest drops, loot, crafts, map essences) can be reached without the `
         + `expansion. The ${bushes} Treasure Bushes and the map bosses follow their maps.`,
     ]),

@@ -94,8 +94,8 @@ flowchart LR
     the game plays the default rotation instead (`Hero.calculateAPRemainder`). `HeroView.ap` in `save-tables.ts`:
     `used` = sum of the skills' `apCost` (`rotationAp`), `max` = `api.skillInfo(hero).maxAP`, the engine's
     `heroMaxActionPoints`: 5 + floor((min(level, 40) − 10) / 2) + apMod (gear, passive); 20 at level 40 and above.
-  - Gear in two columns (`gearGrid` in `dom.ts`, CSS `.gear-grid`): weapon, head, chest on the left; bracers, feet,
-    talisman on the right (game slots body / hands / trinket); an empty slot shows a dashed placeholder. Rule for the
+  - Gear in two columns (`gearGrid` in `dom.ts`, CSS `.gear-grid`): weapon, head, body on the left; hands, feet,
+    trinket on the right (the slot names of the whole site, R1-D); an empty slot shows a dashed placeholder. Rule for the
     site: six equipment slots go in these two columns, except where a compact layout is intended (`compact: true`
     gives one column). `bySlot(items, slotOf)` keys items by slot name or itemSlot number 1-6; the battle page can
     adopt the same helper.
@@ -314,6 +314,8 @@ flowchart LR
   - 5-turn plan v4 (U36, replaces the two items above; `planGrid` in `ui/battle-plan.ts`, drawn by `partyPlan` in
     `timeline.ts`): the third column of step 3, a grid whose COLUMNS are the heroes in action order (by party location)
     plus the enemy (first on questType 6) and whose ROWS are turns 1-5; the enemy column alone while the party is empty.
+    The row-header column (T1–T5, "Turn" on top) is 36 px wide and clips instead of running into the first column
+    (R1-D; it was 24 px and "TURN" overlapped the first hero's header).
     - Compact words in the cells ("dmg", "AoE", "heal", "atk −50%", "def", "eva", "crit", "→ Basic", "stun", "DoT",
       "dispel", "taunt" …), the full words and sentence in the tooltip (`title`). A skill's effect isn't re-explained
       beyond that: the skill link's own tooltip has its description.
@@ -606,7 +608,8 @@ flowchart LR
     (`regionChip(r, why, { tag: false })`), its reason shown only for a map boss ("First map: …") (F41).
   - Bush facts are short (F19): Fought "Quest board · 1st battle" or "Map rooms · grade B+" (linked to Battle › Two
     kinds of battle / Map runs); Mainly drops = the every-win materials and their game type from the data
-    (`bushDropKinds`: quest bushes "herbs", a moss and a root; Treasure Bushes "crystals, gems") (F44).
+    (`bushDropKinds` / `bushDropText`: quest bushes "herbs", a moss and a root; Treasure Bushes "crystals and gems",
+    a region's crystal and its gem, e.g. Forest Crystal and Emerald) (F44, R1-D).
   - Neutral formats around translated names (F40): "Lv 9" (lead line, tooltips, Level card "Maps Lv 1–10 · quest
     Lv 10"), region reasons "Board: <region>", "Event: <region>", "First map: <map>", "Map Lv N", tooltips
     "<region> · <reason>", enemy tooltips "Maps: <names>".
@@ -614,15 +617,16 @@ flowchart LR
     Enemies list's Rare variant column, the Rare variant card and the home search (was the kind "Enemy (rare)").
   - Map page: the lead is the flavour sentence only (`mapFlavour` in `wiki-data.ts` drops the game's "Boss: … Mod: Nx"
     tail in every language; it named bosses loosely, "Goblin King" for Goblin Warlord) (F17); the Essence per run card
-    wraps its names inside the card (F16).
+    wraps its names inside the card (F16), one essence per line with its expansion icons wrapping with the name, not
+    past the card's edge (R1-D); the Base time card uses `duration()` ("1 h 45 min", was "105 min").
   - A wiki list whose every row is hidden expansion content (the Maps list without Scribe) shows one empty state:
     "All 32 maps are expansion content you don't own…", a link to the Expansions page and "Show expansion content"
     (no filter, "0 of 0", badge line or empty table) (F15). The home Enemies card says the quest bushes are included (F08).
 - Live-site review fixes (R1-B2, [review](../roadmap/review-r1.md)). CSS: the `r1 wiki ref` block at the end of
   `site/style.css`; tests `test/wiki-r1b2.test.ts` (helpers) and `test/wiki-r1b2-patch.test.ts` (the `wiki-data.ts`
   part). Pages wired in `wiki.ts`, `wiki-data.ts` and `expansion-menu.ts`.
-  - Durations (`durationText`, `wiki-items.ts`): under a minute in seconds ("15 s", never "0 min"), under 10 minutes
-    with the seconds ("1 min 30 s"), then "12 min", "1 h 57 min", "2 d 3 h". The recipe line under a Recipe list
+  - Durations (`duration()` in `dom.ts` since R1-D; was `durationText`): under a minute in seconds ("15 s", never
+    "0 min"), under 10 minutes with the seconds ("1 min 30 s"), then "12 min", "1 h 57 min", "2 d 3 h". The recipe line under a Recipe list
     (`craftLine`, `recipe-chain.ts`: crafter · cost · time · XP, cost and time linked to Stats › Craft) and the
     crafting-chain boxes use it.
   - Sell value of a material or consumable: the game's value, round((sell[1] + sell[2]) / 2) × 2 × ascension
@@ -765,8 +769,9 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
   - Wiki: lists, home search and home counts filtered; classes columns of skills and passives without the hidden
     classes; class pages without the hidden ascension tier (levels 51–60; the radar's rims only compare visible classes
     and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, menu link and home card):
-    no visible title or intro, like the other tabs (R1 F26): "Your expansions" with the switches as checkboxes and the
-    save's evidence (what the site does is behind its "?"), then one section per group (Frozen Tome, Scribe, content
+    no visible title or intro, like the other tabs (R1 F26): "Your expansions" with one status line (what you own,
+    from the save or set by hand) and a pointer to the top bar's Expansions menu, which holds the switches and the
+    save's evidence (R1-D: the page no longer repeats them; what the site does is behind its "?"), then one section per group (Frozen Tome, Scribe, content
     behind both) as cards: status, store text, what it adds, details, and folded lists of every gated enemy, class,
     map, equipment, consumable and material (real links, `always`). Changing a switch re-renders the
     current page in place (no jump to the top).
@@ -894,17 +899,28 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     hand-built tables too (class and hero ability rows, battle results, Good against, drop tables). Row headers
     (`tbody th`) keep theirs.
   - Toggles: two styles only. A segmented control for one choice out of a few: `.seg` with `label.seg-opt` around a
-    radio (`segmented(name, label, options, value, onChange)` in `dom.ts`; the save viewer's inventory kind filter);
-    the older `.mode-switch` (battle, class page ascension, item ascension) and `.qxp-toggle` (enemy XP grade and
-    party) look the same: joined options, the picked one gold-edged on a gold tint (the class page's ascension keeps
-    its tier colour as the edge). An on / off chip for filters that combine: `.chip-toggle`, a button with
-    `aria-pressed` (`chipToggle(label, on, onToggle)` in `dom.ts`). Selected tabs (`.tabs`) and the battle mode cards
-    stay as they are.
+    radio (`segmented(name, label, options, value, onChange)` in `dom.ts`, an option may carry a `cls`), named on
+    screen by `segField(label, seg, cls?)` (`.seg-field`, `.seg-label`): the save viewer's inventory kind filter, the
+    battle opponent (static `.seg` markup in `battle.html`), the class page's and item page's ascension (`.cls-asc`,
+    options `asc-opt tier-N`: the picked one keeps its tier colour as the edge) and the enemy XP grade, party and
+    ascension (R1-D; `.mode-switch` stays only on the frozen Profit page, same look). The picked option is gold-edged on
+    a gold tint. An on / off chip for filters that combine: `.chip-toggle`, a button with `aria-pressed`
+    (`chipToggle(label, on, onToggle)` in `dom.ts`; no page needs one yet: the battle's form checkboxes stay
+    checkboxes). Selected tabs (`.tabs`) and the battle mode cards stay as they are.
   - Numbers, gold and time: `fmt` / `fmt1` / `pct` in `dom.ts` format in the language picked in the top bar
     ("171,946" in English, "171 946" in French); `gold(n, decimals?)` is THE gold amount ("171,946 g", "12.5 g", "—"
-    when unknown); `duration(sec)` THE duration ("15 s", "4 min", "2 h 6 min", "1 d 3 h"; never "0 min").
+    when unknown); `duration(sec)` THE duration ("15 s", "1 min 30 s" under 10 minutes, "12 min", "2 h 6 min",
+    "1 d 3 h"; never "0 min"). R1-D: the wiki (map base time, sell values, recipe lines and chains, XP tables) and the
+    battle page (map time, loot value, XP tiles) use them; `durationText` (wiki-items) and `timeText` (quest-xp) are gone.
   - Item types: `subtypeLabel` / `itemTypeText` in `names.ts` give every subtype a capital first letter ("essence" →
-    "Essence"; "Head · Hood" for equipment with its slot) and the kind for an item without one.
+    "Essence"; "Head · Hood" for equipment with its slot, "Trinket" once for a trinket of kind Trinket) and the kind
+    for an item without one; `ITEM_TYPE_LABELS` ("Material") and `ITEM_TYPE_PLURALS` ("Materials", list titles,
+    breadcrumbs, the Expansions lists, the inventory filter). R1-D: the wiki's item type line, list Slot / Type columns
+    and link tooltips (`itemSummary`) use them.
+  - Slot names (R1-D): one set everywhere, `GEAR_SLOT_NAMES` / `slotName(v)` in `dom.ts`: Weapon, Head, Body, Hands,
+    Feet, Trinket. The game shows no slot names; its code and art call the slots weapon, head, body, hands ("handSet"),
+    feet and trinket ("Trinkets"), and "Bracers" and "Trinket" are equipment kinds, so the hero page's former
+    Chest / Bracers / Talisman are gone.
   - Skip link: `nav.ts` puts "Skip to content" (`.skip-link`, visible when focused) first in every page's body; it
     moves the focus to `<main>` (given `id="main"` when it has no id, and `tabindex="-1"`) without touching the hash,
     which the save viewer and the wiki read as a route.
@@ -913,8 +929,8 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   - Home: no "Available" badge on the cards; Save viewer, Battle simulator, Wiki (the menu's order), then "Other tools"
     (Profit, Farming, Levelling, Class balance: frozen) as smaller, quieter cards.
   - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows and Steam Deck
-    paths, slot file names) under the drop zone of every page that uses `initSaveSource`; the help a page's HTML still
-    carries (`data-save-help`) is replaced by it.
+    paths, slot file names) under the drop zone of every page that uses `initSaveSource`, hidden once a save is
+    loaded. R1-D: the pages' own HTML helps and the `data-save-help` marker are gone.
   - Save menu: three groups split by separators: Save file (Reload, Choose another file, Try the example save,
     Forget), Expansions, then the page's entries folded under their title ("Export (CSV) ▸" in the save viewer). The
     menu (and the expansions button's) is never taller than the window: `fitMenu` in `expansion-menu.ts` sets its
@@ -927,7 +943,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
   `~/.cache/ms-playwright` don't start on this WSL (missing `libgbm`, headless shell crashes): it runs on Windows Chrome.
 - The opened save is kept in this browser (IndexedDB, `web/src/ui/save-store.ts`); `save-source.ts` loads it on every
   page, so moving between pages never asks again. Before a save is loaded the page shows its drop zone and save help
-  (`data-save-help`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
+  (`saveHelp`); once one is loaded they are hidden and one button in the top bar ("📜 PlayerData.txt ▾") holds the
   menu: file name and age, Reload (rereads the same file without a dialog
   when the browser kept its handle: Chrome, Edge), Choose another file, Forget (deletes it from the browser and brings
   the drop zone back). Dropping a file anywhere on the page still loads it.

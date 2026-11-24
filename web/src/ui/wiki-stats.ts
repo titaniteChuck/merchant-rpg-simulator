@@ -80,7 +80,7 @@ export const STATS_SECTIONS: RefSection<StatTopic>[] = [
 <li>The class growth of the hero's <b>tier</b> is read (tier = prestige level 1–3, shown on this site as ascension 0–2).</li>
 <li><b>Permanent enchants</b> are added. Luck, XP, AP, crit damage and the % stats are reset just after, so enchants on those have no effect.</li>
 <li>The <b>potion</b> (boost) is added.</li>
-<li><b>Gear</b>, only items whose item level ≤ the hero's level: the weapon gives atk, matk, acc and crit; head, chest, bracers and feet give def and mdef; the talisman only its bonus stats. Every item adds its bonus stats (atk bonus → atk, HP bonus → max HP…).</li>
+<li><b>Gear</b>, only items whose item level ≤ the hero's level: the weapon gives atk, matk, acc and crit; head, body, hands and feet give def and mdef; the trinket only its bonus stats. Every item adds its bonus stats (atk bonus → atk, HP bonus → max HP…).</li>
 <li>In a map: the Str / Int / Dex scrolls' bonus.</li>
 <li><b>Str, Int, Dex</b>: atk += str × strMod, matk += int × intMod, acc += dex × dexMod (class multipliers per tier).</li>
 <li>The <b>passive</b>'s stats.</li>
@@ -265,7 +265,7 @@ ${formula(`${v("f")} = ${v("base")} + ${v("L")}' × ${v("perLevel")}, &nbsp; ${v
 ${tbl(gradeHead, [["gMin", ...GRADE_MIN], ["gMax", ...GRADE_MAX]])}
 <ul>
 <li>The stat is a random whole number in that range. A crafter above the item's level (${v("d")} levels) raises the low end by (gMax − gMin) × 4 % per level, so from 25 levels up it always rolls the top.</li>
-<li>Weapon crit is flat (Dagger 5, most weapons 1). Talismans have no base stats.</li>
+<li>Weapon crit is flat (Dagger 5, most weapons 1). Trinkets have no base stats.</li>
 </ul>
 <p><b>Bonus stats</b>: each equipment has ranges [${v("a")}, ${v("b")}].</p>
 <ul>

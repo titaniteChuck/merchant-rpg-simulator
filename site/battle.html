@@ -25,7 +25,6 @@
       <span class="muted small">Your heroes come from the save. The file is read by your browser and never uploaded.</span>
     </label>
     <div id="loaded" aria-live="polite"></div>
-    <p class="muted small" data-save-help>Save location: <code>%APPDATA%\Retora\Merchant\Documents\PlayerData.txt</code> on Windows (more in the <a href="save.html">save viewer</a> help).</p>
 
     <div id="setup" hidden>
       <section>
@@ -59,9 +58,9 @@
           </div>
           <div id="opp-col" class="opp-col">
             <h3 class="col-title">👹 Opponent</h3>
-            <div class="mode-switch" id="opp-switch" role="radiogroup" aria-label="Opponent">
-              <label><input type="radio" name="opp" value="quest" checked> ⚔️ Quest enemy</label>
-              <label><input type="radio" name="opp" value="map"> 🗺️ Map run</label>
+            <div class="seg" id="opp-switch" role="radiogroup" aria-label="Opponent">
+              <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest enemy</span></label>
+              <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map run</span></label>
             </div>
             <div id="target"></div>
           </div>

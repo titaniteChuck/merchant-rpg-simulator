@@ -5,13 +5,13 @@
  */
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, withAsc } from "./dom.ts";
+import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, slotName, withAsc } from "./dom.ts";
 import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansion-state.ts";
 import { tip } from "./tooltip.ts";
 import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
 import {
-  className, compareNames, descOf, enemyName, isEnglish, itemName, markName, passiveName, questTitle, regionName, skillName,
+  className, compareNames, descOf, enemyName, isEnglish, ITEM_TYPE_LABELS, itemName, itemTypeText, markName, passiveName, questTitle, regionName, skillName,
 } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -35,7 +35,6 @@ export function loadWikiText(): Promise<void> {
 
 export const ITEM_TYPES = ["equipment", "consumable", "material", "map"] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
-export const SLOT_NAMES: Record<number, string> = { 1: "Weapon", 2: "Head", 3: "Body", 4: "Hands", 5: "Feet", 6: "Trinket" };
 export const GRADES = ["D", "C", "B", "A", "S"];
 
 // ---------------------------------------------------------------- stats
@@ -64,7 +63,6 @@ const statsText = (stats: Any) => Object.entries<number>(stats ?? {}).map(([k, v
 
 // ---------------------------------------------------------------- lookups
 export const item = (type: string, id: number | string): Any => G.itemData?.[type]?.[id];
-export const itemTypeLabel: Record<string, string> = { equipment: "Equipment", consumable: "Consumable", material: "Material", map: "Map" };
 
 /** [id, entry] of an item table, in id order; the game's unused placeholder rows left out (isPlaceholder). */
 export function items(type: string): [number, Any][] {
@@ -515,8 +513,9 @@ export function mapFlavour(id: number): string {
 export function itemSummary(type: string, id: number): string {
   const it = item(type, id);
   if (!it) return "";
-  const head = [itemTypeLabel[type], type === "equipment" ? SLOT_NAMES[it.itemSlot] ?? it.subType : it.subType,
-    it.itemLevel ? `level ${it.itemLevel}` : ""].filter(Boolean).join(" · ");
+  // "Equipment · Body · level 12", "Material · Essence · level 5", "Map · level 30" (the kind once)
+  const kind = type === "equipment" ? slotName(it.itemSlot) ?? "" : itemTypeText(type, it.subType);
+  const head = [...new Set([ITEM_TYPE_LABELS[type], kind, it.itemLevel ? `level ${it.itemLevel}` : ""])].filter(Boolean).join(" · ");
   const body = type === "consumable" ? itemText(type, id) || statsText(it.stat)
     : type === "map" ? mapLine(it) : type === "material" ? itemText(type, id) : statsText(it.bonusStat);
   return [head, body].filter(Boolean).join(" — ");

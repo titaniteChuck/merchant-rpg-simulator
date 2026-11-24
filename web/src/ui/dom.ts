@@ -38,13 +38,15 @@ export function gold(n: number | null | undefined, decimals: 0 | 1 = 0): string 
 }
 
 /**
- * THE duration, from seconds: "15 s" under a minute, then whole minutes "4 min", "2 h 6 min" from an hour, "1 d 3 h"
- * from a day. "?" when not a number. (Under a minute never reads "0 min".)
+ * THE duration, from seconds: "15 s" under a minute, "1 min 30 s" under 10 minutes (the seconds stay, R1 F07), then
+ * whole minutes "12 min", "2 h 6 min" from an hour, "1 d 3 h" from a day. "?" when not a number. (Under a minute never
+ * reads "0 min".)
  */
 export function duration(sec: number | null | undefined): string {
   if (typeof sec !== "number" || !Number.isFinite(sec)) return "?";
   const s = Math.max(0, Math.round(sec));
   if (s < 60) return `${s} s`;
+  if (s < 600 && s % 60) return `${Math.floor(s / 60)} min ${s % 60} s`;
   const m = Math.round(s / 60);
   if (m < 60) return `${m} min`;
   const h = Math.floor(m / 60), r = m % 60;
@@ -224,11 +226,11 @@ export function tabKeys(list: HTMLElement): void {
 // ---------------------------------------------------------------- toggles (R1 F27)
 /**
  * The site's two toggle styles (CSS block "r1 global" at the end of style.css):
- * - `.seg`: a segmented control, ONE choice out of a few (radio inputs in `label.seg-opt`, a radiogroup). The older
- *   `.mode-switch` (labels with radios) and `.qxp-toggle` (buttons with aria-pressed) get the same look.
+ * - `.seg`: a segmented control, ONE choice out of a few (radio inputs in `label.seg-opt`, a radiogroup), with
+ *   `segField` when it has a visible name beside it. (The frozen Profit page keeps its static `.mode-switch`, same look.)
  * - `.chip-toggle`: an on / off chip (a button with aria-pressed), for filters that combine.
  */
-export interface SegOption { value: string; label: Node | string; title?: string }
+export interface SegOption { value: string; label: Node | string; title?: string; /** extra class of the option */ cls?: string }
 
 /** A segmented control: `name` groups the radios, `label` names the group; `onChange` gets the picked value. */
 export function segmented(name: string, label: string, options: SegOption[], value: string, onChange: (v: string) => void): HTMLElement {
@@ -236,8 +238,17 @@ export function segmented(name: string, label: string, options: SegOption[], val
     const input = el("input", { type: "radio", name, value: o.value }) as HTMLInputElement;
     input.checked = o.value === value;
     input.addEventListener("change", () => input.checked && onChange(o.value));
-    return el("label", { class: "seg-opt", ...(o.title ? { title: o.title } : {}) }, input, el("span", {}, o.label));
+    return el("label", { class: `seg-opt${o.cls ? ` ${o.cls}` : ""}`, ...(o.title ? { title: o.title } : {}) }, input, el("span", {}, o.label));
   }));
+}
+
+/**
+ * A segmented control with its name shown before it ("GRADE  D C B A S"). A text name is hidden from screen readers
+ * (the radiogroup already carries it); a node (a link to the Stats page) stays reachable.
+ */
+export function segField(label: Node | string, seg: HTMLElement, cls = ""): HTMLElement {
+  return el("div", { class: `seg-field${cls ? ` ${cls}` : ""}` },
+    el("span", { class: "seg-label", ...(typeof label === "string" ? { "aria-hidden": "true" } : {}) }, label), seg);
 }
 
 /** An on / off chip (aria-pressed); `onToggle` gets the new state. */
@@ -287,14 +298,23 @@ export function clickableRow(tr: HTMLTableRowElement, link: Element): void {
 /** The six equipment slots in the game's itemSlot order (1..6). */
 export const GEAR_SLOTS = ["weapon", "head", "body", "hands", "feet", "trinket"] as const;
 export type GearSlot = typeof GEAR_SLOTS[number];
-/** The game's names for the slots (body = chest, hands = bracers, trinket = talisman). */
-export const GEAR_SLOT_NAMES: Record<GearSlot, string> = { weapon: "Weapon", head: "Head", body: "Chest", hands: "Bracers", feet: "Feet", trinket: "Talisman" };
+/**
+ * THE slot names, everywhere on the site (R1-D). The game shows no slot names; its code and art call them weapon, head,
+ * body, hands (the "handSet"), feet and trinket (the "Trinkets"). "Bracers" and "Trinket" are also equipment kinds.
+ */
+export const GEAR_SLOT_NAMES: Record<GearSlot, string> = { weapon: "Weapon", head: "Head", body: "Body", hands: "Hands", feet: "Feet", trinket: "Trinket" };
 export const GEAR_SLOT_ICONS: Record<GearSlot, string> = { weapon: "⚔️", head: "🪖", body: "🥋", hands: "🧤", feet: "👢", trinket: "💍" };
 
 /** A slot from its name ("weapon" … "trinket") or the game's itemSlot number (1..6); undefined otherwise. */
 export function gearSlot(v: unknown): GearSlot | undefined {
   if (typeof v === "number" || (typeof v === "string" && /^\d+$/.test(v))) return GEAR_SLOTS[Number(v) - 1];
   return GEAR_SLOTS.find((s) => s === v);
+}
+
+/** A slot's name from its name or the game's itemSlot number ("Body" for 3); undefined for none. */
+export function slotName(v: unknown): string | undefined {
+  const s = gearSlot(v);
+  return s && GEAR_SLOT_NAMES[s];
 }
 
 /** Items keyed by their slot (`slotOf` gives a slot name or itemSlot number); the first item of a slot wins. */
@@ -317,8 +337,8 @@ export interface GearGridOptions {
 }
 
 /**
- * The six equipment slots as a list laid out in two columns: weapon, head, chest on the left; bracers, feet,
- * talisman on the right (`compact`: one column, same order). The DOM order is the reading order (column by column).
+ * The six equipment slots as a list laid out in two columns: weapon, head, body on the left; hands, feet,
+ * trinket on the right (`compact`: one column, same order). The DOM order is the reading order (column by column).
  * Each slot is an <li class="gear-cell" data-slot="…"> holding `render(item, slot)`. CSS: `.gear-grid` in style.css.
  */
 export function gearGrid<T>(slots: Partial<Record<GearSlot, T>>, render: (item: T, slot: GearSlot) => Node | string, opts: GearGridOptions = {}): HTMLElement {

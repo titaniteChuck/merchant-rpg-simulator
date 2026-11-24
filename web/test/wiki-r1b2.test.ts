@@ -9,8 +9,9 @@ import { sellValue } from "../src/tools/engine.ts";
 import { notOwnedSource, notOwnedWhy } from "../src/ui/expansion-why.ts";
 import { setOverride } from "../src/ui/expansion-state.ts";
 import { BATTLE_SECTIONS } from "../src/ui/wiki-battle.ts";
+import { duration } from "../src/ui/dom.ts";
 import { enemyDrops, items } from "../src/ui/wiki-data.ts";
-import { durationText, RARITY_COLOURS, RARITY_SAME_COLOUR, rarityTip, sellRange, sellTip } from "../src/ui/wiki-items.ts";
+import { RARITY_COLOURS, RARITY_SAME_COLOUR, rarityTip, sellRange, sellTip } from "../src/ui/wiki-items.ts";
 import { isHeroOnlySkill, isUnusedSkill } from "../src/ui/wiki-skills.ts";
 
 loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
@@ -18,17 +19,17 @@ loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", im
 const idOf = (type: string, name: string) => items(type).find(([, it]) => it.name === name)![0];
 
 test("F07: durations under a minute are in seconds, never 0 min", () => {
-  assert.equal(durationText(15), "15 s");
-  assert.equal(durationText(0.4), "0 s");
-  assert.equal(durationText(60), "1 min");
-  assert.equal(durationText(90), "1 min 30 s");
-  assert.equal(durationText(599), "9 min 59 s");
-  assert.equal(durationText(720), "12 min");
-  assert.equal(durationText(3599), "1 h");
-  assert.equal(durationText(7020), "1 h 57 min");
-  assert.equal(durationText(90000), "1 d 1 h");
+  assert.equal(duration(15), "15 s");
+  assert.equal(duration(0.4), "0 s");
+  assert.equal(duration(60), "1 min");
+  assert.equal(duration(90), "1 min 30 s");
+  assert.equal(duration(599), "9 min 59 s");
+  assert.equal(duration(720), "12 min");
+  assert.equal(duration(3599), "1 h");
+  assert.equal(duration(7020), "1 h 57 min");
+  assert.equal(duration(90000), "1 d 1 h");
   const potion = G.itemData.consumable[idOf("consumable", "Minor Potion")];
-  assert.equal(durationText(potion.runTime), "15 s");
+  assert.equal(duration(potion.runTime), "15 s");
 });
 
 test("F43: a stackable sells at its data pair's rounded average, × 2 × ascension (obj.Item getSellValue)", () => {

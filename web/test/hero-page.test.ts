@@ -40,7 +40,7 @@ test("rotation AP sums the skills' apCost; Basic and unknown skills cost 0", () 
 
 test("gear slots: itemSlot numbers and names, two columns in reading order", () => {
   assert.deepEqual([...GEAR_SLOTS], ["weapon", "head", "body", "hands", "feet", "trinket"]);
-  assert.deepEqual(GEAR_SLOTS.map((s) => GEAR_SLOT_NAMES[s]), ["Weapon", "Head", "Chest", "Bracers", "Feet", "Talisman"]);
+  assert.deepEqual(GEAR_SLOTS.map((s) => GEAR_SLOT_NAMES[s]), ["Weapon", "Head", "Body", "Hands", "Feet", "Trinket"]);
   assert.equal(gearSlot(1), "weapon");
   assert.equal(gearSlot("6"), "trinket");
   assert.equal(gearSlot("hands"), "hands");
