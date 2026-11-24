@@ -229,8 +229,9 @@ function buildDrawer(brand: HTMLAnchorElement | null): { dialog: HTMLDialogEleme
     if (s.groups) {
       const sub = h("div", { class: "drawer-sub", id: `drawer-${s.id}`, hidden: "" }, ...groupsList(s, "drawer"));
       const btn = h("button", { type: "button", class: s.href ? "drawer-caret" : "drawer-top drawer-caret drawer-only", "aria-expanded": "false", "aria-controls": sub.id });
+      if (!s.href && s.title) btn.title = s.title;
       if (s.href) btn.setAttribute("aria-label", `${s.label} pages`);
-      else btn.append(h("span", {}, s.title ?? s.label));
+      else btn.append(h("span", {}, s.label)); // the short menu name (the title is only the tooltip)
       btn.append(chevron());
       btn.addEventListener("click", () => {
         sub.hidden = !sub.hidden;
