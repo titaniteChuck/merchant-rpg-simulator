@@ -63,3 +63,4 @@
 - **Update**: U40 done (03da3d5); U41 done (dcb1948): the Solver has its own page (solver.html, Battle menu: Simulator, Solver), old Solve links redirect.
 - **Update**: U42 (solver layout) and U43 (compact simulator results) scheduled.
 - **Update**: U44 (menus: Save dropdown merged, CSV All first, Battle entry dropdown-only, no chip row on Battle pages) scheduled.
+- **Update**: U45 done (452dd93): dropdowns kept on screen on phones, Save pages mark the Save button current. Browser check of save and hero pages pending (Chrome in use by R2).
