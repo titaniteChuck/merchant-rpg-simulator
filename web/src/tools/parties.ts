@@ -17,7 +17,7 @@
  */
 import {
   evaluateTarget, type FightEval, type MapEval, type MapTarget, maxQuestAmount, type PartyLayout, partyProblem, partyRules,
-  type QuestTarget, SearchCancelled, type SearchControl, searchScrolls, searchSkills, soloRows,
+  type QuestTarget, SearchCancelled, type SearchControl, scrollPrices, searchScrolls, searchSkills, soloRows,
 } from "./combat.ts";
 import type { Hero, Row, Sim } from "./engine.ts";
 
@@ -119,6 +119,8 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
   const deadline = Date.now() + (o.timeBudgetMs ?? 120000);
   const amount = map ? 1 : (target as QuestTarget).amount ?? 1, rare = map ? false : Boolean((target as QuestTarget).rare);
   let tried = 0, stopped = false;
+  // scroll prices (profit solver, about half a second, not interruptible): once, before the clock matters
+  const prices = map && o.scrolls ? scrollPrices().prices : undefined;
 
   // heroes are put back exactly as they were
   const saved = new Map(ids.map((id) => [id, { rotation: sim.rotation(pool.get(id)!), passive: pool.get(id)!.passiveSelect }]));
@@ -126,8 +128,11 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     for (const [id, s] of saved) sim.setSkills(pool.get(id)!, s.rotation, s.passive);
   };
 
+  // polled before every evaluation and, inside one, before every fight or map run (evaluateTarget, searchSkills,
+  // searchScrolls), so the search ends within one fight or run of the budget
+  const outOfTime = () => ctl.shouldStop?.() === true || Date.now() > deadline;
   const check = () => {
-    if (ctl.shouldStop?.() || Date.now() > deadline) throw new SearchCancelled();
+    if (outOfTime()) throw new SearchCancelled();
   };
   const rows = (l: Layout): [Row, Row] => [l.front.map((id) => (id === null ? null : pool.get(id)!)), l.back.map((id) => (id === null ? null : pool.get(id)!))];
   const legal = (set: number[]) => amount <= 1 || amount <= maxQuestAmount(set.map((id) => pool.get(id)), rare, sim.mode);
@@ -136,7 +141,7 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     tried++;
     const [front, back] = rows(l);
     const t = map && scrolls?.length ? { ...(target as MapTarget), scrolls: scrolls.map((id) => ({ id, prestigeLevel: 0 })) } : target;
-    return evaluateTarget(sim, t, front, back, n);
+    return evaluateTarget(sim, t, front, back, n, 1, outOfTime);
   };
   // sturdiest heroes in front (the enemy hits the front row first)
   const sturdy = new Map(ids.map((id) => {
@@ -182,7 +187,7 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
       const t = map ? target : { ...(target as QuestTarget), amount: Math.min(amount, maxQuestAmount([h], rare, sim.mode)) };
       check();
       tried++;
-      solo.set(id, evaluateTarget(sim, t, ...soloRows(t, h), nQuick).score);
+      solo.set(id, evaluateTarget(sim, t, ...soloRows(t, h), nQuick, 1, outOfTime).score);
       ctl.onProgress?.(i + 1, ids.length, "solo");
     });
     const strongest = [...ids].sort((a, b) => solo.get(b)! - solo.get(a)!);
@@ -220,12 +225,14 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
       beam = quick.slice(0, beamW).map(([, s]) => s);
       // tune the best sets, once this size comes near winning (or it is the last size); else keep the screened ones
       const near = quick.length > 0 && (quick[0][2].win >= threshold / 2 || size === maxSize);
-      for (const [, set, ev] of quick.slice(0, refine)) {
+      // every set is first kept as screened: a set whose tuning runs out of time stays in the results that way
+      const refined = quick.slice(0, refine);
+      for (const [, set, ev] of refined) {
+        const skills = Object.fromEntries(set.map((id) => [id, { ...saved.get(id)! }]));
+        configs.set(key(set), { size: set.length, layout: defaultLayout(set), skills, scrolls: null, ev, score: ev.score, tuned: false });
+      }
+      for (const [, set] of refined) {
         if (near) configs.set(key(set), tune(set));
-        else {
-          const skills = Object.fromEntries(set.map((id) => [id, { ...saved.get(id)! }]));
-          configs.set(key(set), { size: set.length, layout: defaultLayout(set), skills, scrolls: null, ev, score: ev.score, tuned: false });
-        }
         ctl.onProgress?.(++done, total, stage);
       }
       if (winners() >= enough) break;
@@ -264,7 +271,7 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
         check();
         const [front, back] = rows(best);
         const r = searchSkills(sim, h, front, back, skillTarget, { nQuick: Math.max(4, Math.round(questN / 2)), nFinal: questN, top: 2 },
-          { shouldStop: () => ctl.shouldStop?.() === true || Date.now() > deadline });
+          { shouldStop: outOfTime });
         tried += r.counts.orderings + r.counts.final;
         const top = r.ranked[0];
         if (top && top.ev.score > r.current.ev.score) sim.setSkills(h, top.rotation, top.passive);
@@ -276,8 +283,8 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
     if (map && o.scrolls) {
       check();
       const [front, back] = rows(best);
-      const r = searchScrolls(sim, (target as MapTarget).map, front, back, { nQuick: Math.max(2, Math.round(nQuick / 2)), nFinal: nQuick, top: 3 },
-        { shouldStop: () => ctl.shouldStop?.() === true || Date.now() > deadline });
+      const r = searchScrolls(sim, (target as MapTarget).map, front, back,
+        { nQuick: Math.max(2, Math.round(nQuick / 2)), nFinal: nQuick, top: 3, prices }, { shouldStop: outOfTime });
       const top = r.ranked[0];
       if (top && top.loadout.length) (scrolls = top.loadout, scrollCost = top.cost);
     }

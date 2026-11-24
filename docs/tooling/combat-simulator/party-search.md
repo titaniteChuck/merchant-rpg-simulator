@@ -39,6 +39,9 @@ PartyConfig = { size, layout: { front, back } /* hero ids, null = empty */,
 
 - **Progress:** the stages are "solo" (one evaluation per hero), then "size N" (the sets screened and tuned at that size).
 - **Cancel:** `shouldStop()` or the time budget ends the search; the configurations found so far are returned with `stopped: true`.
+  - The budget is checked before every fight and map run, inside the rotation, scroll-loadout and final evaluations, so the search ends within a fight or a run of it (E22: a 120 s map search with scrolls had taken 148 s).
+  - A set whose tuning is cut short stays in the results as screened (`tuned: false`).
+  - Scroll prices (the profit solver, about 0.5 s) are computed once per search, at its start.
 - **Heroes:** they are left with their own rotations and passives. Apply a configuration's `skills` to use it.
 
 ## How it searches
@@ -77,6 +80,7 @@ The real save (17 heroes), default options except a 300 s time budget. Desolatio
 - Desolation Wolf: no 2-hero party wins any more (best: #8 in front 1, #1 in front 2, 81 %). Before the rules, #1 in front 1 and #8 in back 2 won 100 % by leaving front 2 empty, which the game doesn't allow. The search ends at 3 heroes, the quest's size, well within the budget.
 - On the map, sizes 1 to 5 stayed far from winning, so only size 6 was tuned (`tuned: false` below it). The scroll loadout search makes each tuning about twice as slow.
 - Use a shorter budget in the UI: the results at hand are returned with `stopped: true`.
+- Budget check (E22, saves/snapshot, Gnoll Vendetta asc 1 with scrolls): budgets of 10, 20, 30, 40 and 60 s end at the budget + 4 to 14 ms. Before, a 20 s budget took 24 s: the stop was only checked between whole evaluations, and the schedule pre-filter (up to 3 s per hero) and the scroll prices (0.5 s per tuned set) couldn't be interrupted.
 
 ## Code
 

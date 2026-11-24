@@ -119,6 +119,9 @@ Pure functions for pages and web workers: typed results, no output, no Node APIs
   never build one.
 - `ctl: SearchControl = {onProgress(done, total, stage), shouldStop()}`. Totals are per stage; a stopped search
   throws `SearchCancelled`. Heroes are always put back as they were (rotation, gear).
+- `shouldStop()` is polled before every evaluation and, inside one, before every fight or map run (`evaluate`,
+  `evaluateMap` and `evaluateTarget` take it as a last `stop` argument; the schedule pre-filter polls it every 64
+  orderings). A search stops within one fight or run of the request.
 - Same results as the former commands for the same seeds: checked on a real save for all six searches (return values
   and every output line). `web/test/search.test.ts` covers them on made-up heroes, so CI runs it.
 

@@ -132,9 +132,10 @@ export function fightSeed(seed0: number, k: number): number {
 }
 
 /** Monte-Carlo summary of n fights with seeds fightSeed(seed0, 0..n-1). Throws for a layout the game would not start
- * (checkParty), unless `mapRoom` (the quest fought as a map room, where the map's rules apply). */
+ * (checkParty), unless `mapRoom` (the quest fought as a map room, where the map's rules apply). `stop` is polled
+ * before every fight: when it returns true the evaluation throws SearchCancelled (searches stop on time). */
 export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200, rare = false, amount = 1, seed0 = 1,
-  mapRoom = false): FightEval {
+  mapRoom = false, stop?: () => boolean): FightEval {
   const q = G.questData[quest];
   if (!q?.enemyHp || !q.attackList) throw new Error(`quest ${quest} has no enemy to fight`);
   // The game code fails on a rare fight without rare stats (obj.Enemy); the port would fight a NaN enemy.
@@ -146,6 +147,7 @@ export function evaluate(sim: Sim, quest: number, front: Row, back: Row, n = 200
   const peakFrac: number[] = [], dmgTotal: number[] = [], dmgFrac: number[] = [];
   const acc = heroAccumulator();
   for (let k = 0; k < n; k++) {
+    if (stop?.()) throw new SearchCancelled();
     const res = sim.fight(quest, front, back, { seed: fightSeed(seed0, k), isRare: rare, amount });
     turns.push(res.turns);
     if (res.won) {
@@ -240,8 +242,10 @@ export interface MapEval {
   score: number;
 }
 
-/** Monte-Carlo summary of n map runs (each seed = a new layout and new fights). */
-export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 100, seed0 = 1, scrolls?: Scroll[] | null): MapEval {
+/** Monte-Carlo summary of n map runs (each seed = a new layout and new fights). `stop` is polled before every run
+ * (SearchCancelled when it returns true). */
+export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 100, seed0 = 1, scrolls?: Scroll[] | null,
+  stop?: () => boolean): MapEval {
   checkParty({ map: spec }, front, back);
   let wins = 0, escapes = 0;
   const cleared: number[] = [], grades: number[] = [], times: number[] = [], hpLeft: number[] = [], rooms: number[] = [];
@@ -249,6 +253,7 @@ export function evaluateMap(sim: Sim, spec: MapSpec, front: Row, back: Row, n = 
   const failRoom: Record<string, number> = {}, charges = new Map<number, number>(), essence: Record<string, number> = {};
   const acc = heroAccumulator();
   for (let k = 0; k < n; k++) {
+    if (stop?.()) throw new SearchCancelled();
     let res;
     try {
       res = sim.mapRun(spec, front, back, fightSeed(seed0, k), scrolls);
@@ -401,7 +406,8 @@ export interface SearchControl {
   /** Called after every evaluated candidate: `done` of `total` in the current `stage`
    * (a stage also reports 0/total when it starts). Totals are per stage. */
   onProgress?: (done: number, total: number, stage: string) => void;
-  /** Polled before every evaluation; return true to cancel (the search throws SearchCancelled). */
+  /** Polled before every evaluation, and before every fight or map run within one (a search stops within a fight
+   * or a run of the request); return true to cancel (the search throws SearchCancelled). */
   shouldStop?: () => boolean;
 }
 
@@ -533,13 +539,16 @@ export function soloRows<H>(t: QuestTarget | MapTarget, h: H): [(H | null)[], (H
   return [front, back];
 }
 
-/** evaluate (quest) or evaluateMap (map run) with seeds fightSeed(seed0, 0..n-1); both carry a comparable `score`. */
-export function evaluateTarget(sim: Sim, t: QuestTarget, front: Row, back: Row, n: number, seed0?: number): FightEval;
-export function evaluateTarget(sim: Sim, t: MapTarget, front: Row, back: Row, n: number, seed0?: number): MapEval;
-export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0?: number): FightEval | MapEval;
-export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0 = 1): FightEval | MapEval {
-  if ("map" in t) return evaluateMap(sim, t.map, front, back, n, seed0, t.scrolls ? t.scrolls.map((x) => ({ ...x })) : null);
-  return evaluate(sim, t.quest, front, back, n, t.rare, t.amount, seed0, Boolean(t.mapRoom));
+/** evaluate (quest) or evaluateMap (map run) with seeds fightSeed(seed0, 0..n-1); both carry a comparable `score`.
+ * `stop`: polled before every fight or run (SearchCancelled when true). */
+export function evaluateTarget(sim: Sim, t: QuestTarget, front: Row, back: Row, n: number, seed0?: number, stop?: () => boolean): FightEval;
+export function evaluateTarget(sim: Sim, t: MapTarget, front: Row, back: Row, n: number, seed0?: number, stop?: () => boolean): MapEval;
+export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0?: number,
+  stop?: () => boolean): FightEval | MapEval;
+export function evaluateTarget(sim: Sim, t: QuestTarget | MapTarget, front: Row, back: Row, n: number, seed0 = 1,
+  stop?: () => boolean): FightEval | MapEval {
+  if ("map" in t) return evaluateMap(sim, t.map, front, back, n, seed0, t.scrolls ? t.scrolls.map((x) => ({ ...x })) : null, stop);
+  return evaluate(sim, t.quest, front, back, n, t.rare, t.amount, seed0, Boolean(t.mapRoom), stop);
 }
 
 // ---------------------------------------------------------------- commands
@@ -795,7 +804,7 @@ export interface SkillSearchOptions {
  * Null when the quest has no timeline.
  */
 export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: QuestTarget, combos: string[][], k: number,
-  keep?: string[]): { picked: string[][]; total: number } | null {
+  keep?: string[], stop?: () => boolean): { picked: string[][]; total: number } | null {
   let tl;
   try {
     tl = enemyTimeline(t.quest, t.rare ?? false);
@@ -814,8 +823,11 @@ export function prefilterRotations(sim: Sim, h: Hero, front: Row, back: Row, t: 
   // the top k orderings, plus the best ordering of each of the top k skill sets: many orderings of one set tie, and
   // without the second list the top k can be a single set
   const rank = (w: Partial<ScoreWeights>) => {
-    const scored = all.map((p) => [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const)
-      .sort((a, b) => b[0] - a[0]);
+    // stop is polled every 64 orderings (a few ms): thousands of orderings take seconds
+    const scored = all.map((p, i) => {
+      if (i % 64 === 0 && stop?.()) throw new SearchCancelled();
+      return [scoreSchedule(scheduleParty(sim, front, back, h, p), tl, w, ctx).total, p] as const;
+    }).sort((a, b) => b[0] - a[0]);
     const bySet = new Map<string, string[]>();
     for (const [, p] of scored) {
       const set = [...p].sort().join("|");
@@ -864,7 +876,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
   const current: [string[], string] = [sim.rotation(h), h.passiveSelect];
   const ev = (n: number) => {
     st.check();
-    const e = evaluateTarget(sim, t, front, back, n);
+    const e = evaluateTarget(sim, t, front, back, n, 1, ctl.shouldStop);
     st.tick();
     return e;
   };
@@ -892,7 +904,7 @@ export function searchSkills(sim: Sim, hero: Hero, front: Row, back: Row, t: Que
     const combos = [...rotations(names, costs, Math.max(...budget.values()))].filter((c) => apply(c, passiveFor(c)));
     // lost fights (win < 50 %) are where the score is least reliable: keep 4x more candidates there
     const kEff = base.win < 0.5 ? kPre * 4 : kPre;
-    const pre = kPre > 0 && !("map" in t) && hasTimelines() ? prefilterRotations(sim, h, front, back, t, combos, kEff, current[0]) : null;
+    const pre = kPre > 0 && !("map" in t) && hasTimelines() ? prefilterRotations(sim, h, front, back, t, combos, kEff, current[0], ctl.shouldStop) : null;
     let cands: string[][];
     if (pre) {
       // Pre-filter: every ordering ranked by the counter-schedule score (and damage only); simulate the top ones.
@@ -1071,7 +1083,7 @@ export function searchGear(sim: Sim, hero: Hero, front: Row, back: Row, t: Quest
   const ev = () => {
     st.check();
     sim.setSkills(h, rotation, passive);
-    const e = evaluateTarget(sim, t, front, back, n);
+    const e = evaluateTarget(sim, t, front, back, n, 1, ctl.shouldStop);
     evaluated++;
     st.tick();
     return e;
@@ -1317,7 +1329,7 @@ export function searchScrolls(sim: Sim, spec: MapSpec, front: Row, back: Row,
   const asScrolls = (lo: number[]) => (lo.length ? lo.map((id) => ({ id, prestigeLevel: scrollAsc })) : null);
   const run = (lo: number[], n: number) => {
     st.check();
-    const e = lo.length ? evaluateMap(sim, spec, front, back, n, 1, asScrolls(lo)) : evaluateMap(sim, spec, front, back, n, 1, null);
+    const e = evaluateMap(sim, spec, front, back, n, 1, lo.length ? asScrolls(lo) : null, ctl.shouldStop);
     st.tick();
     return e;
   };

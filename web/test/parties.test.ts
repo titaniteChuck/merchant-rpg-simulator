@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { type PartyConfig, searchParties } from "../src/tools/parties.ts";
+import { catalogHero } from "./helpers/catalog-heroes.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 const sim = new Sim("Standard");
@@ -68,4 +69,16 @@ test("scrolls only on map runs; a stop returns what was found", () => {
   const z = searchParties(sim, pool(), { quest: 3 }, { ...cheap, timeBudgetMs: 0 });
   assert.equal(z.stopped, true);
   assert.deepEqual(z.results, []);
+});
+
+test("the time budget holds within 5 %, inside the scroll and map-run loops; what was found is kept", () => {
+  // a map run with scrolls: the budget runs out while tuning (rotations, scroll loadouts), checked fight by fight and run by run
+  const strong = new Map([1, 3, 5, 7].map((cls) => [cls, catalogHero({ cls, level: 60, prestige: 3 })]));
+  const budget = 3000, t0 = Date.now();
+  const r = searchParties(sim, strong, { map: { id: 11, prestigeLevel: 1, grade: 3 } },
+    { nQuick: 3, nFinal: 20, beam: 2, refine: 2, rotations: true, scrolls: true, timeBudgetMs: budget });
+  const elapsed = Date.now() - t0;
+  assert.equal(r.stopped, true);
+  assert.ok(elapsed <= budget * 1.05, `${elapsed} ms for a ${budget} ms budget`);
+  assert.ok(r.results.length > 0, "the screened sets are kept");
 });

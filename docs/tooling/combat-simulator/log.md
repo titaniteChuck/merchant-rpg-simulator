@@ -3,6 +3,7 @@
 [Root](../../index.md) > [Tooling](../index.md) > [Combat Simulator](./index.md) > Update Log
 
 ## 2026-11-24
+- **Time budget (E22)**: `searchParties` (and every search through `SearchControl`) polls the stop before every fight and map run (`stop` argument of `evaluate` / `evaluateMap` / `evaluateTarget`, every 64 orderings in the pre-filter); scroll prices once per search; a set cut short while tuning stays as screened. Searches end within ~15 ms of the budget (was 24 s for 20 s).
 - **Effect durations (E24)**: the probe windows were right (Ancient Mist Eva↑ really covers 4 hero turns); `timelines.json` version 6 adds `lastsHeroActions` / `lastsEnemyActions` to every effect that lasts `turns`; windows and scores unchanged, warm start not rebuilt.
 - **Hero id 0 in a slot (E23)**: `partyProblem` / `checkParty` treat only `null` / `undefined` as an empty slot; a row of ids with hero 0 in a party quest's front 2 or a solo quest's front 1 is no longer refused.
 - **Map-only enemies (E20)**: levelling candidates are quest-board quests (single fights) and whole map runs (from level 10; room XP, craft + run time, map gold); map bosses and Treasure Bushes are never standalone quests; consecutive bands with the same source merge into one step; `quest-stats.ts` adds `questStats` / `mapRunStats` (XP, time, XP/min) for the UI.
