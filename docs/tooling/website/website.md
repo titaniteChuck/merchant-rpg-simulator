@@ -258,10 +258,20 @@ flowchart LR
       normal result ("Stopped early"); a worker that doesn't answer within 10 s is terminated.
     - Shortlist (U36, `solveShortlist` in `ui/battle-setup.ts`): of the search's configurations (up to 10), the table
       shows only those worth trying: never a 0 % win, only within 25 % of the best one found (win ≥ 0.75 × best win and
-      ranking score ≥ 0.75 × best score), at most 5, in the solver's order; a line says how many weaker ones were left
-      out. None left: "No setup won a single fight …" with what to change.
+      ranking score ≥ 0.75 × best score), at most 5; a line says how many weaker ones were left out. None left: "No
+      setup won a single fight …" with what to change.
+    - Order (E25): winners (win ≥ 90 %, the solver's threshold) first; within the winners, and within the others, the
+      fewest scrolls first (`scrollCount`: the length of the config's `scrolls` loadout, repeats counted; `null` or
+      empty = none), then the solver's own order (winners: the fewest heroes, then score; others: score). The sort runs
+      on the 25 % window before the cut to 5, so a scroll-free setup just past the top 5 can replace a scroll-using
+      one. A clearly weaker scroll-free setup can't jump ahead: 40 % against 95 % is outside the window, and a
+      non-winner never goes above a winner (a scroll-free 80 % stays under a 95 % with scrolls); a scroll-free 70 %
+      does go above an 85 % with scrolls (both non-winners, both in the window). Quests have no scrolls: winners
+      first, then the solver's order, as before. A scroll penalty on the score was not used: it would need a
+      tuned weight and could let a weak scroll-free setup outrank a strong one.
     - Results: a table of up to 5 setups (10 before U36), # · Heroes · Party (hero chips in the class colours, 🏹 back row then 🛡️
-      front row, a "rough" tag when `tuned` is false: only screened) · Scrolls (maps: links, "—" if none) · Win ·
+      front row, a "rough" tag when `tuned` is false: only screened) · Scrolls (maps only: a green "No scrolls" pill,
+      or "N scrolls:" then the scroll links; the column head's tooltip gives the order) · Win ·
       Turns (quest) or Grade (map) · Lowest enemy HP (quest: 1 − `enemy_dmg_peak`) or Progress (map) · Load.
     - Load fills the six slots, every hero's rotation and passive and (with scrolls) the map's scrolls, marks the row
       "✓ Loaded" and offers "↩ Put back the previous party" (party, rotations and scrolls as before). A setup that

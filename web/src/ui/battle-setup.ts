@@ -6,7 +6,7 @@
  * - enemyRadar(): the enemy radar (U39): HP as text (times the quest size), the other stats on one common rim (the
  *   enemy's highest of Atk, Matk, Def, Mdef), Eva on a fixed rim of 200.
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
- *   most 5.
+ *   most 5; winners first, then within each tier the fewest scrolls first (E25).
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
  */
 import { G } from "../sim/data.ts";
@@ -81,17 +81,29 @@ export function enemyRadar(q: Any, rare = false, amount = 1): EnemyRadar {
 /** True when a rate prints as "0.0%" (the page's pct). */
 const showsZero = (x: number) => Math.round(x * 1000) === 0;
 
+/** How many scrolls a solver result uses (a map run's loadout, repeats counted; none on a quest). */
+export const scrollCount = (c: { scrolls?: readonly number[] | null }): number => c.scrolls?.length ?? 0;
+
 /**
  * The solver's results to show (U36): never a 0 % result, only setups within `slack` (25 %) of the best one found, on
- * the win rate (win ≥ 0.75 × best win) and on the ranking score (score ≥ 0.75 × best score), at most `max` (5), in the
- * solver's own order (winners first, the smallest first).
+ * the win rate (win ≥ 0.75 × best win) and on the ranking score (score ≥ 0.75 × best score), at most `max` (5).
+ * Order (E25): winners (win ≥ `winAt`, the solver's 90 %) first, as the solver ranks them; within the winners, and
+ * within the others, the fewest scrolls first (none first), then the solver's own order (winners: the fewest heroes,
+ * then score; others: score). A scroll-free setup never jumps over a better one blindly: a clearly weaker one (40 %
+ * against 95 %) is outside the 25 % window, and a non-winner always stays below every winner. The order is applied
+ * before the cut to `max`, so a scroll-free setup just past the top 5 can take the place of a scroll-using one.
  */
-export function solveShortlist<T extends { ev: { win: number }; score: number }>(results: T[], max = 5, slack = 0.25): T[] {
+export function solveShortlist<T extends { ev: { win: number }; score: number; scrolls?: readonly number[] | null }>(
+  results: T[], max = 5, slack = 0.25, winAt = 0.9,
+): T[] {
   const live = results.filter((c) => !showsZero(c.ev.win));
   if (!live.length) return [];
   const bestWin = Math.max(...live.map((c) => c.ev.win));
   const bestScore = Math.max(...live.map((c) => c.score));
-  return live.filter((c) => c.ev.win >= (1 - slack) * bestWin && (bestScore <= 0 || c.score >= (1 - slack) * bestScore)).slice(0, max);
+  const kept = live.filter((c) => c.ev.win >= (1 - slack) * bestWin && (bestScore <= 0 || c.score >= (1 - slack) * bestScore));
+  // a stable sort: the solver's order holds between setups of the same tier and scroll count
+  const tier = (c: T) => (c.ev.win >= winAt ? 0 : 1);
+  return kept.sort((a, b) => tier(a) - tier(b) || scrollCount(a) - scrollCount(b)).slice(0, max);
 }
 
 export interface SlotRef {

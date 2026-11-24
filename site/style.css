@@ -1383,6 +1383,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .solver-party .hero-chip { font-size: 0.75rem; padding: 1px 8px; }
 .solver-party .rough { align-self: flex-start; font-size: 0.7rem; cursor: help; }
 .solver-scrolls { font-size: 0.82rem; }
+.solver-table .no-scrolls { font-size: 0.7rem; white-space: nowrap; cursor: help; }
 .solver-loaded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .party-tools { margin: 0 0 8px; }
 .party-rules { margin: 0 0 6px; }

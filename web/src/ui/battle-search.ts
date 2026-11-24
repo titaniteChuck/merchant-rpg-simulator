@@ -10,7 +10,9 @@
  * (SearchContext.guarded): the Results, the party and opponent, the plan.
  *
  * U36: the results table shows only the setups worth trying (battle-setup.ts solveShortlist): no 0 % result, within
- * 25 % of the best one found, at most 5.
+ * 25 % of the best one found, at most 5. E25: winners (90 % or more) first; within the winners, and within the others,
+ * the fewest scrolls first (a run needing no scrolls first). A map run's Scrolls cell says "No scrolls" (a pill) or the
+ * count and the scrolls.
  *
  * Expansions (U28): heroes of a hidden class start ticked in "Leave heroes out".
  */
@@ -21,7 +23,7 @@ import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import type { PartyRules } from "./battle-rules.ts";
-import { solveShortlist } from "./battle-setup.ts";
+import { scrollCount, solveShortlist } from "./battle-setup.ts";
 import { bar, el, fmt, fmt1, pct, rateTone, select } from "./dom.ts";
 import { itemLink } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
@@ -107,6 +109,7 @@ const HEAD_TIPS: Record<string, string> = {
   "Lowest enemy HP": "The lowest point the enemy's HP reached, on average (0 % = killed).",
   "Progress": "Rooms cleared per run.",
   "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one).",
+  "Scrolls": "The scrolls the run uses. Winners (90 % or more) come first; among the winners, and among the others, the runs with fewer scrolls come first (none first).",
 };
 
 /**
@@ -264,7 +267,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     const go = el("button", { type: "button", class: "primary" }, "🔎 Search");
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
       + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
-      + "Locked slots (🔒) keep their hero. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, the fewest heroes first.";
+      + "Locked slots (🔒) keep their hero. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
+      + `${isMap ? "then the fewest scrolls (none first), " : ""}the fewest heroes first.`;
     go.addEventListener("click", () => {
       let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
       minN.value = String(lo);
@@ -294,7 +298,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
     const hero = (id: number) => sv.raw.hero.find((h: Any) => h.id === id);
     const idx = (id: number) => sv.raw.hero.findIndex((h: Any) => h.id === id);
     const box = el("div", { class: "solver-out" });
-    // U36: only the setups worth trying (no 0 %, within 25 % of the best, at most 5).
+    // U36: only the setups worth trying (no 0 %, within 25 % of the best, at most 5); E25: the fewest scrolls first in each tier.
     const shown = solveShortlist(res.results);
     const chip = (id: number) => {
       const h = hero(id);
@@ -305,9 +309,14 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, results: HTML
         el("div", { class: "solver-row" }, el("span", { class: "row-ico", title: row === "front" ? "Front row" : "Back row", role: "img", "aria-label": row === "front" ? "Front row" : "Back row" },
           row === "front" ? "🛡️" : "🏹"), ...c.layout[row].filter((id): id is number => id !== null).map(chip))),
       ...(c.tuned ? [] : [el("span", { class: "pill t-orange rough", title: "Only screened: default rows and the heroes' own rotations, not tuned (its party size was far from winning)." }, "rough")]));
-    const scrollCell = (c: PartyConfig) => (c.scrolls?.length
-      ? el("span", { class: "solver-scrolls" }, ...c.scrolls.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id)]))
-      : el("span", { class: "muted" }, "—"));
+    // E25: scroll use at a glance: "No scrolls" (a pill) or the count, then the scrolls.
+    const scrollCell = (c: PartyConfig) => {
+      const n = scrollCount(c);
+      return n
+        ? el("span", { class: "solver-scrolls" }, el("strong", {}, `${n} scroll${n === 1 ? "" : "s"}: `),
+          ...c.scrolls!.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id)]))
+        : el("span", { class: "pill t-green no-scrolls", title: "This run needs no scrolls." }, "No scrolls");
+    };
     const load = (c: PartyConfig, k: number) => {
       st.undo = snapshot();
       ctx.applyParty(c.layout.front, c.layout.back);
