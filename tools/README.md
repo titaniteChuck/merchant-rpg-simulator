@@ -36,8 +36,9 @@ doesn't use them.
 
 `web/scripts/check-site.ts` opens every page (and the hero, enemy and class pages) at 1280 and 375 px, light and
 dark, with and without a save loaded, and fails on console errors, uncaught errors, failed requests (404s), a page
-wider than the viewport, or (600 px and less) a nav row on more than one line: the top bar, its page links, the
-wiki's section chips and the tab rows. Not in CI: it needs a browser.
+wider than the viewport, or a broken menu: on desktop a current item and dropdowns that open on screen and close with
+Escape; on phones only the burger, and a drawer that opens with the current page marked and focus inside. Not in CI:
+it needs a browser.
 
 ```bash
 cd web && npm run site && node scripts/check-site.ts

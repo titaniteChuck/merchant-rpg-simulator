@@ -51,3 +51,4 @@
 - **Update**: U27/U32, U30 done; U33 + E23 merging; R1 live-site review started.
 - **Update**: User batch: U34 modded names, U35 menus + drawer, U36 battle page v4, E24 effect windows (four parallel agents).
 - **Update**: R1 review done: 45 findings in review-r1.md (2 high, 18 medium, 25 low); some covered by U35/U36.
+- **Update**: U34, U34b, E24 done; U35, U36 built and merging.
