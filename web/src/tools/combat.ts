@@ -1296,10 +1296,14 @@ export function scrollLoadouts(pool: number[] = SCROLL_IDS, slots = 3): number[]
   return loadouts;
 }
 
+/** The solved profit model per loaded game data (solving takes 0.5-2 s and can't be interrupted: once). */
+const solvers = new WeakMap<object, ReturnType<Solver["solve"]>>();
+
 /** Crafted cost of each scroll (profit solver at grade 3); `error` when the solver can't price them (prices are then 0). */
 export function scrollPrices(pool: number[] = SCROLL_IDS, scrollAsc = 0): { prices: Record<number, number>; error?: string } {
   try {
-    const solver = new Solver(gameFromData()).solve();
+    let solver = solvers.get(G.itemData);
+    if (!solver) solvers.set(G.itemData, solver = new Solver(gameFromData()).solve());
     return { prices: Object.fromEntries(pool.map((sid) => [sid, solver.get("consumable", sid, scrollAsc)])) };
   } catch (e) {
     return { prices: Object.fromEntries(pool.map((sid) => [sid, 0])), error: (e as Error).message };

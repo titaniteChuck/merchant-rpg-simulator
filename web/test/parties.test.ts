@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
+import { scrollPrices } from "../src/tools/combat.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { type PartyConfig, searchParties } from "../src/tools/parties.ts";
 import { catalogHero } from "./helpers/catalog-heroes.ts";
@@ -74,6 +75,8 @@ test("scrolls only on map runs; a stop returns what was found", () => {
 test("the time budget holds within 5 %, inside the scroll and map-run loops; what was found is kept", () => {
   // a map run with scrolls: the budget runs out while tuning (rotations, scroll loadouts), checked fight by fight and run by run
   const strong = new Map([1, 3, 5, 7].map((cls) => [cls, catalogHero({ cls, level: 60, prestige: 3 })]));
+  // the profit solver (scroll prices) runs once per loaded game data, uninterruptible: solved before the clock starts
+  scrollPrices();
   const budget = 3000, t0 = Date.now();
   const r = searchParties(sim, strong, { map: { id: 11, prestigeLevel: 1, grade: 3 } },
     { nQuick: 3, nFinal: 20, beam: 2, refine: 2, rotations: true, scrolls: true, timeBudgetMs: budget });

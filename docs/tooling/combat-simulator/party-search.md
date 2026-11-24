@@ -41,7 +41,7 @@ PartyConfig = { size, layout: { front, back } /* hero ids, null = empty */,
 - **Cancel:** `shouldStop()` or the time budget ends the search; the configurations found so far are returned with `stopped: true`.
   - The budget is checked before every fight and map run, inside the rotation, scroll-loadout and final evaluations, so the search ends within a fight or a run of it (E22: a 120 s map search with scrolls had taken 148 s).
   - A set whose tuning is cut short stays in the results as screened (`tuned: false`).
-  - Scroll prices (the profit solver, about 0.5 s) are computed once per search, at its start.
+  - Scroll prices come from the profit solver, which can't be interrupted. It runs once per loaded game data (`scrollPrices` caches it): 0.5 to 2.5 s the first time, at the start of the search and inside its budget.
 - **Heroes:** they are left with their own rotations and passives. Apply a configuration's `skills` to use it.
 
 ## How it searches
