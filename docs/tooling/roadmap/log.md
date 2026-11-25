@@ -100,3 +100,4 @@
 - **Update**: U56 done (031d388): item details show their facts as cards; equipment's sell price as a row of Stats by grade; one sell box for the page's ascension; Recipe and Used in keep their section when empty.
 - **Update**: U58 done (fe1d5cb): Party · Flow 1 · Flow 2 · Flow 3 tabs on the Simulator and Solver (one registry); Flow 2 opens each turn with a row of hero cards.
 - **Update**: U59 done (5cc3705): Flow 3, one card per action in its fighter's column, in time order; it replaces the U58 stub. The U55–U59 batch is complete.
+- **Update**: U59 follow-up (9e9ba54): Flow 3 on phones is one vertical list of cards in time order (no fighter columns), class-colour edge on each card.
