@@ -2220,3 +2220,28 @@ footer .footer-line a { color: inherit; }
   }
 }
 /* end r3-profit */
+/* r3-farming */
+/* Farming, review R3 (review-r3.md): tiles named after their source with "#1" as icon (F26); help shown by tip() on
+   hover, focus and tap, marked by a dotted line (F33, F38); the source's level or map grade on its own line (F34, F35);
+   party rows on a grid, label then three equal selects (F31); scroll selects sized to their option (F32); the table's
+   edges fade while it scrolls sideways on a phone (F37, the shared row-fade). */
+.farm-tip { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+#farm-results .tiles .tile-icon { font-size: 0.85rem; font-weight: 800; color: var(--muted); }
+#farm-results .tiles .tile-label { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: none; letter-spacing: 0; font-size: 0.9rem; font-weight: 650; color: var(--fg); }
+.farm-src { display: flex; flex-direction: column; }
+.farm-src-sub, .farm-runs { display: block; }
+.farm-party-row { display: grid; grid-template-columns: 5.5em repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; margin-bottom: 8px; }
+.farm-party-row > select, .farm-party-row > .farm-slot { width: 100%; min-width: 0; }
+.farm-party-row .farm-slot select { flex: 1 1 auto; min-width: 0; }
+.farm-scrolls { display: flex; flex-wrap: wrap; }
+.farm-scrolls select { flex: 0 1 auto; width: auto; max-width: 100%; }
+@media (max-width: 600px) {
+  .farm-party-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .farm-table {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+    animation: row-fade linear both; animation-timeline: scroll(self inline);
+  }
+}
+/* end r3-farming */

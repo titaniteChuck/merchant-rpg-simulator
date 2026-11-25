@@ -19,15 +19,25 @@
  * lists, folds summed up as "Quests · 12 ticked" (F12); a note on the value when the save isn't in Standard mode
  * (F19); a map row's time split into craft and run (F20); event bosses in their own unticked group (F22); a result
  * dimmed with "rank again" once the party or the sources change (F23).
+ *
+ * Review R3 (review-r3.md, Farming): tiles named after the source (F26), "value/h" with its gold and essence parts
+ * (F27), losses in red (F29), Levelling's hero labels (F30), party rows on a grid (F31), "None" scrolls (F32), help by
+ * tip() instead of `title` (F33, F38), the source's level or map grade on a second line (F34, F35), "–" for no
+ * essence (F36), the table's edge fade on a phone (F37).
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import type { FarmRow, FarmSource } from "../tools/farming.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
-import { $, bar, duration, el, fmt, fmt1, gold, GRADE_LETTERS, gradeBadge, goldNumber, pct, rateTone, select, table, tile } from "./dom.ts";
+import { $, bar, duration, el, fmt, fmt1, GRADE_LETTERS, gradeBadge, goldNumber, pct, rateTone, select, table, tile } from "./dom.ts";
 import type { FarmRequest, FarmResponse } from "./farming-worker.ts";
 import { FARM_SLOTS, farmQuestIds, fightingSlots, questGroups, readStoredParty, storedPartyWith, tickedByDefault } from "./farming-party.ts";
-import { foldSummary, RANDOM_OFFER, RANDOM_OFFER_TIP, setupSignature, timeTip, valueHelp } from "./farming-view.ts";
+import {
+  costTip, ERRORS_TIP, essenceText, foldSummary, GOLD_HELP, gradeTip, LEFT_OUT_TIP, NO_SCROLL, PARTY_TIP, RANDOM_OFFER,
+  RANDOM_OFFER_TIP, SCROLLS_TIP, setupSignature, sourceSub, timeTip, toneOf, valueHelp, valueSplit, valueText,
+} from "./farming-view.ts";
+import { heroLabels } from "./levelling-view.ts";
+import { tip } from "./tooltip.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText } from "./wiki-data.ts";
 import { helpTip } from "./wiki-help.ts";
@@ -85,11 +95,20 @@ function restoreParty(heroes: number): boolean {
   }
 }
 
+/** `e` with a one-line tip shown on hover, focus and tap (F33, F38: no `title`, which touch never shows). */
+function tipped<T extends HTMLElement>(e: T, text: string): T {
+  e.classList.add("farm-tip");
+  e.tabIndex = 0;
+  tip(e, () => text);
+  return e;
+}
+
 function renderParty(): void {
   const sv = state.sv!;
-  const options: [string, string][] = [["", "— empty —"], ...sv.raw.hero.map((h: Any, i: number): [string, string] =>
-    [String(i), `${h.name} · ${className(h.class) ?? h.class} Lv ${h.level}`])];
-  const rows = (["front", "back"] as const).map((row) => el("div", { class: "toolbar" },
+  // F30: Levelling's labels: ascension, and a number for heroes sharing a name
+  const labels = heroLabels(sv.raw.hero, (c) => className(c) ?? String(c));
+  const options: [string, string][] = [["", "— empty —"], ...labels.map((l, i): [string, string] => [String(i), l])];
+  const rows = (["front", "back"] as const).map((row) => el("div", { class: "farm-party-row" },
     el("span", { class: "muted small farm-row-label" }, row === "front" ? "Front" : "Back"),
     ...[0, 1, 2].map((i) => {
       const key = `${row}${i}`;
@@ -103,7 +122,7 @@ function renderParty(): void {
         renderParty();
       });
       const out = state.excluded[key] && s.value !== "";
-      return out ? el("span", { class: "farm-slot", title: "Ticked out on the Simulator: doesn't fight" }, s, el("span", { class: "pill plain" }, "left out")) : s;
+      return out ? el("span", { class: "farm-slot" }, s, tipped(el("span", { class: "pill plain" }, "left out"), LEFT_OUT_TIP)) : s;
     })));
   $("#party").replaceChildren(...rows);
 }
@@ -111,15 +130,31 @@ function renderParty(): void {
 // ---------------------------------------------------------------- sources
 interface SourceChoice {
   source: FarmSource;
-  /** How the result row shows it. */
+  /** Its name (with the map icon for a map): the podium tile's label (F26). */
+  name: () => Node;
+  /** How the result row shows it: the name, then a second line (F34, F35). */
   label: () => Node;
 }
 
-const questLabel = (id: number, rare: boolean) => {
-  const q = G.questData[id];
-  return el("span", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name), el("span", { class: "muted small" }, ` · Lv ${q.levelReq ?? "?"}`),
-    ...(rare ? [" ", el("span", { class: "pill plain farm-random", title: RANDOM_OFFER_TIP }, RANDOM_OFFER)] : []));
+const randomTag = () => {
+  const t = tipped(el("span", { class: "pill plain farm-random" }, RANDOM_OFFER), RANDOM_OFFER_TIP);
+  t.addEventListener("click", (e) => e.preventDefault()); // a tap shows the tip, not a tick of the "Rare variants" box
+  return t;
 };
+
+/** A result row's source: the name (and tag) on one line, the level or the map's grade muted under it (F34, F35). */
+const sourceCell = (name: Node, sub: string, ...after: Node[]) =>
+  el("span", { class: "farm-src" }, el("span", {}, name, ...after), el("span", { class: "muted small farm-src-sub" }, sub));
+
+const questName = (id: number, rare: boolean) => {
+  const q = G.questData[id];
+  return el("span", {}, enemyName(id, rare) ?? (rare ? q.nameB : q.name));
+};
+const questLabel = (id: number, rare: boolean) =>
+  sourceCell(questName(id, rare), sourceSub({ kind: "quest", level: G.questData[id].levelReq }), ...(rare ? [document.createTextNode(" "), randomTag()] : []));
+const mapName = (link: HTMLElement) => el("span", {}, el("span", { "aria-hidden": "true" }, "🗺️ "), link);
+const ownedMapLink = (it: Any) => itemLink("map", it.id, modItemName("map", it.id, it), undefined, it.prestigeLevel, { always: true });
+const mapGrade = (it: Any) => GRADE_LETTERS[(it.grade ?? 3) - 1] ?? String(it.grade);
 
 function checkbox(label: Node | string, checked: boolean, value: string): HTMLLabelElement {
   const c = el("input", { type: "checkbox", value }) as HTMLInputElement;
@@ -129,8 +164,7 @@ function checkbox(label: Node | string, checked: boolean, value: string): HTMLLa
 
 /** Owned map label: its name with prefix and suffix (modItemName), outlined for its ascension, and its grade. */
 function ownedMapLabel(it: Any): HTMLElement {
-  return el("span", { class: "nowrap" }, itemLink("map", it.id, modItemName("map", it.id, it), undefined, it.prestigeLevel, { always: true }),
-    " ", gradeBadge(GRADE_LETTERS[(it.grade ?? 3) - 1] ?? String(it.grade)));
+  return el("span", { class: "nowrap" }, ownedMapLink(it), " ", gradeBadge(mapGrade(it)));
 }
 
 function renderSources(): void {
@@ -139,7 +173,7 @@ function renderSources(): void {
   // Quests (F04, F05): quest-board quests up to level 60, no placeholder; grouped by level band, the ones near the
   // party's level ticked; event bosses in their own group, unticked (F22).
   const quests = farmQuestIds((id) => isVisible("enemy", id));
-  const rare = checkbox(el("span", {}, "Rare variants ", el("span", { class: "pill plain farm-random", title: RANDOM_OFFER_TIP }, RANDOM_OFFER)), false, "rare");
+  const rare = checkbox(el("span", {}, "Rare variants ", randomTag()), false, "rare");
   const questBox = el("details", { class: "help farm-fold", "data-label": "Quests" }, el("summary", {}, "Quests"),
     ...questGroups(quests).map((g) => el("fieldset", { class: "plain" }, el("legend", { class: "muted small" }, g.label),
       el("div", { class: "toolbar" }, ...g.ids.map((id) => {
@@ -166,10 +200,10 @@ function renderSources(): void {
       ]))));
   }
   if (mapBlocks.length) {
-    const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
+    const scrollOpts: [string, string][] = [["", NO_SCROLL], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
       .map((id): [string, string] => [String(id), itemName("consumable", id) ?? G.itemData.consumable[id].name])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "farm-scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
-    mapBlocks.push(el("div", { class: "farm-scrolls", title: "Bought for every map run" }, el("span", { class: "muted small" }, "Scrolls"), ...scrolls));
+    mapBlocks.push(el("div", { class: "farm-scrolls" }, tipped(el("span", { class: "muted small" }, "Scrolls"), SCROLLS_TIP), ...scrolls));
   }
   $("#sources").replaceChildren(questBox, ...mapBlocks);
   updateSummaries();
@@ -196,18 +230,20 @@ function chosenSources(): SourceChoice[] {
     const [kind, a, b] = v.split(":");
     if (kind === "quest") {
       const id = Number(a);
-      out.push({ source: { kind: "quest", quest: id }, label: () => questLabel(id, false) });
+      out.push({ source: { kind: "quest", quest: id }, name: () => questName(id, false), label: () => questLabel(id, false) });
       const q = G.questData[id];
       if (rare && q.nameB && q.enemyHpB !== undefined && q.attackListB !== undefined) {
-        out.push({ source: { kind: "quest", quest: id, rare: true }, label: () => questLabel(id, true) });
+        out.push({ source: { kind: "quest", quest: id, rare: true }, name: () => questName(id, true), label: () => questLabel(id, true) });
       }
     } else if (kind === "own") {
       const it = sv.mapInventory[Number(a)];
-      out.push({ source: { kind: "map", map: compacts[Number(a)], scrolls }, label: () => ownedMapLabel(it) });
+      out.push({ source: { kind: "map", map: compacts[Number(a)], scrolls }, name: () => mapName(ownedMapLink(it)),
+        label: () => sourceCell(ownedMapLink(it), sourceSub({ kind: "map", grade: mapGrade(it) })) });
     } else if (kind === "cat") {
       const id = Number(a), asc = Number(b);
-      out.push({ source: { kind: "map", map: { id, prestigeLevel: asc, grade: 5 }, scrolls },
-        label: () => el("span", { class: "nowrap" }, itemLink("map", id, undefined, undefined, asc), " ", gradeBadge("S")) });
+      const link = () => itemLink("map", id, undefined, undefined, asc);
+      out.push({ source: { kind: "map", map: { id, prestigeLevel: asc, grade: 5 }, scrolls }, name: () => mapName(link()),
+        label: () => sourceCell(link(), sourceSub({ kind: "map", grade: "S" })) });
     }
   }
   return out;
@@ -334,61 +370,61 @@ function refreshStale(): void {
 }
 
 // ---------------------------------------------------------------- results
-const perHour = (x: number) => `${gold(x)}/h`;
-
 function results(rows: FarmRow[], choices: SourceChoice[], mode: string): HTMLElement[] {
   const all = rows.map((r, i) => ({ r, c: choices[i] }));
   const live = all.filter((x) => !x.r.blocked).sort((a, b) => b.r.value_per_hour - a.r.value_per_hour);
   const ranked = [...live, ...all.filter((x) => x.r.blocked)];
   // F09: no headline card (the #1 tile says it); win and grade before the value
+  // F26, F27: each tile is named after its source, "#1" as its icon; "value/h" over its gold and essence parts
   const top: HTMLElement[] = [];
   if (live.length) {
     const best = live[0];
-    top.push(el("div", { class: "tiles span-last" }, ...live.slice(0, 3).map(({ r, c }, k) =>
-      tile(`#${k + 1} · ${c.source.kind === "quest" ? "quest" : "map"}`, perHour(r.value_per_hour),
-        `${pct(r.win)} wins · ${fmt1.format(r.essence_per_hour)} essence/h`,
-        { icon: ["🥇", "🥈", "🥉"][k], tone: r.value_per_hour > 0 ? "good" : "bad",
-          ...(r.value_per_hour > 0 && best.r.value_per_hour > 0 ? { bar: r.value_per_hour / best.r.value_per_hour } : {}) }))));
+    top.push(el("div", { class: "tiles span-last" }, ...live.slice(0, 3).map(({ r, c }, k) => {
+      const t = tile("", valueText(r.value_per_hour), valueSplit(r.gold_per_hour, r.essence_per_hour),
+        { icon: `#${k + 1}`, tone: r.value_per_hour > 0 ? "good" : "bad",
+          ...(r.value_per_hour > 0 && best.r.value_per_hour > 0 ? { bar: r.value_per_hour / best.r.value_per_hour } : {}) });
+      t.querySelector(".tile-label")?.replaceChildren(c.name());
+      return t;
+    })));
   }
   const data = ranked.map(({ r, c }, i) => ({
-    i, blocked: Boolean(r.blocked), rank: r.blocked ? -Infinity : i + 1, name: c.label().textContent ?? r.label,
+    i, blocked: Boolean(r.blocked), rank: r.blocked ? -Infinity : i + 1, name: c.name().textContent ?? r.label,
     value: r.blocked ? -Infinity : r.value_per_hour, gold: r.gold_per_hour, essence: r.essence_per_hour, win: r.win, grade: r.grade,
     time: r.time_h * 3600, cost: r.cost.total, loot: r.loot_value, ess_run: r.essence_total, deaths: r.death_rate,
     ess_names: Object.entries(r.essence).map(([k, v]) => `${fmt1.format(v)} ${itemNameFromEnglish("material", k)}`).join(", "),
   }));
   const rowOf = (x: Record<string, unknown>) => ranked[Number(x.i)].r;
   const dash = (x: Record<string, unknown>, f: () => Node | string): Node | string => (x.blocked ? "–" : f());
-  const cost = (r: FarmRow) => {
-    const parts: [string, number][] = [["Quest gold", r.cost.gold], ["Map", r.cost.map], ["Scrolls", r.cost.scrolls], ["Revives", r.cost.revive]];
-    return el("span", { title: parts.filter(([, v]) => v > 0).map(([k, v]) => `${k} ${gold(v)}`).join(" · ") || "Free" }, goldNumber(r.cost.total));
-  };
   const source = (x: Record<string, unknown>) => {
     const r = rowOf(x);
     return el("span", {}, ranked[Number(x.i)].c.label(),
       ...(r.blocked ? [el("span", { class: "farm-blocked error small" }, `Can't start: ${r.blocked}`)] : []),
-      ...(r.errors > 0 ? [el("span", { class: "muted small", title: "Runs the game's own code fails on are left out" }, ` · ${fmt.format(r.n)} of ${fmt.format(r.n + r.errors)} runs`)] : []));
+      ...(r.errors > 0 ? [tipped(el("span", { class: "muted small farm-runs" }, `${fmt.format(r.n)} of ${fmt.format(r.n + r.errors)} runs`), ERRORS_TIP)] : []));
   };
   const grid = table(data, [
     { key: "rank", label: "#", num: true, render: (x) => dash(x, () => String(x.rank)) },
     { key: "source", label: "Source", render: source, sortBy: (x) => x.name },
     { key: "win", label: "Win", num: true, render: (x) => dash(x, () => el("span", { class: `rate ${rateTone(Number(x.win))}` }, pct(Number(x.win)))) },
     { key: "grade", label: "Grade", num: true, render: (x) => dash(x, () => Number(x.grade)
-      ? el("span", { title: `Average grade ${fmt1.format(Number(x.grade))}` }, gradeBadge(GRADE_LETTERS[Math.min(4, Math.max(0, Math.round(Number(x.grade)) - 1))]))
+      ? tipped(el("span", {}, gradeBadge(GRADE_LETTERS[Math.min(4, Math.max(0, Math.round(Number(x.grade)) - 1))])), gradeTip(Number(x.grade)))
       : "–") },
-    { key: "value", label: "Value / h", num: true, render: (x) => dash(x, () => el("strong", {}, fmt.format(Number(x.value)))) },
-    { key: "gold", label: "Gold / h", num: true, render: (x) => dash(x, () => fmt.format(Number(x.gold))) },
-    { key: "essence", label: "Essence / h", num: true, render: (x) => dash(x, () => fmt1.format(Number(x.essence))) },
+    { key: "value", label: "Value / h", num: true, render: (x) => dash(x, () =>
+      tipped(el("strong", { class: toneOf(Number(x.value)) }, fmt.format(Number(x.value))), valueSplit(Number(x.gold), Number(x.essence)))) },
+    { key: "gold", label: "Gold / h", num: true, render: (x) => dash(x, () => el("span", { class: toneOf(Number(x.gold)) }, fmt.format(Number(x.gold)))) },
+    { key: "essence", label: "Essence / h", num: true, render: (x) => dash(x, () => essenceText(Number(x.essence))) },
     { key: "time", label: "Time / run", num: true, render: (x) => dash(x, () => {
-      const tip = timeTip(rowOf(x));
-      return tip ? el("span", { title: tip }, duration(Number(x.time))) : duration(Number(x.time));
+      const t = timeTip(rowOf(x));
+      return t ? tipped(el("span", {}, duration(Number(x.time))), t) : duration(Number(x.time));
     }) },
-    { key: "cost", label: "Cost / run", num: true, render: (x) => dash(x, () => cost(rowOf(x))) },
+    { key: "cost", label: "Cost / run", num: true, render: (x) => dash(x, () => tipped(el("span", {}, goldNumber(rowOf(x).cost.total)), costTip(rowOf(x).cost))) },
     { key: "loot", label: "Loot / run", num: true, render: (x) => dash(x, () => fmt.format(Number(x.loot))) },
-    { key: "ess_names", label: "Essence / run", sortBy: (x) => x.ess_run },
+    { key: "ess_names", label: "Essence / run", sortBy: (x) => x.ess_run, render: (x) => dash(x, () => String(x.ess_names || "–")) },
     { key: "deaths", label: "Deaths", num: true, render: (x) => dash(x, () => pct(Number(x.deaths))) },
   ], (x) => (x.blocked ? "farm-row-blocked" : ""));
   grid.classList.add("farm-table");
-  [...grid.querySelectorAll("th")].find((th) => th.textContent?.startsWith("Value / h"))?.append(helpTip(valueHelp(mode), "Value / h"));
+  const head = (label: string) => [...grid.querySelectorAll("th")].find((th) => th.textContent?.startsWith(label));
+  head("Value / h")?.append(helpTip(valueHelp(mode), "Value / h"));
+  head("Gold / h")?.append(helpTip(GOLD_HELP, "Gold / h"));
   return [...top, grid];
 }
 
@@ -431,6 +467,7 @@ function init(): void {
     },
   });
   $("#run").addEventListener("click", run);
+  tipped($("#party-label"), PARTY_TIP);
   // F12, F23: fold counts follow the ticks; a shown result goes out of date when the setup changes
   $("#setup").addEventListener("change", () => {
     updateSummaries();

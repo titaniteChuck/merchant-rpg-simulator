@@ -1036,21 +1036,35 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   the profit `Solver` (grade 3); the page keeps its worker between runs, so the Solver is solved once (~3 s) and
   reused; Cancel, or a new run while one is busy, ends the worker. Defaults: 40 fights per quest, 30 runs per map.
 - Cost per run: quest gold, the map, the scrolls and the revive gold of the heroes who died (`cost.revive`; a lost
-  quest kills the whole party), in the cell's tooltip; it comes off gold/h and value/h.
-- Ranked by value per hour (loot sell value minus the run's cost, plus essence at its production cost; the formula in
+  quest kills the whole party), in the cell's tip; it comes off gold/h and value/h.
+- Ranked by value per hour (gold: loot sell value minus the run's cost, plus essence at its production cost; the formula in
   the column's "?", which adds "Prices follow Standard mode, not <mode>." for a save in another mode: the profit
   Solver has no game mode, F19). Quest XP uses the mode's factor (`modeFactors`, F19). The three podium tiles, no
   headline card (F09); columns #, Source, Win, Grade, Value / h, Gold / h, Essence / h, Time / run, Cost / run,
-  Loot / run, Essence / run, Deaths. Grade as the nearest letter badge (the average in its tooltip), time per run
+  Loot / run, Essence / run, Deaths. Grade as the nearest letter badge (the average in its tip), time per run
   with `duration()` (a map row's tooltip "Craft X + run Y", F20), sortable Source (shown name) and Essence / run
   (total); the Source cell wraps (F11); a map row with runs the game's own code failed on shows "N of M runs".
   Results in `#farm-results` (the Battle `#results` tile rules don't apply).
+- Review R3 ([review-r3](../roadmap/review-r3.md#farming), quick fixes): the podium tiles are named after their source
+  (a map with 🗺️), "#1" … as icon (F26); the ranking figure reads "value/h" ("3,544 value/h"), the tile's subline
+  and the Value / h cell's tip split it into gold and essence ("-1,283 g + 79.2 essence /h", `valueSplit`), and the
+  Value / h and Gold / h "?" say value is gold plus essence priced in gold while Gold / h is gold alone (F27);
+  negative Value / h and Gold / h in the loss colour (`pf-loss`), zero muted (F29); party selects use Levelling's
+  `heroLabels` (`levelling-view.ts`: ascension, a number for same-named heroes, F30), on a grid of a label column
+  and three equal columns, one column on a phone (F31); the scroll selects' empty option is "None", each select
+  sized to its option (F32); no `title` help: the cost split, the time split, the average grade, "random offer",
+  "left out", the Party heading, Scrolls and "N of M runs" use `tip()` (hover, focus and tap, dotted line), the
+  column "?" open on tap (F33, F38); the source cell is two lines, the name then a muted "Lv 51" for a quest or
+  "Map grade S" for a map, so a map row has one grade badge, the run's (F34, F35); "–" for no essence in Essence / h
+  and Essence / run (F36); at 600 px and less the table's edges fade while it scrolls sideways (R2-A's row-fade, F37).
+  Texts in `farming-view.ts`; CSS in the `r3-farming` block. F25 and F28 wait for D1.
 - Out of date (F23): once the party, the ticked sources, the scrolls or the run counts differ from the shown result's
   (`setupSignature` in `web/src/ui/farming-view.ts`), the result is dimmed under "Party or sources changed: rank
   again"; going back to the same setup clears it.
 - Open (design choices of the review): the results layout and the phone column set (D1), party editing (D2), source
   presets and region groups (D3), rare variants (D4), owned-map pricing (D5), run counts (D6), quest level rule (D7,
-  F08). Tests: `web/test/farming-worker.test.ts`, `web/test/farming-f1.test.ts`, `web/test/farming-f2.test.ts`.
+  F08). Tests: `web/test/farming-worker.test.ts`, `web/test/farming-f1.test.ts`, `web/test/farming-f2.test.ts`,
+  `web/test/farming-r3.test.ts`.
   Review: [review-farming](../roadmap/review-farming.md).
 
 ## Levelling page
