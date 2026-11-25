@@ -114,7 +114,9 @@ test("F25 / F26: the per-hero table: no Slot column, a plain name with its slot 
 test("F28: the flow's note is in its \"?\"; no heading repeating the tab", () => {
   for (const html of [sim, solver]) {
     assert.doesNotMatch(html, /The fight, turn by turn/);
-    assert.match(html, /<div class="flow-head"><div id="flow-opp" class="flow-opp"><\/div><span id="plan-help"><\/span><\/div>/);
+    // U51: the flow's "?" is beside the tabs (shown on the Flow tab), not on the opponent line
+    assert.match(html, /<div class="flow-head"><div id="flow-opp" class="flow-opp"><\/div><\/div>/);
+    assert.match(html, /<span id="party-help"><\/span><span id="plan-help" hidden><\/span>/);
   }
   assert.doesNotMatch(page, /flow-note/);
   assert.match(page, /helpTip\(\[\.\.\.\(trace \? \[FLOW_NOTE\] : \[\]\), planNote\(t\)\], "the flow"\)/);
@@ -167,7 +169,7 @@ test("F31: Solver sizes on one row, the limit in their \"?\", scrolls only for a
 });
 
 test("F32: Show is the first column (and a row tap); no Heroes, # or Lowest enemy HP columns", () => {
-  assert.match(search, /const head = \["", "Party", \.\.\.\(isMap \? \["Scrolls"\] : \[\]\), "Win", isMap \? "Grade" : "Turns", \.\.\.\(isMap \? \["Progress"\] : \[\]\)\];/);
+  assert.match(search, /const head = \["", "Party", \.\.\.\(isMap \? \["Scrolls"\] : \[\]\), "Win", "Grade", isMap \? "Progress" : "Turns", "Life", "Dead"\];/); // U51: + Grade, Life, Dead
   assert.doesNotMatch(search, /"Heroes"|"Lowest enemy HP"|"#"/);
   assert.match(search, /el\("td", \{ class: "solver-show" \}, b\), el\("td", \{\}, partyCell\(c\)\)/);
   assert.match(search, /if \(!\(e\.target as Element\)\.closest\("a, button, summary"\)\) b\.click\(\);/);

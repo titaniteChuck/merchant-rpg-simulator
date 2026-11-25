@@ -7,6 +7,7 @@
  * slots, back row | front row; cards move by drag and drop, party-drag.ts) on the left and the opponent card (a quest
  * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
+ * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab).
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
@@ -823,6 +824,10 @@ function showTab(tab: Tab, remember = true): void {
   });
   $("#flow-panel").hidden = tab !== "flow";
   $("#setup-grid").hidden = tab !== "party";
+  // U51: one "?" beside the tabs, the open tab's: the party's rule on Party, how to read the flow on Flow.
+  const [partyTip, flowTip] = [document.querySelector<HTMLElement>("#party-help"), document.querySelector<HTMLElement>("#plan-help")];
+  if (partyTip) partyTip.hidden = tab !== "party";
+  if (flowTip) flowTip.hidden = tab !== "flow";
 }
 function initTabs(): void {
   for (const b of document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")) b.addEventListener("click", () => showTab(b.dataset.tab as Tab));

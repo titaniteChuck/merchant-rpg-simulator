@@ -140,7 +140,14 @@ test("F01: the Flow table holds rows and named turn rowgroups only, the result a
       if (role !== "cell" && role !== "columnheader") kids.forEach(check);
     };
     check(tables[0]);
-    assert.equal(plan.querySelectorAll("[role=rowheader]").length, 0, "no row header outside a row");
+    const line = owned(plan.querySelector("div.tc-line")!);
+    // U51: the turn bands' headers, each the one header of its own row, spanning every column
+    const bands = plan.querySelectorAll("[role=rowheader]");
+    assert.ok(bands.length > 0);
+    for (const h of bands) {
+      assert.equal(h.parentNode!.getAttribute("role"), "row", "no row header outside a row");
+      assert.equal(h.getAttribute("aria-colspan"), String(line.length));
+    }
     const groups = plan.querySelectorAll("[role=rowgroup]");
     assert.ok(groups.length > 0);
     for (const g of groups) assert.match(g.getAttribute("aria-label")!, /^Turn \d+/);
@@ -149,9 +156,8 @@ test("F01: the Flow table holds rows and named turn rowgroups only, the result a
     assert.equal(result.getAttribute("role"), "status");
     assert.equal(result.parentNode!.getAttribute("role"), "cell");
     assert.equal(result.parentNode!.parentNode!.getAttribute("role"), "row");
-    // the heads: one per column of cells (the hidden "Turn" head is not one)
+    // the heads: one per column of cells (U51: no "Turn" column)
     const heads = owned(plan.querySelector("div.pg-heads")!);
-    const line = owned(plan.querySelector("div.tc-line")!);
     assert.equal(heads.length, line.length);
     if (quest === 72) assert.ok(plan.querySelectorAll("div.tc-calc[role=cell]").length > 0, "an opened calculation is a cell");
   }

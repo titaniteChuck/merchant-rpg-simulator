@@ -21,7 +21,7 @@ import {
 import { type CalcTerm, calcView } from "./battle-calc.ts";
 import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
-import { calcPanelLeft } from "./battle-layout.ts";
+import { calcColumn, turnBand } from "./battle-layout.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
 import { dataJson } from "./data-files.ts";
@@ -356,24 +356,10 @@ function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) 
 }
 
 /**
- * U48: each open calculation under a line sits level with its column (`data-order` = column × 2, +1 for a heal):
- * left-aligned at the column's left edge, pulled left as far as needed to stay inside the chart (battle-layout.ts
- * calcPanelLeft). The panel's width doesn't depend on its margin (style.css: max-content, at most the chart's width).
- */
-function placeCalcs(box: HTMLElement): void {
-  const cols = Number(box.dataset.cols) || 1, width = box.clientWidth;
-  for (const p of [...box.children] as HTMLElement[]) {
-    p.style.marginLeft = `${calcPanelLeft(Math.floor(Number(p.dataset.order) / 2), cols, width, p.offsetWidth)}px`;
-  }
-}
-/** U48: the open calculations follow a change of the chart's width (a turned phone, a resized window, a tab shown). */
-const calcResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver((entries) => {
-  for (const e of entries) placeCalcs(e.target as HTMLElement);
-});
-
-/**
  * A number's "▾ calculation" toggle (U40): it opens the calculation under the action's line (in `box`, in column
- * order, level with its column: placeCalcs), and turns to "▸"; clicking again closes it.
+ * order), and turns to "▸"; clicking again closes it. U51: `box` is a grid with the line's columns (style.css), and the
+ * panel takes its column (battle-layout.ts calcColumn): exactly the column's width, its text wrapping inside; panels
+ * of other columns sit side by side, a second one in the same column (damage and healing) under the first.
  */
 function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
   // U48: the word goes on a phone (CSS), the ▾ stays; the button's name stays "calculation".
@@ -390,17 +376,13 @@ function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, wh
     } else {
       panel = open();
       panel.dataset.order = String(order);
+      panel.style.gridColumn = String(calcColumn(order, Number(box.dataset.cols) || 1));
       const after = [...box.children].find((x) => Number((x as HTMLElement).dataset.order) > order);
       box.insertBefore(panel, after ?? null);
       btn.firstElementChild!.textContent = "▸";
       btn.setAttribute("aria-expanded", "true");
     }
     box.hidden = box.children.length === 0;
-    if (box.hidden) calcResize?.unobserve(box);
-    else {
-      placeCalcs(box);
-      calcResize?.observe(box);
-    }
   });
   return btn;
 }
@@ -441,10 +423,14 @@ function hpEl(v: { hp: number; maxHP: number } | undefined, name: string, turn: 
     el("span", { class: "tc-hpnum", "aria-hidden": "true" }, down ? "✝ down" : fmtInt.format(v.hp)))];
 }
 
-/** The light line between two 5-turn rounds. */
-function roundDivider(round: number): HTMLElement {
-  const a = round * 5 + 1;
-  return el("div", { class: "pg-cycle", role: "row" }, el("span", { role: "cell" }, `↻ Turns ${a}–${a + 4}: the rotations again`));
+/**
+ * U51: the full-width band before a turn ("Turn 3"), in place of a "Turn" column: a row whose one header spans every
+ * column (aria-colspan). A turn starting a new 5-turn round says the rotations start again (the old round divider).
+ */
+function turnRow(turn: number, cols: number): HTMLElement {
+  const b = turnBand(turn);
+  return el("div", { class: "tc-turnrow", role: "row" }, el("div", { class: "tc-turnhead", role: "rowheader", "aria-colspan": String(cols) },
+    b.label, ...(b.again ? [el("span", { class: "tc-again" }, " · ↻ rotations again")] : [])));
 }
 
 /**
@@ -457,7 +443,7 @@ function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit
   if (!turns.length) return [];
   return [el("div", { class: "pg-cycle tc-unreached-head", role: "row" }, el("span", { role: "cell" }, "Planned, not reached")),
     ...turns.map((t) => el("div", { class: "tc-turn tc-unreached", role: "rowgroup", "aria-label": `Turn ${t}: planned, not reached` },
-      el("div", { class: "tc-turnlab", "aria-hidden": "true" }, `T${t}`),
+      turnRow(t, cols.length),
       el("div", { class: "tc-lines" }, el("div", { class: "tc-line", role: "row" }, ...cols.map((c) => {
         if (c.kind !== "hero") return el("div", { class: "tc-cell", role: "cell" });
         const planned = (c.cells[t - 1] as HeroCell).planned;
@@ -470,8 +456,8 @@ function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit
  * The flow diagram (U39, U40): every turn of one simulated fight, from turn 1 to its end. Per turn, one line per
  * action in action order (the actor's column: the skill; the others: damage −, healing +, each with its "▾
  * calculation", and what a landed effect does), then the end-of-turn summary on its own background: each fighter's HP
- * (bars aligned) and its effects as text. Turns 1-5 carry the rotation's ▾ (with `edit`); a light divider every 5
- * turns; the result at the end.
+ * (bars aligned) and its effects as text. Turns 1-5 carry the rotation's ▾ (with `edit`). U51: no "Turn" column, a
+ * full-width turn band before each turn (turnRow; every 5 turns it says the rotations start again); the result at the end.
  */
 function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, edit?: PlanEdit): HTMLElement {
   const whoOf = (c: PlanColumn) => (c.kind === "enemy" ? 0 : c.loc!);
@@ -493,9 +479,8 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
     rows.push(el("div", { class: "tc-line tc-status", role: "row", "aria-label": `End of turn ${t.turn}: HP and effects` }, ...cols.map((c) =>
       el("div", { class: "tc-cell", role: "cell" }, ...hpEl(t.hp[whoOf(c)], nameOf(whoOf(c)), t.turn),
         ...((t.status[whoOf(c)] ?? []).length ? [el("span", { class: "tc-fxs" }, ...(t.status[whoOf(c)] ?? []).map(fxEl))] : [])))));
-    return [...(t.round > 0 && (t.turn - 1) % 5 === 0 ? [roundDivider(t.round)] : []),
-      el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup", "aria-label": `Turn ${t.turn}` },
-        el("div", { class: "tc-turnlab", "aria-hidden": "true" }, `T${t.turn}`), el("div", { class: "tc-lines" }, ...rows))];
+    return [el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup", "aria-label": `Turn ${t.turn}` },
+      turnRow(t.turn, cols.length), el("div", { class: "tc-lines" }, ...rows))];
   };
   // The result, and the "Show turns" button, each in a row of one cell: inside role=table, only rows (a11y F01).
   const oneCell = (cls: string, ...kids: HTMLElement[]) => el("div", { class: cls, role: "row" }, el("div", { role: "cell" }, ...kids));
@@ -514,8 +499,8 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
   body.append(result, ...unreachedRows(cols, new Set(data.turns.map((t) => t.turn)), edit));
   return el("div", { class: "tl pg tc", role: "group", "aria-label": "The fight, turn by turn and action by action" },
     el("div", { class: "pg-scroll tc-scroll" }, el("div", { class: "pg-grid tc-grid", role: "table", style: `--pg-cols: ${cols.length}` },
-      // the turn is each rowgroup's name ("Turn 3"), not a column: the "Turn" head is hidden so the heads match the cells
-      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", "aria-hidden": "true" }, "Turn"), ...planHeads(tl, cols, edit)),
+      // U51: no "Turn" column: each turn is a rowgroup named "Turn 3" with its full-width band (turnRow)
+      el("div", { class: "pg-row pg-heads", role: "row" }, ...planHeads(tl, cols, edit)),
       body)));
 }
 
@@ -531,11 +516,13 @@ export function partyPlan(quest: { id: number; rare: boolean }, members: PlanMem
   if (!tl) return null;
   const cols = planGrid(tl, members, 5).columns;
   if (trace && members.length) return flowChart(tl, cols, trace, edit);
-  const rows = cols[0].cells.map((_, k) => k + 1).map((t) => el("div", { class: "pg-row", role: "row" }, el("div", { class: "pg-turn", role: "rowheader" }, `T${t}`),
-    ...cols.map((c) => (c.kind === "enemy" ? enemyCellEl(c.cells[t - 1] as EnemyCell) : heroCellEl(c.cells[t - 1] as HeroCell, c.loc!, edit)))));
+  // U51: a turn band over each turn's cells, as in the fight's flow (no "Turn" column).
+  const rows = cols[0].cells.map((_, k) => k + 1).map((t) => el("div", { class: "pg-turngroup", role: "rowgroup", "aria-label": `Turn ${t}` }, turnRow(t, cols.length),
+    el("div", { class: "pg-row", role: "row" },
+      ...cols.map((c) => (c.kind === "enemy" ? enemyCellEl(c.cells[t - 1] as EnemyCell) : heroCellEl(c.cells[t - 1] as HeroCell, c.loc!, edit))))));
   return el("div", { class: "tl pg", role: "group", "aria-label": "The party's rotation against the enemy's" },
     el("div", { class: "pg-scroll" }, el("div", { class: "pg-grid", role: "table", style: `--pg-cols: ${cols.length}` },
-      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...planHeads(tl, cols, edit)), ...rows)));
+      el("div", { class: "pg-row pg-heads", role: "row" }, ...planHeads(tl, cols, edit)), ...rows)));
 }
 
 /** How to read the flow (R1 F20: in the "?" beside its title, not a caption under it). */

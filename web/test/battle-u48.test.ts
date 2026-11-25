@@ -1,7 +1,7 @@
 // Battle Simulator and Solver U48: the result in the Simulate panel (no Results section, no section titles), no
 // "vs <enemy> change" line over the Flow, hero cards moved by drag and drop (moveHero: swap or move, the slot rules
 // kept), the size cap under the opponent's picker, the Flow as one long page on a phone with a "↑" back-to-top
-// button, a calculation level with its column (calcPanelLeft), and the Solver's Party and Flow read-only
+// button, a calculation level with its column (U51: its grid column, battle-u51.test.ts), and the Solver's Party and Flow read-only
 // (pageControls). No browser: the pure parts, a tiny fake DOM for the Flow, and the page code read as text.
 import "./helpers/fake-dom.ts";
 import { test } from "node:test";
@@ -12,7 +12,7 @@ import { Sim } from "../src/tools/engine.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { moveHero, moveRefusal, pageControls, type PartyState } from "../src/ui/battle-edit.ts";
-import { calcPanelLeft, toTopVisible } from "../src/ui/battle-layout.ts";
+import { toTopVisible } from "../src/ui/battle-layout.ts";
 import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
@@ -138,9 +138,8 @@ test("pageControls: the Simulator edits and drags; the Solver is read-only (U50:
 test("the Flow on a phone: one long page, no scroll frame; the ↑ button", () => {
   assert.match(u48, /\.tc \.tc-scroll, \.flow-panel \.pg-scroll \{ overflow: visible; max-height: none; \}/);
   assert.match(u48, /\.flow-panel \.pg-grid, \.flow-panel \.tc-grid \{ min-width: 0; \}/);
-  // The heads and the turns keep the same first column, so the columns line up.
-  assert.match(u48, /\.flow-panel \.pg-row \{ grid-template-columns: 22px repeat\(var\(--pg-cols\), minmax\(0, 1fr\)\); \}/);
-  assert.match(u48, /\.flow-panel \.tc-turn \{ grid-template-columns: 22px minmax\(0, 1fr\); \}/);
+  // U51: no turn column any more (the heads and the lines share one grid: battle-u51.test.ts).
+  assert.doesNotMatch(u48, /22px/);
   // The button: named, hidden until the page is scrolled down, reduced motion respected, room left under the page's end.
   const top = fn(page, "initToTop");
   assert.match(top, /"aria-label": "Back to top"/);
@@ -156,26 +155,7 @@ test("the Flow on a phone: one long page, no scroll frame; the ↑ button", () =
   assert.equal(toTopVisible(401, 200), true);
 });
 
-test("calcPanelLeft: level with its column, clamped inside the chart", () => {
-  // 5 columns over 600 px, gap 3: each column (600 - 12) / 5 = 117.6 px, column k starts at k × 120.6.
-  assert.equal(calcPanelLeft(0, 5, 600, 200), 0);
-  assert.equal(calcPanelLeft(1, 5, 600, 200), 120);
-  assert.equal(calcPanelLeft(2, 5, 600, 200), 241);
-  // The last columns: pulled left so a 200 px panel ends at the right edge.
-  assert.equal(calcPanelLeft(3, 5, 600, 200), 361);
-  assert.equal(calcPanelLeft(4, 5, 600, 200), 400);
-  // A panel as wide as the chart (a phone): at the left edge, whatever its column.
-  assert.equal(calcPanelLeft(4, 5, 330, 330), 0);
-  assert.equal(calcPanelLeft(4, 5, 330, 400), 0, "never below 0");
-  // A phone, 7 columns over 320 px: column 6 starts at 6 × 323 / 7 = 276.9; a 120 px panel is pulled to 200.
-  assert.equal(calcPanelLeft(6, 7, 320, 120), 200);
-  assert.equal(calcPanelLeft(3, 7, 320, 120), 138);
-  // Out-of-range input stays sane.
-  assert.equal(calcPanelLeft(9, 5, 600, 100), 482, "clamped to the last column");
-  assert.equal(calcPanelLeft(-1, 5, 600, 100), 0);
-  assert.equal(calcPanelLeft(2, 0, 600, 100), 0);
-  assert.equal(calcPanelLeft(2, 5, 0, 100), 0, "a hidden chart (no width)");
-});
+// calcPanelLeft became U51's calcColumn (a panel is its column's width): battle-u51.test.ts.
 
 // ---------------------------------------------------------------- the Flow, built for real in the fake DOM
 api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
@@ -201,20 +181,4 @@ test("the read-only Flow (no PlanEdit, the Solver): no ▾, no picker; the calcu
   assert.ok(plan.querySelectorAll("button.tc-calc-btn").length > 0);
 });
 
-test("a calculation opens level with its column (data-cols, data-order, margin from calcPanelLeft)", () => {
-  const plan = flow(72);
-  const boxes = plan.querySelectorAll("div.tc-calcs");
-  assert.ok(boxes.length > 0);
-  const cols = 7; // six heroes and the enemy
-  for (const b of boxes) {
-    assert.equal(b.dataset.cols, String(cols));
-    (b as unknown as { clientWidth: number }).clientWidth = 700;
-  }
-  const btn = plan.querySelectorAll("button.tc-calc-btn")[0];
-  assert.ok(btn.querySelector("span.tc-calc-word"), "the word apart, so a phone shows only the ▾");
-  btn.dispatch("click");
-  const panel = plan.querySelectorAll("div.tc-calc")[0];
-  const col = Math.floor(Number(panel.dataset.order) / 2);
-  assert.equal(panel.style.marginLeft, `${calcPanelLeft(col, cols, 700, 0)}px`);
-  assert.match(u48, /\.tc-calc \{ box-sizing: border-box; align-self: flex-start; width: max-content; max-width: min\(100%, 34rem\); \}/);
-});
+// The calculation's place: battle-u51.test.ts (U51: in its column's grid cell).

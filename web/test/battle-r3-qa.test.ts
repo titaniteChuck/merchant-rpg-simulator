@@ -91,7 +91,7 @@ test("flow: a fight over on turn 1 lists turns 2-5 as planned, not reached, each
   const { edit, calls } = recorder();
   const plan = flow(92, edit); // Murlok Monarch falls on turn 1
   const rows = plan.querySelectorAll("div.tc-unreached");
-  assert.deepEqual(rows.map((r) => r.querySelector("div.tc-turnlab")!.textContent), ["T2", "T3", "T4", "T5"]);
+  assert.deepEqual(rows.map((r) => r.querySelector("div.tc-turnhead")!.textContent), ["Turn 2", "Turn 3", "Turn 4", "Turn 5"]);
   assert.ok(plan.querySelector("div.tc-unreached-head")!.textContent.includes("Planned, not reached"));
   // after the result
   const body = plan.querySelector("div.tc-body")!;

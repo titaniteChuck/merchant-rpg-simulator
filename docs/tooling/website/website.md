@@ -248,11 +248,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     leaves heroes out; no names (their cards say "over the limit").
   - Flow: no "vs <enemy> · change" line (the enemy column's head names the enemy and changes it); a map run keeps
     "map run: <map>". One long page at every width: no scroll frame of its own (until U48, 700 px and less scrolled
-    sideways in an 85vh frame); on a phone the columns share the width (no minimum width, a 22 px turn column, the HP
-    bar over its number, "▾ calculation" shows only its ▾). A calculation opens level with its column: left-aligned,
-    as wide as its text (at most the chart, 34rem), its left edge at the column's (`calcPanelLeft` in
-    `battle-layout.ts`, col × (width + gap) / cols, clamped inside the chart; `placeCalcs` in `timeline.ts`, kept in
-    step by a `ResizeObserver`).
+    sideways in an 85vh frame); on a phone the columns share the width (no minimum width, the HP bar over its number,
+    "▾ calculation" shows only its ▾; until U51 a 22 px turn column). A calculation opens in its column: since U51
+    exactly the column's width (until U51 it was as wide as its text, pulled left by `calcPanelLeft`; see U51).
   - "↑" (both pages, `initToTop`): fixed bottom right, `aria-label` "Back to top", shown once the page is scrolled
     down more than a screen (`toTopVisible`); back to the top smoothly, at once under reduced motion, the focus on
     `main`. The page keeps 76 px under its end so the button never covers the last content; a toast moves above it.
@@ -275,6 +273,29 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     heroes than the opponent takes, or than the largest size asked, is one error line and no solve. Warm start and
     the time budget are unchanged.
 
+- U51, Battle round 3 (tests `web/test/battle-u51.test.ts`, CSS in the `U51` block):
+  - Solver results: every row shows Show · Party · (Scrolls) · Win · Grade · Turns (quest) or Progress (map) · Life ·
+    Dead. `solverFigures` (`battle-setup.ts`) reads what the evaluation already measured (`combat.ts` `evaluate` /
+    `evaluateMap`, carried to the page in `PartyConfig.ev`): Grade is the average grade of the won fights or runs as a
+    letter badge (the average in its tooltip, "—" when never won; a quest now has one too); Life is `hp_left`, the
+    party's HP left at the end as a share of its max HP (fallen heroes count 0), whole percent; Dead is the sum of the
+    heroes' `death_rate`, heroes down at the end on average, one decimal ("0" muted when under 0.05). Short heads,
+    each with its tooltip; on a phone the number cells are tighter.
+  - One "?" beside the Party / Flow tabs, the open tab's: `#party-help` and `#plan-help` both sit in the tab row and
+    `showTab` hides the other one (the Flow's "?" used to sit on the opponent line below the tabs). Simulator and
+    Solver alike; the Flow's head line hides when it has nothing (a quest).
+  - Flow without a "Turn" column: the column heads, the plan rows and the action lines share one grid of the actors'
+    columns (`repeat(var(--pg-cols), minmax(0, 1fr))`, gap 3 px) at every width. Each turn starts with a full-width
+    band, "Turn 3" (`turnRow` in `timeline.ts`, `turnBand` in `battle-layout.ts`): a `role=row` whose one
+    `role=rowheader` spans every column (`aria-colspan`), first in the turn's `rowgroup` ("Turn N"). Turns 6, 11 …
+    add "· ↻ rotations again" (the old dashed round divider is gone). The planned rotation (no fight) and the
+    "Planned, not reached" turns use the same bands (muted for the latter).
+  - Calculations are exactly their column's width: the line's `tc-calcs` box is a grid with the line's columns
+    (`grid-auto-flow: row dense`) and each panel takes its column (`calcColumn(order, cols)`, 1-based
+    `grid-column`), its text wrapping inside, left-aligned. Panels opened from several columns of one line sit side by
+    side (a boss hit's damage on each hero at once); a heal's panel in the same column goes under the damage's. No
+    margin maths, no `ResizeObserver` (`calcPanelLeft` and `placeCalcs` are gone).
+
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
   - F20: the Simulate box's sentence is the "?" of its heading (`#sim-help`); the Results wait for the first run.
@@ -290,7 +311,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - F25 / F26: the per-hero table has no Slot column: the hero cell is the name in plain text with its slot under it
     and the class colour as a 3 px bar on its left (`.hero-cell`), no pill; "Damage" (per fight or run in its tooltip).
   - F28: no "🗓️ The fight, turn by turn" heading; the Flow starts with the opponent line ("vs Cerberus · change") and
-    its "?" (`#plan-help`), whose first paragraph is the note on the run it shows (`FLOW_NOTE`, `MAP_FLOW_NOTE`).
+    its "?" (`#plan-help`), whose first paragraph is the note on the run it shows (`FLOW_NOTE`, `MAP_FLOW_NOTE`). U51:
+    that "?" moved to the tab row, shown on the Flow tab.
   - F29: the map room bar is a `.scroll-row`; `edgeFades` sets `fade-start` / `fade-end` while there are rooms off
     that side, and a mask fades that edge.
   - F30: in light mode the pills of a hero card (class · level, required, left out) and the Solver's hero chips use
@@ -298,7 +320,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (F04) every pill in both themes uses `--pill-ink` (dark 55 %, light 38 %) over a fixed `--pill-base` (CSS `a11y`).
   - F31: the Solver's sizes on one row, "Party [1] – [5]", with a "?" (what they are, the quest's limit: `sizeHelp`);
     "Include scrolls" only for a map run; labels in sentence case ("Time budget (s)").
-  - F32: the results table is Show · Party · (Scrolls) · Win · Turns / Grade · (Progress): Show first, and a tap
+  - F32: the results table is Show · Party · (Scrolls) · Win · Turns / Grade · (Progress) (U51: + Grade, Life, Dead): Show first, and a tap
     on the row shows too; no # or Heroes column; a quest's lowest enemy HP is in the win cell's tooltip and under the
     rate when the setup can lose ("enemy HP 12.0%").
   - F33: after a Show the Solver's empty slots fold, per row, into one line, "3 empty back slots", that opens them
@@ -554,8 +576,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - 5-turn plan v4 (U36, replaces the two items above; `planGrid` in `ui/battle-plan.ts`, drawn by `partyPlan` in
     `timeline.ts`): the third column of step 3, a grid whose COLUMNS are the heroes in action order (by party location)
     plus the enemy (first on questType 6) and whose ROWS are turns 1-5; the enemy column alone while the party is empty.
-    The row-header column (T1–T5, "Turn" on top) is 36 px wide and clips instead of running into the first column
-    (R1-D; it was 24 px and "TURN" overlapped the first hero's header).
+    The row-header column (T1–T5, "Turn" on top) was 36 px wide (R1-D); U51 replaced it by a "Turn N" band over each
+    turn.
     - Compact words in the cells ("dmg", "AoE", "heal", "atk −50%", "def", "eva", "crit", "→ Basic", "stun", "DoT",
       "dispel", "taunt" …), the full words and sentence in the tooltip (`title`). A skill's effect isn't re-explained
       beyond that: the skill link's own tooltip has its description.

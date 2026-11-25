@@ -9,6 +9,7 @@
  *   most 5; winners first, then within each tier the fewest scrolls first (E25).
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
  * - solveStatus(), sizeHelp(), ROUGH_HELP (R2 F31, F34, F35): the Solver's texts, its one status line and its "?"s.
+ * - solverFigures() (U51): a Solver row's grade, life left and heroes dead, from the setup's evaluation.
  */
 import { G } from "../sim/data.ts";
 import { fmt, fmt1 } from "./dom.ts";
@@ -89,6 +90,28 @@ const showsZero = (x: number) => Math.round(x * 1000) === 0;
 
 /** How many scrolls a solver result uses (a map run's loadout, repeats counted; none on a quest). */
 export const scrollCount = (c: { scrolls?: readonly number[] | null }): number => c.scrolls?.length ?? 0;
+
+/** U51: the grade letters, D (1) to S (5). */
+const GRADE_ABC = ["D", "C", "B", "A", "S"];
+/**
+ * U51: a Solver row's grade, life left and heroes dead, from what the evaluation already measured (combat.ts
+ * evaluate / evaluateMap): `grade` the average grade of the won fights or runs as a letter (null when none was won),
+ * `gradeAvg` that average (1 = D … 5 = S); `life` the party's HP left at the end, as a share of its max HP (fallen
+ * heroes count 0), on average; `dead` the heroes down at the end, on average (the sum of the heroes' death rates), of
+ * `size` heroes.
+ */
+export function solverFigures(ev: { win: number; grade: number; hp_left: number; heroes: Record<string, { death_rate: number }> }):
+  { grade: string | null; gradeAvg: number; life: number; dead: number; size: number } {
+  const heroes = Object.values(ev.heroes ?? {});
+  const won = ev.win > 0 && ev.grade > 0;
+  return {
+    grade: won ? GRADE_ABC[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))] : null,
+    gradeAvg: won ? ev.grade : 0,
+    life: Math.max(0, Math.min(1, Number(ev.hp_left) || 0)),
+    dead: heroes.reduce((a, h) => a + (Number(h.death_rate) || 0), 0),
+    size: heroes.length,
+  };
+}
 
 /**
  * The solver's results to show (U36): never a 0 % result, only setups within `slack` (25 %) of the best one found, on

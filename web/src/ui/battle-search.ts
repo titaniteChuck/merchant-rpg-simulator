@@ -34,6 +34,9 @@
  * (✓), Neutral (/) or Exclude (✗), a radio group per hero, stored per save (solver-heroes.ts). Must include heroes are
  * the search's `lock` (in every result party, the party rules kept); too many of them for the opponent or the largest
  * size is one error and no solve.
+ *
+ * U51: each row also shows the grade (a quest's too), the party's life left and the heroes dead at the end, on average
+ * (battle-setup.ts solverFigures, from the setup's evaluation): Win, Grade, Turns or Progress, Life, Dead.
  */
 import * as api from "../sim/api.ts";
 import type { FightEval, MapEval } from "../tools/combat.ts";
@@ -43,8 +46,8 @@ import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import { dataWorker } from "./data-files.ts";
 import type { PartyRules } from "./battle-rules.ts";
-import { ROUGH_HELP, scrollCount, sizeHelp, solveShortlist, solveStatus } from "./battle-setup.ts";
-import { bar, el, fmt, fmt1, lv, pct, rateTone, segmented } from "./dom.ts";
+import { ROUGH_HELP, scrollCount, sizeHelp, solverFigures, solveShortlist, solveStatus } from "./battle-setup.ts";
+import { bar, el, fmt, fmt1, gradeBadge, lv, pct, rateTone, segmented } from "./dom.ts";
 import { heroNames } from "./levelling-view.ts";
 import { className } from "./names.ts";
 import { HERO_PICKS, type HeroPick, heroPick, type HeroPicks, picksSummary, readHeroPicks, type SolverHero,
@@ -118,8 +121,6 @@ function setSolverShown(on: boolean): void {
   } catch { /* not remembered: the guard comes back on the next visit */ }
 }
 
-const GRADES = ["D", "C", "B", "A", "S"];
-
 /** U50: the hero table's three states: the mark shown and its name (tooltip, screen readers). */
 const PICK_LABELS: Record<HeroPick, [string, string]> = { must: ["✓", "Must include"], neutral: ["/", "Neutral"], exclude: ["✗", "Exclude"] };
 /** U50: the hero table's fold, open or not, for this page view (the form is rebuilt when the opponent changes). */
@@ -169,6 +170,9 @@ const HEAD_TIPS: Record<string, string> = {
   "Progress": "Rooms cleared per run.",
   "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one). On a quest a setup that can lose also shows the "
     + "lowest point the enemy's HP reached, on average (0 % = killed).",
+  "Grade": "Average grade of the won fights (a map: of the won runs), D to S.",
+  "Life": "The party's HP left at the end, as a share of its max HP (fallen heroes count 0), on average.",
+  "Dead": "Heroes down at the end, on average.",
   "Scrolls": "The scrolls the run uses. Winners (90 % or more) come first; among the winners, and among the others, the runs with fewer scrolls come first (none first).",
 };
 
@@ -459,13 +463,18 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         const win = el("span", { class: "solver-win", ...(low !== null ? { title: `Lowest enemy HP: ${pct(low)} on average (0 % = killed)` } : {}) },
           el("strong", { class: `rate ${rateTone(ev.win)}`, style: "color: var(--c)" }, pct(ev.win)),
           ...(low !== null && ev.win < 1 ? [el("span", { class: "solver-sub" }, `enemy HP ${pct(low)}`)] : []));
-        const third = isMapEval(ev)
-          ? el("span", { title: `average grade ${fmt1.format(ev.grade)} (D = 1 … S = 5)` }, GRADES[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))])
-          : el("span", {}, fmt1.format(ev.turns));
+        // U51: grade, life left and heroes dead (solverFigures), from the setup's evaluation.
+        const f = solverFigures(ev);
+        const grade = f.grade
+          ? el("span", { title: `Average grade ${fmt1.format(f.gradeAvg)} (D = 1 … S = 5)` }, gradeBadge(f.grade))
+          : el("span", { class: "muted", title: "Never won: no grade" }, "—");
+        const dead = el("span", { class: `solver-dead${f.dead < 0.05 ? " none" : ""}`, title: `${fmt1.format(f.dead)} of ${f.size} heroes down at the end, on average` },
+          f.dead < 0.05 ? "0" : fmt1.format(f.dead));
         const tr = el("tr", { class: `${st.loaded === k ? "loaded" : ""}${problem ? "" : " row-link"}`.trim() },
           el("td", { class: "solver-show" }, b), el("td", {}, partyCell(c)),
-          ...(isMap ? [el("td", {}, scrollCell(c))] : []), el("td", { class: "num" }, win), el("td", { class: "num" }, third),
-          ...(isMapEval(ev) ? [el("td", { class: "num" }, pct(ev.cleared))] : []));
+          ...(isMap ? [el("td", {}, scrollCell(c))] : []), el("td", { class: "num" }, win), el("td", { class: "num" }, grade),
+          el("td", { class: "num" }, isMapEval(ev) ? pct(ev.cleared, 0) : fmt1.format(ev.turns)),
+          el("td", { class: "num" }, pct(f.life, 0)), el("td", { class: "num" }, dead));
         // R2 F32: a tap on the row is Show too (not on its links or buttons).
         if (!problem) tr.addEventListener("click", (e) => {
           if (!(e.target as Element).closest("a, button, summary")) b.click();
@@ -473,8 +482,9 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         return tr;
       });
       // R2 F32: Show first (on a phone it is on screen), no hero count (the chips count them), no lowest-enemy-HP column.
-      const head = ["", "Party", ...(isMap ? ["Scrolls"] : []), "Win", isMap ? "Grade" : "Turns", ...(isMap ? ["Progress"] : [])];
-      const nums = new Set(["Win", "Grade", "Turns", "Progress"]);
+      // U51: Grade, Life and Dead on every row (short heads for a phone; what they mean in their tooltips).
+      const head = ["", "Party", ...(isMap ? ["Scrolls"] : []), "Win", "Grade", isMap ? "Progress" : "Turns", "Life", "Dead"];
+      const nums = new Set(["Win", "Grade", "Turns", "Progress", "Life", "Dead"]);
       box.replaceChildren(
         // R2 F34: the setup shown is the highlighted row ("✓ Shown"); this line only holds the undo, once there is one.
         ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, st.undo)] : []),

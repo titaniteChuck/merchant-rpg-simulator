@@ -1289,10 +1289,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
   background: color-mix(in srgb, #f59e0b 12%, transparent); }
 /* The 5-turn plan: turns down, actors across (timeline.ts partyPlan). */
 .pg-scroll { overflow-x: auto; padding-bottom: 2px; }
-.pg-grid { display: grid; gap: 3px; min-width: calc(40px + var(--pg-cols) * 64px); }
-.pg-row { display: grid; gap: 3px; grid-template-columns: 36px repeat(var(--pg-cols), minmax(0, 1fr)); }
-.pg-turn { align-self: center; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.pg-heads .pg-turn { align-self: end; }
+.pg-grid { display: grid; gap: 3px; min-width: calc(var(--pg-cols) * 64px); }
 .pg-head { display: flex; flex-direction: column; min-width: 0; font-size: 0.72rem; padding: 0 0 2px 5px; border-left: 3px solid var(--c, var(--border)); }
 /* The enemy's header and cells also carry the old enemy-card class (.enemy: padding, 1rem name, card background):
    undone here, so the name gets the same width and size as a hero's. The enemy's name wraps rather than cut. */
@@ -1313,7 +1310,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .pg-mark.own { background: color-mix(in srgb, #ec4899 20%, transparent); }
 .pg-mark.malus { background: color-mix(in srgb, var(--good) 22%, transparent); }
 @media (max-width: 600px) {
-  .pg-grid { min-width: calc(40px + var(--pg-cols) * 72px); }
+  .pg-grid { min-width: calc(var(--pg-cols) * 72px); }
 }
 /* end battle v4 */
 /* menus + drawer */
@@ -1610,16 +1607,14 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .opp-card .opp-hp strong { font-size: 1.05rem; }
 /* The Solver's spoiler guard hides the whole rest of the page until accepted: only the guard shows (U41: the opponent and options too). */
 #setup.solve-guarded > section:not(:first-child) { display: none; }
-/* The flow: a light gap and dashed gold line every 5 turns, where the rotations start again. */
+/* The flow's "Planned, not reached" line: a light gap and a dashed gold line. */
 .pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
 .pg-cycle::before, .pg-cycle::after { content: ""; flex: 1; border-top: 1px dashed var(--trim); }
 /* The flow chart (timeline.ts flowChart): per turn, one line per action in action order, the actor's cell
    tinted in its colour; damage and healing as the main text where they land; the effects as text, and once per turn
-   the end-of-turn summary (U40). Columns line up with the heads (same 36px + gap 3px). */
-.tc-grid { min-width: calc(40px + var(--pg-cols) * 78px); }
-.tc-turn { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 3px; padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
-.tc-turnlab { padding-top: 3px; text-align: center; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+   the end-of-turn summary (U40). Columns line up with the heads (U51: no turn column, the same grid, gap 3px). */
+.tc-grid { min-width: calc(var(--pg-cols) * 78px); }
 .tc-lines { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .tc-line { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; }
 .tc-cell { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 2px 4px; border-radius: 5px; min-height: 1.5em;
@@ -1651,7 +1646,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .tc-calc-btn:hover, .tc-calc-btn[aria-expanded="true"] { color: var(--fg); text-decoration: underline; }
 .tc-calc-btn .tc-caret { display: inline-block; font-size: 0.8rem; line-height: 1; vertical-align: -1px; }
 .tc-calc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
-.tc-calcs { display: flex; flex-direction: column; gap: 3px; margin: 2px 0 4px; }
 .tc-calc { padding: 5px 9px; border-radius: 7px; font-size: 0.7rem; line-height: 1.45; background: var(--card); border: 1px solid var(--border);
   border-left: 3px solid color-mix(in srgb, var(--bad) 70%, var(--border)); }
 .tc-calc.heal { border-left-color: color-mix(in srgb, var(--good) 70%, var(--border)); }
@@ -2325,13 +2319,10 @@ p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); 
 #party.drag-on, #party.drag-on .b3-slot { cursor: grabbing; }
 #party .b3-slot.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 /* The Flow: one long page at every width, no scroll frame of its own (the column heads stick to the window's top). On
-   a phone the columns share the width (no minimum width), with a narrower turn column and tighter cells. */
+   a phone the columns share the width (no minimum width), with tighter cells (U51: no turn column). */
 .tc .tc-scroll, .flow-panel .pg-scroll { overflow: visible; max-height: none; }
 @media (max-width: 700px) {
   .flow-panel .pg-grid, .flow-panel .tc-grid { min-width: 0; }
-  .flow-panel .pg-row { grid-template-columns: 22px repeat(var(--pg-cols), minmax(0, 1fr)); }
-  .flow-panel .tc-turn { grid-template-columns: 22px minmax(0, 1fr); }
-  .flow-panel :is(.pg-turn, .tc-turnlab) { font-size: 0.56rem; letter-spacing: 0; }
   .flow-panel .pg-head { padding-left: 3px; font-size: 0.66rem; }
   .flow-panel .pg-head strong { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
   .flow-panel .pg-cell { padding: 3px; }
@@ -2344,9 +2335,6 @@ p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); 
   .flow-panel .tc-calc-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .flow-panel .tc-calc-btn { padding: 2px 4px; }
 }
-/* A calculation sits level with its column (timeline.ts placeCalcs sets its margin): left-aligned, as wide as its
-   text needs, never wider than the chart. */
-.tc-calc { box-sizing: border-box; align-self: flex-start; width: max-content; max-width: min(100%, 34rem); }
 /* The "↑" back-to-top button (battle-page.ts initToTop): fixed bottom right once the page is scrolled down. The page
    keeps room under its end, so the button never sits on the last content; a toast goes above it. */
 .to-top { position: fixed; z-index: 40; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
@@ -2422,3 +2410,32 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   background: var(--card); color: var(--fg); font-size: 0.88rem; font-weight: 600; text-decoration: none; transition: border-color .15s; }
 .fight-btn:hover { border-color: var(--accent); color: var(--accent); }
 /* end U53 */
+/* U51 */
+/* The Flow without a "Turn" column: heads, plan rows and action lines share one grid of the actors' columns. */
+.pg-row { display: grid; gap: 3px; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
+.pg-turngroup { display: grid; gap: 3px; }
+/* A full-width band before each turn ("Turn 3"), for spacing and contrast between turns. */
+.tc-turn { padding: 0 0 4px; }
+.tc-turn + .tc-turn, .tc-body > .tc-turn:first-child { margin-top: 6px; }
+.tc-turnrow { display: block; }
+.tc-turnhead { margin: 0 0 3px; padding: 2px 8px; border-radius: 5px; font-size: 0.66rem; font-weight: 750; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--fg); background: color-mix(in srgb, var(--fg) 9%, var(--card)); border-left: 3px solid var(--trim); }
+.tc-again { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.tc-unreached .tc-turnhead { padding-block: 1px; font-weight: 650; color: var(--muted); background: color-mix(in srgb, var(--fg) 4%, var(--card)); }
+/* A calculation is exactly its column's width: the panels' box has the line's columns, each panel its own
+   (timeline.ts sets grid-column, battle-layout.ts calcColumn); panels of several columns sit side by side, a second
+   one in the same column under the first; the text wraps inside. */
+.tc-calcs { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); grid-auto-flow: row dense; gap: 3px;
+  align-items: start; margin: 2px 0 4px; }
+.tc-calc { box-sizing: border-box; min-width: 0; padding: 4px 6px; text-align: left; overflow-wrap: anywhere; }
+/* The tab row's one "?", the open tab's (battle-page.ts showTab); the flow's head line only when it has something. */
+#plan-help:empty { display: none; }
+.flow-panel .flow-head:has(> .flow-opp:empty:only-child) { display: none; }
+/* The Solver's rows: grade, life left and heroes dead, compact. */
+.solver-table td.num { white-space: nowrap; }
+.solver-table .solver-dead.none { color: var(--muted); }
+@media (max-width: 600px) {
+  .solver-table th.num, .solver-table td.num { padding-inline: 3px; font-size: 0.82rem; }
+  .solver-table .grade { min-width: 18px; padding: 0 3px; }
+}
+/* end U51 */
