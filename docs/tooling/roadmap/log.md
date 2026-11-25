@@ -114,3 +114,4 @@
 - **Update**: U65 added (turn-driven Party view).
 - **Update**: U65 done (2b4bbd7): turn-driven Party view (full-width HP · Damage dealt · Heals chart picks the turn; cards show that turn's stats, effects and skill; one enemy per card, opponent choices in the Simulate panel; no XP tiles in the details); Lua parity held.
 - **Update**: U65 follow-up (c5f59a5): the Party chart of a map run has a turn 0 only for the first room; later rooms start at their turn 1, damage and heal totals carry on.
+- **Update**: U66 done (f9bad2e): Party chart round 2 (turn 0 per room on a shared x at the boundaries, fight tabs above the chart, per-turn Damage / Heals, Turn ±1, legend colour + name, no points after a fall); Clear all moved to the Simulate panel.
