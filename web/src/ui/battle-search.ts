@@ -36,6 +36,7 @@ import type { PartiesResult, PartyConfig } from "../tools/parties.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
+import { dataWorker } from "./data-files.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { ROUGH_HELP, scrollCount, sizeHelp, solveShortlist, solveStatus } from "./battle-setup.ts";
 import { bar, el, fmt, fmt1, pct, rateTone } from "./dom.ts";
@@ -187,7 +188,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     last = null;
     showResults(false);
     out.replaceChildren();
-    const w = new Worker(new URL("js/battle-worker.js", document.baseURI), { type: "module" });
+    // Review F13/F16: the game data, timelines and warm start come from the page (fetched once, on the first search).
+    const w = dataWorker("battle-worker.js", ["gamedata.json", "timelines.json", "warmstart.json"]);
     worker = w;
     const stage = el("span", { class: "muted small" }, "Starting…");
     const prog = bar(0);

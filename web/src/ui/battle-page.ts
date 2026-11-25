@@ -20,6 +20,7 @@
  * card is rebuilt (keeping the choice when it is still there) whenever the expansion switches change.
  */
 import * as api from "../sim/api.ts";
+import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { maxQuestAmount, SCROLL_IDS } from "../tools/combat.ts";
@@ -116,10 +117,7 @@ const CARD_STATS: [string, string][] = [["maxHP", "HP"], ["atk", "Atk"], ["matk"
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
-  dataReady ??= fetch("data/gamedata.json").then((r) => {
-    if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-    return r.json();
-  }).then((json) => api.loadGameData(json));
+  dataReady ??= dataJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
   return dataReady;
 }
 
@@ -1216,7 +1214,7 @@ function run(): void {
     return;
   }
   state.worker?.terminate();
-  const worker = new Worker(new URL("js/battle-worker.js", document.baseURI), { type: "module" });
+  const worker = dataWorker("battle-worker.js", ["gamedata.json"]);
   state.worker = worker;
   const btn = $<HTMLButtonElement>("#run");
   const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");

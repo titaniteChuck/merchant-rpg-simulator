@@ -52,6 +52,21 @@ flowchart LR
 - Runs on push to `main` touching `site/`, `inventory/`, `web/` or the workflow, or by hand.
 - `web/scripts/assemble-site.sh [out]` builds the same `_site/` locally (esbuild bundles `web/src/ui/*.ts` into `js/`).
   Preview: `npx --yes serve _site`.
+- One esbuild run, no code splitting (review F14): every page and worker is one self-contained file. Each tool page's
+  entry imports `nav.ts` first, so the menus are inside its bundle and the page loads only `js/<page>.js`: one copy of
+  the modules nav and the page share (dom, names, language, tooltip, Save menu), one instance of their state. Home
+  loads `js/nav.js` alone; Balance still loads `js/nav.js` plus its own bundle. First visit before → after: Simulator
+  266.0 → 256.9 KB (90.6 → 87.1 KB gzipped), Wiki 268.2 → 258.9 KB, Profit 185.2 → 176.3 KB, Save 160.0 → 150.4 KB.
+  Shared chunks (`--splitting`) were tried and dropped: a chunk carries what any page uses from its modules, so each
+  first visit grew 30–90 % (Simulator 324 KB, Home 37 KB), a bad trade for a phone-first site.
+- No source maps in the site (review F21, about 10 MB); `SOURCEMAP=1 web/scripts/assemble-site.sh` adds them for a
+  local debugging session.
+- Data files and workers (review F13, `web/src/ui/data-files.ts`, `worker-data.ts`): a page fetches each data file
+  once (`dataJson`: bytes kept, JSON parsed once) and starts its workers with `dataWorker(script, files)`, which posts
+  a copy of those bytes (transferred `ArrayBuffer`s) as the worker's first message; requests posted right away wait
+  for it. The worker reads them with `workerJson` and fetches only a file it didn't get (and in Node tests). Used by
+  the Simulator, Solver, Levelling and Farming (`gamedata.json`; the Solver's searches also `timelines.json` and
+  `warmstart.json`). Profit and Balance still fetch in the worker.
 - Repo setting needed once: Settings > Pages > Source = GitHub Actions.
 
 ## Save viewer
@@ -418,7 +433,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     score gain, time). Gear to equip (U23): one card per hero with its six slots in two columns (`gearGrid`; unchanged
     slots read "keep") and where to take each item from. Passives are listed before rotations in every result card. The result fills the slots, the rotations and the map's scrolls at once, with "Put back the
     previous party". When the budget runs out, the best setup so far is shown. The battle worker loads
-    `data/timelines.json` at start, so `searchSkills` / `optimiseFight` pre-filter rotations by their schedule score
+    `data/timelines.json` on its first search (a plain Simulate run loads only the game data, review F16; the page
+    hands its own copy over, F13), so `searchSkills` / `optimiseFight` pre-filter rotations by their schedule score
     (E14b, 10-19x faster); without the file the searches run in full. It also loads `data/warmstart.json`
     (`inventory/warmstart.json`, ~560 KB, copied by `assemble-site.sh`; E15, wired in U23) with `loadWarmStart`, only a
     table of `WARMSTART_VERSION`: `searchSkills` and `optimiseFight` then try its rotation for the class, tier and enemy
@@ -663,6 +679,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   and level needed. Rules (`obj.Craft`, `obj.Crafter`): time = floor(runTime × craftGradeSpeed[grade]) × amount ×
   craftTimeMod (standard: 1.1, 1, 0.9, 0.8, 0.75 for D..S); the crafter level only changes the start grade, not the
   time; cost = `cost` × amount.
+- Timelines in the wiki (review F15): `data/timelines.json` is fetched only on the enemy and skill routes
+  (`needsTimelines` in `wiki.ts`), not with the game data on every route.
 - Skill pages (U19, `web/src/ui/wiki-skills.ts`): "Good against" for hero skills, from `inventory/timelines.json`
   (enemy timelines, skill tags and effect windows of `schedule.ts`), deterministic rules, no fight simulation: cleanse
   vs removable debuffs / damage over time / stuns on the heroes; dispel vs the enemy's removable buffs, shields,
@@ -955,9 +973,15 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   is shown. The results are dimmed with a spinner while it works.
 - Default settings (`DEFAULT_REQUEST`: grade B, luck 0, crafter and Enchanter 60, map modifiers on, Shared, hero time
   0, no forced orb): the build writes their answer to `data/profit-default.json`
-  (`web/src/tools/export-profit-default.ts`, run by `assemble-site.sh`; about 2.3 MB, 250 KB gzipped), so a first
+  (`web/src/tools/export-profit-default.ts`, run by `assemble-site.sh`), so a first
   visit shows the tables without a solve; the worker starts on the first change, and going back to the defaults
   reuses the file (`isDefaultRequest`). Without the file the page solves as before.
+  - Compact form (review F12, `web/src/tools/profit-compact.ts`): each table is stored by column (`cols` once, one
+    array per row), string columns as a list of distinct values and indexes, a column mostly equal to an earlier one
+    (`best_profit` = `ev_profit`) as null for "same", `p_any` computed again, and the cost breakdowns as a table with
+    their parts flat. `expandProfit` gives back exactly the worker's answer (test on the real default answer);
+    2,328,525 → 669,683 B (242 → 162 KB gzipped) and faster to parse. Numbers are not rounded: the page sorts and
+    filters on them (a profit of 0.004 is a gain), so rounding could reorder rows or change the "Only gains" filter.
 - Max level 60: the worker drops every item, enchanting and orb-source row above level 60 (Hard and Weekly Boss Rush
   maps, level 70); the level filter runs 1–60.
 - Each item row carries `how_id`, the id its "Cheapest way" names (crafter, orb, quest or map), so the page shows the
@@ -1442,12 +1466,13 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
 
 ### Menus
 
-U35, `web/src/ui/nav.ts` (bundled as `js/nav.js`, a module in every page's head; CSS block `/* menus + drawer */ …
+U35, `web/src/ui/nav.ts` (bundled as `js/nav.js` for Home and Balance, and imported first by every other page's
+own bundle, review F14; CSS block `/* menus + drawer */ …
 /* end menus + drawer */` at the end of `style.css`). One list, `NAV` (`web/src/ui/nav-data.ts`, pure data and
 `currentNav`, no DOM, so the pages' bundles can read it too), holds every page and sub-page; the desktop menu, its
 dropdowns, the second row, the phone drawer and the Save dropdown's Save pages are all built from it, so the HTML
 pages carry no links of their own (only the brand and the GitHub link). `web/test/nav.test.ts` checks that every
-`site/*.html` is in `NAV` and loads `js/nav.js`, that the wiki links are routes of `wiki.ts` and the save links its
+`site/*.html` is in `NAV` and loads `js/nav.js` or a bundle whose entry imports `nav.ts`, that the wiki links are routes of `wiki.ts` and the save links its
 `TABS`, and the current-item rules; `web/test/nav-u44.test.ts` the U44 rules (Save dropdown, "All" export, Battle
 entry, no Battle second row); `web/test/nav-r2a.test.ts` the R2-A rules (top-bar order, chip format, one-line head,
 folded expansions, drawer Save group, footer, home).
@@ -1534,7 +1559,8 @@ flowchart LR
 
 ### Scroll position
 
-U38, `web/src/ui/scroll-memory.ts`, mounted by `nav.ts` on every page as soon as `js/nav.js` runs:
+U38, `web/src/ui/scroll-memory.ts`, mounted by `nav.ts` on every page as soon as the menus' code runs (`js/nav.js`,
+or the page bundle's first import):
 
 - Kept per URL (path, query and hash: one entry per wiki route or save viewer section) in sessionStorage, key
   `scroll:<path><query><hash>` (`scrollKey`, `ScrollStore`; storage missing or throwing: nothing kept, nothing
@@ -1543,8 +1569,9 @@ U38, `web/src/ui/scroll-memory.ts`, mounted by `nav.ts` on every page as soon as
   content after loading data) and would land short.
 - Restore: on every page load (Back / Forward, reload, a menu link back to the page, any link from another page) and on
   an in-page route change (`hashchange` / `popstate`, deduplicated by URL), the saved position is read, then after two
-  frames (the page redraws its route and may scroll to the top itself) retried every frame until the page is tall
-  enough (`tallEnough`), then scrolled to. It gives up after 15 s (`RESTORE_TIMEOUT`) and as soon as the visitor
+  frames (the page redraws its route and may scroll to the top itself) checked each time the page's body changes
+  size (`watchGrowth`, a `ResizeObserver`; every frame only without one; review F19: no layout read per frame while
+  a page builds) until the page is tall enough (`tallEnough`), then scrolled to. It gives up after 15 s (`RESTORE_TIMEOUT`) and as soon as the visitor
   scrolls, taps, clicks or presses a key. A page kept whole by the browser (bfcache) is left as it is.
 - In-page links: a link in the content to another route of the same page (a wiki entry, a hero in the save viewer)
   opens it at the top; the menus (top bar, second row, drawer) and the breadcrumbs restore the target's position, so

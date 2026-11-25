@@ -50,7 +50,7 @@ test("Solver: the results stay hidden until a solve is done; the progress is in 
   const search = read("web/src/ui/battle-search.ts");
   const run = search.slice(search.indexOf("function runSearch"), search.indexOf("function base()"));
   // A new solve hides the last results; only a finished one shows them.
-  assert.ok(run.indexOf("showResults(false)") < run.indexOf("new Worker"));
+  assert.ok(run.indexOf("showResults(false)") < run.indexOf("dataWorker("));
   assert.equal(run.match(/showResults\(true\)/g)?.length, 1);
   assert.ok(run.indexOf("showResults(true)") > run.indexOf('if (m.type === "error")'));
   // Progress, Cancel and errors in the panel's status line (kept across the form's rebuilds), never in the results.

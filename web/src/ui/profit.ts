@@ -4,12 +4,16 @@
  * the page only filters and sorts the tables it sends back. A save opened from the top-bar Save dropdown marks the
  * items the player owns. With Scribe hidden there are no orbs or maps: no Orbs tab, orb sources, map-modifier chip,
  * ascension filter or "no orbs" tile. With the default settings the page shows the answer the build precomputed
- * (data/profit-default.json) and starts the worker only on a change.
+ * (data/profit-default.json, stored by column: profit-compact.ts) and starts the worker only on a change.
  * Help is in tip() tooltips (hover, focus and tap), never in `title` (R3 F18).
  */
+// Review F14: the menus (nav.ts) are bundled into this page, first, so nav and the page share one copy of the
+// shared modules (dom, names, language, tooltip, Save menu); the page loads no separate js/nav.js.
+import "./nav.ts";
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
 import { $, chipToggle, el, findFocusKey, fmt1, focusKeyOf, gold, segField, segmented, tabKeys, tile } from "./dom.ts";
+import { type CompactProfit, expandProfit } from "../tools/profit-compact.ts";
 import { isDefaultRequest, type Orb, type ProfitRequest, type ProfitResponse, type Row } from "./profit-worker.ts";
 import {
   enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, MORE_STEP, type ProfitTab, profitTabs, rankedTable, type SortState,
@@ -158,8 +162,8 @@ function firstView(): void {
   setBusy(true);
   fetch("data/profit-default.json").then((r) => {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json() as Promise<Result>;
-  }).then((r) => {
+    return r.json() as Promise<CompactProfit>;
+  }).then(expandProfit).then((r) => {
     state.defaults = r;
     if (state.lastId !== req.id || state.busy) return; // the settings changed meanwhile
     setBusy(false);

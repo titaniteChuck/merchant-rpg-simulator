@@ -8,7 +8,11 @@
  * Any change of an input dims the results shown until the next run.
  * R3 (review-r3.md): a finished run scrolls its result into view; help in tip() only, focusable so a tap keeps it open.
  */
+// Review F14: the menus (nav.ts) are bundled into this page, first, so nav and the page share one copy of the
+// shared modules (dom, names, language, tooltip, Save menu); the page loads no separate js/nav.js.
+import "./nav.ts";
 import * as api from "../sim/api.ts";
+import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
 import {
   type LevellingPlan, type LevelStep, maxLevel, openableQuests, planSources, type PrestigePayoff, xpBoosts,
@@ -43,10 +47,7 @@ const state: {
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
-  dataReady ??= fetch("data/gamedata.json").then((r) => {
-    if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-    return r.json();
-  }).then((json) => api.loadGameData(json));
+  dataReady ??= dataJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
   return dataReady;
 }
 
@@ -222,7 +223,7 @@ function renderSegments(): void {
 
 // ---------------------------------------------------------------- worker
 function worker(): Worker {
-  state.worker ??= new Worker(new URL("js/levelling-worker.js", document.baseURI), { type: "module" });
+  state.worker ??= dataWorker("levelling-worker.js", ["gamedata.json"]);
   return state.worker;
 }
 /** Stop the worker (and the run it is doing: its output says so). */

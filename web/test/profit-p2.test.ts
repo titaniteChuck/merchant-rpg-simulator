@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as api from "../src/sim/api.ts";
 import { gold } from "../src/ui/dom.ts";
+import { expandProfit } from "../src/tools/profit-compact.ts";
 
 const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
@@ -27,7 +28,7 @@ test("F16: the build writes the default answer; the page uses it for the default
   const dir = mkdtempSync(join(tmpdir(), "profit-default-"));
   const out = join(dir, "profit-default.json");
   execFileSync(process.execPath, [new URL("../src/tools/export-profit-default.ts", import.meta.url).pathname, out], { stdio: "pipe" });
-  const pre = JSON.parse(readFileSync(out, "utf8"));
+  const pre = expandProfit(JSON.parse(readFileSync(out, "utf8"))); // review F12: stored compact
   assert.equal(pre.ok, true);
   const json = (x: unknown) => JSON.parse(JSON.stringify(x));
   assert.deepEqual(pre.items, json(res.items), "same rows as a solve in the worker");

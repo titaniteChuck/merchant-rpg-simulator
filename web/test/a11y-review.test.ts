@@ -113,7 +113,8 @@ const CHILDREN: Record<string, string[]> = { table: ["row", "rowgroup"], rowgrou
 test("F01: the Flow table holds rows and named turn rowgroups only, the result and the calculations in cells", async () => {
   api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
   const timelines = JSON.parse(read("inventory/timelines.json"));
-  (globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, json: async () => timelines });
+  // The page fetches data files as bytes (data-files.ts, review F13).
+  (globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(timelines)).buffer });
   await loadTimelineData();
   const sv = loadSaveText(read("site/data/example-save.txt"));
   const sim = new Sim(sv.raw.gameMode || "Standard");

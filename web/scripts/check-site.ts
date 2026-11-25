@@ -141,7 +141,7 @@ const PROBE = `(() => {
       key(saveBtn, "Escape");
       if (saveBtn.getAttribute("aria-expanded") !== "false" || shown(menu)) nav.push("the Save dropdown does not close on Escape");
     }
-    if (!burger || !main || !drawer) nav.push("menus not built (js/nav.js)");
+    if (!burger || !main || !drawer) nav.push("menus not built (nav.ts)");
     else if (!phone) {
       if (!shown(main)) nav.push("main menu hidden");
       if (shown(burger)) nav.push("burger shown");

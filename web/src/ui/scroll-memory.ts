@@ -7,8 +7,9 @@
  *   (they build it after loading data) and would land short, then fight this one.
  * - The position is written on every scroll event (at most once a frame) under the current URL; while a restore is
  *   pending nothing is written (the short, half-drawn page would overwrite the value being restored).
- * - Restore waits for the content: it retries every frame until the page is tall enough for the saved position, then
- *   scrolls there; it gives up after RESTORE_TIMEOUT ms, and as soon as the visitor scrolls or presses a key.
+ * - Restore waits for the content: it checks each time the page's body changes size (ResizeObserver, review F19)
+ *   until the page is tall enough for the saved position, then scrolls there; it gives up after RESTORE_TIMEOUT ms,
+ *   and as soon as the visitor scrolls or presses a key.
  * - A link inside the page's content (a wiki entry, a hero) opens its route at the top; only the menus and the
  *   breadcrumbs (going back up) restore. A new page load (any link from another page) always restores.
  * - Storage can be missing or throw (blocked site data): then nothing is remembered and nothing breaks.
@@ -56,6 +57,45 @@ export class ScrollStore {
 /** Whether a page `scrollHeight` tall, seen through a `viewport` px window, can scroll to `y` (1 px slack). */
 export const tallEnough = (y: number, scrollHeight: number, viewport: number): boolean => scrollHeight - viewport >= y - 1;
 
+/**
+ * Review F19: calls `check` each time `target` changes size (a ResizeObserver; first call right after observing) until
+ * it returns true, `timeoutMs` passes (then `onTimeout`), or the returned function is called. Without ResizeObserver it
+ * checks every frame. The page's height is read only when it may have changed, not on every frame while it builds.
+ */
+export function watchGrowth(target: Element, check: () => boolean, timeoutMs: number, onTimeout: () => void = () => {}): () => void {
+  let done = false;
+  let frame = 0;
+  // deno-lint-ignore no-explicit-any
+  const RO = (globalThis as any).ResizeObserver as typeof ResizeObserver | undefined;
+  let obs: ResizeObserver | null = null;
+  const end = () => {
+    if (done) return;
+    done = true;
+    obs?.disconnect();
+    if (frame) cancelAnimationFrame(frame);
+    clearTimeout(timer);
+  };
+  const run = () => {
+    if (!done && check()) end();
+  };
+  const timer = setTimeout(() => {
+    if (done) return;
+    end();
+    onTimeout();
+  }, timeoutMs);
+  if (RO) {
+    obs = new RO(run);
+    obs.observe(target);
+  } else {
+    const poll = () => {
+      run();
+      if (!done) frame = requestAnimationFrame(poll);
+    };
+    poll();
+  }
+  return end;
+}
+
 let mounted = false;
 
 export function mountScrollMemory(): void {
@@ -74,24 +114,22 @@ export function mountScrollMemory(): void {
   const key = () => scrollKey(location);
 
   // ---- restoring
-  let pending: { y: number; frame: number; until: number } | null = null;
+  let pending: { y: number; frame: number; unwatch: (() => void) | null } | null = null;
   const stop = () => {
-    if (pending) cancelAnimationFrame(pending.frame);
+    if (pending) {
+      cancelAnimationFrame(pending.frame);
+      pending.unwatch?.();
+    }
     pending = null;
   };
-  const step = () => {
-    if (!pending) return;
+  /** Scrolls to the saved position once the page is tall enough (true: done, nothing more to wait for). */
+  const reached = (): boolean => {
+    if (!pending) return true;
     const el = document.scrollingElement ?? document.documentElement;
-    if (tallEnough(pending.y, el.scrollHeight, window.innerHeight)) {
-      window.scrollTo(0, pending.y);
-      pending = null;
-      return;
-    }
-    if (performance.now() > pending.until) {
-      pending = null;
-      return;
-    }
-    pending.frame = requestAnimationFrame(step);
+    if (!tallEnough(pending.y, el.scrollHeight, window.innerHeight)) return false;
+    window.scrollTo(0, pending.y);
+    pending = null;
+    return true;
   };
   /** Scroll to the position saved for the current URL once the page is drawn (nothing saved: leave the page alone). */
   const restore = () => {
@@ -99,9 +137,16 @@ export function mountScrollMemory(): void {
     const y = store.load(key());
     if (!y) return;
     // Two frames first: the page redraws its route in the same task (wiki, save viewer) and may scroll itself to the top.
-    pending = { y, until: performance.now() + RESTORE_TIMEOUT, frame: requestAnimationFrame(() => {
-      if (pending) pending.frame = requestAnimationFrame(step);
+    const p: NonNullable<typeof pending> = { y, unwatch: null, frame: requestAnimationFrame(() => {
+      if (pending !== p) return;
+      p.frame = requestAnimationFrame(() => {
+        if (pending !== p) return;
+        p.unwatch = watchGrowth(document.body, reached, RESTORE_TIMEOUT, () => {
+          if (pending === p) pending = null;
+        });
+      });
     }) };
+    pending = p;
   };
   // The visitor takes over: no jump under their hand.
   for (const ev of ["wheel", "touchstart", "keydown", "mousedown"]) addEventListener(ev, stop, { passive: true, capture: true });

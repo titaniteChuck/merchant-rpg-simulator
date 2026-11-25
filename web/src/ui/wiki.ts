@@ -12,6 +12,9 @@
  * the search, with a "N hidden" note and a Show button; its own page says why it's hidden; a reference to it in a
  * table (a drop, a recipe) is the greyed placeholder of itemLink / enemyLink. Every change re-renders the page.
  */
+// Review F14: the menus (nav.ts) are bundled into this page, first, so nav and the page share one copy of the
+// shared modules (dom, names, language, tooltip, Save menu); the page loads no separate js/nav.js.
+import "./nav.ts";
 import { loadTimelineData } from "./timeline.ts";
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -51,8 +54,6 @@ const ready = Promise.all([
     return r.json();
   }).then((j) => api.loadGameData(j)),
   loadWikiText(),
-  // Enemy timelines (U11): optional, the enemy pages show the plain rotation without them.
-  loadTimelineData().catch(() => {}),
   languageReady, // U29: game names in the visitor's language from the first paint
 ]);
 
@@ -764,11 +765,20 @@ function route(): HTMLElement {
   }
 }
 
+/** The enemy pages (strip, first mover) and skill pages ("Good against") read the timelines; no other route does. */
+function needsTimelines(hash = location.hash): boolean {
+  const first = decodeURIComponent(hash.replace(/^#\/?/, "")).split("/").find(Boolean);
+  return first === "enemy" || first === "skill";
+}
+
 /** Draw the route. `top`: scroll to the top (a new page); a change of the expansion switches keeps the place. */
 async function render(top = true): Promise<void> {
   const main = $("#wiki");
   try {
     await ready;
+    // Enemy timelines (U11): optional (the enemy pages show the plain rotation without them), and fetched only for
+    // the routes that use them (review F15).
+    if (needsTimelines()) await loadTimelineData().catch(() => {});
     paint(top);
   } catch (e) {
     main.replaceChildren(el("p", { class: "error", role: "alert" }, `The wiki could not load the game data: ${e instanceof Error ? e.message : e}`));

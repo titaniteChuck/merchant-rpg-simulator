@@ -25,7 +25,9 @@ test("every page of site/ is in the menus, and every menu page exists", () => {
 test("every page loads the menus and carries no static nav of its own", () => {
   for (const p of readdirSync(site).filter((f) => f.endsWith(".html"))) {
     const html = readFileSync(new URL(p, site), "utf8");
-    assert.match(html, /<script type="module" src="js\/nav\.js"><\/script>/, p);
+    // js/nav.js, or (review F14) the page's own bundle whose entry imports nav.ts first.
+    const own = [...html.matchAll(/<script type="module" src="js\/([\w-]+)\.js"><\/script>/g)].map((m) => m[1]);
+    assert.ok(own.includes("nav") || (own.length === 1 && /^import "\.\/nav\.ts";$/m.test(src(`${own[0]}.ts`))), p);
     assert.doesNotMatch(html, /class="(topnav|wiki-nav)"/, p);
   }
 });

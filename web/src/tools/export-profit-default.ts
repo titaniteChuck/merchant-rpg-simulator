@@ -9,11 +9,14 @@ import { fileURLToPath } from "node:url";
 import { loadGameData } from "../sim/data.ts";
 import { gameFromData } from "./gamedata.ts";
 import { DEFAULT_REQUEST, profitResponse } from "../ui/profit-worker.ts";
+import { compactProfit } from "./profit-compact.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const out = process.argv[2];
 if (!out) throw new Error("usage: node src/tools/export-profit-default.ts <out.json>");
 loadGameData(JSON.parse(readFileSync(resolve(ROOT, "inventory/gamedata.json"), "utf8")));
 const res = profitResponse(gameFromData(), { id: 0, ...DEFAULT_REQUEST });
-writeFileSync(out, JSON.stringify({ ...res, ms: 0 }));
-console.log(`profit default: ${res.items.length} items, ${Object.keys(res.costs).length} costs -> ${out}`);
+// Review F12: stored by column (profit-compact.ts), about 0.67 MB instead of 2.3 MB; the page expands it.
+const text = JSON.stringify(compactProfit({ ...res, ms: 0 }));
+writeFileSync(out, text);
+console.log(`profit default: ${res.items.length} items, ${Object.keys(res.costs).length} costs, ${text.length} B -> ${out}`);

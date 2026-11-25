@@ -2,6 +2,9 @@
  * Save viewer page (site/save.html). The save file is read in the browser and
  * never leaves it; game data comes from data/gamedata.json next to the page.
  */
+// Review F14: the menus (nav.ts) are bundled into this page, first, so nav and the page share one copy of the
+// shared modules (dom, names, language, tooltip, Save menu); the page loads no separate js/nav.js.
+import "./nav.ts";
 import * as api from "../sim/api.ts";
 import { itemName as englishItemName } from "../tools/engine.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";

@@ -18,7 +18,8 @@ const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
 const timelines = JSON.parse(read("inventory/timelines.json"));
-(globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, json: async () => timelines });
+// The page fetches data files as bytes (data-files.ts, review F13).
+(globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(timelines)).buffer });
 await loadTimelineData();
 
 const sv = loadSaveText(read("site/data/example-save.txt"));

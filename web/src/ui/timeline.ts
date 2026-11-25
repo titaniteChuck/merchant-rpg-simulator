@@ -23,6 +23,7 @@ import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
+import { dataJson } from "./data-files.ts";
 import { enemyName, skillName } from "./names.ts";
 
 export type { PlanMember };
@@ -37,10 +38,8 @@ let ready: Promise<void> | null = null;
 let loaded = false;
 /** Fetches data/timelines.json once; the strip and the plan render nothing until it is in. */
 export function loadTimelineData(): Promise<void> {
-  ready ??= fetch("data/timelines.json").then((r) => {
-    if (!r.ok) throw new Error(`timelines: HTTP ${r.status}`);
-    return r.json();
-  }).then((j) => {
+  // data-files.ts: the same bytes go to the battle page's search workers (review F13).
+  ready ??= dataJson<Any>("timelines.json", "timelines").then((j) => {
     loadTimelines(j);
     loaded = true;
   });

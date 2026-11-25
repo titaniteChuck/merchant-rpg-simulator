@@ -19,6 +19,7 @@ import type { Save } from "../tools/save.ts";
 import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { contentExpansion, type Expansion } from "../tools/expansions.ts";
 import { G } from "../sim/data.ts";
+import { type DataMessage, takeDataMessage, workerJson } from "./worker-data.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -88,23 +89,27 @@ export type BattleResponse =
   | { ok: false; error: string };
 
 let loaded: Promise<void> | null = null;
+/** The game data, for fights and searches (from the page's copy, data-files.ts dataWorker, else fetched). */
 function loadData(): Promise<void> {
-  loaded ??= Promise.all([
-    fetch(new URL("../data/gamedata.json", self.location.href)).then((r) => {
-      if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-      return r.json();
-    }).then((json) => api.loadGameData(json)),
+  loaded ??= workerJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
+  return loaded;
+}
+
+let searchLoaded: Promise<void> | null = null;
+/** Review F16: the files only searches use, loaded on the first search (a plain fight never needs them). */
+function loadSearchData(): Promise<void> {
+  searchLoaded ??= Promise.all([
+    loadData(),
     // Enemy timelines: with them, searchSkills / optimiseFight pre-filter rotations by their schedule score (E14b,
     // 10-19x faster); without them the searches still run, in full.
-    fetch(new URL("../data/timelines.json", self.location.href)).then((r) => (r.ok ? r.json() : null))
-      .then((json) => json && loadTimelines(json)).catch(() => {}),
+    workerJson<Any>("timelines.json").then((json) => json && loadTimelines(json)).catch(() => {}),
     // Offline warm start (E15): searchSkills / optimiseFight try its rotation for the class, tier and enemy first;
     // without the file they start from scratch.
-    fetch(new URL("../data/warmstart.json", self.location.href)).then((r) => (r.ok ? r.json() : null))
+    workerJson<Any>("warmstart.json")
       // Only a table of this version (a stale or foreign file is ignored, like a missing one).
       .then((json) => json?.version === WARMSTART_VERSION && json.entries && loadWarmStart(json)).catch(() => {}),
   ]).then(() => {});
-  return loaded;
+  return searchLoaded;
 }
 
 export async function runBattle(req: BattleRequest): Promise<BattleResponse> {
@@ -166,7 +171,7 @@ let solver: Solver | null = null;
  */
 export async function runSearch(req: SearchRequest, post: (m: SearchResponse) => void): Promise<void> {
   try {
-    await loadData();
+    await loadSearchData();
     const t0 = performance.now();
     const sim = new Sim(req.gameMode || "Standard");
     const build = (raws: (Any | null)[], skills?: (SkillChoice | null)[]) => raws.map((raw, i) => {
@@ -272,8 +277,9 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
 // Worker entry (skipped when imported in Node tests): plain requests simulate, `search` requests search.
 const ctx = globalThis as Any;
 if (typeof ctx.WorkerGlobalScope !== "undefined" && ctx instanceof ctx.WorkerGlobalScope) {
-  ctx.onmessage = async (e: MessageEvent<BattleRequest | SearchRequest>) => {
+  ctx.onmessage = async (e: MessageEvent<DataMessage | BattleRequest | SearchRequest>) => {
+    if (takeDataMessage(e.data)) return;
     if ("search" in e.data) await runSearch(e.data, (m) => ctx.postMessage(m));
-    else ctx.postMessage(await runBattle(e.data));
+    else ctx.postMessage(await runBattle(e.data as BattleRequest));
   };
 }

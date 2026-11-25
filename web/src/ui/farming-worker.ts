@@ -5,6 +5,7 @@
  * second; the page cancels by terminating.
  */
 import * as api from "../sim/api.ts";
+import { type DataMessage, takeDataMessage, workerJson } from "./worker-data.ts";
 import { type FarmRow, type FarmSource, farmingReport } from "../tools/farming.ts";
 import { gameFromData } from "../tools/gamedata.ts";
 import { Sim } from "../tools/engine.ts";
@@ -36,10 +37,7 @@ export type FarmResponse =
 
 let loaded: Promise<void> | null = null;
 function loadData(): Promise<void> {
-  loaded ??= fetch(new URL("../data/gamedata.json", self.location.href)).then((r) => {
-    if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-    return r.json();
-  }).then((json) => api.loadGameData(json));
+  loaded ??= workerJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
   return loaded;
 }
 
@@ -89,5 +87,7 @@ export async function runFarming(req: FarmRequest, post: (m: FarmResponse) => vo
 // Worker entry (skipped when imported in Node tests).
 const ctx = globalThis as Any;
 if (typeof ctx.WorkerGlobalScope !== "undefined" && ctx instanceof ctx.WorkerGlobalScope) {
-  ctx.onmessage = (e: MessageEvent<FarmRequest>) => runFarming(e.data, (m) => ctx.postMessage(m));
+  ctx.onmessage = (e: MessageEvent<DataMessage | FarmRequest>) => {
+    if (!takeDataMessage(e.data)) runFarming(e.data as FarmRequest, (m) => ctx.postMessage(m));
+  };
 }

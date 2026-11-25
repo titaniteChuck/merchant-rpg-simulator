@@ -25,7 +25,11 @@
  * tip() instead of `title` (F33, F38), the source's level or map grade on a second line (F34, F35), "–" for no
  * essence (F36), the table's edge fade on a phone (F37).
  */
+// Review F14: the menus (nav.ts) are bundled into this page, first, so nav and the page share one copy of the
+// shared modules (dom, names, language, tooltip, Save menu); the page loads no separate js/nav.js.
+import "./nav.ts";
 import * as api from "../sim/api.ts";
+import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
 import type { FarmRow, FarmSource } from "../tools/farming.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
@@ -64,10 +68,7 @@ const state: State = { sv: null, saveName: "", slots: {}, skills: {}, excluded: 
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
-  dataReady ??= fetch("data/gamedata.json").then((r) => {
-    if (!r.ok) throw new Error(`game data: HTTP ${r.status}`);
-    return r.json();
-  }).then((json) => api.loadGameData(json));
+  dataReady ??= dataJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
   return dataReady;
 }
 
@@ -269,7 +270,7 @@ let drawLast: (() => void) | null = null;
 
 /** The page's worker, kept between runs (F06: its Solver is solved once). */
 function farmWorker(): Worker {
-  state.worker ??= new Worker(new URL("js/farming-worker.js", document.baseURI), { type: "module" });
+  state.worker ??= dataWorker("farming-worker.js", ["gamedata.json"]);
   return state.worker;
 }
 function dropWorker(): void {
