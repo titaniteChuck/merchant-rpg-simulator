@@ -1464,14 +1464,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .qxp-wrap { max-width: 100%; width: max-content; }
 .qxp-table th.num, .qxp-table td.num { text-align: center; }
 .qxp-left { margin: 6px 0 0; }
-/* F16: a map page's "Essence per run" card wraps its names inside the card. R1-D: one essence per line, and the
-   expansion icons wrap with the name instead of running past the card's edge. */
-.facts .ess-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.facts .ess-fact .nowrap { white-space: normal; min-width: 0; }
-.facts .ess-fact .xp-badge { display: inline; white-space: normal; }
-.facts .ess-fact .xp-ico { display: inline-block; vertical-align: -0.12em; }
-/* F19: compact bush facts ("Quest board · 1st battle", the drops and their type). */
-.facts .fact-compact .muted { font-weight: 400; }
+/* F16 / F19: the map page's "Essence per run" card and the compact bush facts: in the U56 fact cards since. */
 /* F15: a wiki list whose every row is hidden expansion content: one empty state. */
 .wiki-empty { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
 .wiki-empty p { margin: 0 0 10px; }
@@ -1990,9 +1983,8 @@ footer .footer-line a { color: inherit; }
 #wiki thead th .help-q { width: 1.05rem; height: 1.05rem; font-size: 0.64rem; }
 .help-pop .asc-legend { margin: 0; }
 
-/* F42: the sell value in its ascension box (U56: the item facts are cards, style.css U56); merged grade rows; the empty
-   sections as one muted line (F54). */
-#wiki .av.av-l { text-align: left; font-weight: 650; }
+/* F42: merged grade rows (the sell value's ascension box became the U56 Sell card); the empty sections as one muted
+   line (F54). */
 #wiki .grade-run { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); }
 #wiki .wiki-empty-line { margin: 18px 0 0; }
 #wiki .wiki-empty-line strong { color: var(--fg); font-weight: 650; }
@@ -2003,15 +1995,7 @@ footer .footer-line a { color: inherit; }
 #wiki .sep-part { min-width: 0; }
 #wiki .sep { display: inline-block; width: 1em; text-align: center; }
 
-/* F43: compact facts (map and enemy pages): small cards, three to a row on a phone; the essence spans the row. */
-#wiki .facts.compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-top: 12px; }
-#wiki .facts.compact > div { padding: 5px 9px; border-radius: 8px; }
-#wiki .facts.compact dt { font-size: 0.66rem; }
-#wiki .facts.compact dd { margin: 1px 0 0; font-size: 0.92rem; line-height: 1.3; }
-#wiki .facts.compact > div:has(.ess-fact), #wiki .facts.compact > div:has(.fact-compact) { grid-column: 1 / -1; }
-@media (max-width: 600px) {
-  #wiki .facts.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
+/* F43: compact facts on the map and enemy pages: U56 fact cards since (style.css U56). */
 
 /* F44: the XP block's pickers on one row (it scrolls sideways when narrower); "Left out" closed. */
 #wiki .qxp-controls { flex-wrap: nowrap; overflow-x: auto; gap: 14px; padding: 2px; scrollbar-width: thin; }
@@ -2453,18 +2437,39 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 }
 /* end U55 */
 /* U56 */
-/* Item page facts (wiki-data factCards): one small card per fact, as many to a row as fit (three on a 375 px phone).
+/* Details page facts (wiki-data factCards: items, maps, enemies, skills, passives): one small card per fact, as many
+   to a row as fit (three on a 375 px phone); a wide card (fc-wide: effects, lists, the essence) spans the row.
    Labels keep their case ("Lvl"). */
 #wiki .fact-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; margin: 12px 0 0; }
 #wiki .fact-card { min-width: 0; padding: 5px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+#wiki .fact-card.fc-wide { grid-column: 1 / -1; }
 #wiki .fact-card dt { color: var(--muted); font-size: 0.7rem; font-weight: 700; line-height: 1.3; }
 #wiki .fact-card dt a.ref-link { color: inherit; }
 #wiki .fact-card dd { margin: 2px 0 0; font-size: 0.88rem; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
-#wiki .fact-card .region-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; }
-/* The Sell row closing an equipment's Stats by grade: the price at the picked ascension, one cell across the stats. */
-#wiki tfoot .sell-row th, #wiki tfoot .sell-row td { border-top: 1px solid var(--border); }
-#wiki tfoot .sell-row th { text-align: left; font-weight: 650; }
-#wiki tfoot .sell-row th a.ref-link { color: inherit; }
+#wiki .fact-card dd .plain-list { margin: 0; }
+#wiki .fact-card .fact-compact .muted { font-weight: 400; }
+#wiki .fact-card .ess-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#wiki .fact-card .ess-fact .nowrap { white-space: normal; min-width: 0; }
+#wiki .fact-card .ess-fact .xp-badge { display: inline; white-space: normal; }
+#wiki .fact-card .ess-fact .xp-ico { display: inline-block; vertical-align: -0.12em; }
+/* Coloured facts: the card carries the colour (--fc: its border and a light tint), the value is plain text.
+   Rarity: the rarity chip's colours (--rarc-N); region: --reg-N; a rare variant: the rare pill's pink. */
+#wiki .fact-card[class*="fc-rar-"], #wiki .fact-card[class*="fc-reg-"], #wiki .fact-card.fc-rare {
+  border-color: color-mix(in srgb, var(--fc) 65%, var(--border)); background: color-mix(in srgb, var(--fc) 12%, var(--card)); }
+#wiki .fc-rar-0 { --fc: var(--rarc-0); } #wiki .fc-rar-1 { --fc: var(--rarc-1); } #wiki .fc-rar-2 { --fc: var(--rarc-2); }
+#wiki .fc-rar-3, #wiki .fc-rar-10 { --fc: var(--rarc-3); } #wiki .fc-rar-4, #wiki .fc-rar-11 { --fc: var(--rarc-4); }
+#wiki .fc-rar-5, #wiki .fc-rar-6 { --fc: var(--rarc-5); } #wiki .fc-rar-7, #wiki .fc-rar-8 { --fc: var(--rarc-7); }
+#wiki .fc-rar-x { --fc: var(--muted); }
+#wiki .fc-reg-1 { --fc: var(--reg-1); } #wiki .fc-reg-2 { --fc: var(--reg-2); } #wiki .fc-reg-3 { --fc: var(--reg-3); }
+#wiki .fc-reg-4 { --fc: var(--reg-4); } #wiki .fc-reg-5 { --fc: var(--reg-5); } #wiki .fc-reg-6 { --fc: var(--reg-6); }
+#wiki .fc-rare { --fc: #ec4899; }
+#wiki .fc-region .xp-badge { margin-left: 4px; }
+/* Ascension (the Sell card): asc 0 plain; asc 1 and 2 framed by the silver / gold gradient (--asc-grad, the hero
+   gear cards' frame) over a light tint of that metal. */
+#wiki .fact-card.fc-asc-1, #wiki .fact-card.fc-asc-2 { border: 1.5px solid transparent; padding: 4.5px 7.5px;
+  background: linear-gradient(var(--fc-tint), var(--fc-tint)) padding-box, var(--asc-grad) border-box; }
+#wiki .fact-card.fc-asc-1 { --fc-tint: color-mix(in srgb, var(--silver-mid) 14%, var(--card)); }
+#wiki .fact-card.fc-asc-2 { --fc-tint: color-mix(in srgb, var(--gold-mid) 14%, var(--card)); }
 /* Recipe / Used in with nothing to list: the section's title, then one muted line where the list would be. */
 #wiki .wiki-empty-state { margin: 0; }
 /* end U56 */

@@ -27,11 +27,11 @@ import { isCraftableMap } from "../tools/quest-stats.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
-import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, totalCost } from "./wiki-items.ts";
+import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, sellTitle, totalCost } from "./wiki-items.ts";
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import {
-  baseTag, enemyBody, enemyFightTarget, enemyLead, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, TREASURE_HELP, uncraftableTag,
+  baseTag, enemyBody, enemyFightTarget, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, TREASURE_HELP, uncraftableTag,
 } from "./wiki-enemies.ts";
 import {
   ascCraftEssence, configRarity, configRoute, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
@@ -52,7 +52,8 @@ import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
   recipe, regionChip, regionOf, regionSortKey, regionText, skillAp, skillDesc, skillLink, skillNames, statText,
-  treasureBushOf, usedInRecipes, enemyLevelText, enemyLines, type EnemyLine, isGathering, mapFlavour, itemFactCards, sellFoot,
+  treasureBushOf, usedInRecipes, enemyLevelText, enemyLines, type EnemyLine, isGathering, mapFlavour, itemFactCards,
+  ascCard, type FactCard, factCards, rarityCard, regionCard, WIDE,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -121,15 +122,6 @@ const crumbs = (...parts: (string | [string, string])[]) => el("p", { class: "cr
     ...(i ? [el("span", { "aria-hidden": "true" }, " › ")] : []),
     typeof p === "string" ? el("span", {}, p) : el("a", { href: p[1] }, p[0])]));
 
-type FactPair = [string | Node, Node | string | number | undefined | null];
-/**
- * Facts list: [term, value]; a term can be a node (U30: a link to its Stats section). R2-D F43: `compact` packs the
- * cards three to a row on a phone, label and value tight (map and enemy pages).
- */
-const facts = (pairs: FactPair[], compact = false) =>
-  el("dl", { class: compact ? "facts compact" : "facts" }, ...pairs.filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
-const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
 
 /**
  * Parts joined by "·" that never dangle: each part carries its separator in front, and the row is shifted left by one
@@ -347,7 +339,8 @@ function skillPage(name: string): HTMLElement {
   // R1 F18 / F26: no emoji before the title, the effect in a card (no lead line); F33: a hero skill no enemy plays
   // has no empty "Enemies" section.
   return el("div", {}, crumbs(["Skills", "#/skills"], skillName(name)), el("h1", {}, skillName(name)),
-    facts([["Effect", skillDesc(name) || "No description in the game data."], [statLink("ap", "AP cost"), skillAp(name)],
+    // U56: the facts as cards (wiki-data factCards), as on the item pages
+    factCards([["Effect", skillDesc(name) || "No description in the game data.", WIDE], [statLink("ap", "AP cost"), skillAp(name)],
       ["Used by classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]),
     ...(good ? [good] : []),
     ...(isHeroOnlySkill(name) ? [] : lines.length ? [section(`Enemies with this skill (${lines.length})`,
@@ -378,7 +371,7 @@ function passivePage(name: string): HTMLElement {
   const users = visibleClassesWith("passive", name);
   // R1 F18 / F26: no emoji before the title, no lead line (the Bonuses card says it)
   return el("div", {}, crumbs(["Passives", "#/passives"], passiveName(name)), el("h1", {}, passiveName(name)),
-    facts([["Bonuses", el("ul", { class: "plain-list" }, ...Object.entries<number>(p.stats ?? {}).map(([k, v]) => el("li", {}, statText(k, v))))],
+    factCards([["Bonuses", el("ul", { class: "plain-list" }, ...Object.entries<number>(p.stats ?? {}).map(([k, v]) => el("li", {}, statText(k, v))))],
       ["Classes", users.length ? el("span", {}, ...joinNodes(users.map(([id]) => classLink(id)))) : "none"]]));
 }
 
@@ -526,13 +519,9 @@ function gradeRows(id: number, cfg: ItemConfig): HTMLElement {
     const [a, b] = g.split("–");
     return b ? el("span", { class: "grade-run", title: `Grades ${a} to ${b}` }, gradeBadge(a), "–", gradeBadge(b)) : gradeBadge(a);
   };
-  const wrap = table(mergeGradeRows(rows), [{ key: "grade", label: "Grade", render: (r) => gradeCell(String(r.grade)) },
+  return table(mergeGradeRows(rows), [{ key: "grade", label: "Grade", render: (r) => gradeCell(String(r.grade)) },
     ...keys.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), num: true })),
     ...bonusKeys.map((k) => ({ key: `b_${k}`, label: `${bonusLabel(k).replace(/^./, (x) => x.toUpperCase())} (bonus)` }))]);
-  // U56: the price at the picked ascension closes the table (one row: no grade changes it)
-  const foot = sellFoot("equipment", id, cfg, keys.length + bonusKeys.length);
-  if (foot) wrap.querySelector("table")?.append(foot);
-  return wrap;
 }
 
 /** U49: the grade table follows the page's configuration (its Ascension, Prefix and Suffix pickers at the top). */
@@ -610,10 +599,10 @@ function configTitle(type: string, id: number, cfg: ItemConfig): HTMLElement {
 }
 
 /** What the configuration's prefix and suffix do on this item, as facts ([] when it has none). */
-function modifierFacts(type: string, id: number, cfg: ItemConfig): FactPair[] {
+function modifierFacts(type: string, id: number, cfg: ItemConfig): FactCard[] {
   return [
-    ["Prefix", cfg.prefix ? `[${prefixTag(cfg.prefix)}] · ${prefixEffect(type, id, cfg.prefix)}` : undefined],
-    ["Suffix", cfg.suffix ? `${suffixName(cfg.suffix)} · ${suffixEffect(type, cfg.suffix)}` : undefined],
+    ["Prefix", cfg.prefix ? `[${prefixTag(cfg.prefix)}] · ${prefixEffect(type, id, cfg.prefix)}` : undefined, WIDE],
+    ["Suffix", cfg.suffix ? `${suffixName(cfg.suffix)} · ${suffixEffect(type, cfg.suffix)}` : undefined, WIDE],
   ];
 }
 
@@ -668,18 +657,16 @@ function itemBody(type: string, id: number, cfg: ItemConfig): (Node | string)[] 
   // U49: a consumable's effect at the picked ascension (default.consumableStat: ascended potions and scrolls scale)
   const stats = effect ? consumableStatsAt(id, cfg.asc) : {};
   const mods = modifierFacts(type, id, cfg);
-  // U56: an equipment's price is the Sell row of its Stats by grade (at the picked ascension), not a header card
   const grades = type === "equipment" ? gradeRows(id, cfg) : null;
-  const pricedInTable = !!grades?.querySelector("tfoot");
   const kids: (Node | string)[] = [
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
-    // U56: the header facts as small cards, one fact each (wiki-data itemFactCards; the sell value at the picked ascension)
-    itemFactCards(type, id, cfg, { sell: !pricedInTable }),
-    ...(bonus.length || effect || modCount(cfg) ? [facts([
-      [statLink("item-stats", "Bonus stats"), bonus.length ? bonus.join(", ") : undefined],
-      ["Effect", effect ? Object.entries<number>(stats).map(([k, v]) => statText(k, v)).join(", ") : undefined],
+    // U56: the facts as small cards, one fact each (wiki-data itemFactCards; the sell value at the picked ascension),
+    // the bonus stats, effect and modifiers as wide cards in the same grid
+    itemFactCards(type, id, cfg, [
+      [statLink("item-stats", "Bonus stats"), bonus.length ? bonus.join(", ") : undefined, WIDE],
+      ["Effect", effect ? Object.entries<number>(stats).map(([k, v]) => statText(k, v)).join(", ") : undefined, WIDE],
       ...mods,
-    ])] : []),
+    ]),
   ];
   if (grades) kids.push(sectionHelp(section("Stats by grade", grades), gradeHelp(cfg), [statLink("item-stats")]));
   // R2-D F54: an empty Drops ends the page as one muted line ("Drops · Not dropped…")
@@ -807,15 +794,17 @@ function mapBody(id: number, cfg: ItemConfig): (Node | string)[] {
     // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Enemies table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
     ...fightButton(mapFightTarget(id, cfg), modCount(cfg) ? "The plain map at this ascension, grade C: the simulator's maps take no prefix or suffix." : undefined),
-    // R2-D F43: compact facts, three to a row on a phone; the essence spans the row
+    // U56: the facts as cards (wiki-data factCards, as on the item pages): Region, Rarity and Sell value coloured on
+    // the card (the sell value by the picked ascension), the value plain text; the essence spans the row
     // U55: a level-70 map is dormant data (no crafter reaches it, no base time in the data): marked as on the enemy pages
-    compactFacts([["Level", isCraftableMap(id) ? m.itemLevel : el("span", { class: "fact-compact" }, String(m.itemLevel), " ", uncraftableTag())], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(view?.rarity ?? m.rarity)], ["Rooms", m.baseEnemyAmount],
+    factCards([isCraftableMap(id) ? ["Level", m.itemLevel] : ["Level", el("span", { class: "fact-compact" }, String(m.itemLevel), " ", uncraftableTag()), WIDE],
+      ["Region", ...regionCard(regionOf("map", id))], ["Rarity", ...rarityCard(view?.rarity ?? m.rarity)], ["Rooms", m.baseEnemyAmount],
       ["Base time", m.baseMapTime ? baseTimeFact(m.baseMapTime, speed, view?.baseTime ?? null) : undefined],
       [statLink("map-essence", "Enemy ×"), `×${fmt.format(mod)}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
-      [statLink("sell", "Sell value"), sell !== null ? gold(sell) : undefined],
+      [statLink("sell", "Sell value"), sell !== null ? gold(sell) : undefined, sell !== null ? { class: ascCard(cfg.asc), title: sellTitle("map", id, cfg.asc, sell) } : undefined],
       ...modifierFacts("map", id, cfg),
       // R1 F16: the essence names wrap inside the card ("500 × Essence de la forêt" in French).
-      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essence)]]),
+      [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essence), WIDE]]),
     // U55: one table, the Treasure Bush first (U24: the one of the map's level band, added to a room at run time, so
     // not in the map's own lists), then the room enemies, the boss(es) last
     sectionHelp(section("Enemies", mapEnemyTable(bush, mapEnemies(m), bosses, view?.stats ?? null)),
@@ -840,8 +829,9 @@ function enemyPage(id: number): HTMLElement {
   const name = enemyName(id) ?? q.name;
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
-    el("p", { class: "lead" }, enemyLead(id)), ...fightButton(enemyFightTarget(id)),
-    ...enemyBody(id, compactFacts, section, emptyLine));
+    // U56: no lead line ("Boss · lvl 20 · …"): the Kind, Level and Region cards say it
+    ...fightButton(enemyFightTarget(id)),
+    ...enemyBody(id, section, emptyLine));
 }
 
 // ---------------------------------------------------------------- classes

@@ -5,10 +5,10 @@
  */
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, LV, slotName, withAsc } from "./dom.ts";
+import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, gold, LV, slotName, withAsc } from "./dom.ts";
 import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansion-state.ts";
 import { tip } from "./tooltip.ts";
-import { bonusPair, bonusText, isPlaceholder, rarityChip, sellBox } from "./wiki-items.ts";
+import { bonusPair, bonusText, isPlaceholder, rarityLabel, rarityTip, sellTitle } from "./wiki-items.ts";
 import { configHref, configRarity, configSell, type ItemConfig } from "./wiki-config.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
 import { statLink } from "./wiki-ref.ts";
@@ -394,10 +394,16 @@ export const regionText = (r: Region | null): string => (r ? [r.name, ...(r.name
 export function regionChip(r: Region | null, withWhy = false, o: { tag?: boolean } = {}): HTMLElement {
   if (!r) return el("span", { class: "muted" }, "–");
   const needs = needsOf("region", r.id);
-  const chip = el("span", { class: `region-chip reg-${r.id}`, title: `${r.full} · ${r.why}${needs.length ? `. ${expansionNote(needs)}` : ""}` }, r.name,
+  const chip = el("span", { class: `region-chip reg-${r.id}`, title: regionTitle(r) }, r.name,
     ...(needs.length ? [expansionBadge(needs)] : []));
   const tag = GROUP_TAG[r.group] && o.tag !== false ? [el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : [];
   return el("span", { class: "region-cell" }, chip, ...tag, ...(withWhy ? [el("span", { class: "muted small" }, ` ${r.why}`)] : []));
+}
+
+/** The region chip's tooltip: full name, why the content is there, and the expansions it needs. */
+export function regionTitle(r: Region): string {
+  const needs = needsOf("region", r.id);
+  return `${r.full} · ${r.why}${needs.length ? `. ${expansionNote(needs)}` : ""}`;
 }
 
 /** One entry of a loot table: an item, its share of the roll (percent) and the amounts it can come in. */
@@ -667,50 +673,61 @@ export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts
 }
 
 // ---------------------------------------------------------------- item header facts (U56)
-/** One fact card: [label, value]; an empty value (null, undefined, false, "") leaves the card out. */
-export type FactCard = [label: string | Node, value: Node | string | number | null | undefined | false];
+/**
+ * One fact card: [label, value, card]; an empty value (null, undefined, false, "") leaves the card out. `card` puts a
+ * class (its colour, style.css U56) and a tooltip on the card itself.
+ */
+export type FactCard = [label: string | Node, value: Node | string | number | null | undefined | false, card?: FactCardStyle];
+/** A fact card's own class (`fc-wide` spans the row; `fc-rar-N`, `fc-reg-N`, `fc-asc-N`, `fc-rare` colour it) and tooltip. */
+export interface FactCardStyle { class?: string; title?: string }
+/** A wide fact card (long text, lists): it spans the grid's row. */
+export const WIDE: FactCardStyle = { class: "fc-wide" };
 
 /** U56: facts as small cards, one fact per card (label over value), in a compact grid that wraps (style.css U56). */
 export function factCards(cards: FactCard[]): HTMLElement {
   return el("dl", { class: "fact-cards" }, ...cards.filter(([, v]) => v !== null && v !== undefined && v !== false && v !== "")
-    .map(([k, v]) => el("div", { class: "fact-card" }, el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
+    .map(([k, v, c]) => el("div", { class: c?.class ? `fact-card ${c.class}` : "fact-card", ...(c?.title ? { title: c.title } : {}) },
+      el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
 }
 
 /** U56: an item's sell value on its page: at the page's ascension with its prefix and suffix (materials: their one value). */
 export const pageSell = (type: string, id: number, cfg: ItemConfig): number | null => configSell(type, id, type === "material" ? 0 : cfg.asc, cfg);
 
-/** U56: the page's sell value in its tier box, or null when unknown. */
-export function pageSellBox(type: string, id: number, cfg: ItemConfig): HTMLElement | null {
-  const v = pageSell(type, id, cfg);
-  return v === null ? null : sellBox(type, id, type === "material" ? 0 : cfg.asc, v);
+/** U56: a fact card coloured by a rarity (the `--rarc-N` colours; "x" when unknown): its value (the name) and card. */
+export function rarityCard(r: unknown): [string, FactCardStyle] {
+  return [rarityLabel(r), { class: `fc-rar fc-rar-${typeof r === "number" && Number.isFinite(r) ? r : "x"}`, title: rarityTip(r) }];
 }
+
+/** U56: a fact card coloured by a region: its name as plain text (and its expansion badge, group tag), the chip's tooltip. */
+export function regionCard(r: Region | null, o: { why?: boolean; tag?: boolean } = {}): [HTMLElement | null, FactCardStyle | undefined] {
+  if (!r) return [null, undefined];
+  const needs = needsOf("region", r.id);
+  return [el("span", { class: "fc-region" }, r.name, ...(needs.length ? [expansionBadge(needs)] : []),
+    ...(GROUP_TAG[r.group] && o.tag !== false ? [" ", el("span", { class: `region-tag ${r.group}` }, GROUP_TAG[r.group])] : []),
+    ...(o.why ? [el("span", { class: "muted small" }, ` ${r.why}`)] : [])),
+  { class: `fc-reg fc-reg-${r.id}${o.why ? " fc-wide" : ""}`, title: regionTitle(r) }];
+}
+
+/** U56: the card class of an ascension: plain for 0, the silver and gold gradients (`asc-1` / `asc-2`) for 1 and 2. */
+export const ascCard = (asc: number): string => `fc-asc fc-asc-${asc}${asc ? ` asc-${asc}` : ""}`;
 
 /**
  * U56: the facts under an item page's title (equipment, consumables, materials), one card each: type, level, region,
- * rarity (after the configuration's modifiers), crafter and the sell value at the page's ascension. `sell: false`
- * leaves the sell card out (equipment: its price is the Sell row of Stats by grade).
+ * rarity (after the configuration's modifiers), crafter and the sell value at the page's ascension (with its prefix and
+ * suffix; materials: their one value), then `more` (the page's wider cards: bonus stats, effect, prefix, suffix).
  */
-export function itemFactCards(type: string, id: number, cfg: ItemConfig, o: { sell?: boolean } = {}): HTMLElement {
+export function itemFactCards(type: string, id: number, cfg: ItemConfig, more: FactCard[] = []): HTMLElement {
   const it = item(type, id) ?? {};
-  const region = regionOf(type as ItemType, id);
+  const asc = type === "material" ? 0 : cfg.asc;
+  const sell = pageSell(type, id, cfg);
+  // U56: Region, Rarity and Sell colour their card (style.css U56); the value is plain text, the tooltip on the card
   return factCards([
     ["Type", itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined)],
     [LV, it.itemLevel ?? 0],
-    ["Region", region ? regionChip(region) : null],
-    ["Rarity", rarityChip(configRarity(type, id, cfg) ?? it.rarity)],
+    ["Region", ...regionCard(regionOf(type as ItemType, id))],
+    ["Rarity", ...rarityCard(configRarity(type, id, cfg) ?? it.rarity)],
     ["Crafter", it.crafterID ? crafterName(it.crafterID) ?? `crafter ${it.crafterID}` : null],
-    [statLink("sell", "Sell"), o.sell === false ? null : pageSellBox(type, id, cfg)],
+    [statLink("sell", "Sell"), sell === null ? null : gold(sell), sell === null ? undefined : { class: ascCard(asc), title: sellTitle(type, id, asc, sell) }],
+    ...more,
   ]);
-}
-
-/**
- * U56: the Sell row closing an equipment's Stats by grade: the price at the page's ascension (the table follows the
- * Ascension picker) with its modifiers. No grade changes the price (default.itemSellValue), so one cell spans the
- * stat columns. Null when unknown.
- */
-export function sellFoot(type: string, id: number, cfg: ItemConfig, span: number): HTMLElement | null {
-  const box = pageSellBox(type, id, cfg);
-  if (!box) return null;
-  return el("tfoot", {}, el("tr", { class: "sell-row" }, el("th", { scope: "row" }, statLink("sell", "Sell")),
-    el("td", { colspan: String(Math.max(1, span)) }, box)));
 }

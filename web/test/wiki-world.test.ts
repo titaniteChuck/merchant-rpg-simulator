@@ -9,7 +9,7 @@ import { loadLanguage, setLanguage } from "../src/tools/i18n.ts";
 import { setShowAll } from "../src/ui/expansion-state.ts";
 import { mapXpRows, uncraftableMapsWith } from "../src/ui/quest-xp.ts";
 import { enemyIds, enemyMapRoles, loadWikiText, mapFlavour, regionOf } from "../src/ui/wiki-data.ts";
-import { bushDropKinds, enemyLead, mapsFact, xpPicksOf } from "../src/ui/wiki-enemies.ts";
+import { bushDropKinds, mapsFact, xpPicksOf } from "../src/ui/wiki-enemies.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 const wikiText = JSON.parse(readFileSync(new URL("../../inventory/wikidata.json", import.meta.url), "utf8"));
@@ -63,13 +63,11 @@ test("F40: neutral formats around translated names (no English glue)", () => {
     for (const id of enemyIds()) {
       const why = regionOf("enemy", id)!.why;
       assert.doesNotMatch(why, /\bon\b|\bsends you to\b|'s\b|\bfirst in\b|\blevel\b/, `${id}: ${why}`);
-      assert.doesNotMatch(enemyLead(id), /\blevel\b|\bin maps of\b/, `${id}: ${enemyLead(id)}`);
     }
     assert.match(regionOf("enemy", 2)!.why, /^Board: /);
   } finally {
     setLanguage("en");
   }
-  assert.match(enemyLead(20), /· lvl \d+ ·/);
 });
 
 test("F03: the XP block's picks are kept per enemy across a re-render", () => {

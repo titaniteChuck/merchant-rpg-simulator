@@ -829,7 +829,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     names the raw-material gold.
 - List columns (U37): no Description column on the Consumables and Materials lists (the item's hover card has it,
   the filter still matches it); the data's sell pair ("15–20") is no longer shown beside a sell value, only in the
-  detail page's tooltip (`sellTip`; `sellBox` since U56).
+  detail page's tooltip (`sellTip`; the Sell fact card's tooltip, `sellTitle`, since U56).
 - Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
   Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
   "Stats by grade" table (for the page's ascension, prefix and suffix since U49, see below) shows base stats and each
@@ -895,18 +895,32 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Save viewer links (`savedMods` in `save-tables.ts`, a WeakMap beside each row so the CSV columns don't change):
     an owned map, an inventory or counter stack and a hero's gear open their wiki page on their ascension, prefix and
     suffix (`itemLink(…, { config })`); a crafter's job on its ascension. Tests `web/test/wiki-config-u49.test.ts`.
-- Item page facts (U56; equipment, consumable and material details): the facts under the title are small cards, one
-  fact each, in a grid that fits three to a row at 375 px (`itemFactCards` / `factCards` in `wiki-data.ts`, one helper
-  for the three kinds; CSS block `U56`): Type, Lvl (`LV`), Region, Rarity (the chip, after the configuration's
-  modifiers), Crafter, Sell. Bonus stats and Effect stay as the wider cards under them.
-  - Sell: one value, at the ascension picked in the U49 bar with its prefix and suffix (`pageSell` / `pageSellBox`,
-    the engine's `sellValue` through `configSell`), in a box outlined in that ascension's tier colour, no "asc N"
-    text inside (`sellBox` in `wiki-items.ts`, replacing `sellBoxes`); materials have no picker and show their single
-    value. The stackables' data pair stays in the box's tooltip.
-  - Equipment price: not a header card but the Sell row closing Stats by grade (`sellFoot`: a `tfoot` row, "Sell"
-    then one cell spanning the stat columns), so it follows the picked ascension and modifiers with the table. No
-    grade changes an item's sell value (`default.itemSellValue`), so a row, not a column repeating one number down
-    the grades (it also adds no width on a phone). An equipment without a stat table keeps the Sell card.
+- Details page facts (U56): the facts under a details page's title are small cards, one fact each, in a grid that
+  fits three to a row at 375 px, built by one helper (`factCards` in `wiki-data.ts`; CSS block `U56`), on every wiki
+  details page: equipment, consumables and materials (`itemFactCards`: Type, Lvl (`LV`), Region, Rarity (after the
+  configuration's modifiers), Crafter, Sell, then Bonus stats, Effect, Prefix and Suffix as wide cards in the same
+  grid), maps (Level, Region, Rarity, Rooms, Base time, Enemy ×, Rare boss, Sell value, Prefix, Suffix, Essence per
+  run), enemies (Kind, Level, Region, Fought, Mainly drops, Party, Acts, Rare variant, Maps), skills (Effect, AP cost,
+  Used by classes) and passives (Bonuses, Classes). The old `facts` / `compactFacts` strips of `wiki.ts` are gone
+  (`enemyBody` builds its cards itself), and the enemy page's lead line ("Boss · lvl 20 · …", `enemyLead`), which
+  only repeated the Kind, Level and Region cards. A card is `[label, value, style]`: `style.class` (`fc-wide` spans
+  the row: effects, lists, the essence, a level-70 map's or a bush's level) and `style.title` (the card's tooltip).
+  Class pages have no fact cards (R2-D F47: the stat table and radar say it, U54) and keep their lead sentence, as
+  the item and map pages keep theirs. U49's picker bar and U53's "Fight in simulator" button are not facts and stay.
+  - Coloured facts: the colour is on the card (its border and a light tint), the value inside is plain text, no chip,
+    pill or box; the tooltip moves to the card. Rarity (`rarityCard`: `fc-rar-N`, the rarity chip's `--rarc-N`
+    colours, title `rarityTip`, "Epic: rarity 4"), Region (`regionCard`: `fc-reg-N`, `--reg-N`, the region chip's
+    tooltip `regionTitle`; the expansion badge and group tag kept, an enemy's map-boss reason after the name), Sell
+    on items and Sell value on maps (`ascCard`: asc 0 plain, asc 1 and 2 framed by the silver / gold gradient
+    `--asc-grad` as the hero gear cards, over a light tint of the metal; title `sellTitle`), an enemy's Rare variant
+    (`fc-rare`, the rare pill's pink; the link to the rare variant kept). Tables and lists keep their chips.
+  - Sell: one value, at the ascension picked in the U49 bar with its prefix and suffix (`pageSell`, the engine's
+    `sellValue` through `configSell`), no "asc N" text; materials have no picker and show their single value. The
+    stackables' data pair is in the card's tooltip (`sellTitle` in `wiki-items.ts`, replacing `sellBox` and
+    `sellBoxes`). The card redraws with the page when the picker changes.
+  - Equipment price: the same Sell card as consumables and materials, among the header cards (the user's call after
+    U56 first put it in a Sell row closing Stats by grade; that row, `sellFoot`, and its CSS are gone). No grade
+    changes an item's sell value (`default.itemSellValue`), so Stats by grade has no price.
   - Recipe and Used in: always their section with its title; with nothing to list, one muted line inside it ("Not
     craftable.", "Not used in any recipe." / "… you can make."), in the same place a list would be; the hidden-recipes
     note inside Used in. Tests `web/test/wiki-u56.test.ts`.
@@ -1096,7 +1110,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Use: a Region column (chip in the region's colour, "event" / "map boss" tag, tooltip = how it was decided) in the
     Enemies, Maps, Equipment, Consumables and Materials lists, which open sorted by region, group (region, event, map
     boss), then level; the Region column sorts the same way and a gold rule marks where the region changes
-    (`tr.reg-N`, any sort). Region fact (with the reason) on enemy, map and item pages; the enemy lead line names it.
+    (`tr.reg-N`, any sort). Region fact (with the reason on a map boss) on enemy, map and item pages, a card coloured by the region (U56).
     U37: the Enemies list's Region column is the chip alone (`regionChip(…, { tag: false })`), since its Kind column
     already says event / map boss; the Maps column (how many maps hold the enemy) is gone.
 - Skill pages (U37): "Enemies with this skill" shows one line per enemy, its rare variant beside the base name when
@@ -1135,7 +1149,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     kinds of battle / Map runs); Mainly drops = the every-win materials and their game type from the data
     (`bushDropKinds` / `bushDropText`: quest bushes "herbs", a moss and a root; Treasure Bushes "crystals and gems",
     a region's crystal and its gem, e.g. Forest Crystal and Emerald) (F44, R1-D).
-  - Neutral formats around translated names (F40): "lvl 9" (lead line, tooltips, Level card "Maps lvl 1–10 · quest
+  - Neutral formats around translated names (F40): "lvl 9" (tooltips, Level card "Maps lvl 1–10 · quest
     lvl 10"; U47), region reasons "Board: <region>", "Event: <region>", "First map: <map>", "Map lvl N", tooltips
     "<region> · <reason>", enemy tooltips "Maps: <names>".
   - Rare variants (F11): the variant's own name and a small "rare" pill everywhere on the enemy and map pages, the

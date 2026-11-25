@@ -316,13 +316,13 @@ export function sellTip(type: string, id: number, asc = 0): string {
 }
 
 /**
- * An item's sell value in a box outlined in its ascension's tier colour (R2-D F42). U56: one value, the page's
- * ascension (materials: their only one), no "asc N" text inside; the stackables' data pair is in its tooltip.
+ * The tooltip of an item's sell value at an ascension (R2-D F42; U56: the Sell fact card carries it, coloured by the
+ * ascension, with the value as plain text): "Ascension N: X g" (materials: the value), then the stackables' data pair.
  */
-export function sellBox(type: string, id: number, asc: number, v: number): HTMLElement {
+export function sellTitle(type: string, id: number, asc: number, v: number): string {
   const tip = sellTip(type, id, asc);
   const what = type === "material" ? gold(v) : `Ascension ${asc}: ${gold(v)}`;
-  return el("span", { class: `av av-l sell-box tier-${asc}`, title: `${what}${tip ? `. ${tip}` : ""}` }, gold(v));
+  return `${what}${tip ? `. ${tip}` : ""}`;
 }
 
 // ---------------------------------------------------------------- grade rows (R2-D F42)

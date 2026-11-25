@@ -8,7 +8,7 @@ import { seq } from "../sim/lua.ts";
 import { duration, el, fmt, gradeBadge, GRADE_LETTERS, pill, type Row, segField, segmented, table, withAsc } from "./dom.ts";
 import {
   enemyDrops, enemyIds, enemyKind, enemyLevelSort, enemyLevelText, isEnemy, isGathering, isTreasureBush, enemyLink, enemyMapRoles, hasRare, item, itemLink, quest, regionChip, regionOf, regionSortKey, regionText,
-  skillDesc, skillLink,
+  skillDesc, skillLink, factCards, regionCard, WIDE,
 } from "./wiki-data.ts";
 import { sectionHelp } from "./wiki-help.ts";
 import { battleLink, statLink } from "./wiki-ref.ts";
@@ -478,7 +478,6 @@ function xpSection(id: number, section: Section): HTMLElement | null {
   return null;
 }
 
-type Facts = (pairs: [string | Node, Node | string | number | undefined | null][]) => HTMLElement;
 type Section = (title: string, ...kids: (Node | string)[]) => HTMLElement;
 
 /**
@@ -489,13 +488,8 @@ export function mapsFact(total: number, bossOf: number, craftable: number): stri
   return [String(total), ...(bossOf && bossOf < total ? [`boss in ${bossOf}`] : []), ...(craftable < total ? [`${craftable} craftable`] : [])].join(" · ");
 }
 
-/** The line under an enemy page's title: kind, level, region (R1 F40: "lvl N", no English glue around names). */
-export function enemyLead(id: number): string {
-  return [enemyKind(id), isTreasureBush(id) ? `Maps lvl ${enemyLevelText(id)}` : `lvl ${quest(id)?.levelReq ?? "?"}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ");
-}
-
 /** An enemy page's body, below its title. `empty`: an empty section as one muted line (R2-D F54). */
-export function enemyBody(id: number, facts: Facts, section: Section, empty: (...parts: [string, string][]) => HTMLElement): HTMLElement[] {
+export function enemyBody(id: number, section: Section, empty: (...parts: [string, string][]) => HTMLElement): HTMLElement[] {
   const q = quest(id);
   const rare = hasRare(id);
   const roles = enemyMapRoles(id);
@@ -504,15 +498,17 @@ export function enemyBody(id: number, facts: Facts, section: Section, empty: (..
   const first = timelineOf(id, false)?.enemyFirst;
   const region = regionOf("enemy", id);
   return [
-    facts([["Kind", enemyKind(id)],
+    // U56: the facts as cards (wiki-data factCards, as on the item pages); Region and Rare variant coloured on the card
+    factCards([["Kind", enemyKind(id)],
       // A bush: the maps it spawns in (their levels), its quest level only as a detail (U28 follow-up).
-      ["Level", isTreasureBush(id) ? el("span", { class: "fact-compact" }, `Maps lvl ${enemyLevelText(id)}`, el("span", { class: "muted small" }, ` · quest lvl ${q.levelReq}`)) : q.levelReq],
+      isTreasureBush(id) ? ["Level", el("span", { class: "fact-compact" }, `Maps lvl ${enemyLevelText(id)}`, el("span", { class: "muted small" }, ` · quest lvl ${q.levelReq}`)), WIDE] : ["Level", q.levelReq],
       // R1 F41: no "map boss" / "event boss" tag (the Kind card says it); the reason only for a map boss (its first map).
-      ["Region", regionChip(region, region?.group === "map", { tag: false })],
+      ["Region", ...regionCard(region, { why: region?.group === "map", tag: false })],
       ["Fought", bushWhere(id)], ["Mainly drops", bushDrops(id)],
       // A map-only enemy (map boss, Treasure Bush) is a map room: the party is the map run's, not the quest's.
       ["Party", isMapOnlyQuest(id) ? undefined : q.party ? `${q.questSize ?? "?"} heroes` : "solo"], ["Acts", first ? battleLink("turn-order", "before the heroes, every turn") : undefined],
-      ["Rare variant", rare ? el("span", {}, enemyLink({ id, rare: true }), " ", pill("rare", "t-pink"), q.abRand ? el("span", { class: "muted small" }, ` · about ${q.abRand}% of its map rooms`) : "") : undefined],
+      ["Rare variant", rare ? el("span", {}, enemyLink({ id, rare: true }), q.abRand ? el("span", { class: "muted small" }, ` · about ${q.abRand}% of its map rooms`) : "") : undefined,
+        { class: "fc-rare", title: "The enemy's rare variant" }],
       ["Maps", roles.length ? mapsFact(roles.length, bossOf, craftable) : "none"]]),
     ...((x) => (x ? [x] : []))(xpSection(id, section)),
     sectionHelp(section("Stats", statsTable(id)), "Quest stats, before any map multiplier, grade or game mode.",

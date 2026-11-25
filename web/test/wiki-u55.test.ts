@@ -83,6 +83,6 @@ test("maps without a base time: the six level-70 maps, none obtainable, marked n
   assert.equal((uncraftableTag() as unknown as FakeElement).textContent, "not craftable");
   const wiki = read("web/src/ui/wiki.ts");
   assert.match(wiki, /isCraftableMap\(Number\(r\.id\)\) \? itemLink\("map", Number\(r\.id\)\)/, "Maps list");
-  assert.match(wiki, /\["Level", isCraftableMap\(id\) \? m\.itemLevel : /, "map page");
+  assert.match(wiki, /isCraftableMap\(id\) \? \["Level", m\.itemLevel\] : \["Level", el\("span", \{ class: "fact-compact" \}, String\(m\.itemLevel\), " ", uncraftableTag\(\)\)/, "map page (U56: a fact card)");
   assert.match(wiki, /isCraftableMap\(id\) \? recipeList\("map", id\) : null/, "no recipe for a level-70 map");
 });
