@@ -50,8 +50,11 @@ export function tip(el: Element, content: () => Node | string): void {
   };
   el.addEventListener("pointerenter", show);
   el.addEventListener("focus", show);
-  el.addEventListener("pointerleave", hideTip);
-  el.addEventListener("blur", hideTip);
+  // Only the element that owns the tooltip hides it: a layout shift (e.g. a scroller bringing a focused term into
+  // view) can fire pointerleave on another element under a resting pointer (QA, 2026-11-25).
+  const hideOwn = () => { if (owner === el) hideTip(); };
+  el.addEventListener("pointerleave", hideOwn);
+  el.addEventListener("blur", hideOwn);
 }
 
 if (typeof document !== "undefined") {
@@ -63,5 +66,5 @@ if (typeof document !== "undefined") {
   document.addEventListener("scroll", () => {
     if (owner && owner === document.activeElement) place(owner);
     else hideTip();
-  }, { passive: true });
+  }, { passive: true, capture: true }); // capture: inner scrollers (the Flow's sideways frame) count too
 }

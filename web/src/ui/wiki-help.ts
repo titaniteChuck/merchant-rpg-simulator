@@ -101,6 +101,13 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
   });
-  document.addEventListener("scroll", close, { passive: true });
+  // A scroll closes a hover popover, but one whose "?" (or content) has keyboard focus is re-placed instead:
+  // Tab to an off-screen "?" scrolls the page to it, and closing there would make it never show (QA, 2026-11-25).
+  document.addEventListener("scroll", () => {
+    const o = open;
+    const a = document.activeElement;
+    if (o && a instanceof Node && (a === o.btn || o.pop.contains(a))) { close(); show(o.btn, o.pop); }
+    else close();
+  }, { passive: true });
   window.addEventListener("hashchange", close);
 }
