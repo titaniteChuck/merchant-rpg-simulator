@@ -8,7 +8,8 @@
  * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
  * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Party · Flow 1 · Flow 2 · Flow 3, three Flow
- * layouts to compare (flow-layouts.ts), one Flow panel drawn by the open one.
+ * layouts to compare (flow-layouts.ts), one Flow panel drawn by the open one. U61: the Party view's HP chart under the
+ * opponent's card (hp-chart.ts), drawn by renderPlan from the very trace it hands the Flow layout.
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
@@ -41,7 +42,8 @@ import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, type PlanEdit, type PlanMember, timelineOf } from "./timeline.ts";
 import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
-import { mapRoomTabs } from "./battle-plan.ts";
+import { locationOf, mapRoomTabs } from "./battle-plan.ts";
+import { drawHpChart, hpData, type HpRun } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyRadar, EVA_RIM, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
@@ -1037,6 +1039,8 @@ function renderPlan(): void {
     // U48: no "vs <enemy> change" line: the enemy column's head names the enemy and, clicked, changes it.
     const t = targetOf().quest!;
     const trace = members.length ? planTrace(t) : null;
+    // U61: the Party view's HP chart draws this very trace (the same object the Flow layout gets).
+    showHp(trace ? [{ trace, enemy: enemyName(String(t.id), t.rare) ?? "Enemy" }] : null, members);
     const plan = layout.render(t, members, trace, edit);
     if (plan) {
       box.append(...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
@@ -1046,19 +1050,23 @@ function renderPlan(): void {
     } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
     return;
   }
-  if (oppKind() !== "map" || !document.querySelector("#map")) return;
+  if (oppKind() !== "map" || !document.querySelector("#map")) return showHp(null, members, true);
   const m = targetOf().map!;
   opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""));
   if (!members.length || problem || ap) {
+    showHp(null, members);
     box.append(el("p", { class: problem || ap ? "error" : "muted" }, problem || ap ? `⚠ ${problem ?? ap}` : "Put heroes in the party (Party tab) to see the run."));
     return;
   }
   const rooms = mapTrace(m);
   if (typeof rooms === "string" || !rooms.length) {
+    showHp(null, members);
     box.append(el("p", { class: "error" }, `This map run could not be simulated${typeof rooms === "string" ? `: ${rooms}` : ""}.`));
     return;
   }
   const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
+  // U61: the HP chart draws the same traced run as the room bar: every fought room, in map order.
+  showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label }] : [])), members);
   let at = Math.min(storedRoom(), rooms.length - 1);
   const view = el("div", { class: "flow-room", id: "flow-room", role: "tabpanel" });
   const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
@@ -1098,6 +1106,32 @@ function renderPlan(): void {
   // R2 F29: the room bar scrolls sideways on a phone; edge fades say more rooms are there.
   edgeFades(bar);
   draw();
+}
+
+/**
+ * U61: the HP chart's box in the Party view, under the opponent's card and its spider chart (made once, at the end of
+ * #opp-col, after #target / #target-card, so redrawing the card leaves it in place).
+ */
+function hpBox(): HTMLElement | null {
+  const col = document.querySelector<HTMLElement>("#opp-col");
+  if (!col) return null;
+  let box = col.querySelector<HTMLElement>("#hp-chart");
+  if (!box) {
+    box = el("section", { id: "hp-chart", class: "hp-chart-box", "aria-label": "HP by turn" });
+    col.append(box);
+  }
+  return box;
+}
+
+/**
+ * U61: draw the HP chart from the traced fight(s) renderPlan just made for the Flow (never a fight of its own): one
+ * quest fight, or a map run's fought rooms. Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
+ */
+function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void {
+  const box = hpBox();
+  if (!box) return;
+  const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
+  drawHpChart(box, runs ? hpData(runs, fighters) : null, { hide });
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)

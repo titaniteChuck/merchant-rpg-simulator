@@ -362,6 +362,30 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (`span.f3-dead-who`, hidden on a wide box) with a faint class-colour edge; the hairline and "T3" tag work as on a
     wide box, and a "▾" opens its calculation inside the card, at the card's full width. Desktop is unchanged: one
     column per fighter.
+- U61, the Party view's HP chart (`web/src/ui/hp-chart.ts`; tests `web/test/battle-u61.test.ts`, CSS in the `U61`
+  block), on both pages (the Solver's once a result's Show fills the party; nothing to edit in it):
+  - Place: a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
+    card and its spider chart (the Simulator's `#target`, the Solver's `#target-card`); redrawing the card leaves it.
+  - Data: the very trace the Flow tabs show. `renderPlan` traces once (`planTrace`: Simulate's first fight, seed
+    `fightSeed(1, 0)`; a map run: `mapTrace`, the Map run mode's first run) and hands that object to the open Flow
+    layout and to `showHp`; the chart never simulates. Every edit that re-traces the Flow (a skill, the rotation, a
+    hero, include ticks, the enemy, rare, quest size, the map, its grade or scrolls) goes through `renderPlan`, so the
+    chart follows. Only the box's content is replaced (`drawHpChart`); the "Table" fold keeps its open state and focus.
+  - Series (`hpData`): x is the fight's start (Flow 2's `fightStart`) then each turn's end (the last `life` the trace
+    recorded up to that turn); y is HP as a share of max HP (0-100 %), heroes and enemy on one scale. One line per
+    hero in its class colour (`cls-N`, `--c`), the enemy dashed in the gold trim (`--trim`, as Flow 3). A fall: the
+    line at 0 and a cross there (titled "<name> falls: turn 7"), again if it stands up and falls again.
+  - A map run: the fought rooms one after the other (rooms not reached or skipped are left out), a dashed line before
+    each room after the first, the x ticks naming rooms (1, 2 … Boss); the enemy line restarts with each room's enemy.
+  - Absolute HP: hovering or tapping the plot shows a readout (the nearest step: "Turn 7", each fighter's HP / max, ✝
+    when down) with a guide line; the legend under it gives each fighter's HP at the end and "fell turn N".
+  - Accessible: the SVG is `role=img` named by `hpSummary` ("HP as a share of max HP over 14 turns, lost. Ana falls
+    (turn 9)…"); a "Table" fold lists every step's HP (a row per turn, a column per fighter). The readout is
+    `aria-hidden` (the table says the same).
+  - Empty: no fighters, a party problem, an AP problem or a map run that can't run: one muted line ("HP by turn: shown
+    once the party can fight."); no opponent built: the box is hidden.
+  - Size: viewBox 360 × 200, `width: 100%`, so about 1:1 on a 375 px phone (full width there, its column on a desktop);
+    colours from the theme tokens only (light and dark).
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

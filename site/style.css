@@ -2620,3 +2620,39 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .f3-dead-who { display: inline; font-weight: 700; }
 }
 /* end Flow 3 */
+/* U61 */
+/* The Party view's HP chart (web/src/ui/hp-chart.ts), under the opponent's card: the full width of its column (the
+   page's width on a phone), one line per hero in its class colour (--c), the enemy dashed in the gold trim. */
+.hp-chart-box { margin-top: 12px; min-width: 0; }
+.hp-chart { margin: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px;
+  box-shadow: var(--shadow); min-width: 0; }
+.hp-chart figcaption { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 4px; }
+.hp-chart figcaption h4 { margin: 0; }
+.hp-plot { position: relative; }
+.hp-svg { display: block; width: 100%; height: auto; touch-action: pan-y; overflow: visible; }
+.hp-grid { stroke: var(--border); stroke-width: 1; opacity: .55; }
+.hp-axis { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.hp-axis-title { font-style: italic; }
+.hp-room { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.hp-line { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.hp-enemy { --c: var(--trim); }
+.hp-line.hp-enemy { stroke-width: 2.5; stroke-dasharray: 6 3; }
+.hp-death { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2.4; stroke-linecap: round; }
+.hp-guide { stroke: var(--fg); stroke-width: 1; opacity: .5; }
+.hp-readout { position: absolute; top: 4px; left: var(--hp-at, 50%); margin-left: 8px; padding: 6px 9px; border-radius: 9px;
+  background: var(--card); color: var(--fg); border: 1px solid var(--border); box-shadow: var(--shadow-hover); font-size: 0.78rem;
+  white-space: nowrap; pointer-events: none; z-index: 2; font-variant-numeric: tabular-nums; }
+.hp-readout.flip { transform: translateX(-100%); margin-left: -8px; }
+.hp-swatch { display: inline-block; flex: none; width: 14px; height: 0; border-top: 3px solid var(--c, var(--fg)); vertical-align: middle; margin-right: 5px; }
+.hp-enemy > .hp-swatch { border-top-style: dashed; }
+.hp-legend { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 2px 12px; font-size: 0.82rem; }
+.hp-legend li { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 4px; min-width: 0; }
+.hp-legend .hp-name { font-weight: 650; overflow-wrap: anywhere; }
+.hp-legend .hp-val { font-variant-numeric: tabular-nums; }
+.hp-fold { margin-top: 6px; font-size: 0.82rem; }
+.hp-fold summary { cursor: pointer; color: var(--muted); }
+.hp-fold .table-wrap { max-height: 320px; overflow: auto; box-shadow: none; }
+.hp-table th, .hp-table td { padding: 3px 8px; font-variant-numeric: tabular-nums; }
+.hp-empty { margin: 12px 0 0; }
+/* end U61 */
