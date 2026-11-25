@@ -337,8 +337,16 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     tiny "T3" on each turn's first item; the skill as headline (the planned one struck out under a stun or a forced
     action, "miss"); the result, one row per fighter touched (name or "self", −damage / +healing with a "▾" each, "crit",
     "miss", "✝ KO", the effects that landed; heroes that only got the same effects share one "Party" row, or their
-    names); then, quieter under a line, the HP bar and number right after the action and the fighter's effects, one per
-    line, text only (turns left after "·"). A "▾" opens its calculation inside the card (`calcView`, as Flow 1).
+    names); then, quieter under a line, the HP right after the action and the fighter's effects, one per line, text
+    only (turns left after "·"). A "▾" opens its calculation inside the card (`calcView`, as Flow 1).
+  - HP (follow-up, the user's call): one compact bar, 13 px tall, with "remaining / total" inside it ("1,097 / 2,000");
+    no number beside it, and a tighter state area (3 px above and below its line), so the cards are shorter. The fill
+    is a tint of the tone colour (green, amber, red at 55 %) and the text is the theme's `--fg` with a halo of
+    `--card`, so it reads over the filled and the empty part alike in light and dark themes. The bar is its own
+    container (`container: f3hp`): under 118 px the compact numbers replace the whole ones ("9.7K / 10K", `fmtCompact`,
+    only when the total reaches 10,000; Flow 2 does the same on phones), and an ellipsis is the last resort. Down:
+    "0 / total" in an empty bar, in the bad colour. Desktop columns and the phone list use the same bar; the
+    screen-reader label is unchanged ("Warrior: 1,097 / 2,000 HP", "Warrior is down").
   - Turns: a hairline across the columns between two turns (`li.f3-break`, `aria-hidden`), none before a turn that
     shows nothing.
   - Down: the trace has no action for a fallen fighter, so a dimmed "†" goes once in its column at the place of the

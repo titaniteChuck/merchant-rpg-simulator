@@ -7,8 +7,8 @@
  * - One card per action, each on its own grid row, so a card always sits lower than the one before it, whatever the
  *   column. A card: the fighter's name (the first card of a turn adds a tiny "T3"), the skill as its headline, what it
  *   did to each fighter it touched (damage, healing, crit, miss, KO, the effects that landed, each number with its
- *   "▾ calculation", which opens inside the card), then the fighter's HP and its effects, one per line, as they are
- *   right after the action.
+ *   "▾ calculation", which opens inside the card), then the fighter's HP (a compact bar with "1,097 / 2,000" inside
+ *   it) and its effects, one per line, as they are right after the action.
  * - A turn boundary is a hairline across the columns, nothing more. A fighter that is down shows a dimmed "†" once
  *   (on its first action lost to it), then nothing until it stands again.
  * - On a narrow box (a phone; container query, style.css `Flow 3` block) no columns at all: the items read as one
@@ -24,7 +24,7 @@ import {
   TURN_CAP, type TracedFight,
 } from "./battle-plan.ts";
 import type { TraceCalc } from "../sim/api.ts";
-import { el } from "./dom.ts";
+import { el, fmtCompact } from "./dom.ts";
 import { enemyName, skillName } from "./names.ts";
 import { FLOW_PAGE, partyPlan, type PlanEdit, timelineOf } from "./timeline.ts";
 import { tip } from "./tooltip.ts";
@@ -268,16 +268,24 @@ function touchEl(t: Touch, card: HTMLElement, nameOf: (w: number) => string, sel
       el("span", { class: `tc-fx ${f.debuff ? "debuff" : "buff"}`, title: f.title }, f.label)))] : []));
 }
 
-/** The fighter's HP right after the action: a bar and its number. */
+/**
+ * The fighter's HP right after the action: a compact bar with "remaining / total" written inside it. The text comes
+ * twice, whole ("1,097 / 2,000") and compact ("9.7K / 10K", only when the total reaches 10,000), and the bar's own
+ * container query (style.css `Flow 3` block) shows the compact one when the bar is narrow, as Flow 2 does on phones.
+ * Down: "0 / total" in an empty bar. The screen reader reads the label only.
+ */
 function hpEl(v: { hp: number; maxHP: number } | undefined, name: string): HTMLElement[] {
   if (!v) return [];
   const down = v.hp <= 0;
-  const f = !down && v.maxHP > 0 ? Math.max(0, Math.min(1, v.hp / v.maxHP)) : 0;
+  const now = Math.max(0, v.hp);
+  const f = !down && v.maxHP > 0 ? Math.max(0, Math.min(1, now / v.maxHP)) : 0;
   const tone = down ? "down" : f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
   const text = down ? `${name} is down` : `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP`;
+  const full = `${fmtInt.format(now)} / ${fmtInt.format(v.maxHP)}`;
+  const short = v.maxHP >= 10_000 ? `${fmtCompact.format(now)} / ${fmtCompact.format(v.maxHP)}` : full;
   return [el("div", { class: `f3-hp ${tone}`, role: "img", "aria-label": text, title: text },
-    el("span", { class: "f3-hpbar", "aria-hidden": "true" }, el("span", { style: `width: ${(f * 100).toFixed(1)}%` })),
-    el("span", { class: "f3-hpnum", "aria-hidden": "true" }, down ? "✝" : fmtInt.format(v.hp)))];
+    el("span", { class: "f3-hpbar", "aria-hidden": "true" }, el("span", { class: "f3-hpfill", style: `width: ${(f * 100).toFixed(1)}%` }),
+      el("span", { class: "f3-hptxt" }, el("span", { class: "f3-hpfull" }, full), el("span", { class: "f3-hpshort" }, short))))];
 }
 
 /** Where an item sits on a wide box: its own grid row and its fighter's column (a narrow box ignores both: one list). */

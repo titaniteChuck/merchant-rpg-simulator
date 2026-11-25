@@ -151,6 +151,60 @@ test("the HP on a card is the fighter's right after its action", () => {
   }
 });
 
+test("HP: \"remaining / total\" inside one compact bar, no number beside it; down is 0 / total in an empty bar", () => {
+  const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+  const flow = render(odin);
+  const cards = flow.querySelectorAll("li.f3-card");
+  const acted = odin.actions.filter((a) => a.did !== null);
+  for (const [k, c] of cards.entries()) {
+    const a = acted[k], v = a.life.find((l) => l.who === a.who)!;
+    const hp = c.querySelector("div.f3-hp")!;
+    assert.equal(hp.querySelectorAll("span.f3-hpnum").length, 0, "no separate number");
+    assert.equal(hp.children.length, 1, "the bar alone");
+    const bar = hp.children[0];
+    assert.ok(bar.classList.contains("f3-hpbar"));
+    assert.equal(bar.getAttribute("aria-hidden"), "true");
+    // the fill, then the text over it
+    assert.ok(bar.children[0].classList.contains("f3-hpfill") && bar.children[1].classList.contains("f3-hptxt"));
+    const full = bar.querySelector("span.f3-hpfull")!.textContent;
+    assert.equal(full, `${fmt.format(Math.max(0, v.hp))} / ${fmt.format(v.maxHP)}`);
+    // the compact form only for a total of 10,000 and over
+    const short = bar.querySelector("span.f3-hpshort")!.textContent;
+    if (v.maxHP < 10_000) assert.equal(short, full);
+    else assert.match(short, /^[\d.]+[KMB]? \/ [\d.]+[KMB]$/);
+  }
+  // the made-up fight: the boss at 9,700 of 10,000 reads "9.7K / 10K" when the bar is narrow
+  const small = renderFlow3({ id: 72, rare: false }, members, made) as unknown as FakeElement;
+  const shorts = small.querySelectorAll("span.f3-hpshort").map((s) => s.textContent);
+  assert.ok(shorts.includes("9.7K / 10K"), shorts.join(", "));
+  // a fighter that falls on its own action (a recoil): "0 / 2,000" in an empty bar, the label unchanged
+  const recoil = { ...made, actions: [act(1, 2, "Basic", [{ who: 2, dmg: 2000, heal: 0, hp: 0, ko: true }], life(10000, 0, 1000))] };
+  const down = (renderFlow3({ id: 72, rare: false }, members, recoil) as unknown as FakeElement).querySelector("div.f3-hp")!;
+  assert.ok(down.classList.contains("down"));
+  assert.match(down.getAttribute("aria-label")!, / is down$/);
+  assert.match(down.querySelector("span.f3-hpfull")!.textContent, /^0 \/ /);
+  assert.match(down.querySelector("span.f3-hpfill")!.getAttribute("style")!, /width: 0\.0%/);
+});
+
+test("CSS: the HP bar holds one line of text, readable over the fill and the empty part; compact when narrow", () => {
+  const bar = block.match(/\.f3-hpbar \{[^}]*\}/)![0];
+  assert.match(bar, /container: f3hp \/ inline-size;/);
+  assert.match(bar, /height: 13px;/);
+  const txt = block.match(/\.f3-hptxt \{[^}]*\}/)![0];
+  assert.match(txt, /line-height: 13px;/);
+  assert.match(txt, /color: var\(--fg\);/);
+  assert.match(txt, /text-shadow: [^;]*var\(--card\)/);
+  assert.match(txt, /white-space: nowrap;/);
+  // the fill is a tint, so the text's colour holds over it
+  assert.match(block, /\.f3-hpfill \{[^}]*background: color-mix\(in srgb, var\(--good\) 55%, transparent\);/);
+  assert.doesNotMatch(block, /\.f3-hpnum/);
+  assert.match(block, /\.f3-hpshort \{ display: none; \}/);
+  const narrow = block.slice(block.indexOf("@container f3hp (max-width: 118px)"));
+  assert.match(narrow, /\.f3-hpfull \{ display: none; \}\s*\.f3-hpshort \{ display: inline; \}/);
+  // a shorter state area
+  assert.match(block, /\.f3-state \{ margin-top: 3px; padding-top: 3px;/);
+});
+
 test("a calculation opens inside its card, and closes again", () => {
   const flow = render(odin);
   const card = flow.querySelectorAll("li.f3-card").find((c) => c.querySelector("button.f3-calc-btn"))!;
