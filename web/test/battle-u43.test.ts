@@ -1,6 +1,6 @@
-// Battle Simulator U43: compact results (win rate and grade first, the rest behind "Show details", remembered for the
-// tab), each hero's HP left, the turn figures and the game's turn cap (turn 200: the enemy wins). Game data and the
-// site's example save only, CI runs it.
+// Battle Simulator U43: each hero's HP left, the turn figures and the game's turn cap (turn 200: the enemy wins), as
+// the evaluations measure them. U70: the Simulator's result tiles and details (battle-results.ts) are gone, and their
+// tests with them. Game data and the site's example save only, CI runs it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -9,7 +9,6 @@ import { G } from "../src/sim/data.ts";
 import { evaluate, evaluateMap, fightSeed, TURN_CAP } from "../src/tools/combat.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { loadSaveText } from "../src/tools/save.ts";
-import { cappedNote, DETAILS_KEY, detailsLabel, detailsOpen, essenceLines, hpLeftCell, rememberDetails, turnCapNote } from "../src/ui/battle-results.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 const sv = loadSaveText(readFileSync(new URL("../../site/data/example-save.txt", import.meta.url), "utf8"));
@@ -17,7 +16,6 @@ const sim = new Sim(sv.raw.gameMode || "Standard");
 const hero = (i: number) => sim.hero(sv.raw.hero[i]);
 /** Six level-60 heroes of the example save: front Paladin, Warrior, Berserker; back Cleric, Mage, Bard. */
 const party = () => [[hero(8), hero(0), hero(4)], [hero(5), hero(1), hero(2)]];
-const read = (path: string) => readFileSync(new URL(path, new URL("../../", import.meta.url)), "utf8");
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 test("the turn cap is the game's: 200 turns, and a fight still running then is lost", () => {
@@ -80,46 +78,4 @@ test("map results: HP left at the end of the whole run, turns per room and per r
     assert.ok(Math.abs(h.hp_left - mean(mine.map((x) => Math.max(x.hp, 0)))) < 1e-9, slot);
     assert.ok(Math.abs(h.hp_left_frac - mean(mine.map((x) => Math.max(x.hp, 0) / x.maxHP))) < 1e-9, slot);
   }
-});
-
-test("texts: the cap note, the capped count, HP left with the HP in its tooltip, essence lines", () => {
-  assert.equal(turnCapNote(37), "max 37 of 200 turns (at 200 the enemy wins)");
-  assert.equal(cappedNote(0, 500, "fights"), null);
-  assert.match(cappedNote(3, 500, "fights")!, /^3 of 500 fights \(0[.,]6%\) reached turn 200 and were lost$/);
-  const c = hpLeftCell({ hp_left: 734, hp_left_frac: 0.715, max_hp: 1026 }, "run");
-  assert.match(c.text, /^71[.,]5%$/);
-  assert.match(c.title, /734 of 1,?026 HP on average at the end of the run/);
-  assert.deepEqual(essenceLines({}, (k) => k), ["none"]);
-  assert.deepEqual(essenceLines({ "Fire Essence": 2.4 }, (k) => k.toUpperCase()).map((s) => s.replace(",", ".")), ["2.4 FIRE ESSENCE"]);
-});
-
-test("details: closed by default, remembered for the tab, and storage that fails leaves them closed", () => {
-  const data = new Map<string, string>();
-  const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
-  assert.equal(detailsOpen(store), false);
-  assert.equal(detailsOpen(null), false);
-  rememberDetails(true, store);
-  assert.equal(data.get(DETAILS_KEY), "open");
-  assert.equal(detailsOpen(store), true);
-  rememberDetails(false, store);
-  assert.equal(detailsOpen(store), false);
-  const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
-  assert.equal(detailsOpen(broken), false);
-  assert.doesNotThrow(() => rememberDetails(true, broken));
-  assert.deepEqual([detailsLabel(false), detailsLabel(true)], ["Show details", "Hide details"]);
-});
-
-test("page: the summary is the win rate and the grade, the rest behind the toggle; essence with the map-run figures", () => {
-  const page = read("web/src/ui/battle-page.ts");
-  assert.doesNotMatch(page, /Before XP bonuses/i);
-  const summaries = [...page.matchAll(/tiles\(\{ class: "result-summary" \},\s*tile\("Win rate"[^\n]*\n\s*gradeTile\(ev\.win, ev\.grade\),\s*\)/g)];
-  assert.equal(summaries.length, 2, "quest and map results");
-  assert.equal([...page.matchAll(/return compactResult\(/g)].length, 2);
-  // R2 F24: the essence comes last of the one details grid, after the map-run figures (U65: no XP tiles).
-  assert.match(page, /resultTile\("Party HP left", pct\(ev\.hp_left\), "At the end of the run\."[^\n]*\n\s*essence,\s*\),/);
-  assert.doesNotMatch(page, /Essence per run: /);
-  assert.match(page, /\{ key: "hp_left", label: "HP left"/);
-  // The compact tiles are scoped to the Simulator's results.
-  assert.match(read("site/style.css"), /#results \.tiles > \.tile \{ grid-column: auto; padding: 7px 10px;/);
-  assert.match(read("web/src/ui/battle-results.ts"), /box\.hidden = !open;/);
 });

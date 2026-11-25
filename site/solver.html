@@ -42,29 +42,15 @@
 
       <section id="search-results" class="b3-results solve-results" aria-live="polite" hidden></section>
 
-      <!-- U41: no party panel until a result's Show. -->
+      <!-- U41: no party panel until a result's Show. U70: the Party view only (Flow 2, Flow 3 and the tabs gone). -->
       <section id="party-box" hidden>
         <div class="party-box-head">
-          <h2 id="setup-title">Party and flow</h2>
+          <h2 id="setup-title">Party</h2>
+          <!-- R2 F36: what the shown party is (and its rule) in the party's "?" (#party-help). -->
+          <span id="party-help"></span>
           <button id="open-sim" type="button" class="secondary" title="Copy this party, its rotations and the opponent to the Simulator (it replaces the Simulator's party for this save), then open it">▶ Open in Simulator</button>
         </div>
-        <!-- R2 F36: what the shown party is (and its rule) in the "?" beside the tabs (#party-help), no inner "Party" heading. -->
-        <div class="b3-tab-row">
-          <div class="tabs b3-tabs" role="tablist" aria-label="Views">
-            <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">Party</button>
-            <!-- U58: Flow layouts to compare (web/src/ui/flow-layouts.ts), one panel; U63: Flow 1 removed, the labels kept. -->
-            <button id="tab-flow2" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow2" tabindex="-1">Flow 2</button>
-            <button id="tab-flow3" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow3" tabindex="-1">Flow 3</button>
-          </div>
-          <!-- U51: one "?" beside the tabs, the open tab's (battle-page.ts showTab). -->
-          <span id="party-help"></span><span id="plan-help" hidden></span>
-        </div>
-        <!-- R2 F28: no heading repeating the tab: the opponent line first; what the flow shows is in the tab row's "?" (U51). -->
-        <div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow2" hidden>
-          <div class="flow-head"><div id="flow-opp" class="flow-opp"></div></div>
-          <div id="plan"></div>
-        </div>
-        <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
+        <div id="setup-grid" class="setup-grid b3-grid">
           <!-- U65: the chart on top, full width (battle-page.ts hpBox); its selected turn is what the cards show. -->
           <div id="hp-col" class="hp-col"></div>
           <div id="party-col" class="party-col">

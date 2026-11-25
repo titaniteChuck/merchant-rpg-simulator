@@ -155,8 +155,6 @@ test("picker: the card's list floats over the page (in <body>, fixed, anchored t
   key(l2, "Tab");
   assert.ok(!l2.isConnected);
   assert.equal((document as unknown as { activeElement: unknown }).activeElement, b);
-  // the Flows' cells keep theirs in place (no float)
-  assert.match(read("web/src/ui/flow-parts.ts"), /focus: `skill-\$\{loc\}-\$\{turn\}`, host \}\);/);
   assert.match(cardSrc, /pickButton\(\{ \.\.\.r\.pick, text: r\.text, host: \(\) => li, float: true \}\)/);
   // CSS: fixed over the page, over the cards and the sticky bars
   assert.match(block, /\.pk-list\.pk-float \{ position: fixed; z-index: 55; flex: none;/);

@@ -3,13 +3,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { hasOrphan } from "../src/ui/battle-results.ts";
 
 const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const ui = (f: string) => read(`web/src/ui/${f}`);
 const css = read("site/style.css");
 const block = css.slice(css.indexOf("/* sweep-375"), css.indexOf("/* end sweep-375 */"));
+/** A grid of n tiles in `cols` columns leaves the last tile alone on its row (was battle-results.ts, gone in U70). */
+const hasOrphan = (n: number, cols: number): boolean => n > cols && n % cols === 1;
 
 test("one sweep-375 block in style.css", () => {
   assert.equal(css.split("/* sweep-375").length, 2);

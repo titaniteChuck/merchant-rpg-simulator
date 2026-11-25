@@ -2,30 +2,32 @@
  * The Battle section's two pages (U41), one code: initBattlePage("simulate") for the Simulator (site/battle.html,
  * entry battle.ts) and initBattlePage("solve") for the Solver (site/solver.html, entry solver.ts).
  *
- * Simulator (U48: no section titles, no Results section): the Simulate panel (runs, ▶ Simulate, then the run's
- * progress or its summary: win rate, grade when won, Show details), the details right under it; then the party (six
- * slots, back row | front row; cards move by drag and drop, party-drag.ts) on the left and the opponent card (a quest
- * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
- * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
- * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Flow layouts to compare (flow-layouts.ts;
- * U63: Party · Flow 2 · Flow 3, Flow 1 gone), one Flow panel drawn by the open one. U61: the Party view's HP chart
- * (hp-chart.ts), drawn by renderPlan from the very trace it hands the Flow layout. U62: the Party view in three
- * columns, heroes | opponent | HP chart (#hp-col); the hero and enemy cards are one builder (fighter-card.ts): the picker as the
- * head, the stats on two lines, the rotation (the enemy's from its timeline, read-only); a skill or passive opens its
- * picker in place, each choice with its effect (pick-list.ts). The enemy list holds each rare variant as its own entry
- * ("<id>:rare"), no "Rare variant" box. U65: the chart is the Party view's first row, full width, over heroes |
- * opponent (no third column); a click, a tap or the arrow keys on it pick a turn and every card shows that turn's end
- * (paintTurn: HP, the engine's live stats, the effects, the row played; turn 0 the start), from the same trace. The
+ * Simulator (U48: no section titles, no Results section): the Simulate panel (the opponent's controls, Clear all,
+ * the "?"s); U70: the four figures over the runs (#sim-stats, sticky); then the Party view: the HP chart over the party
+ * (six slots, back row | front row; cards move by drag and drop, party-drag.ts) and the opponent card (a quest enemy
+ * or a map run's room). U48: the Solver's Party view is read-only (battle-edit.ts pageControls); both pages have a "↑"
+ * back-to-top button. U61: the Party view's HP chart (hp-chart.ts). U62: the hero and enemy cards are one builder
+ * (fighter-card.ts): the picker as the head, the stats, the rotation (the enemy's from its timeline, read-only); a
+ * skill or passive opens its picker in place, each choice with its effect (pick-list.ts). The enemy list holds each
+ * rare variant as its own entry ("<id>:rare"), no "Rare variant" box. U65: the chart is the Party view's first row,
+ * full width, over heroes | opponent; a click, a tap or the arrow keys on it pick a turn and every card shows that
+ * turn's end (paintTurn: HP, the engine's live stats, the row played; turn 0 the start), from the same trace. The
  * opponent is chosen in the Simulate panel (quest or map run, size, map, grade, scrolls; the Solver's Solve panel as
  * before); its card shows one enemy, no picker (drawEnemyCard; a map run: the selected turn's room's).
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: drawEnemyCard), the options, the time budget,
- * Solve and its progress; the results under it only once a solve is done; the Party and Flow tabs stay hidden until a
- * result's "Show" fills them (revealParty). Its party is its own, in memory only: the Simulator's remembered
+ * Solve and its progress; the results under it only once a solve is done; the Party view stays hidden until a
+ * result's "Show" fills it (revealParty). Its party is its own, in memory only: the Simulator's remembered
  * party changes only by "Open in Simulator" (battle-links.ts simulatorPartyFrom), which copies the shown party and
  * the opponent over and opens the Simulator. The Solver's opponent is remembered apart (`solver-opponent`).
  * Runs go to a web worker with the game's rules (TypeScript engine).
+ *
+ * U70: Flow 2, Flow 3 and their tabs are gone: the Party view is the only view. No Simulate button, runs count or result
+ * tiles: every change that matters to the fight (party, rotations, passives, opponent, map, scrolls) runs WORST_RUNS
+ * traced runs in the worker (debounced; a newer change drops the run on its way), and the chart and the cards show the
+ * worst of them (tools/worst-run.ts). On the Simulator, four sticky figures over the runs sit between the Simulate
+ * panel and the party (#sim-stats: win rate, grade when won, heroes dead, life left).
  *
  * Expansions (U28): the enemy and map pickers and the scrolls leave out content of expansions the visitor hides
  * (expansion-state.ts); the save's own maps always stay. Options of expansion content end with ❄ / ✒. The opponent
@@ -36,12 +38,11 @@ import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { maxQuestAmount, SCROLL_IDS } from "../tools/combat.ts";
-import type { FightEval, HeroEval, MapEval } from "../tools/combat.ts";
-import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
-import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
+import type { MapSpec, Scroll } from "../tools/engine.ts";
+import { gradeLetter, type RunStats, runStats, WORST_RUNS, type WorstRuns } from "../tools/worst-run.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast } from "./dom.ts";
+import { $, duration, el, expansionMark, fmt1, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, select, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { type CardRow, type CardTurn, fighterCard, paintCard } from "./fighter-card.ts";
 import { cardTurnOf } from "./card-turn.ts";
@@ -51,23 +52,18 @@ import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, w
 import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, timelineOf } from "./timeline.ts";
-import type { PlanEdit } from "./flow-parts.ts";
-import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
-import { locationLabel, locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
+import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
 import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep } from "./hp-chart.ts";
-import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
+import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
-import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, budgetOptions, slotKeyOfLoc } from "./battle-edit.ts";
+import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, budgetOptions } from "./battle-edit.ts";
 import { enableSlotDrag } from "./party-drag.ts";
-import { PARTY_COLUMNS, roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
+import { PARTY_COLUMNS, toTopVisible } from "./battle-layout.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
-import { type MapRunContext, mapResultXp } from "./quest-xp.ts";
-import { statLink } from "./wiki-ref.ts";
-import { cappedNote, compactResult, essenceLines, hpLeftCell, resultTile, tileColumns, turnCapNote } from "./battle-results.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
-import { className as classNameOf, enemyName, itemName, itemNameFromEnglish, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
+import { className as classNameOf, enemyName, itemName, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -99,9 +95,8 @@ interface State {
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
   /** U36: slots whose hero is ticked out on its card: it stays in the slot but doesn't fight (slot key -> true). */
   excluded: Record<string, boolean>;
-  worker: Worker | null;
 }
-const state: State = { mode: MODES.simulate, sv: null, saveName: "", slots: {}, skills: {}, excluded: {}, worker: null };
+const state: State = { mode: MODES.simulate, sv: null, saveName: "", slots: {}, skills: {}, excluded: {} };
 
 // The Simulator's party and edited rotations, remembered per save in this browser (convenience only). The Solver's
 // party lives in memory only (U41): a result's Show sets it; "Open in Simulator" hands it over.
@@ -274,7 +269,7 @@ function apOver(idx: number): { used: number; max: number } | null {
 function apProblem(): string | null {
   const over = partyOf().members.map((m) => ({ name: String(m.raw.name), o: apOver(m.idx) })).filter((x) => x.o);
   return over.length ? `${over.map((x) => `${x.name}: ${x.o!.used} / ${x.o!.max} AP`).join(", ")}: over the AP limit, so the game would `
-    + "play the default rotation instead. Lower it in the Party tab." : null;
+    + "play the default rotation instead." : null;
 }
 /** U40: an edit refused for AP: the toast, then the views drawn again from the unchanged state. */
 function refuseAp(idx: number, r: { used?: number; max?: number }, focus?: () => void): void {
@@ -338,7 +333,7 @@ function heroRows(idx: number | null, raw: Any | null, key: string, editable = t
       // U69: the skills the AP budget can't take in this slot (this slot's skill replaced) are greyed out.
       options: () => budgetOptions(rotationChoices(raw, sk).map(skillOption), rot, k, apBudgetOf(idx!)),
       onPick: (v) => {
-        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
+        // U39: battle-edit.ts's edit; U40: refused over the AP limit.
         const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
         if (!r.ok) return refuseAp(idx!, r, () => refocusCard(`${key}-${k}`));
         afterEdit(`${key}-${k}`);
@@ -392,7 +387,7 @@ function renderParty(refreshSearch = true): void {
     const idx = state.slots[key] ?? null;
     const raw = heroRaw(idx);
     s.addEventListener("change", () => {
-      // U39: the same edit as the Flow tab's (battle-edit.ts): one slot per hero, the new hero fights. U40: not a hero
+      // U39: battle-edit.ts's edit: one slot per hero, the new hero fights. U40: not a hero
       // whose rotation is over its AP limit.
       const pick = s.value === "" ? null : Number(s.value);
       const r = assignHeroChecked(state, key, pick, pick === null ? null : apOver(pick));
@@ -467,7 +462,7 @@ function renderParty(refreshSearch = true): void {
   clear.title = "Empty every hero slot (the edited rotations are kept)";
   if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
   clear.addEventListener("click", clearAll);
-  // R2 F23 / F36: the party's rule and, on the Solver, what this party is, in the "?" beside the Party tab.
+  // R2 F23 / F36: the party's rule and, on the Solver, what this party is, in the party's "?" (U70: no tabs).
   document.querySelector("#party-help")?.replaceChildren(...partyHelp(rules, picks, ctl.drag));
   // U36: heroes left out over the size cap. U48: said on the opponent's side, under its picker, without their names
   // (their cards say "over the limit").
@@ -508,7 +503,7 @@ function foldEmpty(row: "front" | "back", slots: HTMLElement[]): HTMLElement {
 const emptyCount = (row: "front" | "back", n: number) => `${n} empty ${row} slot${n === 1 ? "" : "s"}`;
 
 /**
- * R2 F23 / F36: the "?" beside the Party tab: the opponent's party rule, on the Solver what the shown party is (U48:
+ * R2 F23 / F36: the party's "?" (U70: beside Clear all; the Solver: in the party's head): the opponent's party rule, on the Solver what the shown party is (U48:
  * read-only there), on the Simulator that cards move by dragging (U48).
  */
 function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean, drag: boolean): HTMLElement[] {
@@ -666,7 +661,6 @@ function renderTarget(): void {
     amount.addEventListener("change", () => (update(), renderPlan()));
     box.replaceChildren(el("div", { class: "opp-controls" }, q, el("div", { class: "toolbar" }, amount, sizeNote), capNote()));
     update();
-    setRuns("200");
   } else {
     const m = select({ id: "map", "aria-label": "Map" }, mapOptions(state.sv));
     const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "No ascension"], ["1", "Ascension 1"]]);
@@ -706,7 +700,7 @@ function renderTarget(): void {
           ...(pre || suf ? [fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · "))] : [])));
       saveOpponent();
     };
-    // U39: the Flow tab follows the map, its ascension, grade and scrolls (one traced run).
+    // U39: the chart follows the map, its ascension, grade and scrolls (U70: the runs start again).
     m.addEventListener("change", () => (sync(), renderPlan()));
     asc.addEventListener("change", () => (sync(), renderPlan()));
     grade.addEventListener("change", () => (sync(), renderPlan()));
@@ -714,7 +708,6 @@ function renderTarget(): void {
     box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade),
       el("div", { class: "toolbar opp-scrolls", role: "group", "aria-label": "Scrolls" }, ...scrolls), facts, capNote()));
     sync();
-    setRuns("50");
   }
   // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
   renderParty(false);
@@ -722,7 +715,7 @@ function renderTarget(): void {
 
 /**
  * U62: the enemy card's rotation, read-only: its skill on turns 1-5 (turn 6 is turn 1 again) from its timeline (the
- * data the Flow and the wiki's timeline strip use), else its game rotation; the effect on hover.
+ * data the wiki's timeline strip uses), else its game rotation; the effect on hover.
  */
 function enemyRotation(id: number, rare: boolean): CardRow[] {
   // No AP: the enemy spends none.
@@ -755,7 +748,9 @@ function drawEnemyCard(): void {
     return;
   }
   const d = G.questData[foe.id];
-  const now = at?.states[0];
+  // U70: a quest enemy changed since the runs shown (the new ones are on their way): its own stats, not the old fight's.
+  const run = at ? chart?.runs[at.run] : undefined;
+  const now = run?.quest && (run.quest.id !== foe.id || run.quest.rare !== foe.rare) ? undefined : at?.states[0];
   const name = `${enemyName(String(foe.id), foe.rare) ?? d?.name ?? foe.id}${foe.rare ? " (rare)" : ""}`;
   host.replaceChildren(fighterCard({
     kind: "enemy", classes: foe.rare ? "rare" : "",
@@ -813,338 +808,191 @@ function syncAmount(amount = document.querySelector<HTMLSelectElement>("#amount"
   }
 }
 
-// ---------------------------------------------------------------- the views: Party and the Flows (U39, U40, U58)
+// ---------------------------------------------------------------- U70: the runs behind the chart and the figures
+/** How long the page waits after a change before it runs (a burst of changes runs once). */
+export const AUTO_DELAY_MS = 200;
+
+/** A fighter of the shown runs: where it stands, the save's hero, its name and class (the chart's legend). */
+interface ChartMember { row: "front" | "back"; i: number; idx: number; name: string; cls: number }
+
+/** The runs a change asks for: the worker's request, its key (same key: same fight) and the party it is about. */
+interface AutoRun { req: BattleRequest; key: string; members: ChartMember[] }
+
 /**
- * Step 3's tabs over one party state: Party (the hero cards and the opponent; first, U40) and the Flow (the fight, turn
- * by turn). U58: the Flow layouts, Flow 2 · Flow 3 (flow-layouts.ts; U63: Flow 1 gone), sharing one panel (#flow-panel, drawn
- * by renderPlan with the open layout, or the last one opened while Party is open). Edits in any change the same state
- * (battle-edit.ts), then everything redraws and the flow is simulated again. The open tab is remembered per page for
- * this browser tab (sessionStorage `battle-tab` on the Simulator, `solver-tab` on the Solver; convenience only; the old
- * "flow" and the U58 "flow1" read as Flow 2); without one, the first tab, Party.
+ * U70: the runs this page state asks for, or null when the party can't fight (no opponent built yet, no hero, a party
+ * rule, a hero over its AP limit). The key is the request itself: the heroes (gear, level), their rotations and
+ * passives, who fights, the opponent, the map and its scrolls; not the selected turn, the chart's tab or its zoom.
  */
-type Tab = ViewTab;
-const tabKey = () => (solving() ? "solver-tab" : "battle-tab");
-let tabChoice: Tab | null = null;
-/** The Flow layout the panel shows: the open tab's, else the last one opened (Flow 2 at first). */
-let flowChoice: FlowId = "flow2";
-/** The layout the panel holds now, so opening another one redraws it. */
-let flowDrawn: FlowId | null = null;
-function storedTab(): Tab {
-  if (tabChoice) return tabChoice;
-  try {
-    return parseTab(sessionStorage.getItem(tabKey()));
-  } catch {
-    return "party";
-  }
-}
-function showTab(tab: Tab, remember = true): void {
-  if (remember) {
-    tabChoice = tab;
-    try {
-      sessionStorage.setItem(tabKey(), tab);
-    } catch { /* not remembered: it holds until the page is left */ }
-  }
-  document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]").forEach((b) => {
-    const on = b.dataset.tab === tab;
-    b.setAttribute("aria-selected", String(on));
-    b.tabIndex = on ? 0 : -1;
-  });
-  const flow = isFlow(tab);
-  $("#flow-panel").hidden = !flow;
-  $("#setup-grid").hidden = tab !== "party";
-  if (flow) {
-    $("#flow-panel").setAttribute("aria-labelledby", `tab-${tab}`);
-    flowChoice = tab;
-    // U58: another layout than the one drawn: draw the panel again with it.
-    if (flowDrawn !== null && flowDrawn !== tab) renderPlan();
-  }
-  // U51: one "?" beside the tabs, the open tab's: the party's rule on Party, how to read the open Flow on a Flow.
-  const [partyTip, flowTip] = [document.querySelector<HTMLElement>("#party-help"), document.querySelector<HTMLElement>("#plan-help")];
-  if (partyTip) partyTip.hidden = tab !== "party";
-  if (flowTip) flowTip.hidden = !flow;
-}
-function initTabs(): void {
-  for (const b of document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")) b.addEventListener("click", () => showTab(parseTab(b.dataset.tab)));
-  // The arrow keys, Home and End move between the tabs (the tablist pattern, dom.ts tabKeys).
-  const list = document.querySelector<HTMLElement>(".b3-tabs[role=tablist]");
-  if (list) tabKeys(list);
-  showTab(storedTab(), false);
+function autoRun(): AutoRun | null {
+  if (!state.sv || !document.querySelector(oppKind() === "quest" ? "#quest" : "#map")) return null;
+  const { front, back, skills, members } = partyOf();
+  if (!members.length || partyProblem() || apProblem()) return null;
+  const req: BattleRequest = { gameMode: state.sv.raw.gameMode || "Standard", front, back, skills, n: WORST_RUNS, worst: true, ...targetOf() };
+  return { req, key: JSON.stringify(req),
+    members: members.map((m) => ({ row: m.row, i: m.i, idx: m.idx, name: String(m.raw.name), cls: Number(m.raw.class) })) };
 }
 
-/** The party's heroes as the engine takes them (edited rotations applied), for a traced fight or map run. */
-function engineParty(sim: Sim): [Any[], Any[]] {
-  const { front, back, skills } = partyOf();
-  const build = (raws: (Any | null)[], sk: (SkillChoice | null)[]) => raws.map((raw, i) => {
-    if (!raw) return null;
-    const h = sim.hero(raw);
-    if (sk[i]) sim.setSkills(h, sk[i]!.attackList, sk[i]!.passive);
-    return h;
-  });
-  return [build(front, skills.front), build(back, skills.back)];
+/** The runs shown now (chart, cards, figures): their key, the request's opponent and party, the worker's answer. */
+let shown: { key: string; req: BattleRequest; members: ChartMember[]; runs: WorstRuns } | null = null;
+/** The key of the last change's runs (asked for, waiting or running). */
+let wanted: string | null = null;
+let autoTimer: ReturnType<typeof setTimeout> | null = null;
+let simWorker: Worker | null = null;
+/** The id of the request the worker is on (null: idle); an answer with another id is stale. */
+let running: number | null = null;
+let runSeq = 0;
+/** U70: the last runs' error (a map the game's code can't run), shown under the figures, and their key. */
+let runError: string | null = null;
+let errorKey: string | null = null;
+
+/** Stop what is waiting or running (a terminated worker is made again on the next run). */
+function cancelRuns(): void {
+  if (autoTimer !== null) clearTimeout(autoTimer);
+  autoTimer = null;
+  if (running !== null) {
+    simWorker?.terminate();
+    simWorker = null;
+    running = null;
+  }
+  wanted = null;
 }
 
 /**
- * U39: Simulate's first fight of this party against the quest (same seed, so the same rolls: hits, crits, misses),
- * traced action by action (tools/fight-trace.ts); null when the party can't fight it (a rule, or an engine error).
+ * U70 (was the Flow tab and ▶ Simulate): the state changed. Unchanged fight (same key: a language or expansion redraw):
+ * the shown runs are drawn again. Another fight: after AUTO_DELAY_MS without a newer change, WORST_RUNS runs in the
+ * worker; the chart and the cards keep the last runs, the figures marked busy, until the answer.
  */
-function planTrace(t: { id: number; rare: boolean; amount: number }): FightTrace | null {
-  if (partyProblem() || apProblem()) return null;
-  try {
-    const sim = new Sim(state.sv!.raw.gameMode || "Standard");
-    const [front, back] = engineParty(sim);
-    return traceFight(sim, t.id, front, back, { rare: t.rare, amount: t.amount });
-  } catch {
-    return null;
-  }
-}
-
-/** The Map run mode's first run of this party (same seed: same layout and rolls), every room traced; null when it can't run. */
-function mapTrace(m: { spec: MapSpec; scrolls: Scroll[] }): MapRoomTrace[] | string {
-  try {
-    const sim = new Sim(state.sv!.raw.gameMode || "Standard");
-    const [front, back] = engineParty(sim);
-    return traceMapRun(sim, m.spec, front, back, { scrolls: m.scrolls.length ? m.scrolls : null });
-  } catch (e) {
-    return String((e as Error)?.message ?? e).split("\n")[0];
-  }
-}
-
-/** The room shown in the flow of a map run, remembered while the same map stays chosen (sessionStorage). */
-const ROOM_KEY = "battle-flow-room";
-const mapKey = () => [document.querySelector<HTMLSelectElement>("#map")?.value, document.querySelector<HTMLSelectElement>("#map-asc")?.value,
-  document.querySelector<HTMLSelectElement>("#map-grade")?.value].join("|");
-let roomChoice: { map: string; room: number } | null = null;
-function storedRoom(): number {
-  let r = roomChoice;
-  if (!r) {
-    try {
-      r = JSON.parse(sessionStorage.getItem(ROOM_KEY) ?? "null");
-    } catch { /* none */ }
-  }
-  return r && r.map === mapKey() && Number.isInteger(r.room) ? r.room : 0;
-}
-function setRoom(room: number): void {
-  roomChoice = { map: mapKey(), room };
-  try {
-    sessionStorage.setItem(ROOM_KEY, JSON.stringify(roomChoice));
-  } catch { /* not remembered */ }
-}
-
-/**
- * The flow's edits (the names in its heads, U64 the skill names in turns 1-5): the same edits as the Party tab's, then
- * both redraw and the fight is traced again.
- */
-function planEdit(): PlanEdit {
-  const rules = rulesOf(pageTarget());
-  // a head name's <select> (nameEdit), or a skill name's picker button (U64: pick-list.ts, data-focus)
-  const refocus = (key: string) => document.querySelector<HTMLElement>(`[data-flow-focus="${key}"] select, #flow-panel [data-focus="${key}"]`)?.focus();
-  const idxAt = (loc: number) => state.slots[slotKeyOfLoc(loc)] ?? null;
-  return {
-    heroes: (loc) => {
-      const key = slotKeyOfLoc(loc);
-      // The party rules: the required slot (Front 2 on a party quest) is never emptied; swapping heroes keeps the size.
-      const required = rules.required.some((x) => slotKey(x.row, x.i) === key);
-      const options: [string, string][] = [...(required ? [] : [["", "— take out of the party —"] as [string, string]]),
-        ...state.sv!.raw.hero.map((h: Any, i: number): [string, string] => [String(i), heroLabel(h)])];
-      return { options, value: String(idxAt(loc) ?? "") };
-    },
-    setHero: (loc, v) => {
-      const pick = v === "" ? null : Number(v);
-      const r = assignHeroChecked(state, slotKeyOfLoc(loc), pick, pick === null ? null : apOver(pick));
-      if (!r.ok) return refuseAp(pick!, r, () => refocus(`hero-${loc}`));
-      clearUndo = null;
-      persistParty();
-      renderParty();
-      refocus(`hero-${loc}`);
-    },
-    skills: (loc, current) => {
-      const idx = idxAt(loc);
-      return idx === null ? null : rotationChoices(state.sv!.raw.hero[idx], current).map(skillOption);
-    },
-    setSkill: (loc, k, skill) => {
-      const idx = idxAt(loc);
-      if (idx === null) return;
-      // U40: refused over the AP limit, as in the Party tab.
-      const r = editRotationSkill(state, idx, k, skill, rotationOf(idx), apBudgetOf(idx));
-      if (!r.ok) return refuseAp(idx, r, () => refocus(`skill-${loc}-${k + 1}`));
-      persistParty();
-      renderParty(false);
-      refocus(`skill-${loc}-${k + 1}`);
-    },
-    // U40: the enemy column's head changes the opponent through the Party tab's own controls (one state).
-    enemies: () => {
-      if (oppKind() === "quest") {
-        const q = document.querySelector<HTMLSelectElement>("#quest");
-        // U62: the Party view's own list, rare variants included ("<id>:rare"; was flowEnemyOptions).
-        return q ? { label: "Enemy", groups: questOptions(), value: q.value } : null;
-      }
-      const m = document.querySelector<HTMLSelectElement>("#map");
-      return m ? { label: "Map", groups: mapOptions(state.sv), value: m.value } : null;
-    },
-    setEnemy: (v) => {
-      const s = $<HTMLSelectElement>(oppKind() === "quest" ? "#quest" : "#map");
-      if (s.value !== v) {
-        s.value = v;
-        s.dispatchEvent(new Event("change"));
-      }
-      refocus("enemy");
-    },
-  };
-}
-
-/** U63: how far the selected room stays clear of the bar's edges (the 36 px fade and its ‹ › button). */
-const ROOM_PAD = 36;
-
-/**
- * The map's room bar, scrollable on every device. R2 F29: `fade-start` / `fade-end` while there is more to see on
- * that side (style.css r2-c fades that edge). U63, for a PC (the bar has no scrollbar): a vertical mouse wheel over it
- * moves it sideways while it can move that way, then the page scrolls on (battle-layout.ts roomBarWheel); a ‹ / ›
- * button over each faded edge scrolls it by most of its width (mouse only: the arrow keys, Home and End move between
- * the rooms); `reveal()` keeps the selected room in view. Kept in step on scroll and on resize (a hidden tab shown
- * later). Returns the box holding the bar and its buttons.
- */
-function roomScroller(bar: HTMLElement): { box: HTMLElement; reveal: (smooth?: boolean) => void } {
-  const motion = (): ScrollBehavior =>
-    (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
-  const btn = (dir: -1 | 1) => {
-    const b = el("button", { type: "button", class: `room-scroll ${dir < 0 ? "prev" : "next"}`, tabindex: "-1", "aria-hidden": "true",
-      title: dir < 0 ? "Earlier rooms" : "Later rooms" }, dir < 0 ? "‹" : "›");
-    // a mouse aid: it keeps the focus where it was (the selected room)
-    b.addEventListener("mousedown", (e) => e.preventDefault());
-    b.addEventListener("click", () => bar.scrollBy({ left: rowStep(bar, dir), behavior: motion() }));
-    return b;
-  };
-  const prev = btn(-1), next = btn(1);
-  const box = el("div", { class: "room-nav" }, prev, bar, next);
-  const reveal = (smooth = true) => {
-    const cur = bar.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!cur || bar.clientWidth === 0) return;
-    const left = cur.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft;
-    const to = scrollToShow(bar, left, cur.offsetWidth, ROOM_PAD);
-    if (to !== null) bar.scrollTo({ left: to, behavior: smooth ? motion() : "auto" });
-  };
-  let width = 0;
-  const sync = () => {
-    const rest = bar.scrollWidth - bar.clientWidth - bar.scrollLeft;
-    bar.classList.toggle("fade-start", bar.scrollLeft > 2);
-    bar.classList.toggle("fade-end", rest > 2);
-    prev.hidden = !bar.classList.contains("fade-start");
-    next.hidden = !bar.classList.contains("fade-end");
-    // shown (a hidden tab opened) or resized from nothing: the selected room comes into view at once
-    if (width === 0 && bar.clientWidth > 0) reveal(false);
-    width = bar.clientWidth;
-  };
-  bar.addEventListener("scroll", sync, { passive: true });
-  // not passive: a wheel the bar takes must not scroll the page too
-  bar.addEventListener("wheel", (e) => {
-    const d = roomBarWheel(e, bar);
-    if (!d) return;
-    e.preventDefault();
-    bar.scrollLeft += d;
-  }, { passive: false });
-  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sync).observe(bar);
-  sync();
-  return { box, reveal };
-}
-
-/** What the flow shows, and how (U39): one concrete run, Simulate's first. */
-const FLOW_NOTE = "One concrete fight: the first of the Simulator's runs (same seed), so its hits, misses and critical hits are that run's rolls.";
-const MAP_FLOW_NOTE = "One concrete run: the first of the Map run's runs (same seed), so its layout, rolls and the HP carried from room to room are that run's.";
-
-/** The Flow tab: the opponent in one line, then the fight (a quest) or the room bar and a room's fight (a map run). */
 function renderPlan(): void {
-  const box = document.querySelector<HTMLElement>("#plan");
-  if (!box || !state.sv) return;
-  const opp = $("#flow-opp"), help = document.querySelector<HTMLElement>("#plan-help");
-  box.replaceChildren();
-  opp.replaceChildren();
-  help?.replaceChildren();
-  // U58: the open Flow layout (flow-layouts.ts), the same inputs for each.
-  const layout = flowLayout(flowChoice);
-  flowDrawn = layout.id;
-  const members: PlanMember[] = partyOf().members.map((m) => ({
-    row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class), rotation: rotationOf(m.idx).attackList,
-    level: Number(m.raw.level),
-  }));
-  const problem = partyProblem();
-  // U40: a hero over its AP limit (an old saved party): the warning, not a fight with the default rotation.
-  const ap = problem ? null : apProblem();
-  // U48: the Solver's flow is read-only: no ▾, no enemy picker in the enemy column's head.
-  const edit = pageControls(state.mode.key).edit ? planEdit() : undefined;
-  if (oppKind() === "quest" && document.querySelector("#quest")) {
-    // U48: no "vs <enemy> change" line: the enemy column's head names the enemy and, clicked, changes it.
-    const t = targetOf().quest!;
-    const trace = members.length ? planTrace(t) : null;
-    // U61: the Party view's HP chart draws this very trace (the same object the Flow layout gets).
-    showHp(trace ? [{ trace, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }] : null, members);
-    const plan = layout.render(t, members, trace, edit);
-    if (plan) {
-      box.append(...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
-        ...(ap && members.length ? [el("p", { class: "error small flow-ap", role: "status" }, `⚠ ${ap} Below, the rotation as planned.`)] : []), plan);
-      // R2 F28: what the flow shows (one concrete fight) is the first paragraph of its "?", not a line above it.
-      help?.append(helpTip([...(trace ? [FLOW_NOTE] : []), layout.help(t, Boolean(edit))], "the flow"));
-    } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
+  if (!state.sv) return;
+  const next = autoRun();
+  if (!next) {
+    cancelRuns();
+    shown = null;
+    runError = null;
+    const built = Boolean(document.querySelector(oppKind() === "quest" ? "#quest" : "#map"));
+    showHp(null, chartMembers(), !built);
+    drawStats();
     return;
   }
-  if (oppKind() !== "map" || !document.querySelector("#map")) return showHp(null, members, true);
-  const m = targetOf().map!;
-  opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""));
-  if (!members.length || problem || ap) {
-    showHp(null, members);
-    box.append(el("p", { class: problem || ap ? "error" : "muted" }, problem || ap ? `⚠ ${problem ?? ap}` : "Put heroes in the party (Party tab) to see the run."));
+  if (shown?.key === next.key) {
+    cancelRuns();
+    drawShown();
     return;
   }
-  const rooms = mapTrace(m);
-  if (typeof rooms === "string" || !rooms.length) {
-    showHp(null, members);
-    box.append(el("p", { class: "error" }, `This map run could not be simulated${typeof rooms === "string" ? `: ${rooms}` : ""}.`));
+  // the same fight failed already: its error again, not another run
+  if (runError !== null && errorKey === next.key) {
+    cancelRuns();
+    showHp(null, next.members);
+    drawStats();
     return;
   }
-  const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
-  // U61: the HP chart draws the same traced run as the room bar: every fought room, in map order.
-  showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
-    quest: { id: r.questId, rare: r.isRare } }] : [])), members);
-  let at = Math.min(storedRoom(), rooms.length - 1);
-  const view = el("div", { class: "flow-room", id: "flow-room", role: "tabpanel" });
-  const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
-  // R2 F29 / U63: the bar scrolls sideways (touch, wheel, ‹ ›), its edges fade while more rooms are there.
-  const scroller = roomScroller(bar);
-  const draw = (smooth = true) => {
-    bar.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b, k) => {
-      b.setAttribute("aria-selected", String(k === at));
-      b.tabIndex = k === at ? 0 : -1;
-    });
-    // U63: the selected room stays in view (a click, the arrow keys, Home, End, a redraw)
-    scroller.reveal(smooth);
-    view.setAttribute("aria-labelledby", `room-tab-${at}`);
-    const r = rooms[at];
-    // U40: after the room where the party died there is no battle: one centred line, no timeline.
-    if (tabs[at].skipped) {
-      view.replaceChildren(el("p", { class: "flow-skipped", role: "status" }, "💀 Party died, battle skipped"));
-      help?.replaceChildren(helpTip(MAP_FLOW_NOTE, "the flow"));
-      return;
+  // Until the answer the cards (just redrawn by renderParty) keep the shown runs' turn where their hero is the same
+  // (paintTurn); with nothing shown yet, the chart's empty line.
+  if (wanted === next.key) return paintTurn(); // already on its way
+  wanted = next.key;
+  if (autoTimer !== null) clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    autoTimer = null;
+    startRuns(next);
+  }, AUTO_DELAY_MS);
+  if (shown) paintTurn();
+  else showHp(null, next.members);
+  drawStats();
+}
+
+/** The party as the chart names it, from the page now (no runs to show). */
+function chartMembers(): ChartMember[] {
+  return state.sv ? partyOf().members.map((m) => ({ row: m.row, i: m.i, idx: m.idx, name: String(m.raw.name), cls: Number(m.raw.class) })) : [];
+}
+
+/** Send the runs to the worker; a run still going is dropped (its worker terminated). */
+function startRuns(next: AutoRun): void {
+  if (running !== null) {
+    simWorker?.terminate();
+    simWorker = null;
+  }
+  simWorker ??= dataWorker("battle-worker.js", ["gamedata.json"]);
+  const worker = simWorker, id = ++runSeq;
+  running = id;
+  drawStats();
+  worker.onmessage = (e: MessageEvent<BattleResponse>) => {
+    const r = e.data;
+    if (r.ok ? r.kind !== "worst" || r.id !== id : r.id !== id) return;
+    running = null;
+    if (wanted === next.key) wanted = null;
+    if (!r.ok) {
+      shown = null;
+      runError = r.error;
+      errorKey = next.key;
+      showHp(null, next.members);
+    } else if (r.kind === "worst") {
+      shown = { key: next.key, req: next.req, members: next.members, runs: r.runs };
+      runError = null;
+      drawShown();
     }
-    const plan = layout.render({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
-    view.replaceChildren(...(r.trace ? [] : [el("p", { class: "muted small" }, "Not reached in this run: the rotation as planned.")]),
-      plan ?? el("p", { class: "muted" }, "No timeline for this enemy yet."));
-    // R2 F28: the run's note is the first paragraph of the "?".
-    help?.replaceChildren(helpTip([MAP_FLOW_NOTE, layout.help({ id: r.questId, rare: r.isRare }, Boolean(edit))], "the flow"));
+    drawStats();
   };
-  tabs.forEach((x, k) => {
-    const b = el("button", { type: "button", role: "tab", id: `room-tab-${k}`, "aria-controls": "flow-room", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
-      title: `${x.label}: ${x.skipped ? "skipped, the party died before" : ["not reached in this run", "won", "lost"][x.status] ?? ""}` }, x.label,
-      ...(x.status === 2 ? [el("span", { "aria-hidden": "true" }, " 💀")] : []));
-    b.addEventListener("click", () => {
-      at = k;
-      setRoom(k);
-      draw();
-    });
-    bar.append(b);
-  });
-  // The arrow keys, Home and End move between the rooms (the tablist pattern, dom.ts tabKeys).
-  tabKeys(bar);
-  box.append(scroller.box, view);
-  draw(false);
+  worker.onerror = (e) => {
+    if (running !== id) return;
+    worker.terminate();
+    if (simWorker === worker) simWorker = null;
+    running = null;
+    if (wanted === next.key) wanted = null;
+    shown = null;
+    runError = `Simulation failed: ${e.message}`;
+    errorKey = null; // the worker itself failed: the next change tries again
+    showHp(null, next.members);
+    drawStats();
+  };
+  worker.postMessage({ ...next.req, id });
+}
+
+/** The shown runs' worst one in the chart (and so the cards), names in the language of the moment. */
+function drawShown(): void {
+  if (!shown) return;
+  const { req, runs, members } = shown;
+  if (req.quest && runs.quest) {
+    const t = req.quest;
+    showHp([{ trace: runs.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members);
+  } else if (runs.map) {
+    const rooms = runs.map;
+    const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
+    // U61: every fought room of the run, in map order.
+    showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
+      quest: { id: r.questId, rare: r.isRare } }] : [])), members);
+  } else showHp(null, members);
+  drawStats();
+}
+
+/** U70: the figures' card: the label (a short one on a phone), the value, a tone and, for a rate, its bar. */
+function statTile(long: string, short: string, value: string, o: { tone?: string; bar?: number; title?: string } = {}): HTMLElement {
+  return el("div", { class: `tile ${o.tone ?? ""}`.trim(), ...(o.title ? { title: o.title } : {}) },
+    el("span", { class: "tile-label" }, el("span", { class: "st-long" }, long), el("span", { class: "st-short", "aria-hidden": "true" }, short)),
+    el("span", { class: "tile-value" }, value),
+    ...(o.bar !== undefined ? [el("div", { class: "bar", "aria-hidden": "true" }, el("span", { style: `width: ${Math.round(Math.max(0, Math.min(1, o.bar)) * 100)}%` }))] : []));
+}
+
+/**
+ * U70: the four figures over the shown runs (runStats), on the Simulator only (#sim-stats): win rate, grade when won,
+ * heroes dead, life left; "–" without runs. Busy while newer runs wait or run (the old figures stay, dimmed).
+ */
+function drawStats(): void {
+  const box = document.querySelector<HTMLElement>("#sim-stats");
+  if (!box) return;
+  const st: RunStats | null = shown ? runStats(shown.runs.outcomes) : null;
+  const busy = running !== null || autoTimer !== null;
+  box.classList.toggle("busy", busy);
+  box.setAttribute("aria-busy", String(busy));
+  const runs = st ? `${st.n} ${shown!.req.quest ? "fights" : "map runs"}` : "";
+  box.replaceChildren(
+    el("div", { class: "sim-stats-row" },
+      statTile("Win rate", "Win", st ? pct(st.win) : "–", { tone: st ? rateTone(st.win) : "", bar: st?.win ?? 0, title: runs }),
+      statTile("Grade when won", "Grade", st?.grade != null ? gradeLetter(st.grade) : "–",
+        { tone: "t-gold", title: st?.grade != null ? `Average ${fmt1.format(st.grade)} (D = 1 … S = 5)` : runs }),
+      statTile("Avg heroes dead", "Dead", st ? fmt1.format(st.dead) : "–", { tone: st && st.dead > 0 ? "bad" : "", title: runs }),
+      statTile("Life left", "Life", st?.life != null ? pct(st.life) : "–",
+        { tone: st?.life != null ? rateTone(st.life * 1.6) : "", bar: st?.life ?? 0, title: runs })),
+    ...(runError ? [el("p", { class: "error small sim-stats-error", role: "alert" }, runError)] : []));
 }
 
 /**
@@ -1163,15 +1011,17 @@ function hpBox(): HTMLElement | null {
 }
 
 /**
- * U61: draw the HP chart from the traced fight(s) renderPlan just made for the Flow (never a fight of its own): one
- * quest fight, or a map run's fought rooms. Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
+ * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U70: the worst of the
+ * shown runs). Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
  */
-function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void {
+function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): void {
   const box = hpBox();
   const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
   chart = runs ? hpData(runs, fighters) : null;
   // U67: the heroes' names, for the cards' modifiers and outcomes (the fought runs' traces are the chart's own, chart.runs).
   chartNames = new Map(fighters.map((f) => [f.who, f.name]));
+  // U70: which save hero each place held in these runs (a card whose hero changed since shows its own stats).
+  chartHeroes = new Map(members.map((m) => [locationOf(m.row, m.i), m.idx]));
   // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0.
   turnAt = chart ? pickStep(chart, turnPick) : 0;
   if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
@@ -1185,6 +1035,7 @@ function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void
  */
 let chart: HpChartData | null = null;
 let chartNames = new Map<number, string>();
+let chartHeroes = new Map<number, number>();
 let turnAt = 0;
 let turnPick: { run: number; turn: number } = { run: 0, turn: 0 };
 
@@ -1197,9 +1048,9 @@ function selectTurn(i: number): void {
 }
 
 /**
- * U65: every card at the selected turn's end (turn 0: the start), from the chart's data, the Flows' own trace: a hero
- * card's HP, live stats, effects and played row (paintCard, in place: its pickers and focus stay), and the enemy's
- * card. A hero that doesn't fight (left out, no fight to show) gets its own stats back, nothing else.
+ * U65: every card at the selected turn's end (turn 0: the start), from the chart's data: a hero card's HP, live
+ * stats, effects and played row (paintCard, in place: its pickers and focus stay), and the enemy's card. A hero that
+ * doesn't fight (left out, no fight to show, U70: not the hero of the shown runs) gets its own stats back, nothing else.
  */
 function paintTurn(): void {
   const at = chart?.steps[turnAt];
@@ -1211,7 +1062,7 @@ function paintTurn(): void {
     if (!raw) return;
     const w = locationOf(key.startsWith("front") ? "front" : "back", Number(key.slice(-1)));
     const now = at?.states[w];
-    const inFight = at && now && inc.has(key);
+    const inFight = at && now && inc.has(key) && chartHeroes.get(w) === idx;
     paintCard(card, inFight
       ? { stats: now.stats ? { ...now.stats, maxHP: now.maxHP } : heroCardStats(idx, raw), ...turnOfCard(at, w, now) }
       : { stats: heroCardStats(idx, raw) });
@@ -1229,12 +1080,6 @@ function turnOfCard(at: HpChartData["steps"][number], who: number, now: FighterS
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)
-/** The Simulator's number of runs (a quest takes more than a map run); the Solver has none. */
-function setRuns(v: string): void {
-  const runs = document.querySelector<HTMLInputElement>("#runs");
-  if (runs) runs.value = v;
-}
-
 /** Build the opponent and, on the Solver, its panel, once a save is in. */
 function buildPage(): void {
   syncOppKinds();
@@ -1246,14 +1091,13 @@ function buildPage(): void {
 }
 
 /**
- * U41, the Solver's step 3: the Party and Flow tabs show only once a result's Show has filled the party; before, no
- * party panel at all. It stays shown for later solves until the save is forgotten.
+ * U41, the Solver's step 3: the Party view shows only once a result's Show has filled the party; before, no party
+ * panel at all. It stays shown for later solves until the save is forgotten.
  */
 function revealParty(): void {
   const box = document.querySelector<HTMLElement>("#party-box");
   if (!box) return;
   box.hidden = false;
-  showTab(storedTab(), false);
   renderParty(false);
   // R2 F33: every Show brings the party into view (not only the first one).
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1287,16 +1131,6 @@ function openInSimulator(): void {
 }
 
 // ---------------------------------------------------------------- run
-/**
- * U48: no Results section. A run's progress, error or summary (win rate, grade when won, Show details) is in the
- * Simulate panel after ▶ Simulate (#sim-summary), where the click was, so nothing scrolls; the details right under
- * the panel (#results, empty and so not shown until a result). A new or forgotten save clears both.
- */
-function clearResults(): void {
-  document.querySelector("#sim-summary")?.replaceChildren();
-  document.querySelector("#results")?.replaceChildren();
-}
-
 /** The six slots as the worker takes them (raw save heroes, edited rotations), and who stands where. */
 function partyOf() {
   const sv = state.sv!;
@@ -1329,229 +1163,6 @@ function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; ma
   return { map: { spec, scrolls } };
 }
 
-function request(): BattleRequest {
-  const sv = state.sv!;
-  const { front, back, skills, members } = partyOf();
-  if (!members.length) throw new Error("Put at least one hero in the party.");
-  const n = Math.max(1, Math.min(5000, Math.trunc(Number($<HTMLInputElement>("#runs").value) || 0)));
-  return { gameMode: sv.raw.gameMode || "Standard", front, back, skills, n, ...targetOf() };
-}
-
-/**
- * The map a map result is about (U33; U65: for its craft time only, the XP tiles are gone), taken when the run starts
- * (the page may change before it ends): id, grade, ascension, party size. Null for a quest.
- */
-function runContext(req: BattleRequest): MapRunContext | null {
-  if (req.quest) return null;
-  const heroes = partyOf().members.length;
-  const mode = req.gameMode || "Standard";
-  const v = $<HTMLSelectElement>("#map").value;
-  const own: Any = v.startsWith("own:") ? state.sv?.mapInventory[Number(v.slice(4))] : null;
-  return own ? { map: Number(own.id), grade: own.grade ?? 3, asc: own.prestigeLevel ?? 0, heroes, mode }
-    : { map: Number(v.slice(4)), grade: Number($<HTMLSelectElement>("#map-grade").value), asc: Number($<HTMLSelectElement>("#map-asc").value), heroes, mode };
-}
-
-/** The last simulation shown (drawn again in another language, U29), with its run context. */
-let lastResult: (Extract<BattleResponse, { ok: true }> & { ctx: MapRunContext | null }) | null = null;
-function drawResult(): void {
-  const r = lastResult;
-  if (!r) return;
-  const shown = r.kind === "quest" ? questResults(r.result, r.ms) : mapResults(r.result, r.ms, r.ctx);
-  // U48: the summary and its toggle in the Simulate panel, the details right under it.
-  $("#sim-summary").replaceChildren(...shown.head);
-  $("#results").replaceChildren(shown.details);
-}
-
-function run(): void {
-  // U48: progress, errors and the summary in the Simulate panel, after the button; the old details go.
-  const out = $("#sim-summary");
-  lastResult = null;
-  document.querySelector("#results")?.replaceChildren();
-  let req: BattleRequest;
-  let ctx: MapRunContext | null = null;
-  try {
-    req = request();
-    const problem = partyProblem();
-    if (problem) throw new Error(problem);
-    try {
-      ctx = runContext(req);
-    } catch {
-      ctx = null; // the craft time is left out, the result still shows
-    }
-  } catch (e) {
-    out.replaceChildren(el("p", { class: "error", role: "alert" }, (e as Error).message));
-    return;
-  }
-  state.worker?.terminate();
-  const worker = dataWorker("battle-worker.js", ["gamedata.json"]);
-  state.worker = worker;
-  const btn = $<HTMLButtonElement>("#run");
-  const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");
-  const stop = () => {
-    worker.terminate();
-    state.worker = null;
-    btn.disabled = false;
-  };
-  cancel.addEventListener("click", () => {
-    stop();
-    out.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
-  });
-  btn.disabled = true;
-  out.replaceChildren(el("div", { class: "toolbar" }, el("p", { class: "muted" }, `Simulating ${req.n} ${req.quest ? "fights" : "map runs"}…`), cancel));
-  worker.onmessage = (e: MessageEvent<BattleResponse>) => {
-    stop();
-    const r = e.data;
-    if (!r.ok) out.replaceChildren(el("p", { class: "error", role: "alert" }, r.error));
-    else {
-      lastResult = { ...r, ctx };
-      drawResult();
-    }
-  };
-  worker.onerror = (e) => {
-    stop();
-    out.replaceChildren(el("p", { class: "error", role: "alert" }, `Simulation failed: ${e.message}`));
-  };
-  worker.postMessage(req);
-}
-
-// ---------------------------------------------------------------- results
-/** Average grade (1..5) as the nearest letter. */
-const gradeOf = (g: number) => GRADES[Math.min(4, Math.max(0, Math.round(g) - 1))];
-/** A hint as a "?" sentence: capital first letter, full stop. */
-const sentence = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
-
-/**
- * Per hero: damage, taken, healing, death rate, damage by skill. R1 F22: against a quest (`quest`: the result) the
- * damage is what really came off the enemy, the party's total capped at the enemy's max HP (effectiveDamage); the
- * damage dealt, overkill included, is in the cell's tooltip. A map run keeps the damage dealt (its rooms differ).
- */
-function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: FightEval): HTMLElement {
-  const order = ["front1", "front2", "front3", "back1", "back2", "back3"];
-  const eff = quest ? effectiveDamage(quest) : null;
-  const maxHp = quest ? enemyMaxHp(quest) : null;
-  const rows: Row[] = order.filter((k) => heroes[k]).map((k) => {
-    const h = heroes[k];
-    const top = Object.entries(h.skillDmg).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
-      .map(([sk, v]) => `${skillName(sk)} ${fmt.format(v)} (${fmt1.format(h.skillUses[sk] ?? 0)}×)`).join(" · ");
-    const raw = heroRaw(state.slots[`${k.replace(/\d$/, "")}${Number(k.slice(-1)) - 1}`] ?? null);
-    return { slot: slotLabel(k), name: h.name, cls: raw?.class ?? h.class ?? 0, dmg: eff?.[k]?.[0] ?? h.dmg, dealt: h.dmg, taken: h.taken, heal: h.heal,
-      hp_left: h.hp_left_frac, hp_tip: hpLeftCell(h, quest ? "fight" : "run").title, death_rate: h.death_rate, skills: top };
-  });
-  const dmgTip = eff && maxHp ? `Damage that came off the enemy: the party's total is capped at its ${fmt.format(maxHp)} HP (no overkill), each hero keeping its share. `
-    + "Hover a number for the damage dealt, overkill included." : "Damage dealt, overkill included.";
-  // R2 F25 / F26: no Slot column (the slot is the hero's subline); the name is plain text with its class colour as a
-  // bar on its left, not a pill (a pill reads as a class). "Damage" per fight (or run) is said in its tooltip.
-  const t = table(rows, [
-    { key: "name", label: "Hero", render: (r) => el("span", { class: `hero-cell cls-${r.cls}`, title: `${r.name} · ${className(Number(r.cls))}` },
-      el("span", { class: "hero-cell-name" }, String(r.name)), el("span", { class: "hero-cell-sub" }, String(r.slot))) },
-    { key: "dmg", label: "Damage", num: true, render: (r) => (eff && Number(r.dealt) > Number(r.dmg) + 0.5
-      ? el("span", { title: `${fmt.format(Number(r.dealt))} dealt, overkill included` }, fmt.format(Number(r.dmg)))
-      : fmt.format(Number(r.dmg))) },
-    { key: "taken", label: "Taken", num: true },
-    { key: "heal", label: "Healing", num: true },
-    // U43: HP left at the end (a map run: of the whole run), the HP in the tooltip.
-    { key: "hp_left", label: "HP left", num: true, render: (r) => el("span", { title: String(r.hp_tip) }, pct(Number(r.hp_left))) },
-    { key: "death_rate", label: "Dies", num: true, render: (r) => el("span", { class: `rate ${rateTone(Number(r.death_rate), true)}`, style: "color: var(--c)" }, pct(Number(r.death_rate))) },
-    { key: "skills", label: "Damage by skill (uses)" },
-  ]);
-  const head = [...t.querySelectorAll<HTMLElement>("th")].find((th) => th.textContent === "Damage");
-  if (head) head.title = `Per ${unit}. ${dmgTip}`;
-  return t;
-}
-
-/**
- * U43: compact first. The win rate and the average grade; "Show details" opens the rest (compactResult). Turns: the
- * average, the longest fight and the game's cap (a fight still running at turn 200 is lost).
- */
-function questResults(ev: FightEval, ms: number): ReturnType<typeof compactResult> {
-  const turnHint = [ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", turnCapNote(ev.turns_max),
-    cappedNote(ev.turns_capped, ev.n, "fights")].filter(Boolean).join(" · ");
-  // R2 F24: the details are one grid, label and value only, each explanation in its "?". U65: no XP per hero, quest
-  // time or XP / min (U33's tiles): the outcome only.
-  return compactResult(
-    tiles({ class: "result-summary" },
-      tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
-      gradeTile(ev.win, ev.grade),
-    ),
-    [
-      tiles({ class: "result-tiles" },
-        resultTile("Turns", fmt1.format(ev.turns), sentence(turnHint), { icon: "⏱️", tone: ev.turns_capped ? "bad" : "t-blue" }),
-        resultTile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
-          ? `Lowest point ${pct(ev.enemy_dmg_peak)} (it heals back).` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
-        resultTile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
-      ),
-      heroTable(ev.heroes, "fight", ev),
-    ],
-    runLine(ev.n, "fights", ms),
-  );
-}
-
-const gradeTile = (win: number, grade: number) =>
-  resultTile("Grade when won", win ? gradeOf(grade) : "–", win ? `Average ${fmt1.format(grade)} (D = 1 … S = 5).` : undefined, { icon: "⭐", tone: "t-gold" });
-
-/** R1 F20: the run's size in one short line (R2 F24: its time and the seeds in its tooltip). */
-const runLine = (n: number, unit: string, ms: number, seeds = n) => el("p", { class: "muted small run-line",
-  title: `Simulated in ${fmt.format(ms)} ms. Seeds 1–${seeds}: every setting is tested on the same rolls.` }, `${fmt.format(n)} ${unit}`);
-
-/**
- * R1 F35: a tile grid knows its tile count. R2 F24: and its columns (tileColumns: on a phone and wider), so no row
- * ends with a lone tile.
- */
-function tiles(attrs: Record<string, string>, ...items: HTMLElement[]): HTMLElement {
-  const g = el("div", { ...attrs, class: `tiles${attrs.class ? ` ${attrs.class}` : ""}` }, ...items);
-  const cols = tileColumns(items.length);
-  g.style.setProperty("--n", String(items.length));
-  g.style.setProperty("--cols-phone", String(cols.phone));
-  g.style.setProperty("--cols-wide", String(cols.wide));
-  g.dataset.n = String(items.length);
-  return g;
-}
-
-/**
- * U43: as questResults. Turns per room: the average, per run in the hint, the longest room and the cap. U65: no XP per
- * hero or XP / min; one Time tile (per run, simulated), the map's craft time in its "?" (was a tile of its own).
- */
-function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): ReturnType<typeof compactResult> {
-  const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
-  const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
-  const essence = resultTile("Essence per run",
-    el("span", { class: "tile-lines" }, ...essenceLines(ev.essence, (k) => itemNameFromEnglish("material", k)).map((t) => el("span", {}, t))),
-    ev.win < 1 ? "From the runs won." : undefined, { icon: "✨", tone: "t-violet" });
-  const turnHint = [`${fmt1.format(ev.run_turns)} per run`, `longest room: ${turnCapNote(ev.room_turns_max)}`,
-    cappedNote(ev.rooms_capped, ev.n, "runs")].filter(Boolean).join(" · ");
-  // R2 F24: one grid of 6 tiles: the outcome, the time, the loot and the essence last.
-  let craft: string | null = null;
-  try {
-    craft = ctx ? duration(mapResultXp(ev, ctx).craftSeconds) : null;
-  } catch { /* no craft time: the tile says the run's only */ }
-  return compactResult(
-    tiles({ class: "result-summary" },
-      tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
-      gradeTile(ev.win, ev.grade),
-    ),
-    [
-      tiles({ class: "result-tiles" },
-        // R1 F29: the rooms as the map card counts them (treasure rooms and boss included), said in the "?".
-        resultTile("Progress", pct(ev.cleared), [`Of ${fmt1.format(ev.rooms)} rooms on average.`,
-          "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."],
-        { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
-        resultTile("Turns per room", fmt1.format(ev.room_turns), sentence(turnHint), { icon: "⏱️", tone: ev.rooms_capped ? "bad" : "t-blue" }),
-        resultTile("Time", duration(ev.time_h * 3600), ["Per run, simulated.", craft ? `Crafting the map: ${craft}.` : null], { icon: "⌛", tone: "t-blue" },
-          [statLink("time", "time")]),
-        resultTile("Loot value", gold(ev.loot_value), "Base sell value per run.", { icon: "💰", tone: "t-orange" }),
-        resultTile("Party HP left", pct(ev.hp_left), "At the end of the run.", { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
-        essence,
-      ),
-      ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
-      ...(charges ? [el("p", { class: "result-note" }, el("strong", {}, "📜 Scroll charges used per run: "), charges)] : []),
-      ...(ev.escaped ? [el("p", { class: "muted" }, `Escaped in ${pct(ev.escaped)} of runs.`)] : []),
-      ...(ev.errors ? [el("p", { class: "muted small" }, `${ev.errors} runs failed inside the game's own code (${ev.error}); the game would crash on them too.`)] : []),
-      heroTable(ev.heroes, "run"),
-    ],
-    runLine(ev.n, "map runs", ms, ev.n + ev.errors),
-  );
-}
-
 // ---------------------------------------------------------------- page
 /** Parse and use a save (from a file or from the browser's storage); throws when it isn't one. */
 async function loadSave(text: string, name: string): Promise<void> {
@@ -1576,8 +1187,10 @@ async function loadSave(text: string, name: string): Promise<void> {
   } catch { /* storage blocked */ }
   const remembered = restoreParty(sv.raw.hero.length);
   $("#setup").hidden = false;
-  lastResult = null;
-  clearResults();
+  // U70: a new save: nothing shown or running from the last one.
+  cancelRuns();
+  shown = null;
+  runError = null;
   // The Solver: no party until a result's Show (U41).
   if (solving()) hideParty();
   renderParty();
@@ -1613,8 +1226,9 @@ function startQuest(): string | undefined {
   return id === null ? undefined : String(id);
 }
 
-/** R2 F20: the Simulate panel's "?" (was the sentence at the top of its box). U48: beside ▶ Simulate (no section titles). */
-const SIMULATE_HELP = "Your party against an enemy or a map run, hundreds of times, on the same rolls every time. Set them up below.";
+/** R2 F20: the Simulate panel's "?". U70: the runs after every change (was beside ▶ Simulate). */
+const SIMULATE_HELP = [`Every change runs ${WORST_RUNS} fights (or map runs) on the same rolls every time.`,
+  "The chart and the cards show the worst of them; the figures above the party are over all of them."];
 
 /**
  * U48: the "↑" button, fixed bottom right, on both battle pages (the Flow on a phone is one long page): shown once the
@@ -1656,12 +1270,13 @@ export function initBattlePage(kind: PageKind): void {
   try {
     localStorage.removeItem("battle-mode");
   } catch { /* storage blocked */ }
-  initTabs();
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
     onForget: () => {
       state.sv = null;
-      clearResults();
+      cancelRuns();
+      shown = null;
+      runError = null;
       hideParty();
     },
   });
@@ -1681,7 +1296,6 @@ export function initBattlePage(kind: PageKind): void {
   initToTop();
   if (solving()) initSolver();
   else {
-    $("#run").addEventListener("click", run);
     // U48: hero cards move by drag and drop (party-drag.ts); #party stays, its cards are redrawn inside it.
     enableSlotDrag($("#party"), dropHero);
     // R2 F20: what Simulate does is in the "?" of its heading, not a sentence in the box.
@@ -1721,33 +1335,30 @@ function initSolver(): void {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
     },
     // U42: no onStart (the progress is in the Solve panel; the results appear only once a solve is done).
-    // U41: a result's Show (after its party is applied) brings the Party and Flow tabs.
+    // U41: a result's Show (after its party is applied) brings the Party view.
     onShow: revealParty,
     rules: () => rulesOf(pageTarget()),
     problem: (front, back) => problemOf(pageTarget(), front, back),
     goSimulate: () => {
       location.href = SIMULATOR_PAGE;
     },
-    // U39: the spoiler guard hides the whole rest of the page (the opponent and options, Results, party, flow) until accepted.
+    // U39: the spoiler guard hides the whole rest of the page (the opponent and options, results, party) until accepted.
     guarded: (on) => $("#setup").classList.toggle("solve-guarded", on),
   }, $("#search-panel"), $("#search-form"), $("#search-results"));
 }
 
 /**
  * U29: another language. Redraw the party (skill and passive pickers), the opponent card (pickers, names, timeline)
- * keeping every choice, the plan, the last simulation and the last search result; the search form is left as it is
+ * keeping every choice, the chart (U70: the shown runs, not run again) and the last search result; the search form is left as it is
  * (it holds no game name). Marked names elsewhere are already updated (language.ts relabel).
  */
 function onLanguage(): void {
   if (!state.sv) return;
   const y = window.scrollY;
-  const runs = document.querySelector<HTMLInputElement>("#runs")?.value;
   keepSearchForm = true; // no search panel rebuild (it would reset its form); the refresh renderTarget queues is skipped
   renderParty(false);
   onExpansions();
   queueMicrotask(() => (keepSearchForm = false));
-  if (runs !== undefined) setRuns(runs);
-  drawResult();
   search?.relabel();
   window.scrollTo(0, y);
 }

@@ -25,9 +25,9 @@
     <div id="loaded" aria-live="polite"></div>
 
     <div id="setup" class="b3-steps" hidden>
-      <!-- U48: no section titles on screen (headings for screen readers only) and no Results section: a run's
-           progress or summary (win rate, grade when won, Show details) follows ▶ Simulate in its panel
-           (#sim-summary); the details sit right under the panel (#results, empty until a result). -->
+      <!-- U48: no section titles on screen (headings for screen readers only). U70: no Simulate button, runs count or
+           result tiles: every change runs the fights (battle-page.ts renderPlan); the four figures sit between this
+           panel and the party (#sim-stats, sticky). -->
       <section>
         <h2 class="visually-hidden">Simulate</h2>
         <div class="run-box" role="group" aria-label="Simulate">
@@ -42,38 +42,22 @@
           </div>
           <div class="simulate">
             <div class="toolbar sim-bar">
-              <!-- U66: the party's Clear all and its undo (battle-page.ts renderParty), first in the Simulate row. -->
+              <!-- U66: the party's Clear all and its undo (battle-page.ts renderParty). U70: the party's "?" and the runs' "?". -->
               <span id="party-tools" class="party-tools"></span>
-              <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
-              <button id="run" type="button" class="primary">▶ Simulate</button>
+              <span id="party-help"></span>
               <span id="sim-help"></span>
-              <div id="sim-summary" class="sim-summary" aria-live="polite"></div>
             </div>
           </div>
         </div>
-        <div id="results" class="sim-details"></div>
       </section>
+
+      <!-- U70: win rate, grade when won, heroes dead, life left over the runs; one row at every width, sticky. -->
+      <div id="sim-stats" class="sim-stats" role="group" aria-label="Results" aria-busy="false"></div>
 
       <section>
         <h2 id="setup-title" class="visually-hidden">Party and opponent</h2>
-        <!-- U39: two views of one party: the cards (Party) and the whole fight, turn by turn (Flow), both editable. U40: Party first.
-             R2 F23: the party's rule is in the "?" beside the tabs (#party-help), no inner "Party" heading. -->
-        <div class="b3-tab-row">
-          <div class="tabs b3-tabs" role="tablist" aria-label="Views">
-            <button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">Party</button>
-            <!-- U58: Flow layouts to compare (web/src/ui/flow-layouts.ts), one panel; U63: Flow 1 removed, the labels kept. -->
-            <button id="tab-flow2" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow2" tabindex="-1">Flow 2</button>
-            <button id="tab-flow3" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow3" tabindex="-1">Flow 3</button>
-          </div>
-          <!-- U51: one "?" beside the tabs, the open tab's (battle-page.ts showTab). -->
-          <span id="party-help"></span><span id="plan-help" hidden></span>
-        </div>
-        <!-- R2 F28: no heading repeating the tab: the opponent line first; what the flow shows is in the tab row's "?" (U51). -->
-        <div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow2" hidden>
-          <div class="flow-head"><div id="flow-opp" class="flow-opp"></div></div>
-          <div id="plan"></div>
-        </div>
-        <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
+        <!-- U70: the Party view is the only view (Flow 2, Flow 3 and the tabs gone). -->
+        <div id="setup-grid" class="setup-grid b3-grid">
           <!-- U65: the chart on top, full width (battle-page.ts hpBox); its selected turn is what the cards show. -->
           <div id="hp-col" class="hp-col"></div>
           <div id="party-col" class="party-col">

@@ -2,7 +2,7 @@
 type: Tool
 title: Website
 description: GitHub Pages site that exposes the tools in the browser, and the public-repo rules behind it.
-timestamp: 2026-11-25
+timestamp: 2026-11-26
 ---
 
 # Website
@@ -195,7 +195,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Menu: Battle ▾ with Simulator and Solver, in the dropdown, the second row and the phone drawer (see
     [Menus](#menus)); the Battle link itself opens the Simulator.
   - Simulator (`battle.html`): no mode chooser. U48: no section titles on screen (the `h2`s are visually hidden) and
-    no Results section. The Simulate panel holds (U65) the opponent's controls first (see U65), then Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
+    no Results section. (U70: no Runs, ▶ Simulate, `#sim-summary` or `#results` any more, and no Party / Flow tabs: the
+    panel holds the opponent's controls, Clear all and the "?"s, then the four sticky figures and the Party view; see
+    U70.) The Simulate panel holds (U65) the opponent's controls first (see U65), then Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
     and Cancel, its error, or its summary (win rate, grade when won, Show details and the run line); the details
     (`#results`, empty and not shown until a result) sit right under the panel; then the Party and Flow tabs with the
     opponent's card in the Party tab, as below. Until U48 these were numbered steps (Simulate, Results hidden until the first
@@ -210,7 +212,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     facts and scrolls are in the panel, and until U65 the Simulator had no `#target-card` and kept its card under its
     pickers). The results section (`#search-results`, full width, under
     the panel) is hidden until a solve is done; a new solve hides the last results until it ends; a Cancel or an
-    error is a line in the panel. Then "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
+    error is a line in the panel. Then "Party and flow" (U70: "Party", the Party view only, its "?" after the
+    heading), the Party and Flow tabs (`#party-box`), hidden in
     the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
     party (`SearchContext.onShow` → `revealParty`). U48: read-only there, since "▶ Open in Simulator" is where it gets
     edited (`pageControls("solve")` in `battle-edit.ts`): the same cards and Flow without hero pickers, ⇄ controls,
@@ -298,7 +301,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     side (a boss hit's damage on each hero at once); a heal's panel in the same column goes under the damage's. No
     margin maths, no `ResizeObserver` (`calcPanelLeft` and `placeCalcs` are gone).
 
-- U58, three Flow layouts to compare (tests `web/test/battle-u58.test.ts`, CSS in the `U58 tabs` and `Flow 2` blocks):
+- U58, three Flow layouts to compare. **Removed in U70** (Flow 2, Flow 3, the tabs, `flow-layouts.ts`, their CSS and
+  tests; kept here as history) (tests `web/test/battle-u58.test.ts`, CSS in the `U58 tabs` and `Flow 2` blocks):
   - Tabs Party · Flow 1 · Flow 2 · Flow 3 on both pages (U63: Party · Flow 2 · Flow 3, see U63) (the Solver's read-only as before), one Flow panel
     (`#flow-panel`, `aria-labelledby` the open Flow tab). `tabKeys` keyboard and the U51 "?" unchanged; each Flow has
     its own help after the run's note. The open tab is remembered per page (sessionStorage `battle-tab` on the
@@ -325,7 +329,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (container query at 84 px). Without a traced fight, Flow 1's planned rotation. U63: the class colour outlines the
     hero card (no ascension frame) and the HP is the shared bar (see U63).
   - Flow 3 (`web/src/ui/flow3.ts`, `renderFlow3`): U59's layout, below.
-- U59, Flow 3 (`web/src/ui/flow3.ts`; tests `web/test/battle-u59-flow3.test.ts`, CSS in the `Flow 3` block), one of
+- U59, Flow 3. **Removed in U70** (kept here as history) (`web/src/ui/flow3.ts`; tests `web/test/battle-u59-flow3.test.ts`, CSS in the `Flow 3` block), one of
   the three Flow layouts the user compares (Party · Flow 1 · Flow 2 · Flow 3; the tabs and the registry
   `web/src/ui/flow-layouts.ts` are U58's). Entry point `renderFlow3(quest, members, trace, edit)`, the same inputs and
   result as Flow 1's `partyPlan` (`timeline.ts`, unchanged); without a traced fight it returns Flow 1's planned rotation.
@@ -364,7 +368,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (`span.f3-dead-who`, hidden on a wide box) with a faint class-colour edge; the hairline and "T3" tag work as on a
     wide box, and a "▾" opens its calculation inside the card, at the card's full width. Desktop is unchanged: one
     column per fighter.
-- U63, Flow 1 removed; Flow 2 and Flow 3 share their parts (tests `web/test/battle-u63.test.ts`, CSS in the `U63`
+- U63, Flow 1 removed; Flow 2 and Flow 3 share their parts. **Removed in U70** with Flow 2 and Flow 3 (`flow-parts.ts`,
+  `flow-planned.ts`, `flow-hp.ts`, the room bar's `roomScroller` and `rowStep`; `roomBarWheel` and `scrollToShow` stay,
+  the chart uses them; `battle-u63.test.ts` keeps their tests only) (tests `web/test/battle-u63.test.ts`, CSS in the `U63`
   block; the U58, U59, U51, U48, R3 QA, R2-C, U41, U40, a11y and tab tests updated):
   - Tabs Party · Flow 2 · Flow 3 on both pages; the labels stay (the layouts are still compared). A remembered tab
     "flow" or "flow1" opens Flow 2 (`parseTab`), the panel starts on Flow 2 and `flowLayout` falls back to it.
@@ -463,7 +469,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - The enemy's rotation: its skill on turns 1-5 from its timeline (`enemyTurns`, the data of the Flow and the wiki's
     strip; without it, the game's rotation), the same rows, read-only, no AP.
 
-- U64, the Flows' skill names (tests `web/test/battle-u64.test.ts`, CSS in the `U64` block; R3 QA, U48 and U63 tests
+- U64, the Flows' skill names. **Removed in U70** with the Flows (kept here as history) (tests `web/test/battle-u64.test.ts`, CSS in the `U64` block; R3 QA, U48 and U63 tests
   updated):
   - No wiki link on a skill name in Flow 2, Flow 3 or the planned rotation (`skillLink` is gone from the Flow
     modules). A name that can't be edited is plain text with its effect on hover (`skillText` in `flow-parts.ts`,
@@ -665,6 +671,62 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Game names in these tooltips go through the site's translation helpers (`effectName` → `skillName` → `tr`), as
     the rotation rows do: English by default, the visitor's language when picked (or when the browser's is one the
     game has): "Bénédiction Sacrée" for Holy Blessing in French.
+
+- U70, the Simulator runs by itself (the Simulator and the Solver; `web/src/ui/battle-page.ts`,
+  `web/src/tools/worst-run.ts`, `web/src/tools/fight-trace.ts`, `web/src/ui/battle-worker.ts`, `web/src/ui/hp-chart.ts`,
+  `site/battle.html`, `site/solver.html`; tests `web/test/battle-u70.test.ts`, the U40, U41, U43, U48, U51, U61, U62,
+  U63, U65, U66, U69, R2-C, R3 QA, a11y, tabs, quest-XP, R1-D and sweep-375 tests updated; CSS in the `U70` block, the
+  last one of `style.css`):
+  - Flow 2, Flow 3 and the Party / Flow 2 / Flow 3 tab row are gone on both pages: the Party view (chart, heroes,
+    opponent card) is the only view. Deleted: `flow2.ts`, `flow3.ts`, `flow-layouts.ts`, `flow-parts.ts`,
+    `flow-planned.ts`, `flow-hp.ts`, the map room bar (`roomScroller`, `rowStep`), the tabs (`initTabs`, `showTab`,
+    `battle-tab` / `solver-tab` / `battle-flow-room` in sessionStorage no longer read), `calcColumn` / `turnBand` in
+    `battle-layout.ts`, and their CSS (the `U58 tabs`, `Flow 2`, `Flow 3` blocks and every rule whose classes nothing
+    draws any more: `.tc-*`, `.pg-*`, `.cf-*` of the Flow's calculations, `.fl-*`, `.room-bar`, `.room-tab`, ...).
+    `fightStart` moved to `hp-chart.ts`. `timeline.ts` keeps the wiki's enemy strip; `battle-plan.ts` keeps its pure
+    plan grid (still tested, unused by the pages). The party's "?" is beside Clear all on the Simulator, after the
+    "Party" heading on the Solver (was "Party and flow").
+  - The Simulate panel keeps the opponent's controls (quest or map run, size, map, ascension, grade, scrolls), Clear
+    all and its undo, the party's "?" and the runs' "?"; no ▶ Simulate, no Runs input, no summary tiles, no details
+    (`battle-results.ts` deleted: the per-hero table, Show details, the run line). Its title stays "Simulate".
+  - Runs by themselves: every change that matters to the fight (party, rotations, passives, heroes left out, the
+    opponent, quest size, map, ascension, grade, scrolls; the save's gear and levels are in the request) asks for
+    `WORST_RUNS` (20) traced runs. `renderPlan` builds the worker's request (`autoRun`; its JSON is the key) and waits
+    `AUTO_DELAY_MS` (200 ms) without a newer change, then `startRuns` posts it to one kept worker (`battle-worker.js`,
+    `{ worst: true, id }`); a run still going when a newer one starts is dropped (the worker terminated, made again), an
+    answer whose id isn't the last one's is ignored. The same key again (a language or expansion redraw) draws the
+    shown runs again without running; a key that failed shows its error again. Picking a turn, a chart tab, a zoom or
+    a scroll never runs. A save loaded with a party runs once at once; a new save or Forget drops what is shown or
+    running (`cancelRuns`).
+  - The worst run (`worst-run.ts`, pure): `compareRuns` puts a loss before any win; among losses the one that ends
+    earliest (fewer rooms cleared, then fewer turns); among wins the lowest grade; then the most heroes down, then the
+    lowest average HP left of the heroes still standing; a tie keeps the earlier run (`worstRun`). `traceWorst` traces
+    the runs with Simulate's seeds (`fightSeed(1, 0..19)`, run 0 is the old Flow's fight), keeps only the worst one's
+    trace (a quest fight, or a map run's rooms) and every run's outcome (`outcomeOfFight` / `outcomeOfMap` from the
+    engine's own result: `traceFightRun` / `traceMapRunResult` in `fight-trace.ts` return it beside the trace). A map
+    run the game's code fails on is left out (as `evaluateMap`). The engine and its results are unchanged: the 20
+    outcomes give the same win rate and grade as `evaluate(..., 20)`.
+  - The chart and the cards show the worst run. Until an answer comes the chart and cards keep the shown runs; a card
+    whose place now holds another hero (or an enemy card whose quest enemy changed) shows its own stats instead of the
+    old fight's (`chartHeroes`, `paintTurn`, `drawEnemyCard`). With nothing shown yet, the chart's empty line.
+  - The figures (the Simulator only, `#sim-stats`, a child of `#setup` between the Simulate panel's section and the
+    party's): Win rate, Grade when won (the average grade of the runs won as its letter, the average in the tooltip;
+    "–" without a win), Avg heroes dead (over all runs), Life left (the average HP left of every hero still standing at
+    the end, over all runs; "–" when none). `runStats` (pure), drawn by `drawStats` as the old summary's compact tiles
+    (`.tile`, its tone and bar). One row of four at every width; under 520 px the labels are Win · Grade · Dead · Life
+    (`.st-long` / `.st-short`), nothing wraps (ellipsis at worst). Sticky at the top of the viewport (`top: 0`: the
+    site's top bar doesn't stick), opaque (`--bg`), z-index 30: over the cards, under the floating picker (55) and the
+    tooltips (60); the opponent card (sticky on wide screens) sticks 76 px down, under them. While runs wait or run:
+    `busy` and `aria-busy`, the values and bars dimmed (a slow pulse unless reduced motion), no layout shift. An
+    error (a map the game's code can't run) is a line under them. The Solver keeps its own results table (Win,
+    Grade, Life, Dead per party), so it gets no figures; its chart and cards show the worst of 20 runs too.
+  - The chart's focus ring: a click or a tap in the chart (the plot, a tab, ‹ ›) no longer leaves a ring, the
+    keyboard gets the accent ring (U65 / U66 rules). `focusMode` in `hp-chart.ts` marks the box `data-pointer` from a
+    pointer press until the next key press; the `U70` CSS hides the outline under it and on `:focus:not(:focus-visible)`
+    (a browser may draw its own ring on the focusable plot, or on the focus put back after a redraw).
+  - Judgement calls: the Solver's chart uses the same worst-of-20 runs (one code path for both pages); "life left" is
+    pooled over every standing hero of every run, not averaged per run; the busy state dims only (no spinner, nothing
+    moves); `battle-plan.ts`'s plan grid stays (pure, tested) though no page draws it now.
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,
@@ -1001,7 +1063,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Without the timeline data the pages fall back to the plain rotation list.
   - Flow tab (U39, replaces the plan column of U36; reshaped in U40). **Removed in U63** as a layout (it was Flow 1,
     `partyPlan` / `flowChart`): the trace, calculations, effects as text, AP refusals and edits below carry on in Flow 2
-    and Flow 3; the end-of-turn band, its HP bar and the column heads over a fight are gone. Step 3 has two tabs over ONE party state,
+    and Flow 3 (U70: removed too, see U70); the end-of-turn band, its HP bar and the column heads over a fight are gone. Step 3 has two tabs over ONE party state,
     👥 Party first (the hero cards and the opponent card, as before; the default) and 🗓️ Flow second (U40 swapped
     them). The active tab is remembered for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit
     through `ui/battle-edit.ts` (`assignHero`: one slot per hero, the new hero fights; `setRotationSkill`), then the page saves the party, redraws both tabs and traces the fight again.

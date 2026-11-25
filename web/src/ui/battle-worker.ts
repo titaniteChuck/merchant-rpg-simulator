@@ -18,6 +18,7 @@ import { Solver } from "../tools/profit.ts";
 import type { Save } from "../tools/save.ts";
 import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { contentExpansion, type Expansion } from "../tools/expansions.ts";
+import { traceWorst, type WorstRuns } from "../tools/worst-run.ts";
 import { G } from "../sim/data.ts";
 import { type DataMessage, takeDataMessage, workerJson } from "./worker-data.ts";
 
@@ -39,6 +40,10 @@ export interface BattleRequest {
   n: number;
   quest?: { id: number; rare: boolean; amount: number };
   map?: { spec: MapSpec; scrolls: Scroll[] };
+  /** U70: trace the n runs and answer with the worst one's trace and every run's outcome (kind "worst"). */
+  worst?: boolean;
+  /** U70: echoed in the answer, so the page can tell a stale answer. */
+  id?: number;
 }
 
 /** A search from the battle page's search tabs (web/src/tools/combat.ts search API). */
@@ -86,7 +91,8 @@ export type SearchResponse =
 export type BattleResponse =
   | { ok: true; kind: "quest"; result: FightEval; ms: number }
   | { ok: true; kind: "map"; result: MapEval; ms: number }
-  | { ok: false; error: string };
+  | { ok: true; kind: "worst"; runs: WorstRuns; ms: number; id?: number }
+  | { ok: false; error: string; id?: number };
 
 let loaded: Promise<void> | null = null;
 /** The game data, for fights and searches (from the page's copy, data-files.ts dataWorker, else fetched). */
@@ -126,6 +132,10 @@ export async function runBattle(req: BattleRequest): Promise<BattleResponse> {
     });
     const front = build(req.front, req.skills?.front);
     const back = build(req.back, req.skills?.back);
+    if (req.worst) {
+      const runs = traceWorst(sim, { quest: req.quest, map: req.map }, front, back, req.n);
+      return { ok: true, kind: "worst", runs, ms: performance.now() - t0, ...(req.id !== undefined ? { id: req.id } : {}) };
+    }
     if (req.quest) {
       const result = evaluate(sim, req.quest.id, front, back, req.n, req.quest.rare, req.quest.amount);
       return { ok: true, kind: "quest", result, ms: performance.now() - t0 };
@@ -136,7 +146,7 @@ export async function runBattle(req: BattleRequest): Promise<BattleResponse> {
     }
     throw new Error("nothing to simulate");
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    return { ok: false, error: e instanceof Error ? e.message : String(e), ...(req.id !== undefined ? { id: req.id } : {}) };
   }
 }
 

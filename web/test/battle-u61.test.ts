@@ -1,5 +1,5 @@
 // Battle Simulator and Solver U61: the Party view's HP chart (web/src/ui/hp-chart.ts) (U62: in the Party view's third column),
-// drawn by battle-page.ts renderPlan from the very trace it hands the Flow layout. No browser: the series from known
+// drawn by battle-page.ts from a traced fight (U70: the worst of the runs each change makes). No browser: the series from known
 // traces, the chart built in the fake DOM, and battle-page.ts / style.css read as text.
 import "./helpers/fake-dom.ts";
 import { test } from "node:test";
@@ -11,8 +11,7 @@ import { fightSeed } from "../src/tools/combat.ts";
 import { traceFight, traceMapRun } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { locationOf, mapRoomTabs, planTimeline } from "../src/ui/battle-plan.ts";
-import { fightStart } from "../src/ui/flow2.ts";
-import { drawHpChart, HP_EMPTY, hpChart, hpData, type HpFighter, hpSummary } from "../src/ui/hp-chart.ts";
+import { drawHpChart, fightStart, HP_EMPTY, hpChart, hpData, type HpFighter, hpSummary } from "../src/ui/hp-chart.ts";
 import { fmt } from "../src/ui/dom.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
@@ -64,7 +63,7 @@ test("series: the start, then every turn's end; HP from the trace's life, deaths
       assert.ok(s.values[t]!.pct >= 0 && s.values[t]!.pct <= 100);
     }
   }
-  // the start: Flow 2's first cards (fightStart), full HP here
+  // the start (fightStart, U70: moved from Flow 2 to hp-chart.ts), full HP here
   const start = fightStart(trace);
   for (const s of d.series) assert.equal(s.values[0]!.hp, start[s.who].hp);
   // deaths: 0 there, above 0 the step before; at least one hero falls against Odin
@@ -111,8 +110,8 @@ test("a fight won on turn 1: two steps, the enemy falls and is marked", () => {
   assert.match(hpSummary(d), /over 1 turn, won\. Murlok Monarch falls \(turn 1\)/);
 });
 
-// ---------------------------------------------------------------- 2. the Flow's very trace
-test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's start agree, same seed as Simulate's first", () => {
+// ---------------------------------------------------------------- 2. the chart's trace
+test("the chart reads a trace's turn ends; run 0 of the worst-of runs is Simulate's first fight (same seed)", () => {
   const trace = traceOf(72);
   const d = hpData([{ trace, enemy: "Odin" }], fighters)!;
   const tl = planTimeline(trace, fighters.map((f) => f.who));
@@ -123,15 +122,12 @@ test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's 
   const [f, b] = party();
   const again = traceFight(sim, 72, [...f], [...b], { seed: fightSeed(1, 0) });
   assert.deepEqual(hpData([{ trace: again, enemy: "Odin" }], fighters), d);
-  // battle-page.ts: renderPlan traces once and hands that object to both the chart and the open Flow layout
-  const plan = fn(page, "renderPlan");
-  assert.match(plan, /const trace = members\.length \? planTrace\(t\) : null;\n[^\n]*\n\s*showHp\(trace \? \[\{ trace, enemy: [^\n]*\] : null, members\);\n\s*const plan = layout\.render\(t, members, trace, edit\);/);
-  assert.equal((plan.match(/planTrace\(|mapTrace\(/g) ?? []).length, 2, "one trace per opponent kind, none for the chart");
-  assert.match(plan, /showHp\(rooms\.flatMap\(\(r, k\): HpRun\[\] => \(r\.trace \? \[\{ trace: r\.trace,/, "a map run: the room bar's rooms");
+  // battle-page.ts (U70): the chart draws the worker's worst run, never a fight of its own
   const show = fn(page, "showHp");
-  assert.doesNotMatch(show, /trace(Fight|MapRun)|planTrace|mapTrace|new Sim/, "the chart never simulates");
+  assert.doesNotMatch(show, /trace(Fight|MapRun)|new Sim/, "the chart never simulates");
   assert.match(show, /chart = runs \? hpData\(runs, fighters\) : null;/);
   assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn \}\);/);
+  assert.match(fn(page, "drawShown"), /showHp\(rooms\.flatMap\(\(r, k\): HpRun\[\] => \(r\.trace \? \[\{ trace: r\.trace,/, "a map run: every fought room");
   // the box: made once in its column (U65: #hp-col, the first row; U62: the third column; until then #opp-col)
   assert.match(fn(page, "hpBox"), /col\.querySelector<HTMLElement>\("#hp-chart"\)/);
   assert.match(fn(page, "hpBox"), /col\.append\(box\);/);
@@ -189,10 +185,11 @@ test("empty state: no fight, one muted line; no opponent, nothing; a trace witho
   drawHpChart(b, null, { hide: true });
   assert.equal(b.hidden, true);
   assert.equal(b.children.length, 0);
-  // the page: no members, a party problem or a failed map run is the empty line; no opponent built, nothing
+  // the page (U70): no fight to run (no members, a party problem) is the empty line, no opponent built nothing; a
+  // failed run the empty line too
   const plan = fn(page, "renderPlan");
-  assert.match(plan, /showHp\(null, members, true\)/);
-  assert.equal((plan.match(/showHp\(null, members\);/g) ?? []).length, 2);
+  assert.match(plan, /showHp\(null, chartMembers\(\), !built\);/);
+  assert.equal((fn(page, "startRuns").match(/showHp\(null, next\.members\);/g) ?? []).length, 2);
 });
 
 // ---------------------------------------------------------------- 5. the CSS

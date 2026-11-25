@@ -1,11 +1,11 @@
 // Battle Simulator and Solver, mobile presentation review R2 (batch R2-C): F20, F23–F26, F28–F36. Explanation
 // sentences become "?" tooltips, the Results wait for the first run, compact result tiles with no lone tile, a plain
 // per-hero table, the Solver's one-row sizes, Show first, folded empty slots, one status line and a "rough" that says
-// what it means; light-mode class badges at AA contrast. Page markup and code are read as text; no DOM.
+// what it means; light-mode class badges at AA contrast. Page markup and code are read as text; no DOM. U70: the
+// result tiles, the per-hero table, the Flow's note and the room bar are gone (F24, F25 / F26, F28, F29 with them).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { hasOrphan, tileColumns } from "../src/ui/battle-results.ts";
 import { ROUGH_HELP, sizeHelp, solveStatus, type SolveRun } from "../src/ui/battle-setup.ts";
 import { rulesText } from "../src/ui/battle-rules.ts";
 
@@ -22,26 +22,19 @@ test("one marked r2-c block of CSS", () => {
   assert.ok(r2c.length > 200);
 });
 
-test("F20: the Simulate sentence is a \"?\"; U48: no section titles, no Results section, the result in the Simulate panel", () => {
+test("F20: the Simulate sentence is a \"?\"; U48: no section titles; U70: no Simulate button, no Results", () => {
   assert.doesNotMatch(sim, /run-hint|Set them up in step 3/);
-  // U48: the "?" follows ▶ Simulate; the numbered h2 banners are gone (headings for screen readers only).
-  assert.match(sim, /<button id="run" type="button" class="primary">▶ Simulate<\/button>\s*<span id="sim-help"><\/span>\s*<div id="sim-summary" class="sim-summary" aria-live="polite"><\/div>/);
+  // U70: the "?" closes the Simulate panel's row (Clear all, the party's "?", the runs' "?"); no ▶ Simulate, no runs
+  // count, no summary or details.
+  assert.match(sim, /<span id="party-tools" class="party-tools"><\/span>\s*<span id="party-help"><\/span>\s*<span id="sim-help"><\/span>/);
+  assert.doesNotMatch(sim, /id="run"|id="runs"|sim-summary|id="results"|▶ Simulate/);
   assert.doesNotMatch(sim, /class="step"/);
   assert.doesNotMatch(sim, /results-box|Results<\/h2>/);
   assert.deepEqual([...sim.matchAll(/<h2[^>]*>/g)].map((m) => m[0]), ['<h2 class="visually-hidden">', '<h2 id="setup-title" class="visually-hidden">']);
-  // The details right under the Simulate panel, before the party.
-  assert.ok(sim.indexOf('<div id="results" class="sim-details"></div>') > sim.indexOf('id="sim-summary"'));
-  assert.ok(sim.indexOf('<div id="results" class="sim-details"></div>') < sim.indexOf('class="b3-tab-row"'));
-  assert.doesNotMatch(sim, /results-empty|No run yet/);
   assert.match(r2c, /#setup\.b3-steps > section:not\(\[hidden\]\) > h2 > \.step::before \{ counter-increment: b3-step; content: counter\(b3-step\); \}/);
   for (const html of [sim, solver]) assert.match(html, /<div id="setup" class="b3-steps" hidden>/);
   assert.match(page, /helpTip\(SIMULATE_HELP, "Simulate"\)/);
-  // A run's progress, error and summary go in the panel; the details under it; a new or forgotten save clears both.
-  const run = fn(page, "run(): void");
-  assert.match(run, /const out = \$\("#sim-summary"\);/);
-  assert.match(fn(page, "drawResult"), /\$\("#sim-summary"\)\.replaceChildren\(\.\.\.shown\.head\);\s*\$\("#results"\)\.replaceChildren\(shown\.details\);/);
-  assert.equal(page.match(/clearResults\(\);/g)?.length, 2);
-  assert.doesNotMatch(page, /showResultsBox|revealResults/);
+  assert.doesNotMatch(page, /showResultsBox|revealResults|clearResults|function run\(\)/);
 });
 
 test("F20: Levelling and Farming write their own step numbers, so the CSS counter leaves them alone", () => {
@@ -56,13 +49,14 @@ test("F20: Levelling and Farming write their own step numbers, so the CSS counte
   assert.doesNotMatch(css, /(^|[\s,}])#setup \{ counter-reset/);
 });
 
-test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are the \"?\" beside the tabs", () => {
+test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are the party's \"?\"", () => {
   for (const html of [sim, solver]) {
     assert.doesNotMatch(html, /<h3 class="col-title">👥 Party<\/h3>/);
-    const row = html.slice(html.indexOf('<div class="b3-tab-row">'), html.indexOf('<div id="flow-panel"'));
-    assert.match(row, /role="tablist"/);
-    assert.match(row, /<span id="party-help"><\/span>/);
+    // U70: no tab row: the "?" beside Clear all (the Simulator), after the party's heading (the Solver)
+    assert.doesNotMatch(html, /b3-tab-row|role="tablist"/);
+    assert.equal(html.match(/<span id="party-help"><\/span>/g)?.length, 1);
   }
+  assert.match(solver, /<h2 id="setup-title">Party<\/h2>\s*<!--[^>]*-->\s*<span id="party-help"><\/span>/);
   assert.doesNotMatch(page, /party-note|party-rules/);
   const help = fn(page, "partyHelp");
   // U48: the Solver's party is read-only (its edits are the Simulator's, through Open in Simulator).
@@ -70,69 +64,6 @@ test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are 
   assert.match(help, /rulesText\(rules\)/);
   // Front 2 stays required on a party quest: the rule is still said, in the "?".
   assert.match(rulesText({ kind: "party", maxSize: 5, required: [{ row: "front", i: 1 }] }), /Front 2 always filled, at most 5 heroes/);
-});
-
-test("F24: compact tiles: no sublines, no \"How these are counted\" line, no time in the run line", () => {
-  assert.doesNotMatch(page, /How these are counted|qxp-refs|xpRow/);
-  // Every results tile is a resultTile (its explanation in the "?") or a plain tile with no hint (the win rate).
-  const results = page.slice(page.indexOf("function questResults"), page.indexOf("// ---------------------------------------------------------------- page"));
-  for (const m of results.matchAll(/\btile\("([^"]+)", [^,]+, ([^,]+),/g)) assert.equal(m[2].trim(), "undefined", m[1]);
-  // U65: no XP tiles; the map's Time tile keeps its Stats link in the "?"
-  assert.match(results, /resultTile\("Time"[\s\S]*?\[statLink\("time", "time"\)\]\)/, "the Stats link in the \"?\"");
-  // The run line: "200 fights", the milliseconds in its tooltip.
-  assert.match(page, /title: `Simulated in \$\{fmt\.format\(ms\)\} ms\./);
-  assert.doesNotMatch(page, /fights · \$\{fmt\.format\(ms\)\} ms/);
-});
-
-test("F24: the details grids leave no tile alone on a row (phone and wide)", () => {
-  // The grids: the summary (2), quest details (3), map details (6) (U65: no XP tiles; 9 kept for the rule).
-  for (const n of [2, 3, 6, 9]) {
-    const c = tileColumns(n);
-    assert.ok(!hasOrphan(n, c.phone), `${n} on a phone`);
-    assert.ok(!hasOrphan(n, c.wide), `${n} wide`);
-    assert.ok(c.phone <= 3, `${n}: at most 3 columns on a phone`);
-  }
-  assert.deepEqual(tileColumns(9), { phone: 3, wide: 3 });
-  assert.deepEqual(tileColumns(6), { phone: 3, wide: 6 });
-  assert.equal(hasOrphan(7, 3), true);
-  assert.equal(hasOrphan(3, 3), false);
-  assert.match(r2c, /#results \.tiles\.result-tiles \{ grid-template-columns: repeat\(var\(--cols-wide, 3\)/);
-  assert.match(r2c, /@media \(max-width: 600px\) \{\s*#results \.tiles\.result-tiles \{ grid-template-columns: repeat\(var\(--cols-phone, 3\)/);
-  // One grid per result: the map's essence joins the outcome tiles. U65: no XP tiles.
-  assert.equal(page.match(/tiles\(\{ class: "result-tiles" \}/g)?.length, 2);
-  assert.doesNotMatch(page, /questXpTiles|mapXpTiles/);
-});
-
-test("F25 / F26: the per-hero table: no Slot column, a plain name with its slot under it and a class bar", () => {
-  const table = fn(page, "heroTable");
-  assert.doesNotMatch(table, /key: "slot", label: "Slot"/);
-  assert.doesNotMatch(table, /pill\(String\(r\.name\)\)/);
-  assert.match(table, /class: `hero-cell cls-\$\{r\.cls\}`/);
-  assert.match(table, /el\("span", \{ class: "hero-cell-sub" \}, String\(r\.slot\)\)/);
-  assert.match(r2c, /\.hero-cell \{[^}]*border-left: 3px solid var\(--c/);
-});
-
-test("F28: the flow's note is in its \"?\"; no heading repeating the tab", () => {
-  for (const html of [sim, solver]) {
-    assert.doesNotMatch(html, /The fight, turn by turn/);
-    // U51: the flow's "?" is beside the tabs (shown on the Flow tab), not on the opponent line
-    assert.match(html, /<div class="flow-head"><div id="flow-opp" class="flow-opp"><\/div><\/div>/);
-    assert.match(html, /<span id="party-help"><\/span><span id="plan-help" hidden><\/span>/);
-  }
-  assert.doesNotMatch(page, /flow-note/);
-  // U58: the open layout's own help (flow-layouts.ts)
-  assert.match(page, /helpTip\(\[\.\.\.\(trace \? \[FLOW_NOTE\] : \[\]\), layout\.help\(t, Boolean\(edit\)\)\], "the flow"\)/);
-  assert.match(page, /helpTip\(\[MAP_FLOW_NOTE, layout\.help\(/);
-});
-
-test("F29: the room bar is a scroll row with edge fades", () => {
-  assert.match(page, /class: "room-bar scroll-row"/);
-  assert.match(page, /const scroller = roomScroller\(bar\);/); // U63: was edgeFades
-  const fades = fn(page, "roomScroller");
-  assert.match(fades, /classList\.toggle\("fade-start"/);
-  assert.match(fades, /classList\.toggle\("fade-end"/);
-  assert.match(r2c, /\.room-bar\.fade-end \{[^}]*mask-image/);
-  assert.match(r2c, /\.room-bar\.fade-start\.fade-end \{/);
 });
 
 test("F30: light-mode class badges reach AA (4.5:1) on the card", () => {

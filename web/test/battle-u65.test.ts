@@ -313,10 +313,11 @@ test("the enemy card shows one enemy, no picker; the opponent's controls are in 
   const card = fn(page, "drawEnemyCard");
   assert.doesNotMatch(card, /select\(|questOptions|mapOptions|pickButton/, "no picker on the card");
   assert.match(card, /head: el\("span", \{ class: "fc-name" \}, `\$\{lvStart\(enemyLevelText\(foe\.id\)\)\} · \$\{name\}`/, "Lvl through dom.ts");
-  // the Simulator: the toggle and #target in the Simulate panel, before ▶ Simulate; the opponent column only the card
-  const panel = sim0.slice(sim0.indexOf('<div class="run-box"'), sim0.indexOf('id="results"'));
-  for (const id of ["opp-switch", "target", "run"]) assert.ok(panel.includes(`id="${id}"`), id);
-  assert.ok(panel.indexOf('id="target"') < panel.indexOf('id="run"'));
+  // the Simulator: the toggle and #target in the Simulate panel, before its row (U70: no ▶ Simulate); the opponent
+  // column only the card
+  const panel = sim0.slice(sim0.indexOf('<div class="run-box"'), sim0.indexOf('id="sim-stats"'));
+  for (const id of ["opp-switch", "target", "party-tools"]) assert.ok(panel.includes(`id="${id}"`), id);
+  assert.ok(panel.indexOf('id="target"') < panel.indexOf('id="party-tools"'));
   const opp = sim0.slice(sim0.indexOf('id="opp-col"'), sim0.indexOf("</section>", sim0.indexOf('id="opp-col"')));
   assert.match(opp, /<div id="target-card"><\/div>/);
   assert.doesNotMatch(opp, /opp-switch|id="target"|<select|type="radio"/);
@@ -343,15 +344,6 @@ test("the enemy card shows one enemy, no picker; the opponent's controls are in 
   assert.equal(css.match(/\.setup-grid \{/g)!.length, 2, "one set of grid rules");
   // the chart is as wide as its box (the viewBox follows it), its text keeps its size
   assert.match(read("web/src/ui/hp-chart.ts"), /const width = chartWidth\(box\.clientWidth \?\? 0\);/);
-});
-
-// ---------------------------------------------------------------- 6. the details panel
-test("details panel: no XP per hero, Quest time or XP / min", () => {
-  const results = page.slice(page.indexOf("function heroTable"), page.indexOf("// ---------------------------------------------------------------- page"));
-  assert.doesNotMatch(results, /"XP per hero"|"Quest time"|"XP \/ min"|"Craft time"|"Run time"|questResultXp|xpText/);
-  assert.match(fn(page, "questResults"), /resultTile\("Party HP left", pct\(ev\.hp_left\), undefined, [^\n]*\),\n\s*\),/, "the quest details end with Party HP left");
-  // a map result keeps one Time tile, its craft time in the "?"
-  assert.match(fn(page, "mapResults"), /resultTile\("Time", duration\(ev\.time_h \* 3600\), \["Per run, simulated\.", craft \? `Crafting the map: \$\{craft\}\.` : null\]/);
 });
 
 // ---------------------------------------------------------------- 7. the enemy line

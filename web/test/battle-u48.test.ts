@@ -1,22 +1,13 @@
 // Battle Simulator and Solver U48: the result in the Simulate panel (no Results section, no section titles), no
 // "vs <enemy> change" line over the Flow, hero cards moved by drag and drop (moveHero: swap or move, the slot rules
 // kept), the size cap under the opponent's picker, the Flow as one long page on a phone with a "↑" back-to-top
-// button, a calculation level with its column (U51: its grid column, battle-u51.test.ts), and the Solver's Party and Flow read-only
-// (pageControls). No browser: the pure parts, a tiny fake DOM for the Flow, and the page code read as text.
-import "./helpers/fake-dom.ts";
+// button, and the Solver's Party read-only (pageControls). U70: the Flow and its tests are gone. No browser: the pure
+// parts and the page code read as text.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import * as api from "../src/sim/api.ts";
-import { Sim } from "../src/tools/engine.ts";
-import { traceFight } from "../src/tools/fight-trace.ts";
-import { loadSaveText } from "../src/tools/save.ts";
 import { moveHero, moveRefusal, pageControls, type PartyState } from "../src/ui/battle-edit.ts";
 import { toTopVisible } from "../src/ui/battle-layout.ts";
-import { loadTimelineData } from "../src/ui/timeline.ts";
-import { renderFlow2 } from "../src/ui/flow2.ts";
-import type { PlanMember } from "../src/ui/battle-plan.ts";
-import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
@@ -119,12 +110,6 @@ test("the size cap: under the opponent's picker, without the names left out", ()
   assert.doesNotMatch(fn(page, "renderParty"), /party-capped/);
 });
 
-test("the Flow: no \"vs <enemy> change\" line; the enemy column's head changes the enemy", () => {
-  const plan = fn(page, "renderPlan");
-  assert.doesNotMatch(plan, /"vs "|"change"|toParty/);
-  assert.match(page, /enemies: \(\) => \{/);
-});
-
 test("pageControls: the Simulator edits and drags; the Solver is read-only (U50: no 🔒 either)", () => {
   assert.deepEqual(pageControls("simulate"), { edit: true, drag: true });
   assert.deepEqual(pageControls("solve"), { edit: false, drag: false });
@@ -135,14 +120,9 @@ test("pageControls: the Simulator edits and drags; the Solver is read-only (U50:
   assert.match(party, /document\.querySelector\("#party-tools"\)\?\.replaceChildren\(\.\.\.\(ctl\.edit \? \[clear, /);
   assert.match(party, /heroRows\(raw \? idx : null, raw, key, ctl\.edit\)/);
   assert.match(fn(page, "heroRows"), /pick: editable && live \?/);
-  assert.match(fn(page, "renderPlan"), /const edit = pageControls\(state\.mode\.key\)\.edit \? planEdit\(\) : undefined;/);
 });
 
-test("the Flow on a phone: one long page, no scroll frame; the ↑ button", () => {
-  assert.match(u48, /\.tc \.tc-scroll, \.flow-panel \.pg-scroll \{ overflow: visible; max-height: none; \}/);
-  assert.match(u48, /\.flow-panel \.pg-grid, \.flow-panel \.tc-grid \{ min-width: 0; \}/);
-  // U51: no turn column any more (the heads and the lines share one grid: battle-u51.test.ts).
-  assert.doesNotMatch(u48, /22px/);
+test("the ↑ button (U70: the Flow's phone layout went with the Flow)", () => {
   // The button: named, hidden until the page is scrolled down, reduced motion respected, room left under the page's end.
   const top = fn(page, "initToTop");
   assert.match(top, /"aria-label": "Back to top"/);
@@ -157,31 +137,3 @@ test("the Flow on a phone: one long page, no scroll frame; the ↑ button", () =
   assert.equal(toTopVisible(300, 200), false, "at least 400 px down");
   assert.equal(toTopVisible(401, 200), true);
 });
-
-// calcPanelLeft became U51's calcColumn (a panel is its column's width): battle-u51.test.ts.
-
-// ---------------------------------------------------------------- the Flow, built for real in the fake DOM
-api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
-const timelines = JSON.parse(read("inventory/timelines.json"));
-(globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(timelines)).buffer });
-await loadTimelineData();
-const sv = loadSaveText(read("site/data/example-save.txt"));
-const sim = new Sim(sv.raw.gameMode || "Standard");
-const IDX = [[8, 0, 4], [5, 1, 2]] as const;
-const members: PlanMember[] = IDX.flatMap((row, r) => row.map((idx, i): PlanMember => {
-  const raw = sv.raw.hero[idx];
-  return { row: r ? "back" : "front", i, name: String(raw.name), cls: Number(raw.class), rotation: api.newHero(raw).attackList.slice(1, 6) };
-}));
-const flow = (quest: number) => {
-  const [f, b] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
-  return renderFlow2({ id: quest, rare: false }, members, traceFight(sim, quest, [...f], [...b])) as unknown as FakeElement;
-};
-
-test("the read-only Flow (no PlanEdit, the Solver): no ▾, no picker; the calculations still open", () => {
-  const plan = flow(72);
-  assert.equal(plan.querySelectorAll("select").length, 0);
-  assert.equal(plan.querySelectorAll("span.fl-name").length + plan.querySelectorAll("button.pk-btn").length, 0);
-  assert.ok(plan.querySelectorAll("button.tc-calc-btn").length > 0);
-});
-
-// The calculation's place: battle-u51.test.ts (U51: in its column's grid cell).

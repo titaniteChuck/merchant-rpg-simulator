@@ -107,9 +107,10 @@ test("time and XP text", () => {
   assert.deepEqual([240, 30030.4, 2.345, 0].map(xpText), ["240", "30,030", "2.3", "0"]);
 });
 
-test("the enemy page and battle results link XP and time to the Stats page, without formulas", () => {
+test("the enemy page links XP and time to the Stats page, without formulas (U70: no battle results)", () => {
   const src = (f: string) => readFileSync(new URL(`../src/ui/${f}`, import.meta.url), "utf8");
-  for (const f of ["wiki-enemies.ts", "battle-page.ts"]) assert.match(src(f), /statLink\("time"/, f);
+  // U70: the battle results (and their Time tile's link) are gone; the enemy page keeps its time link
+  assert.match(src("wiki-enemies.ts"), /statLink\("time"/);
   // U65: the battle results have no XP tiles any more; the enemy page keeps its XP link
   assert.match(src("wiki-enemies.ts"), /statLink\("xp"/);
   // U60: the XP block's help moved to the stats table's (STATS_HELP_QUEST / STATS_HELP_MAP)

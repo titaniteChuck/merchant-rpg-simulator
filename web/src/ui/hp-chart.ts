@@ -1,6 +1,6 @@
 /**
- * U61: the Party view's chart of the traced fight the Flow tabs show (battle-page.ts renderPlan traces it once and
- * hands the same object to the open Flow layout and to this chart), so the chart and the Flows always agree.
+ * U61: the Party view's chart of a traced fight (U70: the worst of the runs battle-page.ts renderPlan asks for; until
+ * U70 the Flow tabs drew the same trace).
  * U65: above the hero and opponent cards, full width; three tabs on one x axis, HP · Damage dealt · Heals; a click,
  * a tap or the arrow keys pick the turn the cards below show (the state at that turn's end, turn 0 the start).
  * U66: one fight tab per fight over the plot, Turn −1 / Turn +1 buttons, per-turn damage and heals, a hero's line
@@ -45,9 +45,26 @@
 import { locationLabel, statusOf, type TimelineChip, type TracedFight, planTimeline } from "./battle-plan.ts";
 import { roomBarWheel, scrollToShow } from "./battle-layout.ts";
 import { el, fmt, fmtCompact } from "./dom.ts";
-import { fightStart } from "./flow2.ts";
 
 const NS = "http://www.w3.org/2000/svg";
+
+type Life = { hp: number; maxHP: number };
+
+/**
+ * Every fighter's HP when the fight begins (0 = the enemy). The trace records life after each action, so the first
+ * action's own hits are undone: their first calculation's HP before it, else the HP after it plus the damage, minus
+ * the healing. (A map room starts from the HP the last room left.) U70: moved here from Flow 2 (flow2.ts, removed).
+ */
+export function fightStart(trace: TracedFight): Record<number, Life> {
+  const first = trace.actions[0];
+  const out: Record<number, Life> = {};
+  for (const l of first?.life ?? []) {
+    const h = first.hits.find((x) => x.who === l.who);
+    const before = h?.calc?.[0]?.hpBefore ?? (h ? l.hp + h.dmg - h.heal : l.hp);
+    out[l.who] = { hp: Math.max(0, Math.min(l.maxHP, before)), maxHP: l.maxHP };
+  }
+  return out;
+}
 
 /** A fighter of the chart: `who` as in the trace (0 the enemy, 1-6 the party location). */
 export interface HpFighter {
@@ -860,12 +877,24 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   return fig;
 }
 
-/** Before a fight can be traced: one muted line, as the Flow's own "put heroes in the party". */
+/** Before a fight can be traced: one muted line. */
 export const HP_EMPTY = "HP by turn: shown once the party can fight.";
 
 /** U65: the open tab, kept for this page view (a redraw after an edit keeps it). */
 let tabNow: ChartTab = "hp";
 export const chartTab = (): ChartTab => tabNow;
+
+/**
+ * U70: a click or a tap in the chart (the plot, a tab, ‹ ›) draws no focus ring, a key does: the box carries
+ * `data-pointer` from a pointer press until the next key press (style.css U70 hides the rings under it), as a browser
+ * may show its own ring after a click on the plot (a focusable SVG) or on the focus put back after a redraw.
+ */
+export function focusMode(box: HTMLElement): void {
+  if (box.dataset.focusMode) return;
+  box.dataset.focusMode = "1";
+  box.addEventListener("pointerdown", () => (box.dataset.pointer = ""), true);
+  box.addEventListener("keydown", () => delete box.dataset.pointer, true);
+}
 
 type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) => void; zoom?: number | null };
 /** U65: what each box last drew, its width and selection, to draw it again on a tab change or a resize. */
@@ -921,6 +950,7 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const back = focused === "fold" ? box.querySelector("details.hp-fold")?.querySelector<HTMLElement>("summary")
     : focused === "plot" ? box.querySelector<HTMLElement>("svg.hp-svg") : focused === "tab" ? box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') : null;
   back?.focus();
+  focusMode(box);
   if (typeof ResizeObserver !== "undefined" && !box.dataset.sized) {
     box.dataset.sized = "1";
     new ResizeObserver(() => {

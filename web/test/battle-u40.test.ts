@@ -181,13 +181,10 @@ test("map run: the rooms after the party died are skipped (no battle)", () => {
   assert.deepEqual(mapRoomTabs([room(1), room(1), room(0, true)]).map((x) => x.skipped), [false, false, false]);
 });
 
-test("step 3: the Party tab comes first, Flow second, Party selected without a remembered tab", () => {
+test("step 3 (U70): the Party view only, no tabs and nothing remembered about them", () => {
   const html = readFileSync(new URL("../../site/battle.html", import.meta.url), "utf8");
-  const party = html.indexOf('id="tab-party"'), flow = html.indexOf('id="tab-flow2"'); // U63: Flow 2 · 3
-  assert.ok(party > 0 && flow > party);
-  assert.match(html, /id="tab-party"[^>]*aria-selected="true"/);
-  assert.match(html, /id="flow-panel"[^>]*hidden/);
+  assert.doesNotMatch(html, /id="tab-party"|id="tab-flow2"|id="flow-panel"/);
+  assert.match(html, /<div id="setup-grid" class="setup-grid b3-grid">/);
   const ui = readFileSync(new URL("../src/ui/battle-page.ts", import.meta.url), "utf8");
-  // U58: per page, through parseTab (Party unless a Flow was remembered)
-  assert.match(ui, /parseTab\(sessionStorage\.getItem\(tabKey\(\)\)\)/);
+  assert.doesNotMatch(ui, /sessionStorage\.getItem\(tabKey\(\)\)|parseTab/);
 });

@@ -6,15 +6,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as api from "../src/sim/api.ts";
-import { Sim } from "../src/tools/engine.ts";
-import { traceFight } from "../src/tools/fight-trace.ts";
-import { loadSaveText } from "../src/tools/save.ts";
 import { ascSwatch, ascValues } from "../src/ui/dom.ts";
 import { mountHome } from "../src/ui/home.ts";
 import { radar } from "../src/ui/radar.ts";
-import { loadTimelineData } from "../src/ui/timeline.ts";
-import { renderFlow2 } from "../src/ui/flow2.ts";
-import type { PlanMember } from "../src/ui/battle-plan.ts";
 import { labelTableRegions } from "../src/ui/wiki-ref.ts";
 import { STATS_SECTIONS } from "../src/ui/wiki-stats.ts";
 import { FakeElement } from "./helpers/fake-dom.ts";
@@ -72,27 +66,6 @@ test("F06: the \"Unconfirmed\" tag reaches AA on the note's card-2 in both theme
   }
 });
 
-test("F05: the Flow's effect, damage, heal and muted texts reach AA on every actor's cell and a plain cell (U63: no status band)", () => {
-  const actorTint = pctOf(a11y.match(/\.tc-cell\.actor \{ background: color-mix\(in srgb, var\(--c, #ec4899\) (\d+)%, var\(--card\)\); \}/)![1]);
-  const keep = (sel: string, tok: string) => pctOf(a11y.match(new RegExp(`${sel} \\{ color: color-mix\\(in srgb, var\\(--${tok}\\) (\\d+)%, var\\(--fg\\)\\); \\}`))![1]);
-  const texts = [["buff, heal", "good", keep("\\.tc-fx\\.buff, \\.tc-heal", "good")], ["debuff, damage", "bad", keep("\\.tc-fx\\.debuff, \\.tc-dmg", "bad")],
-    ["miss, calc toggle", "muted", keep("\\.tc-miss, \\.tc-down, \\.tc-void, \\.tc-calc-btn, \\.tc-fx \\.tc-left", "muted")]] as const;
-  const actors = [...css.matchAll(/^\.cls-(\d) \{ --c: (#[0-9a-f]{6}); \}/gm)].map(([, n, c]) => [`class ${n}`, c]);
-  actors.push(["enemy", "#ec4899"]);
-  for (const theme of ["dark", "light"] as const) {
-    const fg = hex(token(theme, "fg")), card = hex(token(theme, "card"));
-    const grounds: [string, number[]][] = [...actors.map(([n, c]): [string, number[]] => [n, mix(hex(c), card, actorTint)]),
-      ["card", card], ["card-2", hex(token(theme, "card-2"))]];
-    for (const [what, tok, p] of texts) {
-      const ink = mix(hex(token(theme, tok)), fg, p);
-      for (const [where, bg] of grounds) {
-        const r = ratio(ink, bg);
-        assert.ok(r >= 4.5, `${theme} ${what} on ${where}: ${r.toFixed(2)}`);
-      }
-    }
-  }
-});
-
 // ---------------------------------------------------------------- structure
 /** The ARIA roles an element owns: its children's roles, through elements without a role; aria-hidden or hidden skipped. */
 function owned(e: FakeElement): FakeElement[] {
@@ -110,59 +83,6 @@ function strayText(e: FakeElement): string {
     ? (n.hidden || n.getAttribute("aria-hidden") === "true" || n.hasAttribute("role") ? "" : strayText(n)) : n.textContent).join("").trim();
 }
 const CHILDREN: Record<string, string[]> = { table: ["row", "rowgroup"], rowgroup: ["row"], row: ["cell", "columnheader", "rowheader"] };
-
-test("F01: the Flow table holds rows and named turn rowgroups only, the result and the calculations in cells", async () => {
-  api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
-  const timelines = JSON.parse(read("inventory/timelines.json"));
-  // The page fetches data files as bytes (data-files.ts, review F13).
-  (globalThis as Record<string, unknown>).fetch = async () => ({ ok: true, arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(timelines)).buffer });
-  await loadTimelineData();
-  const sv = loadSaveText(read("site/data/example-save.txt"));
-  const sim = new Sim(sv.raw.gameMode || "Standard");
-  const IDX = [[8, 0, 4], [5, 1, 2]] as const;
-  const members: PlanMember[] = IDX.flatMap((row, r) => row.map((idx, i): PlanMember => {
-    const raw = sv.raw.hero[idx];
-    return { row: r ? "back" : "front", i, name: String(raw.name), cls: Number(raw.class), rotation: api.newHero(raw).attackList.slice(1, 6) };
-  }));
-  for (const quest of [72, 92]) { // Odin: a long fight; Murlok Monarch: over on turn 1, then "planned, not reached"
-    const [front, back] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
-    const trace = traceFight(sim, quest, [...front], [...back]);
-    const plan = renderFlow2({ id: quest, rare: false }, members, trace) as unknown as FakeElement;
-    for (const b of plan.querySelectorAll("button.tc-calc-btn").slice(0, 3)) b.dispatch("click"); // open some calculations
-    const tables = plan.querySelectorAll("[role=table]");
-    assert.equal(tables.length, 1);
-    const check = (e: FakeElement) => {
-      const role = e.getAttribute("role")!;
-      const kids = owned(e);
-      if (CHILDREN[role]) {
-        for (const k of kids) assert.ok(CHILDREN[role].includes(k.getAttribute("role")!), `quest ${quest}: ${k.getAttribute("role")} (${k.className}) in ${role} (${e.className})`);
-        assert.equal(strayText(e), "", `quest ${quest}: text outside a cell in ${role} (${e.className})`);
-      }
-      if (role !== "cell" && role !== "columnheader") kids.forEach(check);
-    };
-    check(tables[0]);
-    const line = owned(plan.querySelector("div.tc-line")!);
-    // U51: the turn bands' headers, each the one header of its own row, spanning every column
-    const bands = plan.querySelectorAll("[role=rowheader]");
-    assert.ok(bands.length > 0);
-    for (const h of bands) {
-      assert.equal(h.parentNode!.getAttribute("role"), "row", "no row header outside a row");
-      assert.equal(h.getAttribute("aria-colspan"), String(line.length));
-    }
-    const groups = plan.querySelectorAll("[role=rowgroup]");
-    assert.ok(groups.length > 0);
-    for (const g of groups) assert.match(g.getAttribute("aria-label")!, /^(Turn \d+|End of the fight$)/); // U63: Flow 2 ends with an "End" group
-    // the result: a live status line, inside a cell of its own row
-    const result = plan.querySelector("p.tc-result")!;
-    assert.equal(result.getAttribute("role"), "status");
-    assert.equal(result.parentNode!.getAttribute("role"), "cell");
-    assert.equal(result.parentNode!.parentNode!.getAttribute("role"), "row");
-    // U63 (Flow 2): one card per column of cells in each cards row (U51: no "Turn" column)
-    const heads = owned(plan.querySelector("div.f2-cards")!);
-    assert.equal(heads.length, line.length);
-    if (quest === 72) assert.ok(plan.querySelectorAll("div.tc-calc[role=cell]").length > 0, "an opened calculation is a cell");
-  }
-});
 
 test("F02: the radar's focusable points are images, so their name is read", () => {
   const fig = radar([{ label: "HP", value: 2203, max: 3000 }, { label: "Atk", value: 120, max: 200 }, { label: "Def", value: 80, max: 100 }], { title: "Test" }) as unknown as FakeElement;

@@ -19,7 +19,7 @@ test("quest fights: deterministic, rotation override is used", async () => {
   const a = await runBattle(base);
   const b = await runBattle(base);
   assert.ok(a.ok && a.kind === "quest", JSON.stringify(a));
-  assert.deepEqual(b.ok && b.result, a.result, "same seeds, same results");
+  assert.deepEqual(b.ok && b.kind === "quest" && b.result, a.result, "same seeds, same results");
   const h = a.result.heroes.front1;
   assert.ok(h.skillUses.Basic > 0 && !h.skillUses.Slash);
   const c = await runBattle({ ...base, skills: { front: [{ attackList: ["Slash", "Basic", "Basic", "Basic", "Basic"] }, null, null], back: [null, null, null] } });

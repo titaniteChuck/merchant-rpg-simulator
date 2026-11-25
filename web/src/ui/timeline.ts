@@ -6,9 +6,8 @@
  *   they cover, in hero-action turns: an effect on the enemy (reflect, shield, buff) covers the turns heroes act while
  *   it is on (facingTurns); an effect on the heroes (debuff, stun) covers the turns they act with it (ownerTurns).
  *   Offsets are from the cast turn, so a window can wrap from turn 5 to turn 1 (the rotation repeats).
- * - loadTimelineData(), timelineOf(), tlName(): the timelines, for the wiki and the battle pages' Flows.
- * U63: Flow 1 (`partyPlan`, the battle pages' first Flow layout) is gone; the parts Flow 2 and Flow 3 share are in
- * flow-parts.ts, the rotation as planned (their view without a fight) in flow-planned.ts.
+ * - loadTimelineData(), timelineOf(), tlName(): the timelines, for the wiki and the battle pages' enemy card.
+ * U63: Flow 1 (`partyPlan`) is gone; U70: Flow 2 and Flow 3 (their shared parts and the rotation as planned) too.
  * Every skill name shown (cells, bars, tooltips) goes through names.ts: it follows the language picker (U36).
  * Data: data/timelines.json (inventory/timelines.json), loaded once per page by loadTimelineData().
  */

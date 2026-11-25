@@ -6,7 +6,7 @@
  */
 import { type TraceEffect, type TraceEntry, type TraceHit, type TraceLife, type TraceOutcome, traceStart, traceStop } from "../sim/api.ts";
 import { fightSeed } from "./combat.ts";
-import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
+import type { FightResult, MapRunResult, MapSpec, Row, Scroll, Sim } from "./engine.ts";
 
 export interface FightAction {
   /** Turn of the fight (1-based) and the action's place in it (0-based, in action order). */
@@ -69,8 +69,14 @@ function traced<T>(f: () => T): [T, TraceEntry[]] {
 
 /** Trace one fight against a quest enemy (the first of Simulate's fights unless `seed` says otherwise). */
 export function traceFight(sim: Sim, quest: number, front: Row, back: Row, o: { rare?: boolean; amount?: number; seed?: number } = {}): FightTrace {
+  return traceFightRun(sim, quest, front, back, o).trace;
+}
+
+/** U70: traceFight with the engine's own result of that fight (grade, the heroes' HP at the end). */
+export function traceFightRun(sim: Sim, quest: number, front: Row, back: Row, o: { rare?: boolean; amount?: number; seed?: number } = {}):
+  { trace: FightTrace; result: FightResult } {
   const [res, entries] = traced(() => sim.fight(quest, front, back, { seed: o.seed ?? fightSeed(1, 0), isRare: o.rare ?? false, amount: o.amount ?? 1 }));
-  return { won: res.won, turns: res.turns, actions: actionsOf(entries), ...(entries[0]?.start ? { start: entries[0].start } : {}) };
+  return { trace: { won: res.won, turns: res.turns, actions: actionsOf(entries), ...(entries[0]?.start ? { start: entries[0].start } : {}) }, result: res };
 }
 
 /** One room of a traced map run, in map order. */
@@ -91,6 +97,12 @@ export interface MapRoomTrace {
  * each fought room with its own fight, as the run played it.
  */
 export function traceMapRun(sim: Sim, spec: MapSpec, front: Row, back: Row, o: { scrolls?: Scroll[] | null; seed?: number } = {}): MapRoomTrace[] {
+  return traceMapRunResult(sim, spec, front, back, o).rooms;
+}
+
+/** U70: traceMapRun with the engine's own result of that run (rooms cleared, grade, the heroes' HP at the end). */
+export function traceMapRunResult(sim: Sim, spec: MapSpec, front: Row, back: Row, o: { scrolls?: Scroll[] | null; seed?: number } = {}):
+  { rooms: MapRoomTrace[]; result: MapRunResult } {
   const [res, entries] = traced(() => sim.mapRun(spec, front, back, o.seed ?? fightSeed(1, 0), o.scrolls));
   const byBattle = new Map<number, TraceEntry[]>();
   for (const e of entries) {
@@ -100,10 +112,11 @@ export function traceMapRun(sim: Sim, spec: MapSpec, front: Row, back: Row, o: {
   }
   // The rooms are fought in map order, one battle each, so battle k is room k (a room not reached has none).
   const fought = [...byBattle.keys()].sort((a, b) => a - b);
-  return res.combats.map((c, k): MapRoomTrace => {
+  const rooms = res.combats.map((c, k): MapRoomTrace => {
     const es = c.status ? byBattle.get(fought[k]) : undefined;
     const last = es?.[es.length - 1];
     return { questId: Number(c.questId), name: c.name, isRare: c.isRare, boss: k === res.combats.length - 1, status: c.status,
       trace: es ? { won: c.status === 1, turns: last?.turn ?? 0, actions: actionsOf(es), ...(es[0].start ? { start: es[0].start } : {}) } : null };
   });
+  return { rooms, result: res };
 }

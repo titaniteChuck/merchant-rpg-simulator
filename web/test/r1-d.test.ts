@@ -59,6 +59,6 @@ test("the wiki and battle pages use the shared helpers, and the replaced markup 
   for (const f of ["site/save.html", "site/battle.html", "web/src/ui/save-source.ts"]) assert.doesNotMatch(read(f), /data-save-help/, f);
   // the Expansions page points to the menu instead of repeating its switches
   assert.doesNotMatch(ui("wiki-expansions.ts"), /type: "checkbox"/);
-  // U51: the plan has no "Turn" column any more, only the actors' columns
-  assert.match(css, /\.pg-row \{[^}]*grid-template-columns: repeat\(var\(--pg-cols\), minmax\(0, 1fr\)\); \}/);
+  // U70: the plan's grid (.pg-row) went with the Flows
+  assert.doesNotMatch(css, /\.pg-row \{/);
 });

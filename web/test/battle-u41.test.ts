@@ -52,8 +52,10 @@ test("two pages, one code: each its own entry bundle, theme.js in the head, the 
   assert.match(read("web/src/ui/solver.ts"), /initBattlePage\("solve"\)/);
   // No "What do you want to do?" chooser, no solver panel on the Simulator.
   assert.doesNotMatch(sim, /What do you want to do|id="modes"|id="search-panel"|id="search-results"/);
-  assert.match(sim, /id="run"/);
-  assert.doesNotMatch(solver, /id="run"|id="runs"/);
+  // U70: neither page has a Simulate button or a runs count (the Simulator runs on every change).
+  for (const html of [sim, solver]) assert.doesNotMatch(html, /id="run"|id="runs"/);
+  assert.match(sim, /id="sim-stats"/);
+  assert.doesNotMatch(solver, /id="sim-stats"/);
 });
 
 test("Solver: the spoiler guard first, then the opponent and the options, Results, and no party panel until Show", () => {
@@ -61,10 +63,10 @@ test("Solver: the spoiler guard first, then the opponent and the options, Result
   const at = (s: string) => html.indexOf(s);
   assert.ok(at('id="search-panel"') > 0 && at('id="search-panel"') < at('id="target"') && at('id="target"') < at('id="search-form"'));
   assert.ok(at('id="search-form"') < at('id="search-results"') && at('id="search-results"') < at('id="party-box"'));
-  // Step 3 is hidden in the HTML and holds both tabs and the party: nothing of it shows before a Show.
+  // Step 3 is hidden in the HTML and holds the Party view (U70: no tabs): nothing of it shows before a Show.
   assert.match(html, /<section id="party-box" hidden>/);
   const box = html.slice(at('id="party-box"'));
-  for (const id of ["tab-party", "tab-flow2", "tab-flow3", "flow-panel", "setup-grid", "party", "open-sim"]) assert.ok(box.includes(`id="${id}"`), id);
+  for (const id of ["setup-grid", "hp-col", "party", "target-card", "open-sim"]) assert.ok(box.includes(`id="${id}"`), id);
   assert.equal(html.split('id="party"').length, 2, "one party panel, inside step 3");
   // Only a result's Show reveals it (onShow → revealParty); a new save or Forget hides it again.
   const page = read("web/src/ui/battle-page.ts");

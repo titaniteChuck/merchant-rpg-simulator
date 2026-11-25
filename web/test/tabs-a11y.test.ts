@@ -1,6 +1,6 @@
 // Tab lists (WAI-ARIA tabs pattern): every tab list on the site has tablist / tab / tabpanel roles, aria-selected,
 // aria-controls, a roving tabindex, and its keyboard (arrows, Home, End) from the shared dom.ts tabKeys.
-// Covered: the Battle Simulator's and the Solver's Party / Flow tabs, the Flow tab's map room bar, the Profit tables.
+// Covered: the Profit tables (U70: the Battle pages' Party / Flow tabs and the map room bar are gone).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -71,39 +71,14 @@ test("tabKeys: roving tabindex, arrows wrap, Home / End, other keys untouched", 
   assert.equal(f.sel(), 3);
 });
 
-test("Battle and Solver: the Party / Flow tabs are a full tablist, keyboard from tabKeys", () => {
+test("Battle and Solver (U70): no view tabs and no room bar any more, the Party view only", () => {
   for (const page of ["site/battle.html", "site/solver.html"]) {
     const html = read(page);
-    assert.match(html, /<div class="tabs b3-tabs" role="tablist" aria-label="Views">/, page);
-    assert.match(html, /<button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">/, page);
-    // U58: Flow tabs over one panel (U63: Flow 2 and Flow 3, no Flow 1)
-    for (const n of [2, 3]) {
-      assert.match(html, new RegExp(`<button id="tab-flow${n}" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow${n}" tabindex="-1">`), page);
-    }
-    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow2" hidden>/, page);
-    assert.match(html, /<div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party"/, page);
+    assert.doesNotMatch(html, /b3-tabs|role="tablist"|role="tabpanel"|flow-panel|tab-flow/, page);
+    assert.match(html, /<div id="setup-grid" class="setup-grid b3-grid">/, page);
   }
   const bp = src("battle-page.ts");
-  const init = bp.match(/function initTabs\(\): void \{[\s\S]*?\n\}/)?.[0] ?? "";
-  assert.match(init, /tabKeys\(list\)/);
-  assert.match(init, /querySelector<HTMLElement>\("\.b3-tabs\[role=tablist\]"\)/);
-  assert.doesNotMatch(init, /keydown/, "no hand-written arrow keys any more");
-  // showTab keeps aria-selected, the roving tabindex and the panels in step.
-  const show = bp.match(/function showTab\([\s\S]*?\n\}/)?.[0] ?? "";
-  assert.match(show, /b\.setAttribute\("aria-selected", String\(on\)\);\s*b\.tabIndex = on \? 0 : -1;/);
-  assert.match(show, /\$\("#flow-panel"\)\.hidden = !flow;\s*\$\("#setup-grid"\)\.hidden = tab !== "party";/);
-});
-
-test("Flow tab: the map room bar is a tablist over one room panel, keyboard from tabKeys", () => {
-  const bp = src("battle-page.ts");
-  assert.match(bp, /const view = el\("div", \{ class: "flow-room", id: "flow-room", role: "tabpanel" \}\);/);
-  assert.match(bp, /el\("div", \{ class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" \}\)/);
-  assert.match(bp, /role: "tab", id: `room-tab-\$\{k\}`, "aria-controls": "flow-room",[^\n]*"aria-selected": "false"/);
-  const draw = bp.match(/const draw = \(smooth = true\) => \{\s*bar\.querySelectorAll[\s\S]*?view\.setAttribute\("aria-labelledby", `room-tab-\$\{at\}`\);/)?.[0];
-  assert.ok(draw, "draw() labels the panel by the selected room");
-  assert.match(draw!, /b\.setAttribute\("aria-selected", String\(k === at\)\);\s*b\.tabIndex = k === at \? 0 : -1;/);
-  assert.match(bp, /bar\.append\(b\);\s*\}\);[^\n]*\n[^\n]*\n\s*tabKeys\(bar\);\s*box\.append\(scroller\.box, view\);/);
-  assert.doesNotMatch(bp, /addEventListener\("keydown"[^\n]*\n\s*if \(e\.key !== "ArrowLeft"/, "no hand-written arrow keys any more");
+  assert.doesNotMatch(bp, /function (initTabs|showTab|roomScroller)\b|room-bar|flow-room/);
 });
 
 test("Profit: the result tables are a tablist over the panel, keyboard from tabKeys", () => {
@@ -117,13 +92,14 @@ test("Profit: the result tables are a tablist over the panel, keyboard from tabK
 });
 
 test("Every tablist in the site's own code uses tabKeys (Balance is frozen and left out)", () => {
-  const files: Record<string, number> = { "battle-page.ts": 1, "profit.ts": 1 };
+  // U70: battle-page.ts builds none any more (the map's room bar went with the Flows).
+  const files: Record<string, number> = { "battle-page.ts": 0, "profit.ts": 1 };
   for (const [f, lists] of Object.entries(files)) {
     const s = src(f);
     const n = (s.match(/role: "tablist"/g) ?? []).length;
     assert.equal(n, lists, `${f}: tablists built in code`);
     assert.ok((s.match(/tabKeys\(/g) ?? []).length >= n, `${f}: each tablist calls tabKeys`);
   }
-  // The static ones (battle.html, solver.html) are wired by battle-page.ts initTabs.
-  for (const page of ["battle.html", "solver.html"]) assert.equal((read(`site/${page}`).match(/role="tablist"/g) ?? []).length, 1, page);
+  // U70: no static ones either (battle.html and solver.html lost their Party / Flow tabs).
+  for (const page of ["battle.html", "solver.html"]) assert.equal((read(`site/${page}`).match(/role="tablist"/g) ?? []).length, 0, page);
 });

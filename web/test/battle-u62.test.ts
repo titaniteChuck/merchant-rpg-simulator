@@ -94,9 +94,8 @@ test("the enemy list holds the normal and the rare variant as separate entries; 
   const linked = linkedOpponent(`?quest=${id}&rare=1`)!;
   assert.equal(questValue(linked.quest!, Boolean(linked.rare)), `${id}:rare`);
   assert.match(fn(page, "restoreOpponent"), /put\("#quest", \[questValue\(was\.quest, Boolean\(was\.rare\)\), was\.quest\]/);
-  // the Flow's enemy head uses the same list (no flowEnemyOptions)
+  // no second list (U70: the Flow's enemy head, its other user, is gone)
   assert.doesNotMatch(page, /function flowEnemyOptions/);
-  assert.match(page, /groups: questOptions\(\), value: q\.value/);
 });
 
 // ---------------------------------------------------------------- 4. a skill opens its picker

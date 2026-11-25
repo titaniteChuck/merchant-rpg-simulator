@@ -1161,9 +1161,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* plan: what the enemy does to the heroes */
 .tl-cell.hero.hit { background: color-mix(in srgb, #f59e0b 9%, var(--card-2)); }
 .tl-cell.hero.forced { border-color: color-mix(in srgb, #ef4444 65%, var(--border)); background: color-mix(in srgb, #ef4444 10%, var(--card-2)); }
-.tl-planned { opacity: 0.7; text-decoration: line-through; text-decoration-thickness: 2px; }
-.tl-planned span, .tl-planned .pk-btn { text-decoration: line-through; text-decoration-thickness: 2px; }
-.tl-forced { font-weight: 750; color: color-mix(in srgb, #ef4444 70%, var(--fg)); }
 @media (max-width: 600px) {
   .solver-table th, .solver-table td { padding: 4px 5px; }
   .spoiler-guard { padding: 12px; }
@@ -1180,31 +1177,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* battle v4 */
 .party-capped { margin: 0 0 10px; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #f59e0b;
   background: color-mix(in srgb, #f59e0b 12%, transparent); }
-/* The 5-turn plan: turns down, actors across (timeline.ts partyPlan). */
-.pg-scroll { overflow-x: auto; padding-bottom: 2px; }
-.pg-grid { display: grid; gap: 3px; min-width: calc(var(--pg-cols) * 64px); }
-.pg-head { display: flex; flex-direction: column; min-width: 0; font-size: 0.72rem; padding: 0 0 2px 5px; border-left: 3px solid var(--c, var(--border)); }
-/* The enemy's header and cells also carry the old enemy-card class (.enemy: padding, 1rem name, card background):
-   undone here, so the name gets the same width and size as a hero's. The enemy's name wraps rather than cut. */
-.pg-head.enemy { border-left-color: #ec4899; background: none; border-width: 0 0 0 3px; border-radius: 0; box-shadow: none; padding: 0 0 2px 5px; font-size: 0.72rem; }
-.pg-cell.enemy { box-shadow: none; }
-.pg-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: inherit; }
-.pg-head.enemy strong { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
-.pg-cell { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 6px; font-size: 0.7rem; line-height: 1.22;
-  background: var(--card-2); border: 1px solid var(--border); }
-.pg-cell.enemy { background: color-mix(in srgb, #ec4899 8%, var(--card-2)); }
-.pg-cell.hero.hit { background: color-mix(in srgb, #f59e0b 8%, var(--card-2)); }
-.pg-cell.hero.forced { border-color: color-mix(in srgb, #ef4444 65%, var(--border)); background: color-mix(in srgb, #ef4444 10%, var(--card-2)); }
-.pg-cell .tl-skill { white-space: normal; overflow-wrap: anywhere; }
-.pg-words { color: var(--muted); font-size: 0.64rem; cursor: help; }
-.pg-mark { display: block; font-size: 0.64rem; line-height: 1.2; padding: 1px 3px; border-radius: 5px; cursor: help; overflow-wrap: anywhere;
-  background: color-mix(in srgb, #f59e0b 20%, transparent); }
-.pg-mark.on-hero.k-force-action, .pg-mark.on-hero.k-stun { background: color-mix(in srgb, #ef4444 24%, transparent); font-weight: 650; }
-.pg-mark.own { background: color-mix(in srgb, #ec4899 20%, transparent); }
-.pg-mark.malus { background: color-mix(in srgb, var(--good) 22%, transparent); }
-@media (max-width: 600px) {
-  .pg-grid { min-width: calc(var(--pg-cols) * 72px); }
-}
 /* end battle v4 */
 /* menus + drawer */
 /* U35: the site's menus (web/src/ui/nav.ts, js/nav.js in every page). Desktop: the main menu in the top bar
@@ -1327,28 +1299,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* F20: the "?" helps beside titles, controls and pills. */
 #amount-note { display: inline-flex; align-items: center; }
 .spoiler-warn .help-tip { vertical-align: middle; }
-.run-line { margin-top: 6px; }
-/* F11: the rare pill in the plan's enemy column. */
-.pg-head .pg-rare { font-size: 0.62rem; padding: 0 5px; vertical-align: middle; }
 /* end r1 battle */
-/* u43 battle results */
-/* The Simulator's Results, compact first: the win rate and grade tiles, then "Show details" (and the run line) on one
-   line, then the details. Compact tiles: smaller padding and type, as many per row as fit (no balanced-row rules). */
-#results .tiles, #results .tiles[data-n] { gap: 8px; margin: 10px 0 12px; grid-template-columns: repeat(auto-fill, minmax(min(168px, 40vw), 1fr)); }
-#results .tiles > .tile { grid-column: auto; padding: 7px 10px; gap: 0; border-radius: 10px; }
-#results .tile::after { width: 54px; height: 54px; right: -20px; top: -20px; }
-#results .tile-icon { font-size: 0.9rem; margin-bottom: 1px; }
-#results .tile-label { font-size: 0.66rem; }
-#results .tile-value { font-size: 1.1rem; line-height: 1.25; }
-#results .tile-hint { font-size: 0.7rem; line-height: 1.3; }
-#results .tile .bar { margin-top: 5px; height: 4px; }
-#results .tile-lines { display: flex; flex-direction: column; font-size: 0.85rem; font-weight: 700; line-height: 1.3; }
-#results .tiles.result-summary { margin-bottom: 8px; grid-template-columns: repeat(2, minmax(0, 220px)); }
-.result-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 6px; }
-.result-toggle .run-line { margin: 0; }
-.details-toggle { padding: 4px 12px; font-size: 0.85rem; }
-.result-details[hidden] { display: none; }
-/* end u43 battle results */
 /* r1 wiki world */
 /* R1-B1 (live-site review R1): wiki enemy, map and XP fixes.
    F04 / F14: the XP table's rules went with the table (U60: XP and time are in the enemy stats table). */
@@ -1486,100 +1437,12 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* U39 (battle page). The enemy's HP as text above the radar (it left the radar; it follows the quest size). */
 /* The Solver's spoiler guard hides the whole rest of the page until accepted: only the guard shows (U41: the opponent and options too). */
 #setup.solve-guarded > section:not(:first-child) { display: none; }
-/* The flow's "Planned, not reached" line: a light gap and a dashed gold line. */
-.pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em; }
-.pg-cycle::before, .pg-cycle::after { content: ""; flex: 1; border-top: 1px dashed var(--trim); }
-/* The flow's action lines (Flow 2, flow2.ts; U63: Flow 1's flowChart is gone): per turn, one line per action in action
-   order, the actor's cell tinted in its colour; damage and healing as the main text where they land (U51: no turn
-   column, the same grid, gap 3px). */
-.tc-grid { min-width: calc(var(--pg-cols) * 78px); }
-.tc-lines { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.tc-line { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; }
-.tc-cell { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 2px 4px; border-radius: 5px; min-height: 1.5em;
-  font-size: 0.7rem; line-height: 1.2; }
-.tc-cell.actor { background: color-mix(in srgb, var(--c, #ec4899) 22%, var(--card-2)); box-shadow: inset 3px 0 0 var(--c, #ec4899); }
-.tc-cell.actor.enemy { --c: #ec4899; }
-.tc-skill { font-weight: 650; overflow-wrap: anywhere; }
-.tc-down { color: var(--muted); font-style: italic; font-weight: 500; }
-.tc-miss { color: var(--muted); font-style: italic; }
-.tc-dmg, .tc-heal { font-weight: 750; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
-.tc-dmg { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
-.tc-heal { color: color-mix(in srgb, var(--good) 85%, var(--fg)); }
-.tc-ko { font-size: 0.6rem; font-weight: 800; padding: 0 4px; border-radius: 4px; color: #fff; background: #b91c1c; }
-/* U40: effects as plain text of what they do ("+15% Def", "Taunt"), green for a buff, red for a debuff; the skill and
-   who put it on in the tooltip. */
-.tc-fx { font-size: 0.62rem; font-weight: 650; line-height: 1.25; cursor: help; overflow-wrap: anywhere; }
-.tc-fx.buff { color: color-mix(in srgb, var(--good) 88%, var(--fg)); }
-.tc-fx.debuff { color: color-mix(in srgb, #ef4444 75%, var(--fg)); }
-.tc-fx .tc-left { font-weight: 500; color: var(--muted); }
-.tc-void { font-size: 0.64rem; font-style: italic; color: var(--muted); cursor: help; }
-.tc-left { font-size: 0.54rem; opacity: .8; font-variant-numeric: tabular-nums; }
-/* U40: a damage or heal number's calculation: the toggle after the number, the formula under the line (full width). */
-.tc-calc-btn { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 0.58rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
-.tc-calc-btn:hover, .tc-calc-btn[aria-expanded="true"] { color: var(--fg); text-decoration: underline; }
-.tc-calc-btn .tc-caret { display: inline-block; font-size: 0.8rem; line-height: 1; vertical-align: -1px; }
-.tc-calc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
-.tc-calc { padding: 5px 9px; border-radius: 7px; font-size: 0.7rem; line-height: 1.45; background: var(--card); border: 1px solid var(--border);
-  border-left: 3px solid color-mix(in srgb, var(--bad) 70%, var(--border)); }
-.tc-calc.heal { border-left-color: color-mix(in srgb, var(--good) 70%, var(--border)); }
-.cf-block + .cf-block { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
-.cf-block.void { opacity: .7; }
-.cf-head { font-weight: 700; font-size: 0.66rem; color: var(--muted); }
-.cf-line { font-variant-numeric: tabular-nums; }
-.cf-label, .cf-op { color: var(--muted); }
-.cf-term { cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
-.cf-term:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.cf-stat { font-weight: 650; }
-.cf-def { color: color-mix(in srgb, #60a5fa 70%, var(--fg)); }
-.cf-crit { color: color-mix(in srgb, var(--mid) 85%, var(--fg)); font-weight: 650; }
-.cf-fx { color: color-mix(in srgb, #c084fc 70%, var(--fg)); }
-.cf-result { font-weight: 800; border-bottom: 0; }
-.cf-note, .cf-sum { color: var(--muted); font-size: 0.66rem; }
-.cf-sum { margin-top: 4px; font-weight: 700; color: var(--fg); }
-/* Step 3's two views: Party (the cards; first, U40) and Flow (the fight, turn by turn). */
-.b3-tabs { margin: 0 0 12px; }
-.flow-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.flow-head .col-title { display: inline-flex; align-items: center; gap: 6px; }
-.flow-opp { font-size: 0.9rem; }
-.fl-caret { font-size: 0.7rem; line-height: 1; pointer-events: none; }
-/* U40: a column head's name with a ▾: the transparent select covers both, so clicking the name opens the choices. */
-.fl-name { position: relative; display: inline-flex; align-items: baseline; gap: 3px; min-width: 0; max-width: 100%; border-radius: 5px; cursor: pointer; }
-.fl-name strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pg-head.enemy .fl-name strong { white-space: normal; overflow-wrap: anywhere; }
-.fl-name .fl-caret { flex: none; color: var(--muted); }
-.fl-name select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
-.fl-name:hover, .fl-name:focus-within { background: color-mix(in srgb, var(--accent) 18%, transparent); }
-.fl-name:hover .fl-caret, .fl-name:focus-within .fl-caret { color: var(--fg); }
-.fl-name:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-.tc-result { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; text-align: center; font-weight: 750; }
-.tc-result.won { background: color-mix(in srgb, var(--good) 18%, transparent); }
-.tc-result.lost { background: color-mix(in srgb, #ef4444 18%, transparent); }
-.tc-more { display: block; margin: 10px auto; }
-/* R3 QA: rotation turns the fight never reached, after the result: compact, muted, dashed; the ▾ stays usable. */
-.tc-unreached-head { margin-top: 12px; }
-.tc-unreached { padding: 2px 0; border-top: 1px dashed color-mix(in srgb, var(--border) 80%, transparent); }
-.tc-unreached .tc-cell { min-height: 1.2em; padding-block: 1px; }
-.tc-unreached .tc-planned { font-style: italic; background: color-mix(in srgb, var(--card-2) 50%, transparent); }
-.tc-unreached .tc-skill, .tc-unreached .tc-skill .pk-btn { color: var(--muted); font-weight: 500; }
-/* On a narrow screen the chart scrolls sideways in its own frame (U48 overrides: one long page). */
-.tc .tc-scroll { overflow: visible; }
-@media (max-width: 700px) { .tc .tc-scroll { overflow: auto; max-height: 85vh; overscroll-behavior: contain; } }
-/* Map runs: the battles of the run, in map order (scrolls sideways on a phone). */
-.room-bar { display: flex; gap: 4px; overflow-x: auto; padding: 4px; margin: 0 0 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); }
-.room-tab { flex: none; white-space: nowrap; border: 0; border-radius: 9px; background: none; color: var(--muted); padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
-.room-tab:hover { color: var(--fg); }
-.room-tab[aria-selected="true"] { color: #fff; background: var(--gradient); }
-.room-tab.st-0 { opacity: .6; }
-.room-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* end u39 battle */
 /* U40: a short message in a corner (an edit refused); click to close. */
 .toast { position: fixed; z-index: 50; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 10px;
   font-size: 0.9rem; font-weight: 650; box-shadow: 0 6px 24px rgb(0 0 0 / .35); cursor: pointer; background: var(--card); border: 1px solid var(--border); color: var(--fg); }
 .toast.error { border-color: #ef4444; background: color-mix(in srgb, #ef4444 22%, var(--card)); }
 .toast[hidden] { display: none; }
-/* U40: the flow when a map run's party fell in an earlier room: one centred line. */
-.flow-skipped { margin: 24px 0; text-align: center; color: var(--muted); font-weight: 650; }
 /* u41 battle */
 /* After a Show: "Open in Simulator" beside the heading. */
 .party-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 44px 0 14px; }
@@ -1602,34 +1465,8 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 #setup.b3-steps { counter-reset: b3-step; }
 #setup.b3-steps > section:not([hidden]) > h2 > .step::before { counter-increment: b3-step; content: counter(b3-step); }
 #setup > section > h2 .help-tip { vertical-align: middle; font-size: 0.9rem; }
-/* F23 / F36: the party's "?" beside the Party / Flow tabs, no inner heading. */
-.b3-tab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
-.b3-tab-row .b3-tabs { margin: 0; }
+/* F23 / F36: the party's "?" (U70: beside Clear all; the Solver: in the party's head), no inner heading. */
 #party-help:empty { display: none; }
-/* F28: the flow's first line is the opponent, its "?" right after it. */
-.flow-panel .flow-head { justify-content: flex-start; align-items: center; gap: 6px; margin: 0 0 8px; }
-/* F24: label and value tiles, one grid with balanced columns (tileColumns): no lone tile on a row. */
-#results .tiles.result-tiles { grid-template-columns: repeat(var(--cols-wide, 3), minmax(0, 1fr)); }
-#results .tile-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; }
-#results .tile::after { pointer-events: none; }
-#results .tile-label .help-q { width: 1rem; height: 1rem; font-size: 0.6rem; border-width: 1px; }
-@media (max-width: 600px) {
-  #results .tiles.result-tiles { grid-template-columns: repeat(var(--cols-phone, 3), minmax(0, 1fr)); gap: 6px; }
-  #results .tiles.result-tiles > .tile { padding: 6px 8px; }
-  #results .tiles.result-tiles .tile-value { font-size: 1rem; }
-  #results .tiles.result-tiles .tile-icon { display: none; }
-}
-/* F25 / F26: the per-hero table's hero: plain name, its slot under it, the class colour as a bar on its left. */
-.hero-cell { display: inline-flex; flex-direction: column; padding-left: 8px; border-left: 3px solid var(--c, var(--border)); line-height: 1.25; text-align: left; }
-.hero-cell-name { font-weight: 650; color: var(--fg); white-space: nowrap; }
-.hero-cell-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
-/* F29: the room bar's edges fade while more rooms are that way (battle-page.ts roomScroller, U63; was edgeFades); also `.scroll-row`. */
-.room-bar.fade-end { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
-.room-bar.fade-start { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px); mask-image: linear-gradient(to right, transparent, #000 36px); }
-.room-bar.fade-start.fade-end {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
-}
 /* F30: class badges at AA contrast in light mode: now every pill, both themes (the `a11y` block, --pill-ink). */
 /* F31: "Party 1 – 5" on one row. */
 .solve-sizes { gap: 6px; }
@@ -2067,12 +1904,6 @@ footer .footer-line a { color: inherit; }
 }
 /* F06: "Unconfirmed": a lighter red fill under the light text of the dark theme (28% made it 4.2:1). */
 .ref-note.unsure .ref-tag { background: color-mix(in srgb, var(--bad) 16%, transparent); }
-/* F05 (colour): the Flow's chips. The actor's cell is a lighter tint over the card (not card-2), and the effect, damage,
-   heal and muted texts mix 30% of --fg in; the debuff uses the theme's --bad (a fixed red was too dark in dark mode). */
-.tc-cell.actor { background: color-mix(in srgb, var(--c, #ec4899) 16%, var(--card)); }
-.tc-fx.buff, .tc-heal { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
-.tc-fx.debuff, .tc-dmg { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
-.tc-miss, .tc-down, .tc-void, .tc-calc-btn, .tc-fx .tc-left { color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
 /* F07: a wiki reference table's scroll box takes the focus (wiki-ref.ts labelTableRegions): show where it is. */
 .ref-body .table-wrap[role="region"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* F09: the older tools' "?" on the first line inside the section, out of the <summary>. */
@@ -2122,24 +1953,6 @@ html.wiz-open #drop, html.wiz-open details:has(> #drop), html.wiz-open .example-
 /* Battle Simulator and Solver, U48. The Simulate panel: the run's progress or summary (win rate, grade when won, Show
    details) after ▶ Simulate, the details right under the panel (no Results section, no section titles). */
 .sim-bar { gap: 8px 12px; }
-.sim-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
-.sim-summary:empty, .sim-details:empty { display: none; }
-.sim-summary p { margin: 0; }
-.sim-summary .toolbar { margin: 0; gap: 8px 12px; }
-.sim-summary .tiles.result-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 9.5rem)); gap: 6px; margin: 0; }
-.sim-summary .tile { padding: 4px 10px 5px; gap: 0; border-radius: 9px; box-shadow: none; }
-.sim-summary .tile::after, .sim-summary .tile-icon { display: none; }
-.sim-summary .tile-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; font-size: 0.62rem; }
-.sim-summary .tile-label .help-q { width: 1rem; height: 1rem; font-size: 0.6rem; border-width: 1px; }
-.sim-summary .tile-value { font-size: 1.05rem; line-height: 1.2; }
-.sim-summary .tile .bar { margin-top: 3px; height: 3px; }
-.sim-summary .result-toggle { margin: 0; }
-.sim-details .result-details { margin-top: 10px; }
-@media (max-width: 600px) {
-  /* A phone: the summary on its own line under Runs and ▶ Simulate, its two tiles side by side. */
-  .sim-summary { flex: 1 1 100%; }
-  .sim-summary .tiles.result-summary { flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 /* The size cap under the opponent's picker (it left heroes out; their cards say "over the limit"). */
 #party-cap { margin: 0; }
 /* The Solver's read-only party: a row's empty slots as a plain count (nothing to open: no hero is added by hand). */
@@ -2151,20 +1964,6 @@ p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); 
   box-shadow: 0 10px 30px rgb(0 0 0 / .35); transition: none; }
 #party.drag-on, #party.drag-on .fc { cursor: grabbing; }
 #party .fc.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
-/* The Flow: one long page at every width, no scroll frame of its own (the column heads stick to the window's top). On
-   a phone the columns share the width (no minimum width), with tighter cells (U51: no turn column). */
-.tc .tc-scroll, .flow-panel .pg-scroll { overflow: visible; max-height: none; }
-@media (max-width: 700px) {
-  .flow-panel .pg-grid, .flow-panel .tc-grid { min-width: 0; }
-  .flow-panel .pg-head { padding-left: 3px; font-size: 0.66rem; }
-  .flow-panel .pg-head strong { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
-  .flow-panel .pg-cell { padding: 3px; }
-  .flow-panel .tc-cell { padding: 2px; gap: 1px 3px; }
-  .flow-panel .tc-dmg, .flow-panel .tc-heal { font-size: 0.7rem; }
-  /* "▾ calculation" keeps only its ▾ on screen (the word stays the button's name). */
-  .flow-panel .tc-calc-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .flow-panel .tc-calc-btn { padding: 2px 4px; }
-}
 /* The "↑" back-to-top button (battle-page.ts initToTop): fixed bottom right once the page is scrolled down. The page
    keeps room under its end, so the button never sits on the last content; a toast goes above it. */
 .to-top { position: fixed; z-index: 40; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
@@ -2268,26 +2067,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 #wiki .loot-table th.pick { box-shadow: inset 0 -2px 0 var(--accent); }
 /* end U60 */
 /* U51 */
-/* The Flow without a "Turn" column: heads, plan rows and action lines share one grid of the actors' columns. */
-.pg-row { display: grid; gap: 3px; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
-.pg-turngroup { display: grid; gap: 3px; }
-/* A full-width band before each turn ("Turn 3"), for spacing and contrast between turns. */
-.tc-turn { padding: 0 0 4px; }
-.tc-turn + .tc-turn, .tc-body > .tc-turn:first-child { margin-top: 6px; }
-.tc-turnrow { display: block; }
-.tc-turnhead { margin: 0 0 3px; padding: 2px 8px; border-radius: 5px; font-size: 0.66rem; font-weight: 750; text-transform: uppercase;
-  letter-spacing: .04em; color: var(--fg); background: color-mix(in srgb, var(--fg) 9%, var(--card)); border-left: 3px solid var(--trim); }
-.tc-again { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--muted); }
-.tc-unreached .tc-turnhead { padding-block: 1px; font-weight: 650; color: var(--muted); background: color-mix(in srgb, var(--fg) 4%, var(--card)); }
-/* A calculation is exactly its column's width: the panels' box has the line's columns, each panel its own
-   (timeline.ts sets grid-column, battle-layout.ts calcColumn); panels of several columns sit side by side, a second
-   one in the same column under the first; the text wraps inside. */
-.tc-calcs { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); grid-auto-flow: row dense; gap: 3px;
-  align-items: start; margin: 2px 0 4px; }
-.tc-calc { box-sizing: border-box; min-width: 0; padding: 4px 6px; text-align: left; overflow-wrap: anywhere; }
-/* The tab row's one "?", the open tab's (battle-page.ts showTab); the flow's head line only when it has something. */
-#plan-help:empty { display: none; }
-.flow-panel .flow-head:has(> .flow-opp:empty:only-child) { display: none; }
 /* The Solver's rows: grade, life left and heroes dead, compact. */
 .solver-table td.num { white-space: nowrap; }
 .solver-table .solver-dead.none { color: var(--muted); }
@@ -2351,120 +2130,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* Recipe / Used in with nothing to list: the section's title, then one muted line where the list would be. */
 #wiki .wiki-empty-state { margin: 0; }
 /* end U56 */
-/* U58 tabs */
-/* Party · Flow 2 · Flow 3 (flow-layouts.ts; U63: Flow 1 gone): the tabs and the "?" on one line on a 375 px phone. */
-@media (max-width: 420px) { .b3-tabs button { padding: 7px 10px; } }
-/* end U58 tabs */
-/* Flow 2 */
-/* U58, Flow 2 (flow2.ts): no column heads; each turn's band is followed by one card per fighter, in the action lines'
-   columns (same grid, gap 3px): the name strong, the HP bar, then the buffs and the debuffs one per
-   line as text (green, red; turns left at the right). The class colour is the card's top edge and a light tint (U63:
-   and its outline, see the U63 block, which also holds the HP bar); a fallen fighter's card is dashed and muted, ✝
-   before its name, the bar empty. The cards of a row share its height. */
-.f2-cards { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; align-items: stretch; margin: 0 0 4px; }
-.f2-card { --c: var(--muted); --f2-bg: color-mix(in srgb, var(--c) 7%, var(--card)); position: relative; container-type: inline-size;
-  box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 5px; border-radius: 7px;
-  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--border)); background: var(--f2-bg); box-shadow: inset 0 3px 0 var(--c);
-  font-size: 0.62rem; line-height: 1.25; }
-.f2-card.enemy { --c: #ec4899; }
-.f2-name { display: flex; align-items: baseline; gap: 3px; min-width: 0; font-size: 0.72rem; font-weight: 750; line-height: 1.15; color: var(--fg); }
-.f2-name strong { min-width: 0; font-weight: 750; white-space: normal; overflow: hidden; overflow-wrap: anywhere;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
-.f2-name .fl-name { align-items: flex-start; }
-.f2-meta { font-size: 0.56rem; line-height: 1.2; color: var(--muted); }
-.f2-meta > span { white-space: nowrap; }
-.f2-rare { font-weight: 700; color: color-mix(in srgb, #ec4899 60%, var(--fg)); }
-.f2-fxs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
-.f2-fxs + .f2-fxs { padding-top: 2px; border-top: 1px dotted color-mix(in srgb, var(--muted) 45%, transparent); }
-.f2-fx { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; min-width: 0; font-size: 0.6rem; font-weight: 650;
-  line-height: 1.2; cursor: help; }
-.f2-fx.buff { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
-.f2-fx.debuff { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
-.f2-fx-name { min-width: 0; overflow-wrap: anywhere; }
-.f2-fx-left { flex: none; font-size: 0.56rem; font-weight: 500; color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
-.f2-card.dead { --f2-bg: color-mix(in srgb, var(--fg) 3%, var(--card)); border: 1px dashed color-mix(in srgb, var(--muted) 50%, transparent);
-  padding: 6px 6px 5px; background: var(--f2-bg); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c) 30%, transparent); }
-.f2-card.dead .f2-name { color: var(--muted); }
-.f2-dead { color: color-mix(in srgb, var(--bad) 80%, var(--fg)); font-weight: 800; }
-.f2-end .tc-turnhead { border-left-color: var(--accent); }
-@media (max-width: 700px) {
-  .flow-panel .f2-card { padding: 5px 3px 4px; gap: 2px; border-radius: 5px; }
-  .flow-panel .f2-card.dead { padding: 5px 3px 4px; }
-  .flow-panel .f2-name { font-size: 0.66rem; }
-}
-/* end Flow 2 */
-
-/* Flow 3 */
-/* U59 (web/src/ui/flow3.ts): one card per action in its fighter's column, each card on its own grid row so the
-   cards read top to bottom in the order the fighters act. No turn bands: a hairline between turns and a "T3" tag on
-   each turn's first card. One long page: no scroll frame, no fixed widths. */
-.f3 { container-type: inline-size; --f3-gap: 3px; }
-.f3-heads, .f3-grid { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); column-gap: var(--f3-gap); }
-.f3-heads { position: sticky; top: 0; z-index: 3; padding: 4px 0; margin-bottom: 4px; background: var(--bg); box-shadow: 0 1px 0 var(--border); }
-.f3-head { display: flex; flex-direction: column; min-width: 0; padding-left: 5px; border-left: 3px solid var(--c, var(--border)); line-height: 1.2; }
-.f3-head.enemy, .f3-card.enemy, .f3-dead.enemy { --c: var(--trim); }
-.f3-head strong { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.f3-head span { font-size: 0.6rem; color: var(--muted); }
-.f3-grid { list-style: none; margin: 0; padding: 0; row-gap: 5px; align-items: start; }
-.f3-grid > li { min-width: 0; grid-column: var(--f3-col) / span 1; }
-/* The card: the fighter's colour on top, the skill as headline, the result next, the state quieter under a line. */
-.f3-card { position: relative; box-sizing: border-box; padding: 4px 7px 5px; border-radius: 8px; font-size: 0.7rem; line-height: 1.3;
-  overflow-wrap: anywhere; background: color-mix(in srgb, var(--c, var(--border)) 7%, var(--card-2));
-  border: 1px solid color-mix(in srgb, var(--c, var(--border)) 30%, transparent); border-top: 3px solid var(--c, var(--border));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
-:root[data-theme="light"] .f3-card { box-shadow: 0 1px 2px rgba(60, 40, 10, 0.12); }
-.f3-top { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 0.62rem; font-weight: 700;
-  color: color-mix(in srgb, var(--muted) 80%, var(--fg)); }
-.f3-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.f3-t { flex: none; padding: 0 4px; border-radius: 4px; font-size: 0.56rem; font-weight: 800; letter-spacing: .03em; color: var(--fg);
-  background: color-mix(in srgb, var(--fg) 13%, transparent); }
-.f3-skill { margin: 1px 0 2px; font-size: 0.8rem; font-weight: 750; line-height: 1.2; color: var(--fg); }
-.f3-planned { font-weight: 500; color: var(--muted); }
-.f3-tag { display: inline-block; padding: 0 3px; border-radius: 3px; font-size: 0.56rem; font-weight: 800; text-transform: uppercase;
-  letter-spacing: .03em; vertical-align: 1px; }
-.f3-crit { color: var(--fg); background: color-mix(in srgb, var(--mid) 30%, transparent); }
-.f3-miss, .f3-void { font-weight: 650; text-transform: none; font-style: italic; color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
-.f3-stun { color: #fff; background: #7c3aed; }
-.f3-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
-.f3-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; min-width: 0; }
-.f3-to { font-size: 0.62rem; color: color-mix(in srgb, var(--muted) 80%, var(--fg)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 100%; }
-.f3-num { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.f3-landed { display: flex; flex-direction: column; flex-basis: 100%; }
-.f3-landed .tc-fx { cursor: help; }
-.f3-calc-btn { border: 0; background: none; padding: 0 3px; font: inherit; font-size: 0.8rem; line-height: 1; cursor: pointer;
-  color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
-.f3-calc-btn:hover, .f3-calc-btn[aria-expanded="true"] { color: var(--fg); }
-.f3-calc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
-/* A calculation opens inside its card: exactly the card's width, its text wrapping. */
-.f3-calc { margin-top: 5px; padding: 4px 5px; border-radius: 5px; font-size: 0.64rem; text-align: left; overflow-wrap: anywhere;
-  background: color-mix(in srgb, var(--fg) 6%, var(--card)); border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
-.f3-state { margin-top: 3px; padding-top: 3px; border-top: 1px solid color-mix(in srgb, var(--muted) 22%, transparent); }
-/* HP: the Flows' shared bar (flow-hp.ts), in the U63 block. */
-.f3-fx { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 0; }
-.f3-fx-item { font-size: 0.6rem; line-height: 1.3; }
-/* Down: one dimmed "†" in the fighter's column (its name only in the narrow list). */
-.f3-dead { justify-self: center; font-size: 0.8rem; line-height: 1; color: var(--muted); opacity: .6; }
-.f3-dead .f3-t { margin-right: 3px; vertical-align: 2px; }
-.f3-dead-who { display: none; }
-/* A turn boundary: a hairline across the columns. */
-.f3-grid > .f3-break { grid-column: 1 / -1; height: 0; margin: 3px 0 1px; border-top: 1px solid color-mix(in srgb, var(--muted) 28%, transparent); }
-.f3-grid > .f3-more { grid-column: 1 / -1; }
-/* A narrow box (a phone): no columns. The items are one vertical list, full width, in the DOM's order (the
-   chronology; the grid rows and columns set inline are ignored by flex); no head row. Each card names its fighter,
-   bolder, with a class-colour edge on its left; a "†" names its fighter; a calculation opens at the card's width. */
-@container (max-width: 560px) {
-  .f3-heads { display: none; }
-  .f3-grid { display: flex; flex-direction: column; row-gap: 5px; }
-  .f3-card { border-left: 4px solid var(--c, var(--border)); padding-left: 8px; }
-  .f3-top { font-size: 0.68rem; }
-  .f3-who { color: var(--fg); }
-  .f3-dead { align-self: flex-start; display: flex; align-items: center; gap: 5px; padding-left: 4px; font-size: 0.72rem;
-    border-left: 4px solid color-mix(in srgb, var(--c, var(--border)) 60%, transparent); }
-  .f3-dead .f3-t { margin-right: 0; vertical-align: 0; }
-  .f3-dead-who { display: inline; font-weight: 700; }
-}
-/* end Flow 3 */
 /* U61 */
 /* The Party view's HP chart (web/src/ui/hp-chart.ts): U65 the Party view's first row, full width (the page's width on
    a phone), one line per hero in its class colour (--c), the enemy dashed (U65: --enemy-line, in the U65 block). */
@@ -2498,41 +2163,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-table th, .hp-table td { padding: 3px 8px; font-variant-numeric: tabular-nums; }
 .hp-empty { margin: 12px 0 0; }
 /* end U61 */
-/* U63 */
-/* Flow 2: a hero's card is outlined in its class colour (no ascension frame); the enemy's in its own (#ec4899). */
-.f2-card:not(.dead) { border-color: color-mix(in srgb, var(--c) 80%, var(--border)); }
-/* The Flows' HP bar (flow-hp.ts; Flow 2's cards, Flow 3's cards): one compact bar with "remaining / total" inside it.
-   The fill is a tint and the text the theme's --fg with a halo of the card colour, so it reads over the filled and the
-   empty part alike, light or dark theme. The bar is its own container: narrow, the compact numbers (9.7K / 10K)
-   replace the whole ones. Down: 0 / total, empty, in the bad colour. */
-.fl-hp { display: block; }
-.fl-hpbar { container: flhp / inline-size; position: relative; display: block; height: 13px; border-radius: 3px; overflow: hidden;
-  background: color-mix(in srgb, var(--muted) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 22%, transparent); }
-.fl-hpfill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--good) 55%, transparent); }
-.fl-hp.mid .fl-hpfill { background: color-mix(in srgb, var(--mid) 55%, transparent); }
-.fl-hp.low .fl-hpfill { background: color-mix(in srgb, #ef4444 55%, transparent); }
-.fl-hptxt { position: relative; display: block; padding: 0 4px; font-size: 0.58rem; font-weight: 700; line-height: 13px; text-align: center;
-  font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg);
-  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card), 0 0 1px var(--card); }
-.fl-hp.down .fl-hptxt { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
-.fl-hpshort { display: none; }
-@container flhp (max-width: 118px) {
-  .fl-hpfull { display: none; }
-  .fl-hpshort { display: inline; }
-}
-/* The map's room bar on a PC (battle-page.ts roomScroller): the wheel scrolls it; a ‹ / › over each faded edge. */
-.room-nav { position: relative; margin: 0 0 10px; }
-.room-nav > .room-bar { margin: 0; overscroll-behavior-x: contain; }
-.room-scroll { position: absolute; top: 50%; z-index: 2; transform: translateY(-50%); display: grid; place-items: center; width: 26px; height: 26px;
-  padding: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--fg); font-size: 1rem; line-height: 1;
-  box-shadow: var(--shadow); cursor: pointer; }
-.room-scroll.prev { left: 4px; }
-.room-scroll.next { right: 4px; }
-.room-scroll[hidden] { display: none; }
-.room-scroll:hover { background: var(--card-2); }
-/* Touch screens swipe: no buttons there. */
-@media (hover: none) { .room-scroll { display: none; } }
-/* end U63 */
 /* U62 */
 /* U65: the Party view's grid (chart on top, heroes | opponent) is in the U65 block. */
 /* One card family for the heroes and the enemy (fighter-card.ts): the picker as the head, the stats on two lines, the
@@ -2590,10 +2220,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .pk-opt[aria-selected="true"] .pk-name { color: var(--accent); }
 .pk-opt[aria-selected="true"] .pk-name::before { content: "✓ "; }
 /* end U62 */
-/* U64: a Flow skill name is its slot's picker button (pick-list.ts); the list opens in the cell, full width. */
-:is(.tc-cell, .pg-cell) .pk-btn { margin-left: 0; padding: 0 3px; font-weight: inherit; text-align: left; overflow-wrap: anywhere; }
-:is(.tc-cell, .pg-cell) > .pk-list { flex: none; width: 100%; min-width: 0; font-size: 0.74rem; }
-/* end U64 */
 /* U65 */
 /* The Party view (battle-page.ts): the chart's row on top, full width; then heroes | opponent. 960 px and less (a
    375 px phone): one column, the chart, the heroes, the opponent. */
@@ -2753,3 +2379,41 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .fc-hero .fc-stats .fc-stat-hp { gap: 2px; }
 }
 /* end U71 */
+
+/* U70 */
+/* The Simulator's four figures over the runs every change makes (battle-page.ts drawStats, #sim-stats): win rate,
+   grade when won, heroes dead, life left. One row at every width (short labels on a phone), the compact tiles of the
+   old Simulate summary; sticky at the top of the viewport (no sticky header there), opaque, under the floating picker
+   (55) and the tooltips (60). While newer runs wait or run, the old figures stay, dimmed (no layout shift). */
+.sim-stats { position: sticky; top: 0; z-index: 30; margin: 6px 0 0; padding: 8px 0; background: var(--bg); }
+.sim-stats-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.sim-stats .tile { min-width: 0; padding: 4px 10px 5px; gap: 0; border-radius: 9px; box-shadow: none; }
+.sim-stats .tile::after { display: none; }
+.sim-stats .tile-label, .sim-stats .tile-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-stats .tile-label { font-size: 0.62rem; }
+.sim-stats .tile-value { font-size: 1.05rem; line-height: 1.2; }
+.sim-stats .tile .bar { margin-top: 3px; height: 3px; }
+.sim-stats .st-short { display: none; }
+.sim-stats .tile-value, .sim-stats .bar { transition: opacity .15s; }
+.sim-stats.busy .tile-value, .sim-stats.busy .bar { opacity: .45; }
+@media (prefers-reduced-motion: no-preference) {
+  .sim-stats.busy .tile-value { animation: sim-busy 0.9s ease-in-out infinite alternate; }
+}
+@keyframes sim-busy { from { opacity: .3; } to { opacity: .6; } }
+.sim-stats-error { margin: 6px 0 0; }
+@media (max-width: 520px) {
+  .sim-stats-row { gap: 4px; }
+  .sim-stats .tile { padding: 3px 6px 4px; }
+  .sim-stats .st-long { display: none; }
+  .sim-stats .st-short { display: inline; }
+  .sim-stats .tile-label { letter-spacing: 0; }
+  .sim-stats .tile-value { font-size: 0.95rem; }
+}
+/* The opponent's card sticks under the figures (wide screens; under 960 px it doesn't stick). */
+#setup:has(> .sim-stats) .opp-col { top: 76px; }
+/* The Solver: the party's "?" right after its heading, Open in Simulator at the end. */
+.party-box-head #party-help { margin-right: auto; }
+/* The chart: no focus ring after a click or a tap (hp-chart.ts focusMode: data-pointer until a key is pressed), the
+   accent ring for the keyboard. */
+.hp-chart-box :focus:not(:focus-visible), .hp-chart-box[data-pointer] :focus { outline: none; }
+/* end U70 */
