@@ -76,11 +76,11 @@ test("Battle and Solver: the Party / Flow tabs are a full tablist, keyboard from
     const html = read(page);
     assert.match(html, /<div class="tabs b3-tabs" role="tablist" aria-label="Views">/, page);
     assert.match(html, /<button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">/, page);
-    // U58: three Flow tabs over one panel
-    for (const n of [1, 2, 3]) {
+    // U58: Flow tabs over one panel (U63: Flow 2 and Flow 3, no Flow 1)
+    for (const n of [2, 3]) {
       assert.match(html, new RegExp(`<button id="tab-flow${n}" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow${n}" tabindex="-1">`), page);
     }
-    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow1" hidden>/, page);
+    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow2" hidden>/, page);
     assert.match(html, /<div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party"/, page);
   }
   const bp = src("battle-page.ts");
@@ -99,10 +99,10 @@ test("Flow tab: the map room bar is a tablist over one room panel, keyboard from
   assert.match(bp, /const view = el\("div", \{ class: "flow-room", id: "flow-room", role: "tabpanel" \}\);/);
   assert.match(bp, /el\("div", \{ class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" \}\)/);
   assert.match(bp, /role: "tab", id: `room-tab-\$\{k\}`, "aria-controls": "flow-room",[^\n]*"aria-selected": "false"/);
-  const draw = bp.match(/const draw = \(\) => \{\s*bar\.querySelectorAll[\s\S]*?view\.setAttribute\("aria-labelledby", `room-tab-\$\{at\}`\);/)?.[0];
+  const draw = bp.match(/const draw = \(smooth = true\) => \{\s*bar\.querySelectorAll[\s\S]*?view\.setAttribute\("aria-labelledby", `room-tab-\$\{at\}`\);/)?.[0];
   assert.ok(draw, "draw() labels the panel by the selected room");
   assert.match(draw!, /b\.setAttribute\("aria-selected", String\(k === at\)\);\s*b\.tabIndex = k === at \? 0 : -1;/);
-  assert.match(bp, /bar\.append\(b\);\s*\}\);[^\n]*\n[^\n]*\n\s*tabKeys\(bar\);\s*box\.append\(bar, view\);/);
+  assert.match(bp, /bar\.append\(b\);\s*\}\);[^\n]*\n[^\n]*\n\s*tabKeys\(bar\);\s*box\.append\(scroller\.box, view\);/);
   assert.doesNotMatch(bp, /addEventListener\("keydown"[^\n]*\n\s*if \(e\.key !== "ArrowLeft"/, "no hand-written arrow keys any more");
 });
 

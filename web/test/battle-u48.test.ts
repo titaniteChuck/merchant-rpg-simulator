@@ -13,7 +13,9 @@ import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { moveHero, moveRefusal, pageControls, type PartyState } from "../src/ui/battle-edit.ts";
 import { toTopVisible } from "../src/ui/battle-layout.ts";
-import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import { renderFlow2 } from "../src/ui/flow2.ts";
+import type { PlanMember } from "../src/ui/battle-plan.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -171,7 +173,7 @@ const members: PlanMember[] = IDX.flatMap((row, r) => row.map((idx, i): PlanMemb
 }));
 const flow = (quest: number) => {
   const [f, b] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
-  return partyPlan({ id: quest, rare: false }, members, traceFight(sim, quest, [...f], [...b])) as unknown as FakeElement;
+  return renderFlow2({ id: quest, rare: false }, members, traceFight(sim, quest, [...f], [...b])) as unknown as FakeElement;
 };
 
 test("the read-only Flow (no PlanEdit, the Solver): no ▾, no picker; the calculations still open", () => {

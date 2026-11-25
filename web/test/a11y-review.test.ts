@@ -12,7 +12,9 @@ import { loadSaveText } from "../src/tools/save.ts";
 import { ascSwatch, ascValues } from "../src/ui/dom.ts";
 import { mountHome } from "../src/ui/home.ts";
 import { radar } from "../src/ui/radar.ts";
-import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import { renderFlow2 } from "../src/ui/flow2.ts";
+import type { PlanMember } from "../src/ui/battle-plan.ts";
 import { labelTableRegions } from "../src/ui/wiki-ref.ts";
 import { STATS_SECTIONS } from "../src/ui/wiki-stats.ts";
 import { FakeElement } from "./helpers/fake-dom.ts";
@@ -70,18 +72,17 @@ test("F06: the \"Unconfirmed\" tag reaches AA on the note's card-2 in both theme
   }
 });
 
-test("F05: the Flow's effect, damage, heal and muted texts reach AA on every actor's cell, a plain cell and the status band", () => {
+test("F05: the Flow's effect, damage, heal and muted texts reach AA on every actor's cell and a plain cell (U63: no status band)", () => {
   const actorTint = pctOf(a11y.match(/\.tc-cell\.actor \{ background: color-mix\(in srgb, var\(--c, #ec4899\) (\d+)%, var\(--card\)\); \}/)![1]);
   const keep = (sel: string, tok: string) => pctOf(a11y.match(new RegExp(`${sel} \\{ color: color-mix\\(in srgb, var\\(--${tok}\\) (\\d+)%, var\\(--fg\\)\\); \\}`))![1]);
   const texts = [["buff, heal", "good", keep("\\.tc-fx\\.buff, \\.tc-heal", "good")], ["debuff, damage", "bad", keep("\\.tc-fx\\.debuff, \\.tc-dmg", "bad")],
     ["miss, calc toggle", "muted", keep("\\.tc-miss, \\.tc-down, \\.tc-void, \\.tc-calc-btn, \\.tc-fx \\.tc-left", "muted")]] as const;
   const actors = [...css.matchAll(/^\.cls-(\d) \{ --c: (#[0-9a-f]{6}); \}/gm)].map(([, n, c]) => [`class ${n}`, c]);
   actors.push(["enemy", "#ec4899"]);
-  const status = pctOf(css.match(/\.tc-status \{[^}]*background: color-mix\(in srgb, var\(--accent\) (\d+)%, var\(--card\)\)/)![1]);
   for (const theme of ["dark", "light"] as const) {
     const fg = hex(token(theme, "fg")), card = hex(token(theme, "card"));
     const grounds: [string, number[]][] = [...actors.map(([n, c]): [string, number[]] => [n, mix(hex(c), card, actorTint)]),
-      ["card", card], ["card-2", hex(token(theme, "card-2"))], ["status", mix(hex(token(theme, "accent")), card, status)]];
+      ["card", card], ["card-2", hex(token(theme, "card-2"))]];
     for (const [what, tok, p] of texts) {
       const ink = mix(hex(token(theme, tok)), fg, p);
       for (const [where, bg] of grounds) {
@@ -126,7 +127,7 @@ test("F01: the Flow table holds rows and named turn rowgroups only, the result a
   for (const quest of [72, 92]) { // Odin: a long fight; Murlok Monarch: over on turn 1, then "planned, not reached"
     const [front, back] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
     const trace = traceFight(sim, quest, [...front], [...back]);
-    const plan = partyPlan({ id: quest, rare: false }, members, trace) as unknown as FakeElement;
+    const plan = renderFlow2({ id: quest, rare: false }, members, trace) as unknown as FakeElement;
     for (const b of plan.querySelectorAll("button.tc-calc-btn").slice(0, 3)) b.dispatch("click"); // open some calculations
     const tables = plan.querySelectorAll("[role=table]");
     assert.equal(tables.length, 1);
@@ -150,14 +151,14 @@ test("F01: the Flow table holds rows and named turn rowgroups only, the result a
     }
     const groups = plan.querySelectorAll("[role=rowgroup]");
     assert.ok(groups.length > 0);
-    for (const g of groups) assert.match(g.getAttribute("aria-label")!, /^Turn \d+/);
+    for (const g of groups) assert.match(g.getAttribute("aria-label")!, /^(Turn \d+|End of the fight$)/); // U63: Flow 2 ends with an "End" group
     // the result: a live status line, inside a cell of its own row
     const result = plan.querySelector("p.tc-result")!;
     assert.equal(result.getAttribute("role"), "status");
     assert.equal(result.parentNode!.getAttribute("role"), "cell");
     assert.equal(result.parentNode!.parentNode!.getAttribute("role"), "row");
-    // the heads: one per column of cells (U51: no "Turn" column)
-    const heads = owned(plan.querySelector("div.pg-heads")!);
+    // U63 (Flow 2): one card per column of cells in each cards row (U51: no "Turn" column)
+    const heads = owned(plan.querySelector("div.f2-cards")!);
     assert.equal(heads.length, line.length);
     if (quest === 72) assert.ok(plan.querySelectorAll("div.tc-calc[role=cell]").length > 0, "an opened calculation is a cell");
   }

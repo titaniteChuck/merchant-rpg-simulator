@@ -287,7 +287,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     Solver alike; the Flow's head line hides when it has nothing (a quest).
   - Flow without a "Turn" column: the column heads, the plan rows and the action lines share one grid of the actors'
     columns (`repeat(var(--pg-cols), minmax(0, 1fr))`, gap 3 px) at every width. Each turn starts with a full-width
-    band, "Turn 3" (`turnRow` in `timeline.ts`, `turnBand` in `battle-layout.ts`): a `role=row` whose one
+    band, "Turn 3" (`turnRow` in `timeline.ts`, `flow-parts.ts` since U63, `turnBand` in `battle-layout.ts`): a `role=row` whose one
     `role=rowheader` spans every column (`aria-colspan`), first in the turn's `rowgroup` ("Turn N"). Turns 6, 11 …
     add "· ↻ rotations again" (the old dashed round divider is gone). The planned rotation (no fight) and the
     "Planned, not reached" turns use the same bands (muted for the latter).
@@ -298,7 +298,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     margin maths, no `ResizeObserver` (`calcPanelLeft` and `placeCalcs` are gone).
 
 - U58, three Flow layouts to compare (tests `web/test/battle-u58.test.ts`, CSS in the `U58 tabs` and `Flow 2` blocks):
-  - Tabs Party · Flow 1 · Flow 2 · Flow 3 on both pages (the Solver's read-only as before), one Flow panel
+  - Tabs Party · Flow 1 · Flow 2 · Flow 3 on both pages (U63: Party · Flow 2 · Flow 3, see U63) (the Solver's read-only as before), one Flow panel
     (`#flow-panel`, `aria-labelledby` the open Flow tab). `tabKeys` keyboard and the U51 "?" unchanged; each Flow has
     its own help after the run's note. The open tab is remembered per page (sessionStorage `battle-tab` on the
     Simulator, `solver-tab` on the Solver; an old "flow" reads as Flow 1). On a phone (420 px and less) the tabs are
@@ -308,7 +308,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     edit?: PlanEdit) => HTMLElement | null` (null: no timeline for the enemy; `trace` null: no fight to show; `edit`
     undefined: read-only). `renderPlan` draws the open layout (the last one opened while Party is open), and opening
     another Flow tab draws the panel again. Adding a layout: an entry there and a tab button in both pages.
-  - Flow 1 is `partyPlan` in `timeline.ts`, unchanged (its helpers are exported for the other layouts).
+  - Flow 1 is `partyPlan` in `timeline.ts`, unchanged (its helpers are exported for the other layouts). Removed in U63.
   - Flow 2 (`web/src/ui/flow2.ts`, `renderFlow2`): no column heads. Each turn: its band, then a row of cards, one per
     fighter in Flow 1's column order, then the action lines as in Flow 1 (calculations one column wide, `calcColumn`)
     without the effect texts, which are in the cards. After the last turn, an "End" band and the cards as the fight
@@ -321,7 +321,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     fallen fighter: a dashed muted card, ✝ before the name, the bar empty at 0, no effects. Screen readers: each card
     row is a `role=row` named "Turn 3: each fighter at its start", each card a cell with its HP and "Buff: …" /
     "Debuff: …, 2 turns left" as text. A narrow card (a phone) puts the bar over the number and shortens a long number
-    (container query at 84 px). Without a traced fight, Flow 1's planned rotation.
+    (container query at 84 px). Without a traced fight, Flow 1's planned rotation. U63: the class colour outlines the
+    hero card (no ascension frame) and the HP is the shared bar (see U63).
   - Flow 3 (`web/src/ui/flow3.ts`, `renderFlow3`): U59's layout, below.
 - U59, Flow 3 (`web/src/ui/flow3.ts`; tests `web/test/battle-u59-flow3.test.ts`, CSS in the `Flow 3` block), one of
   the three Flow layouts the user compares (Party · Flow 1 · Flow 2 · Flow 3; the tabs and the registry
@@ -362,6 +363,39 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (`span.f3-dead-who`, hidden on a wide box) with a faint class-colour edge; the hairline and "T3" tag work as on a
     wide box, and a "▾" opens its calculation inside the card, at the card's full width. Desktop is unchanged: one
     column per fighter.
+- U63, Flow 1 removed; Flow 2 and Flow 3 share their parts (tests `web/test/battle-u63.test.ts`, CSS in the `U63`
+  block; the U58, U59, U51, U48, R3 QA, R2-C, U41, U40, a11y and tab tests updated):
+  - Tabs Party · Flow 2 · Flow 3 on both pages; the labels stay (the layouts are still compared). A remembered tab
+    "flow" or "flow1" opens Flow 2 (`parseTab`), the panel starts on Flow 2 and `flowLayout` falls back to it.
+  - Code: Flow 1's rendering (`partyPlan`'s traced view `flowChart`, its end-of-turn band `hpEl` / `fxEl`, `takenEl`,
+    `planNote`) is deleted. The parts the Flows share moved from `timeline.ts` to `web/src/ui/flow-parts.ts`:
+    `PlanEdit`, `OptionGroups`, `nameEdit`, `skillEdit`, `actorEl`, `calcPanel`, `calcToggle`, `turnRow`,
+    `unreachedRows`, `fmtInt`, `FLOW_PAGE`. `timelineOf`, `tlName` and `loadTimelineData` stay in `timeline.ts` (the
+    wiki's enemy strip uses them too). Dead CSS removed: `.tc-status`, `.tc-hp*`, `.tc-fxs`, `.tc .pg-heads`, the
+    phone `.tc-hp` rules, Flow 2's `.f2-hp` / `.f2-bar` / `.f2-full` / `.f2-short` / asc frames, Flow 3's `.f3-hp*`.
+  - No fight to show (no party, a party problem, an AP problem, a map room not reached): the rotation as planned, the
+    smallest part kept of Flow 1 (U36's plan: heads with the hero and opponent pickers, turns 1-5 with their bands
+    and ▾), now `plannedRotation` in `web/src/ui/flow-planned.ts`; both Flows return it. Chosen over redrawing the
+    plan in Flow 2's cards: it is the one view that shows the enemy's effects on each hero per turn, and its heads keep
+    every picker when there is no fight. Nothing editable is lost: with a fight, Flow 2's turn-1 cards carry the hero
+    and opponent pickers (Flow 1's heads did) and its lines the ▾ of turns 1-5; without one, the planned view does.
+  - "?" texts: Flow 2's says how to read the cards and lines, the rotation rule (slot k on turn k, turn 6 is turn 1)
+    and, on the Simulator, the pickers; both end with the planned rotation's line (`PLANNED_NOTE`).
+  - Flow 2's hero card is outlined in its class colour (`.f2-card:not(.dead)`, border 80 % of `--c`); no ascension
+    frame (`asc-1` / `asc-2` and `PlanMember.asc` are gone). The enemy keeps its own colour; a fallen card stays dashed.
+  - One HP bar (`web/src/ui/flow-hp.ts`, `hpBar(v, label)`, with `hpTone`, `hpTexts`): Flow 3's U59 bar, now used by
+    both Flows (classes `fl-hp`, `fl-hpbar`, `fl-hpfill`, `fl-hptxt`, `fl-hpfull`, `fl-hpshort`; container `flhp`):
+    "remaining / total" inside a 13 px bar, the compact numbers under 118 px when the total reaches 10,000, "0 /
+    total" in an empty bar when down, `role=img` with the label ("Ana: 1,097 / 2,000 HP"; Flow 3: "Warrior is down").
+  - Map room bar on a PC (`roomScroller` in `battle-page.ts`, pure parts in `battle-layout.ts`): it has no scrollbar,
+    so a vertical mouse wheel over it moves it sideways (`roomBarWheel`: lines and pages counted, clamped; 0, so the
+    page scrolls, when the bar fits, at the end the wheel pushes to, or for a sideways swipe the browser handles; a
+    non-passive listener cancels only the wheel it uses). A round ‹ / › button over each faded edge, shown only while
+    there are rooms that way (with `fade-start` / `fade-end`), scrolls by 3/4 of the bar (`rowStep`); they are a mouse
+    aid (`aria-hidden`, out of the tab order, they don't take the focus) and hidden on touch screens (`hover: none`).
+    The selected room stays in view, 36 px clear of the edges (`scrollToShow`), on a click, the arrow keys, Home, End
+    and a redraw (smooth unless reduced motion; at once on the first draw and when a hidden tab is shown). The keys
+    are `tabKeys`, unchanged.
 - U61, the Party view's HP chart (`web/src/ui/hp-chart.ts`; tests `web/test/battle-u61.test.ts`, CSS in the `U61`
   block), on both pages (the Solver's once a result's Show fills the party; nothing to edit in it):
   - Place: a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
@@ -405,7 +439,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     its "?" (`#plan-help`), whose first paragraph is the note on the run it shows (`FLOW_NOTE`, `MAP_FLOW_NOTE`). U51:
     that "?" moved to the tab row, shown on the Flow tab.
   - F29: the map room bar is a `.scroll-row`; `edgeFades` sets `fade-start` / `fade-end` while there are rooms off
-    that side, and a mask fades that edge.
+    that side, and a mask fades that edge. (U63: `roomScroller`, which adds the mouse wheel and ‹ › buttons.)
   - F30: in light mode the pills of a hero card (class · level, required, left out) and the Solver's hero chips use
     `--ink: 38%`: every class colour reaches 4.5:1 on the card (Paladin was 2.7:1). Since the accessibility review
     (F04) every pill in both themes uses `--pill-ink` (dark 55 %, light 38 %) over a fixed `--pill-base` (CSS `a11y`).
@@ -665,7 +699,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     actions (T4, T5)", or "→ itself" for its buffs. Murlok Monarch (quest 92): Drown on T3 disables the heroes' T4
     and T5. The ✓ / ⚠ notes are `scoreSchedule`'s, which doesn't model forced actions yet (an engine follow-up).
   - 5-turn plan v4 (U36, replaces the two items above; `planGrid` in `ui/battle-plan.ts`, drawn by `partyPlan` in
-    `timeline.ts`): the third column of step 3, a grid whose COLUMNS are the heroes in action order (by party location)
+    `timeline.ts`; U63: kept as the Flows' view without a fight, `plannedRotation` in `flow-planned.ts`): the third column of step 3, a grid whose COLUMNS are the heroes in action order (by party location)
     plus the enemy (first on questType 6) and whose ROWS are turns 1-5; the enemy column alone while the party is empty.
     The row-header column (T1–T5, "Turn" on top) was 36 px wide (R1-D); U51 replaced it by a "Turn N" band over each
     turn.
@@ -691,7 +725,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Search results: "Against the enemy's timeline" notes under each optimised rotation (quests only; gone with
     Optimise everything in U36).
   - Without the timeline data the pages fall back to the plain rotation list.
-  - Flow tab (U39, replaces the plan column of U36; reshaped in U40): step 3 has two tabs over ONE party state,
+  - Flow tab (U39, replaces the plan column of U36; reshaped in U40). **Removed in U63** as a layout (it was Flow 1,
+    `partyPlan` / `flowChart`): the trace, calculations, effects as text, AP refusals and edits below carry on in Flow 2
+    and Flow 3; the end-of-turn band, its HP bar and the column heads over a fight are gone. Step 3 has two tabs over ONE party state,
     👥 Party first (the hero cards and the opponent card, as before; the default) and 🗓️ Flow second (U40 swapped
     them). The active tab is remembered for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit
     through `ui/battle-edit.ts` (`assignHero`: one slot per hero, the new hero fights; `setRotationSkill`), then the page saves the party, redraws both tabs and traces the fight again.

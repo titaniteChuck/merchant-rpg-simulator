@@ -11,7 +11,10 @@ import * as api from "../src/sim/api.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
-import { loadTimelineData, partyPlan, type PlanEdit, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import { renderFlow2 } from "../src/ui/flow2.ts";
+import type { PlanEdit } from "../src/ui/flow-parts.ts";
+import type { PlanMember } from "../src/ui/battle-plan.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -47,7 +50,7 @@ function recorder() {
 function flow(quest: number, edit?: PlanEdit): FakeElement {
   const [f, b] = party();
   const trace = traceFight(sim, quest, [...f], [...b]);
-  const plan = partyPlan({ id: quest, rare: false }, members, trace, edit);
+  const plan = renderFlow2({ id: quest, rare: false }, members, trace, edit);
   assert.ok(plan, `a flow for quest ${quest}`);
   return plan as unknown as FakeElement;
 }
@@ -79,11 +82,11 @@ test("calculation terms: no title, the shared tooltip on hover, focus and tap in
   assert.equal(box.hidden, true);
   assert.equal(terms[0].hasAttribute("aria-describedby"), false);
   // In the source too: no title on a term or on the toggle.
-  const src = read("web/src/ui/timeline.ts");
+  const src = read("web/src/ui/flow-parts.ts"); // U63: moved from timeline.ts
   const termFn = src.slice(src.indexOf("function termEl"), src.indexOf("function calcPanel"));
   assert.doesNotMatch(termFn, /title/);
   assert.match(termFn, /tip\(term, \(\) => t\.tip\)/);
-  const toggle = src.slice(src.indexOf("function calcToggle"), src.indexOf("function takenEl"));
+  const toggle = src.slice(src.indexOf("function calcToggle"), src.indexOf("function turnRow"));
   assert.doesNotMatch(toggle, /title:/);
 });
 

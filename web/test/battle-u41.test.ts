@@ -64,7 +64,7 @@ test("Solver: the spoiler guard first, then the opponent and the options, Result
   // Step 3 is hidden in the HTML and holds both tabs and the party: nothing of it shows before a Show.
   assert.match(html, /<section id="party-box" hidden>/);
   const box = html.slice(at('id="party-box"'));
-  for (const id of ["tab-party", "tab-flow1", "tab-flow2", "tab-flow3", "flow-panel", "setup-grid", "party", "open-sim"]) assert.ok(box.includes(`id="${id}"`), id);
+  for (const id of ["tab-party", "tab-flow2", "tab-flow3", "flow-panel", "setup-grid", "party", "open-sim"]) assert.ok(box.includes(`id="${id}"`), id);
   assert.equal(html.split('id="party"').length, 2, "one party panel, inside step 3");
   // Only a result's Show reveals it (onShow → revealParty); a new save or Forget hides it again.
   const page = read("web/src/ui/battle-page.ts");

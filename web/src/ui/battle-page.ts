@@ -7,8 +7,8 @@
  * slots, back row | front row; cards move by drag and drop, party-drag.ts) on the left and the opponent card (a quest
  * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
- * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Party · Flow 1 · Flow 2 · Flow 3, three Flow
- * layouts to compare (flow-layouts.ts), one Flow panel drawn by the open one. U61: the Party view's HP chart under the
+ * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Flow layouts to compare (flow-layouts.ts;
+ * U63: Party · Flow 2 · Flow 3, Flow 1 gone), one Flow panel drawn by the open one. U61: the Party view's HP chart under the
  * opponent's card (hp-chart.ts), drawn by renderPlan from the very trace it hands the Flow layout.
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
@@ -40,9 +40,10 @@ import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
 import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
-import { loadTimelineData, type PlanEdit, type PlanMember, timelineOf } from "./timeline.ts";
+import { loadTimelineData, timelineOf } from "./timeline.ts";
+import type { PlanEdit } from "./flow-parts.ts";
 import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
-import { locationOf, mapRoomTabs } from "./battle-plan.ts";
+import { locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
 import { drawHpChart, hpData, type HpRun } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyRadar, EVA_RIM, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
@@ -50,7 +51,7 @@ import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
 import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, slotKeyOfLoc } from "./battle-edit.ts";
 import { enableSlotDrag } from "./party-drag.ts";
-import { toTopVisible } from "./battle-layout.ts";
+import { roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
@@ -799,17 +800,17 @@ function syncAmount(): void {
 // ---------------------------------------------------------------- the views: Party and the Flows (U39, U40, U58)
 /**
  * Step 3's tabs over one party state: Party (the hero cards and the opponent; first, U40) and the Flow (the fight, turn
- * by turn). U58: three Flow layouts, Flow 1 · Flow 2 · Flow 3 (flow-layouts.ts), sharing one panel (#flow-panel, drawn
+ * by turn). U58: the Flow layouts, Flow 2 · Flow 3 (flow-layouts.ts; U63: Flow 1 gone), sharing one panel (#flow-panel, drawn
  * by renderPlan with the open layout, or the last one opened while Party is open). Edits in any change the same state
  * (battle-edit.ts), then everything redraws and the flow is simulated again. The open tab is remembered per page for
  * this browser tab (sessionStorage `battle-tab` on the Simulator, `solver-tab` on the Solver; convenience only; the old
- * "flow" reads as Flow 1); without one, the first tab, Party.
+ * "flow" and the U58 "flow1" read as Flow 2); without one, the first tab, Party.
  */
 type Tab = ViewTab;
 const tabKey = () => (solving() ? "solver-tab" : "battle-tab");
 let tabChoice: Tab | null = null;
-/** The Flow layout the panel shows: the open tab's, else the last one opened (Flow 1 at first). */
-let flowChoice: FlowId = "flow1";
+/** The Flow layout the panel shows: the open tab's, else the last one opened (Flow 2 at first). */
+let flowChoice: FlowId = "flow2";
 /** The layout the panel holds now, so opening another one redraws it. */
 let flowDrawn: FlowId | null = null;
 function storedTab(): Tab {
@@ -996,19 +997,59 @@ function flowEnemyOptions(): [string, [string, string][]][] {
   })]);
 }
 
+/** U63: how far the selected room stays clear of the bar's edges (the 36 px fade and its ‹ › button). */
+const ROOM_PAD = 36;
+
 /**
- * R2 F29: a row that scrolls sideways (the map's room bar) gets `fade-start` / `fade-end` while there is more to see
- * on that side; style.css (r2-c) fades that edge. Kept in step on scroll and on resize (a hidden tab shown later).
+ * The map's room bar, scrollable on every device. R2 F29: `fade-start` / `fade-end` while there is more to see on
+ * that side (style.css r2-c fades that edge). U63, for a PC (the bar has no scrollbar): a vertical mouse wheel over it
+ * moves it sideways while it can move that way, then the page scrolls on (battle-layout.ts roomBarWheel); a ‹ / ›
+ * button over each faded edge scrolls it by most of its width (mouse only: the arrow keys, Home and End move between
+ * the rooms); `reveal()` keeps the selected room in view. Kept in step on scroll and on resize (a hidden tab shown
+ * later). Returns the box holding the bar and its buttons.
  */
-function edgeFades(row: HTMLElement): void {
-  const sync = () => {
-    const rest = row.scrollWidth - row.clientWidth - row.scrollLeft;
-    row.classList.toggle("fade-start", row.scrollLeft > 2);
-    row.classList.toggle("fade-end", rest > 2);
+function roomScroller(bar: HTMLElement): { box: HTMLElement; reveal: (smooth?: boolean) => void } {
+  const motion = (): ScrollBehavior =>
+    (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
+  const btn = (dir: -1 | 1) => {
+    const b = el("button", { type: "button", class: `room-scroll ${dir < 0 ? "prev" : "next"}`, tabindex: "-1", "aria-hidden": "true",
+      title: dir < 0 ? "Earlier rooms" : "Later rooms" }, dir < 0 ? "‹" : "›");
+    // a mouse aid: it keeps the focus where it was (the selected room)
+    b.addEventListener("mousedown", (e) => e.preventDefault());
+    b.addEventListener("click", () => bar.scrollBy({ left: rowStep(bar, dir), behavior: motion() }));
+    return b;
   };
-  row.addEventListener("scroll", sync, { passive: true });
-  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sync).observe(row);
+  const prev = btn(-1), next = btn(1);
+  const box = el("div", { class: "room-nav" }, prev, bar, next);
+  const reveal = (smooth = true) => {
+    const cur = bar.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!cur || bar.clientWidth === 0) return;
+    const left = cur.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft;
+    const to = scrollToShow(bar, left, cur.offsetWidth, ROOM_PAD);
+    if (to !== null) bar.scrollTo({ left: to, behavior: smooth ? motion() : "auto" });
+  };
+  let width = 0;
+  const sync = () => {
+    const rest = bar.scrollWidth - bar.clientWidth - bar.scrollLeft;
+    bar.classList.toggle("fade-start", bar.scrollLeft > 2);
+    bar.classList.toggle("fade-end", rest > 2);
+    prev.hidden = !bar.classList.contains("fade-start");
+    next.hidden = !bar.classList.contains("fade-end");
+    // shown (a hidden tab opened) or resized from nothing: the selected room comes into view at once
+    if (width === 0 && bar.clientWidth > 0) reveal(false);
+    width = bar.clientWidth;
+  };
+  bar.addEventListener("scroll", sync, { passive: true });
+  // not passive: a wheel the bar takes must not scroll the page too
+  bar.addEventListener("wheel", (e) => {
+    const d = roomBarWheel(e, bar);
+    if (!d) return;
+    e.preventDefault();
+    bar.scrollLeft += d;
+  }, { passive: false });
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(sync).observe(bar);
   sync();
+  return { box, reveal };
 }
 
 /** What the flow shows, and how (U39): one concrete run, Simulate's first. */
@@ -1028,7 +1069,7 @@ function renderPlan(): void {
   flowDrawn = layout.id;
   const members: PlanMember[] = partyOf().members.map((m) => ({
     row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class), rotation: rotationOf(m.idx).attackList,
-    level: Number(m.raw.level), asc: heroAsc(m.raw.prestigeLevel),
+    level: Number(m.raw.level),
   }));
   const problem = partyProblem();
   // U40: a hero over its AP limit (an old saved party): the warning, not a fight with the default rotation.
@@ -1070,11 +1111,15 @@ function renderPlan(): void {
   let at = Math.min(storedRoom(), rooms.length - 1);
   const view = el("div", { class: "flow-room", id: "flow-room", role: "tabpanel" });
   const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
-  const draw = () => {
+  // R2 F29 / U63: the bar scrolls sideways (touch, wheel, ‹ ›), its edges fade while more rooms are there.
+  const scroller = roomScroller(bar);
+  const draw = (smooth = true) => {
     bar.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((b, k) => {
       b.setAttribute("aria-selected", String(k === at));
       b.tabIndex = k === at ? 0 : -1;
     });
+    // U63: the selected room stays in view (a click, the arrow keys, Home, End, a redraw)
+    scroller.reveal(smooth);
     view.setAttribute("aria-labelledby", `room-tab-${at}`);
     const r = rooms[at];
     // U40: after the room where the party died there is no battle: one centred line, no timeline.
@@ -1102,10 +1147,8 @@ function renderPlan(): void {
   });
   // The arrow keys, Home and End move between the rooms (the tablist pattern, dom.ts tabKeys).
   tabKeys(bar);
-  box.append(bar, view);
-  // R2 F29: the room bar scrolls sideways on a phone; edge fades say more rooms are there.
-  edgeFades(bar);
-  draw();
+  box.append(scroller.box, view);
+  draw(false);
 }
 
 /**

@@ -119,15 +119,15 @@ test("F28: the flow's note is in its \"?\"; no heading repeating the tab", () =>
     assert.match(html, /<span id="party-help"><\/span><span id="plan-help" hidden><\/span>/);
   }
   assert.doesNotMatch(page, /flow-note/);
-  // U58: the open layout's own help (flow-layouts.ts; Flow 1's is planNote)
+  // U58: the open layout's own help (flow-layouts.ts)
   assert.match(page, /helpTip\(\[\.\.\.\(trace \? \[FLOW_NOTE\] : \[\]\), layout\.help\(t, Boolean\(edit\)\)\], "the flow"\)/);
   assert.match(page, /helpTip\(\[MAP_FLOW_NOTE, layout\.help\(/);
 });
 
 test("F29: the room bar is a scroll row with edge fades", () => {
   assert.match(page, /class: "room-bar scroll-row"/);
-  assert.match(page, /edgeFades\(bar\);/);
-  const fades = fn(page, "edgeFades");
+  assert.match(page, /const scroller = roomScroller\(bar\);/); // U63: was edgeFades
+  const fades = fn(page, "roomScroller");
   assert.match(fades, /classList\.toggle\("fade-start"/);
   assert.match(fades, /classList\.toggle\("fade-end"/);
   assert.match(r2c, /\.room-bar\.fade-end \{[^}]*mask-image/);

@@ -1,5 +1,5 @@
-// Battle Simulator and Solver U58: the tabs Party · Flow 1 · Flow 2 · Flow 3 over one Flow panel (flow-layouts.ts, a
-// registry of layouts with Flow 1's signature); Flow 2 (flow2.ts): no column heads, a row of fighter cards (name, HP at
+// Battle Simulator and Solver U58: the Flow tabs over one Flow panel (flow-layouts.ts, a registry of layouts with one
+// signature; U63: Party · Flow 2 · Flow 3, Flow 1 removed, its own checks are in battle-u63.test.ts); Flow 2 (flow2.ts): no column heads, a row of fighter cards (name, HP at
 // the turn's start, buffs then debuffs one per line) before each turn's actions, fallen fighters dimmed at 0 HP.
 // No browser: the registry, the Flow built in the fake DOM, and the pages read as text.
 import "./helpers/fake-dom.ts";
@@ -14,7 +14,9 @@ import { planTimeline, type TimelineChip } from "../src/ui/battle-plan.ts";
 import { FLOW_LAYOUTS, flowLayout, isFlow, parseTab } from "../src/ui/flow-layouts.ts";
 import { fighterCard, fightStart, flow2Note, renderFlow2 } from "../src/ui/flow2.ts";
 import { renderFlow3 } from "../src/ui/flow3.ts";
-import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import { plannedRotation } from "../src/ui/flow-planned.ts";
+import type { PlanMember } from "../src/ui/battle-plan.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -24,39 +26,39 @@ const f2css = css.slice(css.indexOf("/* Flow 2 */"), css.indexOf("/* end Flow 2 
 const fn = (src: string, name: string) => src.slice(src.indexOf(`function ${name}`), src.indexOf("\n}\n", src.indexOf(`function ${name}`)));
 
 // ---------------------------------------------------------------- 1. the registry and the tabs
-test("the registry: Flow 1 (timeline.ts partyPlan), Flow 2, Flow 3, in tab order, one signature", () => {
-  assert.deepEqual(FLOW_LAYOUTS.map((l) => [l.id, l.label]), [["flow1", "Flow 1"], ["flow2", "Flow 2"], ["flow3", "Flow 3"]]);
-  assert.equal(flowLayout("flow1").render, partyPlan, "Flow 1 is the Flow as it was");
+test("the registry: Flow 2, Flow 3 (U63: no Flow 1), in tab order, one signature", () => {
+  assert.deepEqual(FLOW_LAYOUTS.map((l) => [l.id, l.label]), [["flow2", "Flow 2"], ["flow3", "Flow 3"]]);
   assert.equal(flowLayout("flow2").render, renderFlow2);
   assert.equal(flowLayout("flow3").render, renderFlow3);
-  assert.equal(flowLayout("nope").id, "flow1");
+  assert.equal(flowLayout("nope").id, "flow2");
   // each its own short help
   const q = { id: 72, rare: false };
   const helps = FLOW_LAYOUTS.map((l) => l.help(q, true));
-  assert.equal(new Set(helps).size, 3);
+  assert.equal(new Set(helps).size, 2);
   assert.ok(flow2Note(true).length > flow2Note(false).length, "the Solver's (read-only) leaves out the pickers");
 });
 
-test("tabs read back: Party, a Flow; the old \"flow\" is Flow 1; anything else Party", () => {
+test("tabs read back: Party, a Flow; the old \"flow\" (and U63: \"flow1\") is Flow 2; anything else Party", () => {
   assert.equal(parseTab("party"), "party");
-  assert.equal(parseTab("flow"), "flow1");
-  for (const t of ["flow1", "flow2", "flow3"]) assert.equal(parseTab(t), t);
+  assert.equal(parseTab("flow"), "flow2");
+  assert.equal(parseTab("flow1"), "flow2");
+  for (const t of ["flow2", "flow3"]) assert.equal(parseTab(t), t);
   assert.equal(parseTab(null), "party");
   assert.equal(parseTab("flow9"), "party");
   assert.ok(isFlow("flow2") && !isFlow("party") && !isFlow("flow"));
 });
 
-test("both pages: Party · Flow 1 · Flow 2 · Flow 3, one Flow panel labelled by the open Flow tab", () => {
+test("both pages: Party · Flow 2 · Flow 3, one Flow panel labelled by the open Flow tab", () => {
   for (const name of ["site/battle.html", "site/solver.html"]) {
     const html = read(name);
     const row = html.slice(html.indexOf('<div class="b3-tab-row">'), html.indexOf('<div id="flow-panel"'));
     const tabs = [...row.matchAll(/<button id="tab-(\w+)" type="button" role="tab" aria-selected="(\w+)" aria-controls="([\w-]+)" data-tab="(\w+)"( tabindex="-1")?>([^<]+)<\/button>/g)];
     assert.deepEqual(tabs.map((m) => m[6]), ["Party", ...FLOW_LAYOUTS.map((l) => l.label)], name);
     assert.deepEqual(tabs.map((m) => m[1]), tabs.map((m) => m[4]), "id tab-<data-tab>");
-    assert.deepEqual(tabs.map((m) => m[3]), ["setup-grid", "flow-panel", "flow-panel", "flow-panel"]);
-    assert.deepEqual(tabs.map((m) => Boolean(m[5])), [false, true, true, true], "roving tabindex: only Party starts in the tab order");
+    assert.deepEqual(tabs.map((m) => m[3]), ["setup-grid", "flow-panel", "flow-panel"]);
+    assert.deepEqual(tabs.map((m) => Boolean(m[5])), [false, true, true], "roving tabindex: only Party starts in the tab order");
     assert.match(row, /<span id="party-help"><\/span><span id="plan-help" hidden><\/span>/);
-    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow1" hidden>/);
+    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow2" hidden>/);
   }
   const show = fn(page, "showTab");
   assert.match(show, /const flow = isFlow\(tab\);/);
@@ -87,7 +89,7 @@ const IDX = [[8, 0, 4], [5, 1, 2]] as const;
 const members: PlanMember[] = IDX.flatMap((row, r) => row.map((idx, i): PlanMember => {
   const raw = sv.raw.hero[idx];
   return { row: r ? "back" : "front", i, name: String(raw.name), cls: Number(raw.class), rotation: api.newHero(raw).attackList.slice(1, 6),
-    level: Number(raw.level), asc: 0 };
+    level: Number(raw.level) };
 }));
 const traceOf = (quest: number) => {
   const [f, b] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
@@ -117,7 +119,7 @@ test("Flow 2: no column heads; each turn is its band, a row of cards (one per fi
   }
   // names on every card, duplicated every turn; the place and level only on turn 1's
   const first = turns[0].children[1].children;
-  assert.deepEqual(first.map((c) => c.querySelector("div.f2-name")!.textContent.replace("✝", "")), planNames(), "Flow 1's column order");
+  assert.deepEqual(first.map((c) => c.querySelector("div.f2-name")!.textContent.replace("✝", "")), planNames(), "the action order (the planned rotation's heads)");
   const heroes = first.filter((c) => c.classList.contains("hero")), enemy = first.find((c) => c.classList.contains("enemy"))!;
   for (const h of heroes) assert.match(h.querySelector("div.f2-meta")!.textContent, /^(Front|Back) \d · lvl \d+$/);
   assert.equal(enemy.querySelector("div.f2-meta")!.textContent, "enemy");
@@ -128,25 +130,25 @@ test("Flow 2: no column heads; each turn is its band, a row of cards (one per fi
   assert.ok(plan.querySelectorAll("li.f2-fx").length > 0);
   assert.ok(plan.querySelector("p.tc-result"));
 });
-/** Flow 1's column order (its heads) for the same party. */
+/** The columns' order (the planned rotation's heads) for the same party. */
 function planNames(): string[] {
-  const p = partyPlan({ id: 72, rare: false }, members, traceOf(72)) as unknown as FakeElement;
+  const p = plannedRotation({ id: 72, rare: false }, members) as unknown as FakeElement;
   return p.querySelector("div.pg-heads")!.children.map((h) => h.querySelector("strong")!.textContent);
 }
 
-test("Flow 2: a card's HP is the HP at its turn's start (Flow 1's end of the turn before; turn 1 from the trace)", () => {
+test("Flow 2: a card's HP is the HP at its turn's start (the end of the turn before; turn 1 from the trace)", () => {
   const trace = traceOf(72);
   const data = planTimeline(trace, [1, 2, 3, 4, 5, 6]);
   const plan = flow2(72);
   const turns = plan.querySelectorAll("div.f2-turn");
-  const enemyHP = (t: FakeElement) => t.children[1].children.find((c) => c.classList.contains("enemy"))!.querySelector("span.f2-full")!.textContent;
+  const enemyHP = (t: FakeElement) => t.children[1].children.find((c) => c.classList.contains("enemy"))!.querySelector("span.fl-hpfull")!.textContent.split(" / ")[0];
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.max(0, n));
   for (let k = 1; k < turns.length; k++) assert.equal(enemyHP(turns[k]), fmt(data.turns[k - 1].hp[0].hp), `turn ${k + 1}`);
   const start = fightStart(trace);
   assert.equal(enemyHP(turns[0]), fmt(start[0].hp));
   for (const l of Object.values(start)) assert.ok(l.hp > 0 && l.hp <= l.maxHP, "everyone standing at the start of a quest fight");
   // a screen reader reads the HP as text
-  assert.match(turns[0].children[1].children[1].querySelector("div.f2-hp")!.textContent, /[\d,]+ \/ [\d,]+ HP/);
+  assert.match(turns[0].children[1].children[1].querySelector("div.fl-hp")!.getAttribute("aria-label")!, /[\d,]+ \/ [\d,]+ HP/);
 });
 
 test("Flow 2: buffs and debuffs listed one under the other, buffs first, text only with the turns left", () => {
@@ -169,7 +171,7 @@ test("Flow 2: buffs and debuffs listed one under the other, buffs first, text on
   assert.deepEqual(card.querySelectorAll("span.f2-fx-name").map((s) => s.textContent), ["+15% Atk", "Taunt", "−20% Def", "Stun"]);
   assert.deepEqual(card.querySelectorAll("span.f2-fx-left").map((s) => s.textContent), ["3", "2", "1"]);
   assert.ok(card.classList.contains("cls-5"));
-  assert.equal(card.querySelector("div.f2-hp")!.classList.contains("mid"), true);
+  assert.equal(card.querySelector("div.fl-hp")!.classList.contains("mid"), true);
   // CSS: one per line, no coloured dots
   assert.match(f2css, /\.f2-fxs \{[^}]*flex-direction: column;/);
   assert.doesNotMatch(f2css, /\.f2-fx[^{]*::(before|after)/);
@@ -180,9 +182,9 @@ test("Flow 2: a fallen fighter's card is dimmed, ✝ before its name, the bar at
     fx: [{ who: 1, name: "x", label: "+10% Atk", debuff: false, title: "x" }] }) as unknown as FakeElement;
   assert.ok(card.classList.contains("dead"));
   assert.equal(card.querySelector("span.f2-dead")!.textContent, "✝");
-  assert.match(card.querySelector("span.f2-bar")!.children[0].getAttribute("style")!, /width: 0\.0%/);
-  assert.equal(card.querySelector("span.f2-full")!.textContent, "0");
-  assert.match(card.querySelector("div.f2-hp")!.textContent, /down, 0 \/ 900 HP/);
+  assert.match(card.querySelector("span.fl-hpfill")!.getAttribute("style")!, /width: 0\.0%/);
+  assert.equal(card.querySelector("span.fl-hpfull")!.textContent, "0 / 900");
+  assert.match(card.querySelector("div.fl-hp")!.getAttribute("aria-label")!, /down, 0 \/ 900 HP/);
   assert.equal(card.querySelectorAll("li.f2-fx").length, 0);
   // in a real fight: Odin wins, so heroes fall; their cards say so from the next turn on
   const plan = flow2(72);
@@ -192,7 +194,7 @@ test("Flow 2: a fallen fighter's card is dimmed, ✝ before its name, the bar at
   assert.match(f2css, /\.f2-card\.dead \.f2-name \{ color: var\(--muted\); \}/);
 });
 
-test("Flow 2: the calculations open in their column (calcColumn), as in Flow 1", () => {
+test("Flow 2: the calculations open in their column (calcColumn)", () => {
   const plan = flow2(72);
   const line = plan.querySelectorAll("div.tc-line").find((l) => l.children.some((c) => c.querySelector("button.tc-calc-btn")))!;
   const lines = line.parentNode!.children;
@@ -204,13 +206,11 @@ test("Flow 2: the calculations open in their column (calcColumn), as in Flow 1",
   assert.equal(box.children[0].style.gridColumn, String(k + 1));
 });
 
-test("Flow 2 without a fight: Flow 1's planned rotation; Flow 1 keeps its heads, effects and end-of-turn band", () => {
+test("Flow 2 without a fight: the rotation as planned (flow-planned.ts)", () => {
   const planned = renderFlow2({ id: 72, rare: false }, members, null) as unknown as FakeElement;
   assert.equal(planned.querySelectorAll("div.pg-turngroup").length, 5);
-  const f1 = partyPlan({ id: 72, rare: false }, members, traceOf(72)) as unknown as FakeElement;
-  assert.ok(f1.querySelector("div.pg-heads"));
-  assert.ok(f1.querySelectorAll("div.tc-status").length > 0);
-  assert.equal(f1.querySelectorAll("div.f2-card").length, 0);
+  assert.ok(planned.querySelector("div.pg-heads"));
+  assert.equal(planned.querySelectorAll("div.f2-card").length, 0);
 });
 
 test("Flow 3: registered, U59's real layout (one card per action), not the stub", () => {
@@ -220,10 +220,9 @@ test("Flow 3: registered, U59's real layout (one card per action), not the stub"
   assert.doesNotMatch(out!.textContent ?? "", /Coming soon/);
 });
 
-test("CSS: Flow 2's own block: the cards share the lines' columns; a narrow card stacks its bar over its number", () => {
+test("CSS: Flow 2's own block: the cards share the lines' columns (U63: the HP bar and the outline in the U63 block)", () => {
   assert.match(f2css, /\.f2-cards \{ display: grid; grid-template-columns: repeat\(var\(--pg-cols\), minmax\(0, 1fr\)\); gap: 3px;/);
   assert.match(f2css, /\.f2-card \{[^}]*container-type: inline-size;/);
-  assert.match(f2css, /@container \(max-width: 84px\) \{\s*\.f2-hp \{ grid-template-columns: minmax\(0, 1fr\);/);
-  assert.match(f2css, /\.f2-card\.asc-1, \.f2-card\.asc-2 \{/);
+  assert.doesNotMatch(f2css, /\.f2-hp|\.f2-bar|asc-/);
   assert.doesNotMatch(f2css, /overflow: (auto|scroll)/, "no inner scroller");
 });

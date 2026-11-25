@@ -3,7 +3,7 @@
  * chronology. No turn bands and no end-of-turn summary: each card carries the state of its fighter at that moment.
  *
  * - One column per fighter in action order (the heroes by party location, then the enemy; the enemy first on
- *   questType 6), as Flow 1 (timeline.ts planGrid columns), with a compact head row (name, place).
+ *   questType 6; battle-plan.ts planGrid columns), with a compact head row (name, place).
  * - One card per action, each on its own grid row, so a card always sits lower than the one before it, whatever the
  *   column. A card: the fighter's name (the first card of a turn adds a tiny "T3"), the skill as its headline, what it
  *   did to each fighter it touched (damage, healing, crit, miss, KO, the effects that landed, each number with its
@@ -16,7 +16,7 @@
  *   class-colour edge on its left, and a "†" names the fallen fighter.
  * - Reading order: the DOM order is the visual order (one ordered list); each card starts with a visually hidden
  *   sentence, "Turn 3, Warrior: Slash on Boss, 1,240 damage".
- * The data comes from the same trace as Flow 1 (tools/fight-trace.ts via battle-plan.ts planTimeline), read only.
+ * The data comes from the same trace as Flow 2 (tools/fight-trace.ts via battle-plan.ts planTimeline), read only.
  */
 import { calcView } from "./battle-calc.ts";
 import {
@@ -24,9 +24,12 @@ import {
   TURN_CAP, type TracedFight,
 } from "./battle-plan.ts";
 import type { TraceCalc } from "../sim/api.ts";
-import { el, fmtCompact } from "./dom.ts";
+import { el } from "./dom.ts";
 import { enemyName, skillName } from "./names.ts";
-import { FLOW_PAGE, partyPlan, type PlanEdit, timelineOf } from "./timeline.ts";
+import { FLOW_PAGE, type PlanEdit } from "./flow-parts.ts";
+import { hpBar } from "./flow-hp.ts";
+import { plannedRotation } from "./flow-planned.ts";
+import { timelineOf } from "./timeline.ts";
 import { tip } from "./tooltip.ts";
 import { skillLink } from "./wiki-data.ts";
 
@@ -67,7 +70,7 @@ export type Flow3Item = Flow3Card | Flow3Dead | Flow3Break;
 /**
  * The items of a traced fight in reading order. Each action is run through planTimeline as a turn of its own, so its
  * "end of turn" state is the state right after that action (HP of everyone, live effects), with the same chips,
- * damage, healing and calculations as Flow 1.
+ * damage, healing and calculations as Flow 2.
  */
 export function flow3Items(trace: TracedFight, whoCols: number[], nameOf: (w: number) => string): Flow3Item[] {
   const steps = planTimeline({ won: trace.won, turns: trace.actions.length, actions: trace.actions.map((a, k) => ({ ...a, turn: k + 1 })) },
@@ -199,7 +202,7 @@ function fxLine(c: TimelineChip): HTMLElement {
     ...(c.turns !== undefined && c.turns > 0 ? [el("span", { class: "tc-left" }, ` · ${c.turns}`)] : []));
 }
 
-/** A calculation panel (the same calcView as Flow 1): one block per hit or heal, then their sum when several. */
+/** A calculation panel (the same calcView as Flow 2): one block per hit or heal, then their sum when several. */
 function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) => string, shown: number): HTMLElement {
   const views = calc.filter((c) => c.kind === kind && !(c.kind === "dmg" && c.missed)).map((c) => calcView(c, nameOf));
   const blocks = views.map((v) => el("div", { class: `cf-block${v.void ? " void" : ""}` }, el("div", { class: "cf-head" }, v.head),
@@ -268,24 +271,10 @@ function touchEl(t: Touch, card: HTMLElement, nameOf: (w: number) => string, sel
       el("span", { class: `tc-fx ${f.debuff ? "debuff" : "buff"}`, title: f.title }, f.label)))] : []));
 }
 
-/**
- * The fighter's HP right after the action: a compact bar with "remaining / total" written inside it. The text comes
- * twice, whole ("1,097 / 2,000") and compact ("9.7K / 10K", only when the total reaches 10,000), and the bar's own
- * container query (style.css `Flow 3` block) shows the compact one when the bar is narrow, as Flow 2 does on phones.
- * Down: "0 / total" in an empty bar. The screen reader reads the label only.
- */
+/** The fighter's HP right after the action: the Flows' shared bar (flow-hp.ts), "1,097 / 2,000" inside it. */
 function hpEl(v: { hp: number; maxHP: number } | undefined, name: string): HTMLElement[] {
   if (!v) return [];
-  const down = v.hp <= 0;
-  const now = Math.max(0, v.hp);
-  const f = !down && v.maxHP > 0 ? Math.max(0, Math.min(1, now / v.maxHP)) : 0;
-  const tone = down ? "down" : f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
-  const text = down ? `${name} is down` : `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP`;
-  const full = `${fmtInt.format(now)} / ${fmtInt.format(v.maxHP)}`;
-  const short = v.maxHP >= 10_000 ? `${fmtCompact.format(now)} / ${fmtCompact.format(v.maxHP)}` : full;
-  return [el("div", { class: `f3-hp ${tone}`, role: "img", "aria-label": text, title: text },
-    el("span", { class: "f3-hpbar", "aria-hidden": "true" }, el("span", { class: "f3-hpfill", style: `width: ${(f * 100).toFixed(1)}%` }),
-      el("span", { class: "f3-hptxt" }, el("span", { class: "f3-hpfull" }, full), el("span", { class: "f3-hpshort" }, short))))];
+  return [hpBar(v, v.hp <= 0 ? `${name} is down` : `${name}: ${fmtInt.format(v.hp)} / ${fmtInt.format(v.maxHP)} HP`)];
 }
 
 /** Where an item sits on a wide box: its own grid row and its fighter's column (a narrow box ignores both: one list). */
@@ -333,14 +322,14 @@ function headsEl(cols: PlanColumn[], nameOf: (w: number) => string, rare: boolea
 }
 
 /**
- * Flow 3: the same inputs and result as Flow 1's partyPlan (timeline.ts), so the layout registry calls either. With a
- * traced fight, its cards; without one (no party, or a party that can't fight), Flow 1's rotation as planned. `edit`
- * is only used there: the cards are read-only. Null without a timeline for this enemy.
+ * Flow 3: the layout registry's signature (flow-layouts.ts FlowRender). With a traced fight, its cards; without one
+ * (no party, or a party that can't fight), the rotation as planned (flow-planned.ts). `edit` is only used there: the
+ * cards are read-only. Null without a timeline for this enemy.
  */
 export function renderFlow3(quest: { id: number; rare: boolean }, members: PlanMember[], trace: TracedFight | null = null, edit?: PlanEdit): HTMLElement | null {
   const tl = timelineOf(quest.id, quest.rare);
   if (!tl) return null;
-  if (!trace || !members.length) return partyPlan(quest, members, trace, edit);
+  if (!trace || !members.length) return plannedRotation(quest, members, edit);
   const cols = planGrid(tl, members, 5).columns;
   const whoCols = cols.map((c) => (c.kind === "enemy" ? 0 : c.loc!));
   const foe = enemyName(tl.quest, tl.rare) ?? tl.name;

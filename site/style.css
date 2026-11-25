@@ -1582,9 +1582,9 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .pg-cycle { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 0.66rem; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
 .pg-cycle::before, .pg-cycle::after { content: ""; flex: 1; border-top: 1px dashed var(--trim); }
-/* The flow chart (timeline.ts flowChart): per turn, one line per action in action order, the actor's cell
-   tinted in its colour; damage and healing as the main text where they land; the effects as text, and once per turn
-   the end-of-turn summary (U40). Columns line up with the heads (U51: no turn column, the same grid, gap 3px). */
+/* The flow's action lines (Flow 2, flow2.ts; U63: Flow 1's flowChart is gone): per turn, one line per action in action
+   order, the actor's cell tinted in its colour; damage and healing as the main text where they land (U51: no turn
+   column, the same grid, gap 3px). */
 .tc-grid { min-width: calc(var(--pg-cols) * 78px); }
 .tc-lines { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .tc-line { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; }
@@ -1606,11 +1606,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .tc-fx.buff { color: color-mix(in srgb, var(--good) 88%, var(--fg)); }
 .tc-fx.debuff { color: color-mix(in srgb, #ef4444 75%, var(--fg)); }
 .tc-fx .tc-left { font-weight: 500; color: var(--muted); }
-.tc-fxs { display: flex; flex-wrap: wrap; gap: 1px 7px; width: 100%; }
 .tc-void { font-size: 0.64rem; font-style: italic; color: var(--muted); cursor: help; }
-/* The end-of-turn summary: its own band, under the action lines (HP, then the effects). */
-.tc-status { margin-top: 2px; padding: 3px 0; border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
-.tc-status .tc-cell { min-height: 0; padding-block: 1px; align-content: flex-start; }
 .tc-left { font-size: 0.54rem; opacity: .8; font-variant-numeric: tabular-nums; }
 /* U40: a damage or heal number's calculation: the toggle after the number, the formula under the line (full width). */
 .tc-calc-btn { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 0.58rem; color: var(--muted); cursor: pointer; white-space: nowrap; }
@@ -1655,15 +1651,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .fl-name:hover, .fl-name:focus-within { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .fl-name:hover .fl-caret, .fl-name:focus-within .fl-caret { color: var(--fg); }
 .fl-name:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* HP at the end of each turn (U40): the bar and the number in fixed places, so every bar has the same place and width
-   in every column and every turn; an empty bar and "✝ down" once fallen. */
-.tc-hp { display: grid; grid-template-columns: minmax(0, 1fr) 4.6em; align-items: center; gap: 4px; width: 100%; font-size: 0.6rem;
-  font-variant-numeric: tabular-nums; color: var(--muted); }
-.tc-hpnum { text-align: right; white-space: nowrap; }
-.tc-hpbar { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
-.tc-hpbar > span { display: block; height: 100%; background: var(--good); }
-.tc-hp.mid .tc-hpbar > span { background: var(--mid); } .tc-hp.low .tc-hpbar > span { background: #ef4444; }
-.tc-hp.down .tc-hpnum { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
 .tc-result { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; text-align: center; font-weight: 750; }
 .tc-result.won { background: color-mix(in srgb, var(--good) 18%, transparent); }
 .tc-result.lost { background: color-mix(in srgb, #ef4444 18%, transparent); }
@@ -1674,9 +1661,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .tc-unreached .tc-cell { min-height: 1.2em; padding-block: 1px; }
 .tc-unreached .tc-planned { font-style: italic; background: color-mix(in srgb, var(--card-2) 50%, transparent); }
 .tc-unreached .tc-skill, .tc-unreached .tc-skill a.wl.skill { color: var(--muted); font-weight: 500; }
-/* Long fights: the page scrolls and the column heads stay at the top. On a narrow screen the chart scrolls sideways
-   in its own frame (which then scrolls down too, so the heads still stick). */
-.tc .pg-heads { position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 4px; box-shadow: 0 1px 0 var(--border); }
+/* On a narrow screen the chart scrolls sideways in its own frame (U48 overrides: one long page). */
 .tc .tc-scroll { overflow: visible; }
 @media (max-width: 700px) { .tc .tc-scroll { overflow: auto; max-height: 85vh; overscroll-behavior: contain; } }
 /* Map runs: the battles of the run, in map order (scrolls sideways on a phone). */
@@ -1741,7 +1726,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .hero-cell { display: inline-flex; flex-direction: column; padding-left: 8px; border-left: 3px solid var(--c, var(--border)); line-height: 1.25; text-align: left; }
 .hero-cell-name { font-weight: 650; color: var(--fg); white-space: nowrap; }
 .hero-cell-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
-/* F29: the room bar's edges fade while more rooms are that way (battle-page.ts edgeFades); also `.scroll-row`. */
+/* F29: the room bar's edges fade while more rooms are that way (battle-page.ts roomScroller, U63; was edgeFades); also `.scroll-row`. */
 .room-bar.fade-end { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
 .room-bar.fade-start { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px); mask-image: linear-gradient(to right, transparent, #000 36px); }
 .room-bar.fade-start.fade-end {
@@ -2279,9 +2264,6 @@ p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); 
   .flow-panel .pg-cell { padding: 3px; }
   .flow-panel .tc-cell { padding: 2px; gap: 1px 3px; }
   .flow-panel .tc-dmg, .flow-panel .tc-heal { font-size: 0.7rem; }
-  /* HP: the bar over the number, so a narrow column keeps both. */
-  .flow-panel .tc-hp { grid-template-columns: minmax(0, 1fr); gap: 1px; }
-  .flow-panel .tc-hpnum { text-align: left; }
   /* "▾ calculation" keeps only its ▾ on screen (the word stays the button's name). */
   .flow-panel .tc-calc-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .flow-panel .tc-calc-btn { padding: 2px 4px; }
@@ -2473,24 +2455,21 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 #wiki .wiki-empty-state { margin: 0; }
 /* end U56 */
 /* U58 tabs */
-/* Party · Flow 1 · Flow 2 · Flow 3 (flow-layouts.ts): four tabs and the "?" on one line on a 375 px phone. */
+/* Party · Flow 2 · Flow 3 (flow-layouts.ts; U63: Flow 1 gone): the tabs and the "?" on one line on a 375 px phone. */
 @media (max-width: 420px) { .b3-tabs button { padding: 7px 10px; } }
 /* end U58 tabs */
 /* Flow 2 */
 /* U58, Flow 2 (flow2.ts): no column heads; each turn's band is followed by one card per fighter, in the action lines'
-   columns (same grid, gap 3px): the name strong, a slim HP bar with its number, then the buffs and the debuffs one per
-   line as text (green, red; turns left at the right). The class colour is the card's top edge and a light tint; an
-   ascended hero's frame is silver or gold; a fallen fighter's card is dashed and muted, ✝ before its name, the bar empty.
-   The cards of a row share its height. A narrow card (a phone: about 46 px) puts the bar over the number and shortens a
-   long number (container query). */
+   columns (same grid, gap 3px): the name strong, the HP bar, then the buffs and the debuffs one per
+   line as text (green, red; turns left at the right). The class colour is the card's top edge and a light tint (U63:
+   and its outline, see the U63 block, which also holds the HP bar); a fallen fighter's card is dashed and muted, ✝
+   before its name, the bar empty. The cards of a row share its height. */
 .f2-cards { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; align-items: stretch; margin: 0 0 4px; }
 .f2-card { --c: var(--muted); --f2-bg: color-mix(in srgb, var(--c) 7%, var(--card)); position: relative; container-type: inline-size;
   box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 5px; border-radius: 7px;
   border: 1px solid color-mix(in srgb, var(--c) 40%, var(--border)); background: var(--f2-bg); box-shadow: inset 0 3px 0 var(--c);
   font-size: 0.62rem; line-height: 1.25; }
 .f2-card.enemy { --c: #ec4899; }
-.f2-card.asc-1, .f2-card.asc-2 { border: 2px solid transparent; padding: 5px 5px 4px;
-  background: linear-gradient(var(--f2-bg), var(--f2-bg)) padding-box, var(--asc-grad) border-box; }
 .f2-name { display: flex; align-items: baseline; gap: 3px; min-width: 0; font-size: 0.72rem; font-weight: 750; line-height: 1.15; color: var(--fg); }
 .f2-name strong { min-width: 0; font-weight: 750; white-space: normal; overflow: hidden; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
@@ -2498,13 +2477,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .f2-meta { font-size: 0.56rem; line-height: 1.2; color: var(--muted); }
 .f2-meta > span { white-space: nowrap; }
 .f2-rare { font-weight: 700; color: color-mix(in srgb, #ec4899 60%, var(--fg)); }
-.f2-hp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; font-size: 0.6rem; font-variant-numeric: tabular-nums; }
-.f2-bar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
-.f2-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--good); }
-.f2-hp.mid .f2-bar > span { background: var(--mid); }
-.f2-hp.low .f2-bar > span { background: #ef4444; }
-.f2-hpnum { font-weight: 650; color: var(--fg); white-space: nowrap; }
-.f2-short { display: none; }
 .f2-fxs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
 .f2-fxs + .f2-fxs { padding-top: 2px; border-top: 1px dotted color-mix(in srgb, var(--muted) 45%, transparent); }
 .f2-fx { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; min-width: 0; font-size: 0.6rem; font-weight: 650;
@@ -2516,16 +2488,10 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .f2-card.dead { --f2-bg: color-mix(in srgb, var(--fg) 3%, var(--card)); border: 1px dashed color-mix(in srgb, var(--muted) 50%, transparent);
   padding: 6px 6px 5px; background: var(--f2-bg); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c) 30%, transparent); }
 .f2-card.dead .f2-name { color: var(--muted); }
-.f2-dead, .f2-card.dead .f2-hpnum { color: color-mix(in srgb, var(--bad) 80%, var(--fg)); font-weight: 800; }
+.f2-dead { color: color-mix(in srgb, var(--bad) 80%, var(--fg)); font-weight: 800; }
 .f2-end .tc-turnhead { border-left-color: var(--accent); }
-@container (max-width: 84px) {
-  .f2-hp { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .f2-full { display: none; }
-  .f2-short { display: inline; }
-}
 @media (max-width: 700px) {
   .flow-panel .f2-card { padding: 5px 3px 4px; gap: 2px; border-radius: 5px; }
-  .flow-panel .f2-card.asc-1, .flow-panel .f2-card.asc-2 { padding: 4px 2px 3px; }
   .flow-panel .f2-card.dead { padding: 5px 3px 4px; }
   .flow-panel .f2-name { font-size: 0.66rem; }
 }
@@ -2577,24 +2543,7 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .f3-calc { margin-top: 5px; padding: 4px 5px; border-radius: 5px; font-size: 0.64rem; text-align: left; overflow-wrap: anywhere;
   background: color-mix(in srgb, var(--fg) 6%, var(--card)); border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .f3-state { margin-top: 3px; padding-top: 3px; border-top: 1px solid color-mix(in srgb, var(--muted) 22%, transparent); }
-/* HP: one compact bar with "remaining / total" inside it. The fill is a tint (not solid) and the text is the theme's
-   --fg with a halo of the card colour, so it reads over the filled and the empty part alike, light or dark theme. The
-   bar is its own container: narrow, the compact numbers (9.7K / 10K) replace the whole ones. Down: 0 / total, empty. */
-.f3-hp { display: block; }
-.f3-hpbar { container: f3hp / inline-size; position: relative; display: block; height: 13px; border-radius: 3px; overflow: hidden;
-  background: color-mix(in srgb, var(--muted) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 22%, transparent); }
-.f3-hpfill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--good) 55%, transparent); }
-.f3-hp.mid .f3-hpfill { background: color-mix(in srgb, var(--mid) 55%, transparent); }
-.f3-hp.low .f3-hpfill { background: color-mix(in srgb, #ef4444 55%, transparent); }
-.f3-hptxt { position: relative; display: block; padding: 0 4px; font-size: 0.58rem; font-weight: 700; line-height: 13px; text-align: center;
-  font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg);
-  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card), 0 0 1px var(--card); }
-.f3-hp.down .f3-hptxt { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
-.f3-hpshort { display: none; }
-@container f3hp (max-width: 118px) {
-  .f3-hpfull { display: none; }
-  .f3-hpshort { display: inline; }
-}
+/* HP: the Flows' shared bar (flow-hp.ts), in the U63 block. */
 .f3-fx { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 0; }
 .f3-fx-item { font-size: 0.6rem; line-height: 1.3; }
 /* Down: one dimmed "†" in the fighter's column (its name only in the narrow list). */
@@ -2655,3 +2604,38 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-table th, .hp-table td { padding: 3px 8px; font-variant-numeric: tabular-nums; }
 .hp-empty { margin: 12px 0 0; }
 /* end U61 */
+/* U63 */
+/* Flow 2: a hero's card is outlined in its class colour (no ascension frame); the enemy's in its own (#ec4899). */
+.f2-card:not(.dead) { border-color: color-mix(in srgb, var(--c) 80%, var(--border)); }
+/* The Flows' HP bar (flow-hp.ts; Flow 2's cards, Flow 3's cards): one compact bar with "remaining / total" inside it.
+   The fill is a tint and the text the theme's --fg with a halo of the card colour, so it reads over the filled and the
+   empty part alike, light or dark theme. The bar is its own container: narrow, the compact numbers (9.7K / 10K)
+   replace the whole ones. Down: 0 / total, empty, in the bad colour. */
+.fl-hp { display: block; }
+.fl-hpbar { container: flhp / inline-size; position: relative; display: block; height: 13px; border-radius: 3px; overflow: hidden;
+  background: color-mix(in srgb, var(--muted) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--muted) 22%, transparent); }
+.fl-hpfill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--good) 55%, transparent); }
+.fl-hp.mid .fl-hpfill { background: color-mix(in srgb, var(--mid) 55%, transparent); }
+.fl-hp.low .fl-hpfill { background: color-mix(in srgb, #ef4444 55%, transparent); }
+.fl-hptxt { position: relative; display: block; padding: 0 4px; font-size: 0.58rem; font-weight: 700; line-height: 13px; text-align: center;
+  font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg);
+  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card), 0 0 1px var(--card); }
+.fl-hp.down .fl-hptxt { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); }
+.fl-hpshort { display: none; }
+@container flhp (max-width: 118px) {
+  .fl-hpfull { display: none; }
+  .fl-hpshort { display: inline; }
+}
+/* The map's room bar on a PC (battle-page.ts roomScroller): the wheel scrolls it; a ‹ / › over each faded edge. */
+.room-nav { position: relative; margin: 0 0 10px; }
+.room-nav > .room-bar { margin: 0; overscroll-behavior-x: contain; }
+.room-scroll { position: absolute; top: 50%; z-index: 2; transform: translateY(-50%); display: grid; place-items: center; width: 26px; height: 26px;
+  padding: 0; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--fg); font-size: 1rem; line-height: 1;
+  box-shadow: var(--shadow); cursor: pointer; }
+.room-scroll.prev { left: 4px; }
+.room-scroll.next { right: 4px; }
+.room-scroll[hidden] { display: none; }
+.room-scroll:hover { background: var(--card-2); }
+/* Touch screens swipe: no buttons there. */
+@media (hover: none) { .room-scroll { display: none; } }
+/* end U63 */

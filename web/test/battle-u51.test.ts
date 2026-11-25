@@ -13,7 +13,10 @@ import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { calcColumn, turnBand } from "../src/ui/battle-layout.ts";
 import { solverFigures } from "../src/ui/battle-setup.ts";
-import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import { renderFlow2 } from "../src/ui/flow2.ts";
+import { plannedRotation } from "../src/ui/flow-planned.ts";
+import type { PlanMember } from "../src/ui/battle-plan.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -109,15 +112,15 @@ const members: PlanMember[] = IDX.flatMap((row, r) => row.map((idx, i): PlanMemb
 }));
 const flow = (quest: number) => {
   const [f, b] = IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
-  return partyPlan({ id: quest, rare: false }, members, traceFight(sim, quest, [...f], [...b])) as unknown as FakeElement;
+  return renderFlow2({ id: quest, rare: false }, members, traceFight(sim, quest, [...f], [...b])) as unknown as FakeElement;
 };
 
 test("the Flow: no \"Turn\" column; each turn starts with its full-width band", () => {
   const plan = flow(72); // Odin: lost on turn 14
   assert.equal(plan.querySelectorAll(".pg-turn").length + plan.querySelectorAll(".tc-turnlab").length, 0);
-  const heads = plan.querySelector("div.pg-heads")!.children;
-  assert.equal(heads.length, 7, "one head per actor, nothing else");
-  const turns = plan.querySelectorAll("div.tc-turn");
+  const heads = plan.querySelector("div.f2-cards")!.children; // U63: Flow 2, a card per actor (Flow 1 had heads)
+  assert.equal(heads.length, 7, "one card per actor, nothing else");
+  const turns = plan.querySelectorAll("div.tc-turn").filter((t) => !t.classList.contains("f2-end")); // U63: Flow 2, its "End" group aside
   assert.ok(turns.length >= 10);
   for (const [k, t] of turns.entries()) {
     const band = t.children[0];
@@ -134,7 +137,7 @@ test("the Flow: no \"Turn\" column; each turn starts with its full-width band", 
 });
 
 test("the planned rotation (no fight): the same turn bands, no \"Turn\" column", () => {
-  const plan = partyPlan({ id: 72, rare: false }, members, null) as unknown as FakeElement;
+  const plan = plannedRotation({ id: 72, rare: false }, members) as unknown as FakeElement;
   assert.equal(plan.querySelectorAll(".pg-turn").length, 0);
   const groups = plan.querySelectorAll("div.pg-turngroup");
   assert.deepEqual(groups.map((g) => g.querySelector("div.tc-turnhead")!.textContent), ["Turn 1", "Turn 2", "Turn 3", "Turn 4", "Turn 5"]);
@@ -163,7 +166,7 @@ test("calculations: each in its column's grid cell, several columns open side by
   a.querySelector("button.tc-calc-btn")!.dispatch("click");
   assert.deepEqual(box.children.map((p) => p.style.gridColumn), [String(kb + 1)]);
   // no positioning by margin any more
-  assert.doesNotMatch(read("web/src/ui/timeline.ts"), /marginLeft|calcPanelLeft|ResizeObserver/);
+  assert.doesNotMatch(read("web/src/ui/flow-parts.ts"), /marginLeft|calcPanelLeft|ResizeObserver/);
 });
 
 test("CSS: the lines, heads and calculation boxes share the actors' columns; a panel is never wider than its column", () => {

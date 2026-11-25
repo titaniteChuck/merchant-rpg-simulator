@@ -1,19 +1,22 @@
 /**
- * U58, Flow 2: the fight turn by turn like Flow 1 (timeline.ts flowChart), without the column heads. Each turn starts
- * with its band ("Turn 3"), then a row of cards, one per fighter in action order (the heroes and the enemy): its name,
- * its HP at the turn's start (bar and number) and its effects then, buffs and then debuffs, one per line, as text
- * (U37/U38: no coloured dots). Then the turn's action lines as in Flow 1 (skills, damage and healing with their
- * "▾ calculation", one column wide: battle-layout.ts calcColumn), minus the effects: they are in the next cards. After
- * the last turn, the cards as the fight ended, then the result. The first turn's cards say where each hero stands and
- * its level, and carry the hero and opponent pickers (with `edit`) that Flow 1 has in its heads.
- * Without a traced fight (no party, or one that can't fight): the rotation as planned, as Flow 1 draws it.
- * CSS: the `Flow 2` block of style.css. Registered in flow-layouts.ts.
+ * U58, Flow 2: the fight turn by turn, one column per fighter in action order, no column heads. Each turn starts
+ * with its band ("Turn 3"), then a row of cards, one per fighter (the heroes and the enemy): its name, its HP at the
+ * turn's start (U63: the Flows' shared bar, flow-hp.ts, "remaining / total" inside it) and its effects then, buffs and
+ * then debuffs, one per line, as text (U37/U38: no coloured dots). Then the turn's action lines (skills, damage and
+ * healing with their "▾ calculation", one column wide: battle-layout.ts calcColumn); the effects are in the next
+ * cards. After the last turn, the cards as the fight ended, then the result. The first turn's cards say where each
+ * hero stands and its level, and carry the hero and opponent pickers (with `edit`). U63: a hero's card is outlined in
+ * its class colour (no ascension frame); the enemy's in its own.
+ * Without a traced fight (no party, or one that can't fight): the rotation as planned (flow-planned.ts).
+ * CSS: the `Flow 2` and `U63` blocks of style.css. Registered in flow-layouts.ts.
  */
-import { lv, el, fmtCompact } from "./dom.ts";
+import { lv, el } from "./dom.ts";
 import { locationLabel, type PlanColumn, planGrid, type PlanMember, planTimeline, type TimelineCell, type TimelineChip,
   type TimelineTurn, type TracedFight } from "./battle-plan.ts";
-import { actorEl, calcPanel, calcToggle, FLOW_PAGE, fmtInt, nameEdit, partyPlan, type PlanEdit, skillEdit, timelineOf, tlName, turnRow,
-  unreachedRows } from "./timeline.ts";
+import { actorEl, calcPanel, calcToggle, FLOW_PAGE, fmtInt, nameEdit, type PlanEdit, skillEdit, turnRow, unreachedRows } from "./flow-parts.ts";
+import { hpBar } from "./flow-hp.ts";
+import { PLANNED_NOTE, plannedRotation } from "./flow-planned.ts";
+import { timelineOf, tlName } from "./timeline.ts";
 
 type Life = { hp: number; maxHP: number };
 
@@ -37,8 +40,8 @@ export function fightStart(trace: TracedFight): Record<number, Life> {
 export interface CardState {
   name: string;
   enemy: boolean;
+  /** The hero's class: the card's outline, top edge and tint (U63: never the ascension). */
   cls?: number;
-  asc?: number;
   life?: Life;
   fx: TimelineChip[];
   /** Turn 1: the name with its picker (nameEdit), and the place and level. */
@@ -46,14 +49,6 @@ export interface CardState {
   meta?: (HTMLElement | string)[];
   /** For the screen reader text: "start of turn 3", "end of the fight". */
   when: string;
-}
-
-/** The number as text: whole, and a compact form for a narrow card when it's long (1.2M). */
-function hpNumber(hp: number): HTMLElement {
-  const full = fmtInt.format(hp);
-  const short = hp >= 10_000 ? fmtCompact.format(hp) : full;
-  return el("span", { class: "f2-hpnum", "aria-hidden": "true" }, el("span", { class: "f2-full" }, full),
-    el("span", { class: "f2-short" }, short));
 }
 
 /** One effect line: what it does, and its turns left (the full "<skill> from <fighter> · N turns left" on hover). */
@@ -67,30 +62,25 @@ function fxLine(c: TimelineChip): HTMLElement {
 }
 
 /**
- * A fighter's card: the name (✝ before it once down), the HP bar with its number, then the buffs and the debuffs one
- * per line. Down: dimmed, dashed, an empty bar at 0 and no effects (they ended with it).
+ * A fighter's card: the name (✝ before it once down), the HP bar (flow-hp.ts), then the buffs and the debuffs one
+ * per line. Down: dimmed, dashed, "0 / total" in an empty bar and no effects (they ended with it).
  */
 export function fighterCard(s: CardState): HTMLElement {
   const down = s.life !== undefined && s.life.hp <= 0;
-  const f = s.life && !down && s.life.maxHP > 0 ? Math.max(0, Math.min(1, s.life.hp / s.life.maxHP)) : 0;
-  const tone = down ? "down" : f > 0.5 ? "ok" : f > 0.25 ? "mid" : "low";
-  const asc = !s.enemy && s.asc ? ` asc-${s.asc}` : "";
   const cls = s.enemy ? "enemy" : `hero cls-${s.cls ?? 0}`;
   const fx = down ? [] : s.fx;
   const buffs = fx.filter((c) => !c.debuff), debuffs = fx.filter((c) => c.debuff);
   const hpText = !s.life ? "" : down ? `down, 0 / ${fmtInt.format(s.life.maxHP)} HP` : `${fmtInt.format(s.life.hp)} / ${fmtInt.format(s.life.maxHP)} HP`;
-  return el("div", { class: `f2-card ${cls}${asc}${down ? " dead" : ""}`, role: "cell", title: `${s.name}, ${s.when}${hpText ? `: ${hpText}` : ""}` },
+  return el("div", { class: `f2-card ${cls}${down ? " dead" : ""}`, role: "cell", title: `${s.name}, ${s.when}${hpText ? `: ${hpText}` : ""}` },
     el("div", { class: "f2-name" }, ...(down ? [el("span", { class: "f2-dead", "aria-hidden": "true" }, "✝")] : []),
       s.nameNode ?? el("strong", {}, s.name)),
     ...(s.meta?.length ? [el("div", { class: "f2-meta" }, ...s.meta)] : []),
-    ...(s.life ? [el("div", { class: `f2-hp ${tone}` }, el("span", { class: "f2-bar", "aria-hidden": "true" },
-      el("span", { style: `width: ${(f * 100).toFixed(1)}%` })), hpNumber(down ? 0 : s.life.hp),
-      el("span", { class: "visually-hidden" }, hpText))] : []),
+    ...(s.life ? [hpBar(s.life, `${s.name}: ${hpText}`)] : []),
     ...(buffs.length ? [el("ul", { class: "f2-fxs buffs" }, ...buffs.map(fxLine))] : []),
     ...(debuffs.length ? [el("ul", { class: "f2-fxs debuffs" }, ...debuffs.map(fxLine))] : []));
 }
 
-/** What a fighter took during one action, as in Flow 1 (timeline.ts takenEl) but without the effects (in the cards). */
+/** What a fighter took during one action: damage, healing (each with its ▾), "no target", KO; the effects are in the cards. */
 function takenEl(c: TimelineCell | undefined, w: number, nameOf: (w: number) => string, box: HTMLElement, col: number): HTMLElement[] {
   if (!c) return [];
   const name = nameOf(w);
@@ -106,13 +96,13 @@ function takenEl(c: TimelineCell | undefined, w: number, nameOf: (w: number) => 
 }
 
 /**
- * Flow 2 (U58): the same inputs as Flow 1 (timeline.ts partyPlan). Null without a timeline for this enemy; without a
- * traced fight, Flow 1's planned rotation.
+ * Flow 2 (U58): the layout registry's signature (flow-layouts.ts FlowRender). Null without a timeline for this enemy;
+ * without a traced fight, the rotation as planned (flow-planned.ts).
  */
 export function renderFlow2(quest: { id: number; rare: boolean }, members: PlanMember[], trace: TracedFight | null = null, edit?: PlanEdit): HTMLElement | null {
   const tl = timelineOf(quest.id, quest.rare);
   if (!tl) return null;
-  if (!trace || !members.length) return partyPlan(quest, members, trace, edit);
+  if (!trace || !members.length) return plannedRotation(quest, members, edit);
   const cols = planGrid(tl, members, 5).columns;
   const whoOf = (c: PlanColumn) => (c.kind === "enemy" ? 0 : c.loc!);
   const nameOf = (w: number) => (w ? cols.find((c) => c.loc === w)?.member?.name ?? locationLabel(w) : tlName(tl));
@@ -133,7 +123,7 @@ export function renderFlow2(quest: { id: number; rare: boolean }, members: PlanM
       const m = c.member!;
       const h = first ? edit?.heroes(c.loc!) : undefined;
       const meta = [el("span", {}, locationLabel(c.loc!)), ...(m.level !== undefined ? [" · ", el("span", {}, lv(m.level))] : [])];
-      return fighterCard({ ...base, name: m.name, enemy: false, cls: m.cls, ...(m.asc ? { asc: m.asc } : {}), ...(first ? { meta } : {}),
+      return fighterCard({ ...base, name: m.name, enemy: false, cls: m.cls, ...(first ? { meta } : {}),
         ...(h ? { nameNode: nameEdit(m.name, `${locationLabel(c.loc!)}: hero`, h.options, h.value, `hero-${c.loc}`, (v) => edit!.setHero(c.loc!, v)) } : {}) });
     }));
 
@@ -178,6 +168,9 @@ export function renderFlow2(quest: { id: number; rare: boolean }, members: PlanM
 /** Flow 2's "?" (the run's note comes first, battle-page.ts). */
 export function flow2Note(editable: boolean): string {
   return "Each turn starts with one card per fighter: its HP at the turn's start, then its buffs and debuffs, one per line "
-    + "(the number: turns left). Then the turn's actions in order, as in Flow 1; ▾ calculation opens how a number was worked out."
-    + (editable ? " In turn 1, a name changes the hero or the opponent and ▾ a skill." : "");
+    + "(the number: turns left). Then the turn's actions in order, one line each: the skill in the actor's column, damage (−) "
+    + "and healing (+) in the target's; ▾ calculation opens how a number was worked out. Heroes play rotation slot k on turn k; "
+    + "turn 6 is turn 1 again."
+    + (editable ? " In turn 1, a name changes the hero or the opponent; ▾ changes a skill in turns 1–5." : "")
+    + ` ${PLANNED_NOTE}`;
 }

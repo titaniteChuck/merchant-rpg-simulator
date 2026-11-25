@@ -109,7 +109,7 @@ test("a fight won on turn 1: two steps, the enemy falls and is marked", () => {
 });
 
 // ---------------------------------------------------------------- 2. the Flow's very trace
-test("the chart and the Flow read one trace: Flow 1's turn ends and Flow 2's start agree, same seed as Simulate's first", () => {
+test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's start agree, same seed as Simulate's first", () => {
   const trace = traceOf(72);
   const d = hpData([{ trace, enemy: "Odin" }], fighters)!;
   const tl = planTimeline(trace, fighters.map((f) => f.who));

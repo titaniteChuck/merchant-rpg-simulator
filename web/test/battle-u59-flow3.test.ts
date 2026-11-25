@@ -9,15 +9,19 @@ import * as api from "../src/sim/api.ts";
 import { Sim } from "../src/tools/engine.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
-import type { TracedFight } from "../src/ui/battle-plan.ts";
+import type { PlanMember, TracedFight } from "../src/ui/battle-plan.ts";
 import { type Flow3Card, flow3Items, flow3Sentence, renderFlow3 } from "../src/ui/flow3.ts";
-import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
+import { loadTimelineData } from "../src/ui/timeline.ts";
+import type { FlowRender } from "../src/ui/flow-layouts.ts";
+import { renderFlow2 } from "../src/ui/flow2.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const css = read("site/style.css");
 const block = css.slice(css.indexOf("/* Flow 3 */"), css.indexOf("/* end Flow 3 */"));
+// U63: the HP bar is the Flows' shared one (flow-hp.ts), its CSS in the U63 block
+const u63 = css.slice(css.indexOf("/* U63 */"), css.indexOf("/* end U63 */"));
 
 api.loadGameData(JSON.parse(read("inventory/gamedata.json")));
 const timelines = JSON.parse(read("inventory/timelines.json"));
@@ -40,11 +44,11 @@ const gridRow = (e: FakeElement) => Number(/grid-row: (\d+)/.exec(e.getAttribute
 
 const odin = traceOf(72); // Odin: lost on turn 14, heroes fall on the way
 
-test("the signature matches Flow 1's entry point (partyPlan)", () => {
-  const f3: typeof partyPlan = renderFlow3;
+test("the signature is the layout registry's (FlowRender)", () => {
+  const f3: FlowRender = renderFlow3;
   assert.equal(typeof f3, "function");
-  assert.equal(renderFlow3({ id: 999999, rare: false }, members, odin), null, "no timeline: null, as Flow 1");
-  // no fight to show: the rotation as planned, Flow 1's
+  assert.equal(renderFlow3({ id: 999999, rare: false }, members, odin), null, "no timeline: null");
+  // no fight to show: the rotation as planned (flow-planned.ts)
   const plan = renderFlow3({ id: 72, rare: false }, members, null) as unknown as FakeElement;
   assert.ok(plan.querySelector("div.pg-turngroup"));
 });
@@ -123,7 +127,7 @@ test("a card: name, skill as headline, the result, then HP and each effect on a 
     const at = (cls: string) => kids.findIndex((k) => k.split(" ").includes(cls));
     assert.ok(at("sr-only") === 0 && at("f3-top") < at("f3-skill") && at("f3-skill") < at("f3-state"));
     if (at("f3-out") >= 0) assert.ok(at("f3-skill") < at("f3-out") && at("f3-out") < at("f3-state"));
-    assert.equal(c.querySelector("div.f3-hp")!.getAttribute("role"), "img");
+    assert.equal(c.querySelector("div.fl-hp")!.getAttribute("role"), "img");
   }
   // some card hits, one shows effects as a vertical list
   assert.ok(cards.some((c) => c.querySelector("span.tc-dmg")));
@@ -145,7 +149,7 @@ test("the HP on a card is the fighter's right after its action", () => {
   const acted = odin.actions.filter((a) => a.did !== null);
   for (const [k, c] of cards.entries()) {
     const a = acted[k], v = a.life.find((l) => l.who === a.who)!;
-    const label = c.querySelector("div.f3-hp")!.getAttribute("aria-label")!;
+    const label = c.querySelector("div.fl-hp")!.getAttribute("aria-label")!;
     if (v.hp > 0) assert.ok(label.includes(`${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v.hp)} / `), label);
     else assert.match(label, /is down/);
   }
@@ -158,49 +162,49 @@ test("HP: \"remaining / total\" inside one compact bar, no number beside it; dow
   const acted = odin.actions.filter((a) => a.did !== null);
   for (const [k, c] of cards.entries()) {
     const a = acted[k], v = a.life.find((l) => l.who === a.who)!;
-    const hp = c.querySelector("div.f3-hp")!;
+    const hp = c.querySelector("div.fl-hp")!;
     assert.equal(hp.querySelectorAll("span.f3-hpnum").length, 0, "no separate number");
     assert.equal(hp.children.length, 1, "the bar alone");
     const bar = hp.children[0];
-    assert.ok(bar.classList.contains("f3-hpbar"));
+    assert.ok(bar.classList.contains("fl-hpbar"));
     assert.equal(bar.getAttribute("aria-hidden"), "true");
     // the fill, then the text over it
-    assert.ok(bar.children[0].classList.contains("f3-hpfill") && bar.children[1].classList.contains("f3-hptxt"));
-    const full = bar.querySelector("span.f3-hpfull")!.textContent;
+    assert.ok(bar.children[0].classList.contains("fl-hpfill") && bar.children[1].classList.contains("fl-hptxt"));
+    const full = bar.querySelector("span.fl-hpfull")!.textContent;
     assert.equal(full, `${fmt.format(Math.max(0, v.hp))} / ${fmt.format(v.maxHP)}`);
     // the compact form only for a total of 10,000 and over
-    const short = bar.querySelector("span.f3-hpshort")!.textContent;
+    const short = bar.querySelector("span.fl-hpshort")!.textContent;
     if (v.maxHP < 10_000) assert.equal(short, full);
     else assert.match(short, /^[\d.]+[KMB]? \/ [\d.]+[KMB]$/);
   }
   // the made-up fight: the boss at 9,700 of 10,000 reads "9.7K / 10K" when the bar is narrow
   const small = renderFlow3({ id: 72, rare: false }, members, made) as unknown as FakeElement;
-  const shorts = small.querySelectorAll("span.f3-hpshort").map((s) => s.textContent);
+  const shorts = small.querySelectorAll("span.fl-hpshort").map((s) => s.textContent);
   assert.ok(shorts.includes("9.7K / 10K"), shorts.join(", "));
   // a fighter that falls on its own action (a recoil): "0 / 2,000" in an empty bar, the label unchanged
   const recoil = { ...made, actions: [act(1, 2, "Basic", [{ who: 2, dmg: 2000, heal: 0, hp: 0, ko: true }], life(10000, 0, 1000))] };
-  const down = (renderFlow3({ id: 72, rare: false }, members, recoil) as unknown as FakeElement).querySelector("div.f3-hp")!;
+  const down = (renderFlow3({ id: 72, rare: false }, members, recoil) as unknown as FakeElement).querySelector("div.fl-hp")!;
   assert.ok(down.classList.contains("down"));
   assert.match(down.getAttribute("aria-label")!, / is down$/);
-  assert.match(down.querySelector("span.f3-hpfull")!.textContent, /^0 \/ /);
-  assert.match(down.querySelector("span.f3-hpfill")!.getAttribute("style")!, /width: 0\.0%/);
+  assert.match(down.querySelector("span.fl-hpfull")!.textContent, /^0 \/ /);
+  assert.match(down.querySelector("span.fl-hpfill")!.getAttribute("style")!, /width: 0\.0%/);
 });
 
 test("CSS: the HP bar holds one line of text, readable over the fill and the empty part; compact when narrow", () => {
-  const bar = block.match(/\.f3-hpbar \{[^}]*\}/)![0];
-  assert.match(bar, /container: f3hp \/ inline-size;/);
+  const bar = u63.match(/\.fl-hpbar \{[^}]*\}/)![0];
+  assert.match(bar, /container: flhp \/ inline-size;/);
   assert.match(bar, /height: 13px;/);
-  const txt = block.match(/\.f3-hptxt \{[^}]*\}/)![0];
+  const txt = u63.match(/\.fl-hptxt \{[^}]*\}/)![0];
   assert.match(txt, /line-height: 13px;/);
   assert.match(txt, /color: var\(--fg\);/);
   assert.match(txt, /text-shadow: [^;]*var\(--card\)/);
   assert.match(txt, /white-space: nowrap;/);
   // the fill is a tint, so the text's colour holds over it
-  assert.match(block, /\.f3-hpfill \{[^}]*background: color-mix\(in srgb, var\(--good\) 55%, transparent\);/);
-  assert.doesNotMatch(block, /\.f3-hpnum/);
-  assert.match(block, /\.f3-hpshort \{ display: none; \}/);
-  const narrow = block.slice(block.indexOf("@container f3hp (max-width: 118px)"));
-  assert.match(narrow, /\.f3-hpfull \{ display: none; \}\s*\.f3-hpshort \{ display: inline; \}/);
+  assert.match(u63, /\.fl-hpfill \{[^}]*background: color-mix\(in srgb, var\(--good\) 55%, transparent\);/);
+  assert.doesNotMatch(block, /\.f3-hp/, "U63: no HP bar of Flow 3's own");
+  assert.match(u63, /\.fl-hpshort \{ display: none; \}/);
+  const narrow = u63.slice(u63.indexOf("@container flhp (max-width: 118px)"));
+  assert.match(narrow, /\.fl-hpfull \{ display: none; \}\s*\.fl-hpshort \{ display: inline; \}/);
   // a shorter state area
   assert.match(block, /\.f3-state \{ margin-top: 3px; padding-top: 3px;/);
 });
@@ -306,12 +310,12 @@ test("CSS: the Flow 3 block, one long page (no scroll frame), the columns' grid,
   assert.doesNotMatch(block, /overflow(-y)?: (auto|scroll)|max-height|min-width: [1-9]/);
   assert.match(block, /@container \(max-width: 560px\)/);
   assert.match(block, /\.f3 \{ container-type: inline-size;/);
-  for (const token of ["--card-2", "--fg", "--muted", "--border", "--good", "--bg"]) assert.ok(block.includes(`var(${token})`), token);
+  for (const token of ["--card-2", "--fg", "--muted", "--border", "--bg"]) assert.ok(block.includes(`var(${token})`), token);
   assert.match(block, /:root\[data-theme="light"\] \.f3-card/);
 });
 
-test("Flow 1 is untouched by Flow 3: the same bands and status lines", () => {
-  const plan = partyPlan({ id: 72, rare: false }, members, odin) as unknown as FakeElement;
+test("Flow 2 is untouched by Flow 3: its turn bands, no Flow 3 cards", () => {
+  const plan = renderFlow2({ id: 72, rare: false }, members, odin) as unknown as FakeElement;
   assert.ok(plan.querySelectorAll("div.tc-turnrow").length >= 10);
   assert.equal(plan.querySelectorAll("li.f3-card").length, 0);
 });
