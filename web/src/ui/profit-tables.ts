@@ -290,6 +290,7 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
   o.cols.forEach((c, i) => {
     const th = ths[i];
     const btn = th.querySelector("button")!;
+    btn.setAttribute("data-focus-key", `sort:${c.key}`); // the focus survives the re-sort's re-render (QA R2 F3)
     if (c.tip) {
       btn.dataset.tip = "";
       btn.setAttribute("aria-description", c.tip);
@@ -301,7 +302,7 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
   });
   stickyPad(wrap);
   if (sorted.length <= shown.length) return wrap;
-  const more = el("button", { type: "button", class: "secondary" }, `Show ${fmt.format(Math.min(MORE_STEP, sorted.length - shown.length))} more`);
+  const more = el("button", { type: "button", class: "secondary", "data-focus-key": "more" }, `Show ${fmt.format(Math.min(MORE_STEP, sorted.length - shown.length))} more`);
   more.addEventListener("click", o.onMore);
   return el("div", {}, wrap, el("p", { class: "pf-more muted small" }, `First ${fmt.format(shown.length)} of ${fmt.format(sorted.length)}. `, more));
 }

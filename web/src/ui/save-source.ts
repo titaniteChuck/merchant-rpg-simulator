@@ -30,7 +30,8 @@
 import { el } from "./dom.ts";
 import { expansionsFold, mountExpansionChip, type SaveAction, unmountExpansionChip } from "./expansion-menu.ts";
 import {
-  fitMenu, foldGroup, menuHead, menuKeys, menuSep, openedAt, placeChip, rememberSaveName, saveChipButton, savePagesGroup,
+  fitMenu, foldGroup, menuHead, menuKeys, menuSep, openedAt, placeChip, refocusSaveChip, rememberSaveName, saveChipButton,
+  savePagesGroup,
 } from "./save-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
@@ -123,7 +124,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
   /** The file actions of the Save dropdown with no save loaded. */
   const noSaveActions = (): SaveAction[] => [
     { label: "📂 Open your save", hint: "Choose your save file (PlayerData.txt, Slot2Data.txt …)", run: () => chooseSave(pickerOpts) },
-    { label: "🧪 Try the example save", hint: "Load an anonymised real save, to try the tools without your own file", run: () => void useExample() },
+    { label: "🧪 Try the example save", hint: "Load an anonymised real save, to try the tools without your own file", run: () => useExample() },
   ];
 
   const setLoaded = (loaded: boolean) => {
@@ -150,11 +151,12 @@ export function initSaveSource(o: SaveSourceOptions): void {
       menu.hidden = true;
       button.setAttribute("aria-expanded", "false");
     };
-    const item = (label: string, hint: string, f: () => void) => {
+    // QA R2 F6: an action that stays on the page gives the focus back to the Save button (the new one once it settles).
+    const item = (label: string, hint: string, f: () => unknown) => {
       const b = el("button", { type: "button", role: "menuitem", title: hint }, label);
       b.addEventListener("click", () => {
         close();
-        f();
+        refocusSaveChip(f());
       });
       return b;
     };

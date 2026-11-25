@@ -177,14 +177,34 @@ export function menuKeys(chip: HTMLElement, menu: HTMLElement, button: HTMLEleme
       button.focus();
       return;
     }
-    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu.hidden) {
+    // Up / Down wrap; Home / End go to the first and last item (menu pattern, QA R2).
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && !menu.hidden) {
       const items = [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter((i) => !i.hidden && i.offsetParent !== null);
+      if (!items.length) return;
       const i = items.indexOf(document.activeElement as HTMLElement);
-      const j = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+      const j = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1
+        : e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
       e.preventDefault();
       items[j]?.focus();
     }
   });
+}
+
+/** Nothing useful has the focus: none, the page body, or an element a re-render removed. */
+const focusLost = (): boolean => {
+  const a = document.activeElement;
+  return !a || a === document.body || !a.isConnected;
+};
+
+/**
+ * QA R2 F6: after a Save dropdown action that stays on the page, the focus goes back to the Save chip's button (the
+ * one in the page now: Reload, the example save and Forget replace the chip). `after`: an action still running; once
+ * it settles the chip's button gets the focus again, unless the visitor has moved it somewhere else meanwhile.
+ */
+export function refocusSaveChip(after?: unknown): void {
+  const focus = () => [...document.querySelectorAll<HTMLElement>(".save-chip-btn")].find((b) => b.isConnected)?.focus();
+  focus();
+  if (after instanceof Promise) void after.finally(() => focusLost() && focus()).catch(() => {});
 }
 
 /** True on the save viewer's pages, whose section is the Save dropdown (and, on phones, the drawer's Save group). */

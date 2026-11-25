@@ -47,7 +47,7 @@ test("F05: segmented options don't wrap and span two columns above 600 px; short
 });
 
 test("F06: compare columns Stat / After / Change / Now; Now hidden on a phone and in the Change tooltip", () => {
-  assert.match(page, /el\("th", \{\}, "Stat"\), el\("th", \{ class: "num" \}, `After/);
+  assert.match(page, /el\("th", \{\}, "Stat"\), el\("th", \{ class: "num" \}, "After", el\("span", \{ class: "lv-th-asc" \}/); // QA R2 F5: the ascension in its own span
   assert.match(page, /el\("th", \{ class: "num lv-now" \}, now\)/);
   assert.match(page, /tipOn\(change\(a, b, Boolean\(f\)\), \(\) => `\$\{now\}: \$\{was\}`\)/);
   assert.match(block, /@media \(max-width: 600px\) \{ #prestige-out \.lv-now \{ display: none; \} \}/);

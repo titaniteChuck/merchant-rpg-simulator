@@ -1,6 +1,6 @@
 /**
  * The wiki's "?" help (U24): a small round button next to a section title whose text shows in a popover on hover and
- * on keyboard focus (also on a tap, Escape closes it). The text stays in the page as the button's accessible
+ * on keyboard focus (also on a tap; a second tap, Escape, or Enter on the focused "?" closes it). The text stays in the page as the button's accessible
  * description (aria-describedby → a hidden element), so screen readers get it without opening anything.
  * The explanations that used to sit under the titles live here now; the page itself keeps the data.
  * U30: a "?" can end with links to the Stats / Battle reference sections (`refs`: "How it's calculated →" for one
@@ -70,7 +70,8 @@ export function helpTip(text: HelpText, about = "this section", refs: HTMLAnchor
     clearTimeout(closing);
     closing = setTimeout(() => open?.pop === pop && close(), 250);
   };
-  btn.addEventListener("pointerenter", () => show(btn, pop));
+  // A touch's pointerenter comes before its pointerdown: showing there would make a second tap look like a first one.
+  btn.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && show(btn, pop));
   btn.addEventListener("pointerleave", later);
   pop.addEventListener("pointerenter", () => clearTimeout(closing));
   pop.addEventListener("pointerleave", later);
@@ -79,7 +80,20 @@ export function helpTip(text: HelpText, about = "this section", refs: HTMLAnchor
   btn.addEventListener("focus", () => show(btn, pop));
   btn.addEventListener("blur", (e) => !inside(e.relatedTarget) && close());
   pop.addEventListener("focusout", (e) => !inside(e.relatedTarget) && close());
-  btn.addEventListener("click", () => (open?.pop === pop && document.activeElement !== btn ? close() : show(btn, pop)));
+  // QA R2: a second tap (or Enter / Space) on the "?" closes its popover. Whether it was open is read on pointerdown,
+  // before the focus a tap gives the button shows it; a mouse click keeps it open (hover already showed it).
+  let tap: { open: boolean } | null = null;
+  btn.addEventListener("pointerdown", (e) => {
+    tap = e.pointerType === "mouse" ? null : { open: open?.pop === pop };
+  });
+  btn.addEventListener("click", (e) => {
+    const t = tap;
+    tap = null;
+    if (t) return void (t.open ? close() : show(btn, pop));
+    if (e.detail === 0) return void (open?.pop === pop ? close() : show(btn, pop)); // the keyboard
+    if (open?.pop === pop && document.activeElement !== btn) close();
+    else show(btn, pop);
+  });
   return el("span", { class: "help-tip" }, btn, pop);
 }
 

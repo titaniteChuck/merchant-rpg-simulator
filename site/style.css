@@ -1886,11 +1886,13 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .save-picker .example-btn { padding: 9px 16px; }
 .save-picker + .save-help { text-align: center; }
 /* F14: the inventory filter: the search and the count on one line, the kind chips one row that scrolls sideways. */
-.inv-filter { flex-direction: column; align-items: stretch; gap: 8px; }
+/* QA R2 F2: nowrap, or the column inherits .toolbar's wrap and the nowrap chip row widens the page at 375 px. */
+.inv-filter { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; min-width: 0; max-width: 100%; }
+.inv-filter > * { min-width: 0; max-width: 100%; }
 .inv-search { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .inv-search input[type="search"] { flex: 1 1 120px; min-width: 0; }
 .inv-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.inv-kinds { overflow-x: auto; scrollbar-width: none; }
+.inv-kinds { overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .inv-kinds::-webkit-scrollbar { display: none; }
 .inv-kinds .seg { flex-wrap: nowrap; }
 /* F15: the hero page's stats as a compact grid (4 per row), the radar folded under it (≤ 200 px on a phone), the
@@ -2171,6 +2173,12 @@ footer .footer-line a { color: inherit; }
 }
 /* F06: on a phone the compare table shows Stat / After / Change (Now in the Change tooltip). */
 @media (max-width: 600px) { #prestige-out .lv-now { display: none; } }
+/* QA R2 F5: at 375 px the headers wrap (the ascension under "After") and the stat names may wrap, so Change fits. */
+@media (max-width: 600px) {
+  #prestige-out .lv-payoff th, #prestige-out .lv-payoff td:first-child { white-space: normal; }
+  #prestige-out .lv-payoff th, #prestige-out .lv-payoff td { padding-left: 8px; padding-right: 8px; }
+  #prestige-out .lv-th-asc { display: block; font-weight: 400; font-size: 0.85em; }
+}
 /* F10: Compare is a secondary button next to the reference quest. */
 #ref-box .toolbar .secondary { margin-left: 0; align-self: flex-end; }
 /* F37: tables that scroll sideways fade at the edge that has more (R2-A's `.scroll-row` fade). */

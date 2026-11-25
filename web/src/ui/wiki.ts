@@ -17,6 +17,7 @@ import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
+import { loadListState, saveListState } from "./list-state.ts";
 import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, slotName, gradeBadge, pill, type Row, table } from "./dom.ts";
 import { ascLevels } from "../tools/profit.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
@@ -143,9 +144,10 @@ function joinNodes(nodes: (Node | string)[], sep = ", "): (Node | string)[] {
   return nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
 }
 
-function filterBox(placeholder: string, onInput: (q: string) => void): HTMLInputElement {
-  const s = el("input", { type: "search", placeholder, "aria-label": placeholder }) as HTMLInputElement;
-  s.addEventListener("input", () => onInput(s.value.trim().toLowerCase()));
+function filterBox(placeholder: string, onInput: (q: string, raw: string) => void, value = ""): HTMLInputElement {
+  const s = el("input", { type: "search", placeholder, "aria-label": placeholder, value }) as HTMLInputElement;
+  s.value = value;
+  s.addEventListener("input", () => onInput(s.value.trim().toLowerCase(), s.value));
   return s;
 }
 
@@ -159,19 +161,30 @@ function listPage(title: string, rows: Row[], cols: Column[], search = (r: Row) 
   if (!rows.length && hidden) return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title), emptyList(title, hidden));
   const holder = el("div");
   const count = el("span", { class: "muted small" });
+  // QA R2 F4: the sort lives here, not in the table rebuilt on each keystroke; filter and sort persist per route.
+  const route = typeof location !== "undefined" ? location.hash || `#/${title}` : title;
+  const st = loadListState(route);
   const show = (q: string) => {
     const shown = q ? rows.filter((r) => search(r).toLowerCase().includes(q)) : rows;
     count.textContent = `${shown.length} of ${rows.length}`;
-    const t = table(shown, cols, rowClass);
+    const t = table(shown, cols, rowClass, { sort: st.sort, onSort: (s) => {
+      st.sort = s;
+      saveListState(route, st);
+    } });
     if (o.heads) headHelp(t, o.heads);
     holder.replaceChildren(t);
   };
-  show("");
+  const filter = (q: string, raw: string) => {
+    st.q = raw;
+    saveListState(route, st);
+    show(q);
+  };
+  show(st.q.trim().toLowerCase());
   const note = hiddenNote(hidden, title.toLowerCase());
   // R2-D F37: the section's description and definitions (once on the wiki home card) in a "?" beside the filter
   const help = o.href ? listHelp(o.href, title) : null;
   return el("div", {}, crumbs(title), el("h1", { class: "sr-only" }, title),
-    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, show), count, ...(help ? [help] : [])), ...(note ? [note] : []), holder);
+    el("div", { class: "toolbar" }, filterBox(`Filter ${title.toLowerCase()}`, filter, st.q), count, ...(help ? [help] : [])), ...(note ? [note] : []), holder);
 }
 
 /** R2-D F41: a "?" after the sort button of the named column headers ({ "Cost": () => helpTip(…) }). */

@@ -67,4 +67,14 @@ if (typeof document !== "undefined") {
     if (owner && owner === document.activeElement) place(owner);
     else hideTip();
   }, { passive: true, capture: true }); // capture: inner scrollers (the Flow's sideways frame) count too
+  // An owner removed from the page (a route change re-renders it) never fires pointerleave or blur, so the
+  // owner-only rule above would leave its tooltip on screen: hide it once the owner is disconnected (QA, 2026-11-25).
+  const hideOrphan = () => { if (owner && !owner.isConnected) hideTip(); };
+  document.addEventListener("pointerover", hideOrphan, { passive: true, capture: true });
+  document.addEventListener("pointermove", hideOrphan, { passive: true, capture: true });
+  document.addEventListener("focusin", hideOrphan, true);
+}
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("hashchange", hideTip);
+  window.addEventListener("popstate", hideTip);
 }

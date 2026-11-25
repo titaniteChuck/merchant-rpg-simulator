@@ -1,6 +1,6 @@
 // A very small DOM for tests that build page parts with dom.ts el() (no browser, no dependency): elements with
 // attributes, children, text, classList, dataset, style, listeners, and querySelectorAll on simple selectors
-// (tag, .class, [attr], [attr="v"], and combinations of these without spaces). Import it before the page modules.
+// (tag, .class, [attr], [attr="v"], [attr^="v"], and combinations of these without spaces). Import it before the page modules.
 
 type Listener = (e: { type: string; target: FakeElement }) => void;
 
@@ -101,6 +101,20 @@ export class FakeElement {
     if (this.parentNode) this.parentNode.childNodes = this.parentNode.childNodes.filter((n) => n !== this);
     this.parentNode = null;
   }
+  /** In the page: under the fake document's body (or the body itself). */
+  get isConnected(): boolean {
+    const body = (globalThis as { document?: { body?: unknown } }).document?.body;
+    let e: FakeElement | null = this;
+    while (e) {
+      if (e === body) return true;
+      e = e.parentNode;
+    }
+    return false;
+  }
+  /** Makes this the document's activeElement. */
+  focus(): void {
+    (globalThis as { document: { activeElement?: unknown } }).document.activeElement = this;
+  }
   get children(): FakeElement[] {
     return this.childNodes.filter((n): n is FakeElement => n instanceof FakeElement);
   }
@@ -130,8 +144,9 @@ export class FakeElement {
       if (part.startsWith(".")) {
         if (!this.classList.contains(part.slice(1))) return false;
       } else {
-        const [, k, v] = part.match(/^\[([\w-]+)(?:="?([^"]*)"?)?\]$/)!;
-        if (!this.hasAttribute(k) || (v !== undefined && this.getAttribute(k) !== v)) return false;
+        const [, k, op, v] = part.match(/^\[([\w-]+)(?:(\^?=)"?([^"]*)"?)?\]$/)!;
+        if (!this.hasAttribute(k)) return false;
+        if (v !== undefined && (op === "^=" ? !this.getAttribute(k)!.startsWith(v) : this.getAttribute(k) !== v)) return false;
       }
     }
     return true;

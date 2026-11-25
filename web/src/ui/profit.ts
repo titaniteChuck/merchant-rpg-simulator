@@ -9,7 +9,7 @@
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
-import { $, chipToggle, el, fmt1, gold, segField, segmented, tabKeys, tile } from "./dom.ts";
+import { $, chipToggle, el, findFocusKey, fmt1, focusKeyOf, gold, segField, segmented, tabKeys, tile } from "./dom.ts";
 import { isDefaultRequest, type Orb, type ProfitRequest, type ProfitResponse, type Row } from "./profit-worker.ts";
 import {
   enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, MORE_STEP, type ProfitTab, profitTabs, rankedTable, type SortState,
@@ -255,7 +255,7 @@ const gains = (r: Row) => Number(r.suffix_net) > 0 || Number(r.prefix_net) > 0;
 
 function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; orbs?: Orb[] }): HTMLElement {
   const f = state.filters;
-  const search = el("input", { type: "search", placeholder: "Filter by name", "aria-label": "Filter by name", value: f.q }) as HTMLInputElement;
+  const search = el("input", { type: "search", placeholder: "Filter by name", "aria-label": "Filter by name", value: f.q, "data-focus-key": "q" }) as HTMLInputElement;
   let t = 0;
   search.addEventListener("input", () => {
     clearTimeout(t);
@@ -269,10 +269,14 @@ function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; or
     set();
     renderPanel(true);
   });
-  const chip = (label: string, on: boolean, set: (v: boolean) => void) => chipToggle(label, on, (v) => {
-    set(v);
-    renderPanel(true);
-  });
+  const chip = (label: string, on: boolean, set: (v: boolean) => void) => {
+    const b = chipToggle(label, on, (v) => {
+      set(v);
+      renderPanel(true);
+    });
+    b.setAttribute("data-focus-key", `chip:${label}`); // QA R2 F3: a chip has no aria-label to find it again by
+    return b;
+  };
   if (opts.types) {
     for (const type of ["equipment", "consumable", "map"]) {
       if (type === "map" && orbsHidden()) continue;
@@ -280,7 +284,7 @@ function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; or
     }
   }
   if (opts.orbs) {
-    const orb = el("select", { "aria-label": "Orb" }, el("option", { value: "all" }, "All orbs"),
+    const orb = el("select", { "aria-label": "Orb", "data-focus-key": "orb" }, el("option", { value: "all" }, "All orbs"),
       ...opts.orbs.map((o) => el("option", String(o.id) === f.orb ? { value: String(o.id), selected: "" } : { value: String(o.id) }, itemName("material", o.id) ?? o.name))) as HTMLSelectElement;
     change(orb, () => (f.orb = orb.value));
     kids.push(orb);
@@ -293,7 +297,8 @@ function filterBar(opts: { types?: boolean; owned?: boolean; gains?: boolean; or
       })));
     }
     const lvl = (v: number, label: string, set: (x: number) => void) => {
-      const i = el("input", { type: "number", min: "1", max: String(MAX_LEVEL), value: String(v), "aria-label": label, inputmode: "numeric" }) as HTMLInputElement;
+      const i = el("input", { type: "number", min: "1", max: String(MAX_LEVEL), value: String(v), "aria-label": label, inputmode: "numeric",
+        "data-focus-key": `lvl:${label}` }) as HTMLInputElement;
       change(i, () => set(Math.max(1, Math.min(MAX_LEVEL, Number(i.value) || 1))));
       return i;
     };
@@ -314,8 +319,9 @@ function tableFor(tab: string, rows: Row[], cols: InfoColumn[]): HTMLElement {
       renderPanel(true);
     },
     onMore: () => {
+      const shown = state.limit[tab];
       state.limit[tab] += MORE_STEP;
-      renderPanel(true);
+      renderPanel(true, shown);
     },
   });
 }
@@ -383,22 +389,43 @@ function summaryTiles(r: Result): HTMLElement {
   return el("div", {}, tiles, el("p", { class: "muted small pf-base" }, "Base game only · add your expansions in 📜 Save ▾"));
 }
 
-function renderPanel(keepFocus = false): void {
+/**
+ * Rebuilds the open table's panel. `keepFocus`: the focused control is found again by a stable key (dom.ts focusKeyOf:
+ * its data-focus-key, a radio's name and value), so a chip, the ascension radios (and their arrow keys), a sort header
+ * and "Show more" keep the focus (QA R2 F3). `moreFrom`: "Show more" was used with that many rows shown; the focus goes
+ * to the new "Show more" button, or to the first added row when none is left.
+ */
+function renderPanel(keepFocus = false, moreFrom?: number): void {
   const r = state.result;
   if (!r) return;
   const panel = $("#panel");
   if (!panel) return;
   // keep the caret in the search box across re-renders
   const active = document.activeElement as HTMLInputElement | null;
-  const focusLabel = keepFocus && active && panel.contains(active) ? active.getAttribute("aria-label") : null;
-  const caret = focusLabel && active?.type === "search" ? active.selectionStart : null;
+  const key = keepFocus && active && panel.contains(active) ? focusKeyOf(active) : null;
+  const caret = key && active?.type === "search" ? active.selectionStart : null;
   const kids = state.tab === "Items" ? itemsPanel(r) : state.tab === "Enchanting" ? enchantPanel(r) : orbsPanel(r);
   panel.replaceChildren(...kids);
-  if (focusLabel) {
-    const again = panel.querySelector<HTMLInputElement>(`[aria-label="${focusLabel}"]`);
+  if (moreFrom !== undefined) {
+    const more = findFocusKey(panel, { key: "more" });
+    const row = more ? null : addedRow(panel, moreFrom);
+    if (row) row.tabIndex = -1; // a row is focusable only by script
+    (more ?? row)?.focus();
+    return;
+  }
+  if (key) {
+    const again = findFocusKey(panel, key) as HTMLInputElement | null;
     again?.focus();
     if (again && caret !== null && again.type === "search") again.setSelectionRange(caret, caret);
   }
+}
+
+/** The ranked table's row number `n` (0-based), cost-breakdown rows left out. */
+function addedRow(panel: HTMLElement, n: number): HTMLElement | null {
+  const tbodies = panel.querySelectorAll<HTMLElement>(".pf-table tbody");
+  const tbody = tbodies[tbodies.length - 1]; // Orbs: the ranked table is the last one, after the per-tier tables
+  if (!tbody) return null;
+  return [...tbody.children].filter((tr) => !tr.classList.contains("pf-why-row"))[n] as HTMLElement | undefined ?? null;
 }
 
 function render(): void {

@@ -10,7 +10,8 @@ import { EXPANSIONS } from "../tools/expansions.ts";
 import { notOwnedWhy } from "./expansion-why.ts";
 import { el, EXPANSION_LABEL, expansionBadge, EXPANSIONS_HREF } from "./dom.ts";
 import {
-  fitMenu, foldGroup, keptSave, menuHead, menuKeys, menuSep, menuTitle, openSaveLink, placeChip, plainHead, saveChipButton, savePagesGroup,
+  fitMenu, foldGroup, keptSave, menuHead, menuKeys, menuSep, menuTitle, openSaveLink, placeChip, plainHead, refocusSaveChip, saveChipButton,
+  savePagesGroup,
 } from "./save-menu.ts";
 
 export { fitMenu, menuKeys } from "./save-menu.ts";
@@ -96,7 +97,7 @@ export function expansionsFold(menu: HTMLElement): HTMLElement {
 let chip: HTMLElement | null = null;
 
 /** A save action of the no-save dropdown (save-source.ts: open your save, try the example save). */
-export interface SaveAction { label: string; hint: string; run: () => void }
+export interface SaveAction { label: string; hint: string; run: () => unknown }
 
 /**
  * The top-bar Save dropdown with no save loaded (U44; the expansions button before): "📜 Save ▾" with the expansion
@@ -131,7 +132,7 @@ export function mountExpansionChip(actions?: SaveAction[]): void {
     const b = el("button", { type: "button", role: "menuitem", title: x.hint }, x.label);
     b.addEventListener("click", () => {
       close();
-      x.run();
+      refocusSaveChip(x.run()); // QA R2 F6: the focus back on the Save button
     });
     return b;
   };

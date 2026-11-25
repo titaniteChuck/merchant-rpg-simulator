@@ -202,10 +202,20 @@ export interface Column {
   sortBy?: (r: Row) => Cell;
 }
 
+/** A table's sort: the column key ("" = the rows' own order) and its direction. */
+export interface TableSort { key: string; asc: boolean }
+
+export interface TableOptions {
+  /** The sort to start with (a caller that rebuilds the table keeps it this way, QA R2 F4). */
+  sort?: TableSort;
+  /** Told of each header click's new sort. */
+  onSort?: (s: TableSort) => void;
+}
+
 /** A sortable table; click a header to sort. */
-export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string): HTMLElement {
-  let sortKey = "";
-  let asc = true;
+export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string, opts: TableOptions = {}): HTMLElement {
+  let sortKey = opts.sort && cols.some((c) => c.key === opts.sort!.key) ? opts.sort.key : "";
+  let asc = sortKey ? opts.sort!.asc : true;
   const tbody = el("tbody");
   const render = () => {
     const by = cols.find((c) => c.key === sortKey)?.sortBy;
@@ -226,17 +236,50 @@ export function table(rows: Row[], cols: Column[], rowClass?: (r: Row) => string
   };
   const head = el("tr", {}, ...cols.map((c) => {
     const th = el("th", { scope: "col", ...(c.num ? { class: "num" } : {}) }, el("button", { type: "button" }, c.label));
+    if (c.key === sortKey) th.setAttribute("aria-sort", asc ? "ascending" : "descending");
     th.querySelector("button")!.addEventListener("click", () => {
       asc = sortKey === c.key ? !asc : !c.num;
       sortKey = c.key;
       head.querySelectorAll("th").forEach((h) => h.removeAttribute("aria-sort"));
       th.setAttribute("aria-sort", asc ? "ascending" : "descending");
       render();
+      opts.onSort?.({ key: sortKey, asc });
     });
     return th;
   }));
   render();
   return el("div", { class: "table-wrap" }, el("table", {}, el("thead", {}, head), tbody));
+}
+
+// ---------------------------------------------------------------- focus across a re-render (QA R2 F3)
+/**
+ * Where the focus was, in a form that finds the same control in a rebuilt panel: its `data-focus-key`, a radio's
+ * name and value, or (last resort) its aria-label. A chip, a sort header and "Show more" have no aria-label, so the
+ * old aria-label-only lookup lost the focus on every filter change.
+ */
+export type FocusKey = { key: string } | { radio: string; value: string } | { label: string };
+
+export function focusKeyOf(e: Element | null): FocusKey | null {
+  if (!e) return null;
+  const key = e.getAttribute("data-focus-key");
+  if (key) return { key };
+  const name = e.getAttribute("name");
+  if (e.tagName.toLowerCase() === "input" && e.getAttribute("type") === "radio" && name) {
+    return { radio: name, value: e.getAttribute("value") ?? (e as HTMLInputElement).value };
+  }
+  const label = e.getAttribute("aria-label");
+  return label ? { label } : null;
+}
+
+/** The control a FocusKey names inside `root` (compared as strings: no selector escaping). */
+export function findFocusKey(root: ParentNode, k: FocusKey): HTMLElement | null {
+  const all = (sel: string) => [...root.querySelectorAll<HTMLElement>(sel)];
+  if ("key" in k) return all("[data-focus-key]").find((e) => e.getAttribute("data-focus-key") === k.key) ?? null;
+  if ("radio" in k) {
+    return all("input[name]").find((e) => e.getAttribute("type") === "radio" && e.getAttribute("name") === k.radio
+      && (e.getAttribute("value") ?? (e as HTMLInputElement).value) === k.value) ?? null;
+  }
+  return all("[aria-label]").find((e) => e.getAttribute("aria-label") === k.label) ?? null;
 }
 
 /**

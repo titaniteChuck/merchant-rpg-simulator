@@ -275,6 +275,20 @@ function buildDrawer(brand: HTMLAnchorElement | null): { dialog: HTMLDialogEleme
   return { dialog, closeBtn };
 }
 
+/**
+ * QA R2: the drawer's arrow keys. The index of the link to focus among `count` links for `key` from link `i` (-1: the
+ * focus is on none of them): Down / Up move to the next / previous (wrapping), Home / End to the first / last; null
+ * for any other key.
+ */
+export function drawerStep(count: number, i: number, key: string): number | null {
+  if (!count) return null;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key === "ArrowDown") return i < 0 ? 0 : (i + 1) % count;
+  if (key === "ArrowUp") return i < 0 ? count - 1 : (i - 1 + count) % count;
+  return null;
+}
+
 function wireDrawer(dialog: HTMLDialogElement, burger: HTMLButtonElement, closeBtn: HTMLButtonElement): void {
   const root = document.documentElement;
   const closed = () => {
@@ -312,6 +326,13 @@ function wireDrawer(dialog: HTMLDialogElement, burger: HTMLButtonElement, closeB
     if (e.key === "Escape") {
       e.preventDefault();
       close();
+    } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+      // Up / Down (and Home / End) move between the drawer's visible links; folded sections' links are skipped.
+      const links = [...dialog.querySelectorAll<HTMLElement>("a[href]")].filter((x) => x.offsetParent);
+      const j = drawerStep(links.length, links.indexOf(document.activeElement as HTMLElement), e.key);
+      if (j === null) return;
+      e.preventDefault();
+      links[j].focus();
     } else if (e.key === "Tab") {
       // Keep the focus inside the drawer (the modal dialog makes the page inert; this also skips the browser's own UI).
       const fs = [...dialog.querySelectorAll<HTMLElement>("a[href], button")].filter((x) => x.offsetParent);

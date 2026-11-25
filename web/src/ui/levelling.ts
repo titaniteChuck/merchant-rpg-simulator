@@ -400,7 +400,8 @@ function payoffView(p: PrestigePayoff, raw: Any): Node[] {
   ];
   // R3 F06: Stat / After / Change / Now; on a phone Now is hidden (CSS) and sits in the Change tooltip.
   const now = `Now (${ascText(cur.tier - 1)})`;
-  const head = el("tr", {}, el("th", {}, "Stat"), el("th", { class: "num" }, `After (${ascText(nxt.tier - 1)})`),
+  // QA R2 F5: the ascension is its own span, so on a phone (CSS) the header wraps it under "After" and Change fits.
+  const head = el("tr", {}, el("th", {}, "Stat"), el("th", { class: "num" }, "After", el("span", { class: "lv-th-asc" }, ` (${ascText(nxt.tier - 1)})`)),
     el("th", { class: "num" }, "Change"), el("th", { class: "num lv-now" }, now));
   /** Rates (f = pct) change in percentage points, counts and stats by their difference. */
   const change = (a: number, b: number, rate: boolean) => {
