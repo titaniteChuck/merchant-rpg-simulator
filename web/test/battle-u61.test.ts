@@ -153,8 +153,8 @@ test("a map run: the fought rooms one after the other, each with its turn 0 on t
   for (const s of d.series) for (const i of s.deaths) assert.ok(!d.runStarts.includes(i));
   const fig = hpChart(d) as unknown as FakeElement;
   assert.equal(fig.querySelectorAll("line.hp-room").length, runs.length - 1);
-  // U66: the enemy line goes on through the rooms: one move, a vertical segment (0 then 100 %) at each boundary
-  assert.equal((fig.querySelector("path.hp-enemy")!.getAttribute("d")!.match(/M/g) ?? []).length, 1);
+  // U68: the enemy line starts again at each room (U66 drew one line, a vertical segment at each boundary)
+  assert.equal((fig.querySelector("path.hp-enemy")!.getAttribute("d")!.match(/M/g) ?? []).length, runs.length);
   assert.match(hpSummary(d), new RegExp(`over ${runs.length} rooms`));
 });
 

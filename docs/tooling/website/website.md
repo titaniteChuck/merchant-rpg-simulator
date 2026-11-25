@@ -540,6 +540,37 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Details panel: no "XP per hero", "Quest time" or "XP / min" (`questXpTiles`, `mapXpTiles` deleted). A quest's
     details: Turns, Enemy HP removed, Party HP left. A map's: Progress, Turns per room, Time (per run; the map's craft
     time in its "?"), Loot value, Party HP left, Essence: six tiles, no lone tile on a row.
+- U68, the Party view's chart, third pass (both pages; `web/src/ui/hp-chart.ts`; tests `web/test/battle-u68.test.ts`,
+  the U61, U65 and U66 tests updated; CSS in the `U68` block, the last one of `style.css`):
+  - Turn width: every turn gets at least the width all steps had before U66 (973f49a: the plot shared evenly by all
+    the run's turns, `minTurnWidth`), so a 13-turn fight is wider than a 5-turn one. A fight whose name is wider than
+    its turns still widens them (`fightLayout`), but the others keep their share (U66 squeezed them): the chart is
+    then wider than its box and scrolls as before. A quest fills the plot exactly as before U66.
+  - Room change in a map run: the enemy's line ends at the fallen enemy's 0 and a new path starts at the next one's
+    100 % on the same x (`linePath` breaks at every later room's turn 0); no vertical segment. Heroes' lines go on.
+  - Switching HP / Damage dealt / Heals keeps the sideways scroll (`drawHpChart(…, reveal = false)` on a tab click);
+    only an edit, a resize or a turn picked by the keys or ‹ › brings the selected turn into view.
+  - `‹ Turn X ›` (`.hp-turn`, a group under the scroll box, centred on the chart, not scrolling with it) replaces Turn
+    −1 / Turn +1: two arrow icon buttons ("Previous turn", "Next turn", disabled at the ends, the focus kept on a
+    button) around the selected turn (`turnText`: "Turn 3"; a map run "Room 2 · Turn 3", "Boss · Turn 0").
+  - Zoom (a map run; a quest is one fight and has neither zoom nor "All"): a fight tab, or a click in the plot while
+    in All, zooms on that room. A tab click keeps the selected turn when it is in that room, else picks its turn 0; a
+    plot click picks the clicked turn and zooms on its room in the same gesture. Zoomed, the room fills the plot's
+    width (`chartLayout(d, width, zoom)`: turn 0 on the left edge, the last turn on the right; the other rooms on the
+    same scale off the plot, clipped), no scroll; the tab row shows "All" (over the y axis) then the room's tab (over
+    the whole plot, `fightTabs`); a click in the plot only picks a turn of that room (`nearestStep` limited to
+    `windowOf`, so the right edge is the room's last turn, not the next room's turn 0); the keys and ‹ › walking into
+    another room take the zoom with them. "All" zooms back out, the room centred when the run is wider than the box
+    (`scrollForSpan`). The zoom is kept across a tab switch and a redraw while the selected turn is in its room.
+  - Animation: the steps and the y axis slide from one view to the other in 250 ms (`CHART_ANIM_MS`), an eased lerp
+    (`lerp`, `ease` out-cubic, `lerpView`) over `requestAnimationFrame`; at once under `prefers-reduced-motion` (or
+    without frames). Zooming in from a scrolled run starts from what was in view; a new zoom first ends the running
+    animation at its last frame.
+  - Y axis: tops at the largest value drawn in the view (`axisTop`): the zoomed room's steps, or the whole run in All
+    (however it is scrolled); HP stays 0-100 % (the enemy starts full), Damage dealt and Heals top at the largest turn
+    itself (U65-U67 rounded up, `niceMax` gone), the labels compact amounts. A zoomed later room's turn 0 repeats the
+    room before's last damage or heal point (U66), so it counts.
+
 - U67, the Party view's cards at the chart's turn (both pages; `web/src/ui/fighter-card.ts`, `web/src/ui/card-turn.ts`,
   `battle-page.ts`, the trace in `web/src/sim/api.ts` and `web/src/tools/fight-trace.ts`; tests
   `web/test/battle-u67.test.ts`, CSS in the `U67` block; the U62 and U65 card tests updated):

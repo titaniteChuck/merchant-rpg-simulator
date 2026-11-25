@@ -15,7 +15,7 @@ import { traceFight, traceMapRun } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { locationOf, mapRoomTabs, planTimeline } from "../src/ui/battle-plan.ts";
 import { cardStats, fighterCard, paintCard } from "../src/ui/fighter-card.ts";
-import { addCredits, CHART_TABS, chartLayout, chartTab, drawHpChart, hpChart, hpData, type HpFighter, HP_W, nearestStep, niceMax, pickStep, plotted, stepAfterKey } from "../src/ui/hp-chart.ts";
+import { addCredits, CHART_TABS, chartLayout, chartTab, drawHpChart, hpChart, hpData, type HpFighter, HP_W, nearestStep, pickStep, plotted, stepAfterKey } from "../src/ui/hp-chart.ts";
 import { fmt, fmtCompact } from "../src/ui/dom.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
@@ -104,7 +104,8 @@ test("tabs data: damage dealt and heals per turn (U66: not added up), per fighte
   const top = Math.max(...d.series.flatMap((s) => plotted(d, s, "dmg")).map((v) => v ?? 0));
   const labels = dmg.querySelectorAll("text.hp-axis").map((x) => x.textContent);
   assert.ok(labels.includes("0") && !labels.some((x) => x.endsWith("%")), "amounts, not percents");
-  assert.ok(labels.includes(fmtCompact.format(niceMax(top))) && niceMax(top) >= top && niceMax(top) < top * 2.5, "the top: a round amount over the largest turn");
+  // U68: the top is the largest turn's amount itself (the plot's full height; U65-U67 rounded it up)
+  assert.ok(labels.includes(fmtCompact.format(Math.round(top))), "the top: the largest turn");
   // U66: the legend only names; the table's cells are each turn's own amount
   const legend = dmg.querySelector("ul.hp-legend")!.children;
   for (const [k, s] of d.series.entries()) assert.equal(legend[k].textContent, s.name);

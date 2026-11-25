@@ -68,12 +68,12 @@ test("a map room's turn 0 shares its x with the last room's last turn: heroes go
       }
     }
   }
-  // the enemy's path: one move; a vertical segment on each shared x
+  // the enemy's path: U68 one move per room, no vertical segment on a shared x (U66 had one line rising there)
   const d = (hpChart(map) as unknown as F).querySelector("path.hp-enemy")!.getAttribute("d")!;
-  assert.equal(d.match(/M/g)!.length, 1);
-  const pts = [...d.matchAll(/[ML]([\d.]+),([\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
-  const vertical = pts.filter((p, k) => k > 0 && p[0] === pts[k - 1][0] && p[1] < pts[k - 1][1]);
-  assert.equal(vertical.length, map.runs.length - 1, "one rise per new room");
+  assert.equal(d.match(/M/g)!.length, map.runs.length);
+  const pts = [...d.matchAll(/([ML])([\d.]+),([\d.]+)/g)].map((m) => [m[1] === "L" ? 1 : 0, Number(m[2]), Number(m[3])]);
+  const vertical = pts.filter((p, k) => k > 0 && p[0] === 1 && p[1] === pts[k - 1][1] && p[2] < pts[k - 1][2]);
+  assert.equal(vertical.length, 0, "no rise drawn");
 });
 
 test("picking on a shared x: a click there is the next room's turn 0; one step back is the last room's last turn", () => {
@@ -131,15 +131,12 @@ test("a hero that falls: its fall at 0 is its last point on every tab, nothing w
 test("fightLayout: one px per turn for all, unless a name is wider than its turns; too wide, it overflows", () => {
   assert.deepEqual(fightLayout([{ turns: 10, tab: 50 }, { turns: 10, tab: 50 }], 400),
     { perTurn: [20, 20], spans: [{ left: 0, width: 200 }, { left: 200, width: 200 }], plot: 400, overflow: false });
-  // a 2-turn fight with a 100 px name: its turns widen to 50 px, the other shares the 300 px left
+  // U68: a 2-turn fight with a 100 px name: its turns widen to 50 px; the other keeps the even share (20 px), so the
+  // plot is wider than the room (U66 squeezed the other into the 300 px left)
   const w = fightLayout([{ turns: 2, tab: 100 }, { turns: 18, tab: 40 }], 400);
-  assert.equal(w.perTurn[0], 50);
-  assert.ok(Math.abs(w.perTurn[1] - 300 / 18) < 1e-9);
+  assert.deepEqual(w.perTurn, [50, 20]);
   assert.equal(w.spans[0].width, 100);
-  assert.ok(Math.abs(w.plot - 400) < 1e-9 && !w.overflow);
-  // a widened fight can push another one under its name too: filled in rounds
-  const r = fightLayout([{ turns: 1, tab: 150 }, { turns: 4, tab: 90 }, { turns: 5, tab: 20 }], 300);
-  assert.deepEqual(r.spans.map((s) => Math.round(s.width)), [150, 90, 60]);
+  assert.ok(w.plot === 460 && w.overflow);
   // names wider than the room: every tab at its name's width, the plot wider than the room
   const o = fightLayout([{ turns: 1, tab: 100 }, { turns: 1, tab: 100 }, { turns: 1, tab: 100 }], 200);
   assert.deepEqual(o.spans, [{ left: 0, width: 100 }, { left: 100, width: 100 }, { left: 200, width: 100 }]);
@@ -167,11 +164,13 @@ test("the fight tabs: one per fight, each exactly over its turns; a click picks 
     assert.equal(b.style.width, `${Math.round((1000 * (to - from)) / L.W) / 10}%`);
   }
   assert.equal(fig.querySelector(".hp-fights")!.getAttribute("role"), "group");
+  // U68: a click also zooms on the fight: "All", then its tab (the current one)
   const last = map.runs.length - 1;
   bs[last].dispatch("click");
   assert.deepEqual(picks, [map.runStarts[last]]);
-  assert.equal(bs[last].getAttribute("aria-current"), "true");
-  assert.equal(bs[0].getAttribute("aria-current"), null);
+  const zoomed = fig.querySelectorAll("button.hp-fight");
+  assert.deepEqual(zoomed.map((b) => b.textContent), ["All", fightName(map, last)]);
+  assert.equal(zoomed[1].getAttribute("aria-current"), "true");
 });
 
 test("too wide for the box: the fight tabs and the plot scroll together, the wheel too, the selection kept in view", () => {
@@ -191,12 +190,11 @@ test("too wide for the box: the fight tabs and the plot scroll together, the whe
   scroller.listeners.get("wheel")![0]({ deltaX: 0, deltaY: 100, preventDefault: () => (stopped = true) } as never);
   assert.equal(scroller.scrollLeft, 100);
   assert.ok(stopped);
-  // a pick out of view scrolls to it (scrollToShow)
+  // a pick out of view scrolls to it (scrollToShow); U68: by the keys (a fight tab zooms instead)
   const to: number[] = [];
   Object.assign(scroller, { scrollLeft: 0, scrollTo: (o: { left: number }) => to.push(o.left) });
   Object.assign(track, { clientWidth: L.W });
-  const bs = fig.querySelectorAll("button.hp-fight");
-  bs[bs.length - 1].dispatch("click");
+  (fig.querySelector("svg")! as F).listeners.get("keydown")![0]({ key: "End", preventDefault() {} } as never);
   assert.equal(to.length >= 1, true);
   assert.ok(to[0] > 0);
   // the helpers are the room bar's, not copies
@@ -213,7 +211,8 @@ test("Turn −1 / Turn +1: move the selected turn, disabled at the ends, the foc
   const picks: number[] = [];
   const fig = hpChart(odin, { selected: 0, onSelect: (i) => picks.push(i) }) as unknown as F;
   const prev = fig.querySelector('button[data-dir="-1"]')!, next = fig.querySelector('button[data-dir="1"]')!;
-  assert.deepEqual([prev.textContent, next.textContent], ["Turn −1", "Turn +1"]);
+  // U68: arrow icons with their names (‹ Turn X ›)
+  assert.deepEqual([prev.getAttribute("aria-label"), next.getAttribute("aria-label")], ["Previous turn", "Next turn"]);
   assert.equal(prev.getAttribute("type"), "button");
   assert.ok(prev.hasAttribute("disabled") && !next.hasAttribute("disabled"));
   next.dispatch("click");
@@ -224,8 +223,8 @@ test("Turn −1 / Turn +1: move the selected turn, disabled at the ends, the foc
   assert.ok(!prev.hasAttribute("disabled"));
   const end = hpChart(odin, { selected: n - 1 }) as unknown as F;
   assert.ok(end.querySelector('button[data-dir="1"]')!.hasAttribute("disabled"));
-  // the buttons sit beside the chart's tabs
-  assert.ok(fig.querySelector(".hp-head")!.querySelector(".hp-steps")!.querySelector('button[data-dir="1"]'));
+  // U68: the buttons sit around the turn, under the scroll box
+  assert.ok(fig.querySelector(".hp-turn")!.querySelector('button[data-dir="1"]'));
 });
 
 test("the legend: colour and name only", () => {

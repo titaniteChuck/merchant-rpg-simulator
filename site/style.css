@@ -2646,7 +2646,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 4px 12px;
   margin: -2px 0 6px; border-bottom: 1px solid var(--border); }
 .hp-head > .hp-tabs { margin: 0; border-bottom: 0; }
-.hp-steps { display: flex; gap: 6px; padding-bottom: 4px; }
 .hp-step { padding: 3px 10px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .hp-step[disabled] { opacity: .45; cursor: default; }
 .hp-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2727,3 +2726,15 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .fc-hero .fc-val .v-short { display: inline; }
 }
 /* end U69 */
+
+/* U68 */
+/* The Party view's chart (web/src/ui/hp-chart.ts): ‹ Turn X › centred under the plot, out of the scroll box; the
+   arrows are icon buttons. Zoomed on a map room (.hp-fights.zoomed), "All" sits over the y axis and the room's tab
+   over the whole plot. */
+.hp-turn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 0; }
+.hp-turn .hp-step { display: inline-grid; place-items: center; width: 30px; height: 28px; padding: 0; }
+.hp-turn .hp-step svg { display: block; }
+.hp-turn-text { min-width: 9ch; text-align: center; font-size: 0.85rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.hp-fight.hp-all { padding: 0 2px; text-overflow: clip; text-align: center; }
+.hp-fights.zoomed .hp-fight[aria-current="true"] { cursor: default; }
+/* end U68 */
