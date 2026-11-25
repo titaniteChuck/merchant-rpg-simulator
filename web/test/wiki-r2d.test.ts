@@ -116,12 +116,9 @@ test("F46: rarity chips meet AA (4.5:1) in both themes, text on its own tint ove
   assert.doesNotMatch(ui("wiki-items.ts"), /--rar-game/);
 });
 
-test("F47: no stat cards on the class page; tap wording; a stat picker for the phone's single growth chart", () => {
+test("F47: no stat cards on the class page (U54: the growth charts gave way to a stat table, wiki-u54.test.ts)", () => {
   const cls = ui("wiki-classes.ts"), wiki = ui("wiki.ts");
   assert.doesNotMatch(cls, /cls-cards|hover to read a level/);
-  assert.match(cls, /tap a level to pick it/);
-  assert.match(cls, /"cls-stat-pick"/);
-  assert.match(block, /#wiki \.lc-grid-wrap > \.cls-chart:not\(\.on\) \{ display: none; \}/);
   assert.doesNotMatch(wiki, /\bcards,\n/);
   assert.match(wiki, /RADAR_HELP, \[statLink\("hero-stats"\)\]/);
   assert.doesNotMatch(cls, /figcaption/);

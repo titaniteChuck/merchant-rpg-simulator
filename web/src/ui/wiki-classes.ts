@@ -1,6 +1,7 @@
 /**
- * Class page stats (U19): a level / ascension picker (R2-D: no stat cards), the radar with the three ascensions on one chart, and
- * one growth chart per stat with each ascension's level cap and the level where the next ascension unlocks.
+ * Class page stats (U19, U54): a level / ascension picker, a stat table (gained per lvl, lvl 1, the picked lvl, the
+ * tier's max lvl) and the class's stat shape on a radar. U54 (the user, 2026-11-25): no growth charts; the radar shows
+ * only the shape (every class grows in proportion), at lvl 50 ascension 0, each axis's rim the best class, no values.
  *
  * Game rules (decompiled data.Default, obj.Hero, obj.mods.modLoader):
  * - stat = base + growth[prestigeLevel] × level (Hero.determineStats, no gear, passive or attribute points);
@@ -11,13 +12,11 @@
  * Colours: ascension 0 in the page's standard colour, 1 silver, 2 gold (the ascension outline tokens of style.css).
  */
 import { G } from "../sim/data.ts";
-import { ascText, el, segField, segmented } from "./dom.ts";
-import { group, type LineChart, lineChart } from "./line-chart.ts";
+import { ascText, el, LV, lv, lvStart, segField, segmented } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { classes } from "./wiki-data.ts";
-import { isVisible } from "./expansion-state.ts";
+import { badgeFor, isVisible } from "./expansion-state.ts";
 import { className } from "./names.ts";
-import { withHelp } from "./wiki-help.ts";
 import { statLink } from "./wiki-ref.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -27,13 +26,15 @@ type Any = any;
 export type Growth = [string, string, string];
 export const GROWTH: Growth[] = [["hpPlv", "hp", "HP"], ["atkPlv", "atk", "Atk"], ["matkPlv", "matk", "Matk"], ["accPlv", "acc", "Acc"],
   ["defPlv", "def", "Def"], ["mdefPlv", "mdef", "Mdef"], ["critPlv", "crit", "Crit"]];
-/** Charted stats: Crit left out of the curves and the radar (on request; the line above the radar gives it). */
+/** The radar's stats: Crit left out (on request; the stat table gives it). */
 export const CHARTED = GROWTH.filter(([, b]) => b !== "crit");
-const CRIT = GROWTH.find(([, b]) => b === "crit")!;
 
-/** R2-D F47 / F52: the radar's caption, now the "?" of the class page's Stats section. */
-export const RADAR_HELP = ["The class's own stats at the picked level and ascension: no gear, passive or attribute points.",
-  "The radar's other shapes are the other ascensions, each capped at its max level. Rim = the best class at that level; Acc's rim is always 250."];
+/** U54: the radar's shape is the class at this level, ascension 0 (the rims: the best class there). */
+export const SHAPE_LEVEL = 50;
+
+/** R2-D F47 / F52, U54: the Stats section's "?". */
+export const RADAR_HELP = ["Stats: base + growth × lvl, before gear, passive and attribute points.",
+  `Shape: ${lv(SHAPE_LEVEL)}, ascension 0; each axis's rim is the best class.`];
 
 const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -59,7 +60,7 @@ export function unlockLevel(prestige: number): number | null {
   return typeof v === "number" ? v : null;
 }
 
-/** The highest level any tier reaches (the charts' x axis). */
+/** The highest level any tier reaches. */
 export const topLevel = (tiers: number[]): number => Math.max(...tiers.map(tierMaxLevel));
 
 export interface Selection { level: number; asc: number }
@@ -76,107 +77,89 @@ export function clampSelection(tiers: number[], s: Selection): Selection {
 
 const ascName = (a: number) => ascText(a)[0].toUpperCase() + ascText(a).slice(1);
 
+/** One row of the stat table: gained per level, at lvl 1, at the picked lvl, at the tier's max lvl. */
+export interface StatRow { base: string; label: string; perLevel: number; first: number; at: number; max: number }
+
+/** The stat table's values for a class, a tier (prestige 1-3 = ascension 0-2) and a level. */
+export function statRows(c: Any, prestige: number, level: number): StatRow[] {
+  const top = tierMaxLevel(prestige);
+  return GROWTH.map((g) => ({
+    base: g[1], label: g[2], perLevel: c?.[g[0]]?.[prestige] ?? 0,
+    first: statAt(c, g, prestige, 1), at: statAt(c, g, prestige, level), max: statAt(c, g, prestige, top),
+  }));
+}
+
 /**
- * The class's stats block (picker, the level line, radar, growth charts), wired together. R2-D F47: no stat cards (the
- * radar shows the values; Crit, not charted, is in the level line). `onSelect` is told every new selection (the page
- * keeps it in the URL).
+ * The radar's axes (U54): the class's stats at lvl 50, ascension 0; each axis's rim is the highest value of that stat
+ * among all classes. Only the shape is drawn (radar() with fixedRims and values off).
+ */
+export function shapeAxes(id: number): RadarAxis[] {
+  const c = G.heroList?.[id];
+  return CHARTED.map((g) => ({
+    label: g[2], value: statAt(c, g, 1, SHAPE_LEVEL),
+    max: Math.max(0, ...classes().map(([, o]) => statAt(o, g, 1, SHAPE_LEVEL))),
+  }));
+}
+
+/** The class's shape radar: the best class's rims (not the fixed Crit / Acc rims), axis names only. */
+export const shapeRadar = (id: number): HTMLElement =>
+  radar(shapeAxes(id), { title: `${className(id) ?? G.heroList?.[id]?.name ?? "Class"} stat shape`, size: 260, fixedRims: false, values: false });
+
+/** A level column's header ("Lvl 60"), with the expansion badge when the level needs one (51-60: Frozen Tome). */
+function lvHead(level: number, cls = "n"): HTMLElement {
+  const badge = badgeFor("level", level);
+  return el("th", { scope: "col", class: cls }, lvStart(level), ...(badge ? [" ", badge] : []));
+}
+
+const STAT_LABEL: Record<string, () => Node | string> = { hp: () => statLink("max-hp", "HP"), crit: () => statLink("crit", "Crit") };
+
+/** The stat table (one row per stat) of a class on a tier at a level. */
+export function statTable(c: Any, prestige: number, level: number): HTMLElement {
+  const head = el("tr", {}, el("th", { scope: "col" }, statLink("hero-stats", "Stat")), el("th", { scope: "col", class: "n" }, `Per ${LV.toLowerCase()}`),
+    lvHead(1), lvHead(level, "n cur"), lvHead(tierMaxLevel(prestige)));
+  const rows = statRows(c, prestige, level).map((r) => el("tr", {},
+    el("th", { scope: "row" }, STAT_LABEL[r.base]?.() ?? r.label), el("td", { class: "n" }, dec.format(r.perLevel)),
+    el("td", { class: "n" }, dec.format(r.first)), el("td", { class: "n cur" }, dec.format(r.at)), el("td", { class: "n" }, dec.format(r.max))));
+  return el("table", { class: "cls-stat-table" }, el("thead", {}, head), el("tbody", {}, ...rows));
+}
+
+/**
+ * The class's stats block (picker, stat table, shape radar), wired together. `onSelect` is told every new selection
+ * (the page keeps it in the URL).
  */
 export function classStats(id: number, start: Partial<Selection> = {}, onSelect?: (s: Selection) => void): { block: HTMLElement } {
   const c = G.heroList[id];
   // U28: hero ascension 2 (prestige 3, levels 51-60) needs the Frozen Tome; hidden when the visitor hides it.
   const tiers = tiersOf(c).filter((p) => isVisible("prestige", p));
-  const top = topLevel(tiers);
-  const levels = Array.from({ length: top }, (_, i) => i + 1);
   let sel = clampSelection(tiers, { level: start.level ?? tierMaxLevel(1), asc: start.asc ?? 0 });
-
-  // ---- the level line: "Level 50, ascension 0 · Crit 5"
-  const head = el("p", { class: "cls-head muted small" });
 
   // ---- picker: ascension switch + level slider
   const ascSeg = segmented(`cls-asc-${id}`, "Ascension", tiers.map((p) => ({
-    value: String(p - 1), label: String(p - 1), cls: `asc-opt tier-${p - 1}`, title: `${ascName(p - 1)}: up to level ${tierMaxLevel(p)}`,
+    value: String(p - 1), label: String(p - 1), cls: `asc-opt tier-${p - 1}`, title: `${ascName(p - 1)}: up to ${lv(tierMaxLevel(p))}`,
   })), String(sel.asc), (v) => set({ level: sel.level, asc: Number(v) }));
   const radios = [...ascSeg.querySelectorAll<HTMLInputElement>("input")];
-  const slider = el("input", { type: "range", min: "1", step: "1", "aria-label": "Level" }) as HTMLInputElement;
+  const slider = el("input", { type: "range", min: "1", step: "1", "aria-label": LV }) as HTMLInputElement;
   const out = el("output", { class: "cls-lv-out" });
   slider.addEventListener("input", () => set({ level: Number(slider.value), asc: sel.asc }));
   let lvBox: HTMLElement;
   const picker = el("div", { class: "cls-pick" },
     ...(tiers.length > 1 ? [segField("Ascension", ascSeg, "cls-asc")] : []),
-    lvBox = el("label", { class: "cls-lv" }, el("span", { class: "muted small" }, "Level"), slider, out));
+    lvBox = el("label", { class: "cls-lv" }, el("span", { class: "muted small" }, LV), slider, out));
 
-  // ---- radar: every ascension at the selected level (each capped at its tier's max), the selected one on top
-  const radarHolder = el("div", { class: "cls-radar-fig" });
-  const drawRadar = () => {
-    const at = (p: number) => Math.min(sel.level, tierMaxLevel(p));
-    const axes: RadarAxis[] = CHARTED.map((g) => {
-      let max = 0, best = "";
-      for (const [cid, o] of classes()) {
-        if (!isVisible("class", cid)) continue; // the rim compares with the classes the visitor can have
-        for (const p of tiersOf(o).filter((t) => isVisible("prestige", t))) {
-          const v = statAt(o, g, p, at(p));
-          if (v > max) [max, best] = [v, `${className(cid) ?? o.name}, ${ascText(p - 1)}`];
-        }
-      }
-      const value = statAt(c, g, sel.asc + 1, at(sel.asc + 1));
-      return { label: g[2], value, max, best, display: dec.format(value) };
-    });
-    const layers = tiers.filter((p) => p - 1 !== sel.asc).map((p) => ({
-      values: CHARTED.map((g) => statAt(c, g, p, at(p))), cls: `tier-${p - 1}`, label: `${ascName(p - 1)}, level ${at(p)}`,
-    }));
-    const fig = radar(axes, { title: `${className(id) ?? c.name} · level ${at(sel.asc + 1)} · ${ascText(sel.asc)}`, layers, shapeClass: `tier-${sel.asc}` });
-    // R2-D F52: what the chart adds (the other ascensions' shapes and the rim) is in the section's "?" (RADAR_HELP)
-    radarHolder.replaceChildren(fig);
-  };
-
-  // ---- growth charts: one per stat, one line per ascension up to its cap, the unlock level ringed
-  const charts: LineChart[] = CHARTED.map((g) => lineChart(tiers.map((p) => ({
-    label: tiers.length > 1 ? `ascension ${p - 1}` : "", cls: `tier-${p - 1}`,
-    values: levels.slice(0, tierMaxLevel(p)).map((lv) => statAt(c, g, p, lv)),
-  })), {
-    title: g[2], x: levels, xName: "Level", xTicks: [1, 20, 40, top],
-    start: sel.level - 1,
-    marks: tiers.flatMap((p, k) => {
-      const u = unlockLevel(p);
-      return u && tiers.includes(p + 1) ? [{ series: k, i: u - 1, label: `Level ${u} of ${ascText(p - 1)}: ascension ${p} unlocks` }] : [];
-    }),
-    caption: `${dec.format(c[g[1]] ?? 0)} + ${tiers.map((p) => dec.format(c[g[0]]?.[p] ?? 0)).join(" / ")} × level`,
-    onPick: (i) => set({ level: i + 1, asc: sel.asc }),
-  }));
-  group(charts);
-  const unlocks = tiers.map((p) => [p, unlockLevel(p)] as const).filter(([p, u]) => u && tiers.includes(p + 1));
-  const legend = el("p", { class: "lc-legend muted small" },
-    ...(tiers.length > 1 ? ["Ascension: ", ...tiers.map((p) => el("span", { class: "lc-key" },
-      el("i", { class: `lc-swatch tier-${p - 1}`, "aria-hidden": "true" }), ` ${p - 1} (max ${tierMaxLevel(p)})`))] : []),
-    el("span", { class: "lc-key" }, el("i", { class: "lc-ring", "aria-hidden": "true" }),
-      ` next ascension unlocks${unlocks.length ? ` (level ${unlocks.map(([, u]) => u).join(", ")})` : ""}`),
-    el("span", {}, " · tap a level to pick it"));
-
-  // R2-D F47: on a phone one growth chart at a time, picked by stat (CSS shows every chart on wider screens)
-  charts.forEach((ch, k) => ch.el.classList.add("cls-chart", ...(k ? [] : ["on"])));
-  const statPick = segField("Stat", segmented(`cls-stat-${id}`, "Stat", CHARTED.map((g, k) => ({ value: String(k), label: g[2] })), "0",
-    (v) => charts.forEach((ch, k) => ch.el.classList.toggle("on", String(k) === v))), "cls-stat-pick");
-
-  const block = el("div", { class: "cls-v3" }, picker, head,
-    el("div", { class: "cls-stats" },
-      el("div", { class: "cls-radar" }, radarHolder),
-      el("div", { class: "cls-growth" }, withHelp(el("h3", { class: "wiki-banner sub" }, "Growth per level"),
-        "The class's own stats: base + growth × level, before gear, potions, passive and attribute points.", "growth per level", [statLink("hero-stats", "Hero stats"), statLink("max-hp", "HP")]),
-      legend, statPick, el("div", { class: "lc-grid-wrap" }, ...charts.map((ch) => ch.el)))));
+  const tableHolder = el("div", { class: "table-wrap cls-table" });
+  const block = el("div", { class: "cls-v3" }, picker,
+    el("div", { class: "cls-stats" }, tableHolder, el("div", { class: "cls-shape" }, shapeRadar(id))));
 
   function set(s: Selection, quiet = false): void {
     sel = clampSelection(tiers, s);
     const p = sel.asc + 1;
-    head.replaceChildren(el("strong", {}, `Level ${sel.level}`), `, ${ascText(sel.asc)} · `,
-      statLink("crit", "Crit"), ` ${dec.format(statAt(c, CRIT, p, sel.level))}`);
     radios.forEach((r, k) => (r.checked = tiers[k] === p));
     lvBox.className = `cls-lv tier-${sel.asc}`;
     slider.max = String(tierMaxLevel(p));
     slider.value = String(sel.level);
-    slider.setAttribute("aria-valuetext", `Level ${sel.level} of ${tierMaxLevel(p)}`);
+    slider.setAttribute("aria-valuetext", `${lvStart(sel.level)} of ${tierMaxLevel(p)}`);
     out.textContent = `${sel.level} / ${tierMaxLevel(p)}`;
-    for (const ch of charts) ch.pin(sel.level - 1);
-    drawRadar();
+    tableHolder.replaceChildren(statTable(c, p, sel.level));
     if (!quiet) onSelect?.(sel);
   }
   set(sel, true);

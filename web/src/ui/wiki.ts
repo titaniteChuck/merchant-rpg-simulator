@@ -21,13 +21,13 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { sellValue } from "../tools/engine.ts";
 import { loadListState, saveListState } from "./list-state.ts";
-import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, select, slotName, gradeBadge, pill, type Row, table } from "./dom.ts";
+import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, select, slotName, gradeBadge, LV, pill, type Row, table } from "./dom.ts";
 import { ascLevels } from "../tools/profit.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, sellBoxes, totalCost } from "./wiki-items.ts";
-import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, turnMarks } from "./wiki-skills.ts";
+import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import { baseTag, enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
 import {
@@ -855,15 +855,15 @@ const apBadge = (ap: number | undefined) => {
   return el("span", { class: "ap-badge", role: "img", title: t, "aria-label": t }, String(ap ?? "?"));
 };
 
-/** Skills and passives of a class in the same table: #, name, (AP), effect. */
-function abilityTable(kind: "skill" | "passive", names: string[]): HTMLElement {
+/** Skills and passives of a class in the same table: # (U54: the unlock lvl when `levels` is given), name, (AP), effect. */
+function abilityTable(kind: "skill" | "passive", names: string[], levels?: (number | null)[]): HTMLElement {
   const skill = kind === "skill";
-  const head = el("tr", {}, el("th", { scope: "col", class: "n" }, "#"), el("th", { scope: "col" }, skill ? "Skill" : "Passive"),
+  const head = el("tr", {}, el("th", { scope: "col", class: "n" }, levels ? LV : "#"), el("th", { scope: "col" }, skill ? "Skill" : "Passive"),
     ...(skill ? [el("th", { scope: "col", class: "ap-col" }, statLink("ap", "AP"))] : []),
     el("th", { scope: "col" }, skill ? "Effect" : "Bonus"));
   const rows = names.map((n, i) => {
     const link = skill ? skillLink(n) : passiveLink(n);
-    const tr = el("tr", {}, el("td", { class: "n" }, String(i + 1)), el("td", { class: "name" }, link),
+    const tr = el("tr", {}, levels ? unlockCell(levels[i] ?? null) : el("td", { class: "n" }, String(i + 1)), el("td", { class: "name" }, link),
       ...(skill ? [el("td", { class: "ap-col" }, apBadge(skillAp(n)))] : []),
       el("td", { class: "eff" }, (skill ? skillDesc(n) : passiveText(n)) || "–"));
     clickableRow(tr, link);
@@ -886,7 +886,11 @@ function classPage(id: number, level?: string, asc?: string): HTMLElement {
   const c = G.heroList?.[id];
   if (!c) return notFound(`class #${id}`);
   if (!isVisible("class", id)) return hiddenPage(["Classes", "#/classes"], className(id) ?? c.name, "", needsOf("class", id));
-  const skills = seq<string>(c.skillList ?? {});
+  // U54: each skill's unlock level; a skill past lvl 50 needs the Frozen Tome and is hidden with it
+  const unlocks = skillUnlockLevels(id);
+  const allSkills = seq<string>(c.skillList ?? {}).map((n, i) => [n, unlocks[i] ?? null] as const);
+  const { shown: shownSkills, hidden: hiddenSkills } = partitionVisible(allSkills, ([, l]) => l === null || isVisible("level", l));
+  const skills = shownSkills.map(([n]) => n);
   const passives = seq<string>(c.passiveList ?? {});
   const start = { level: level ? Number(level) : undefined, asc: asc ? Number(asc) : undefined };
   // R2-D F47: no stat cards (the radar shows the values); the radar's caption is the Stats section's "?"
@@ -896,7 +900,8 @@ function classPage(id: number, level?: string, asc?: string): HTMLElement {
     sectionHelp(section("Stats", block, ...[hiddenNote(tiersOf(c).filter((p) => !isVisible("prestige", p)).length, "ascension tier (levels 51–60)")].filter((x): x is HTMLElement => x !== null)),
       RADAR_HELP, [statLink("hero-stats")]),
     passives.length ? section(`Passives (${passives.length}, pick one from level 10)`, abilityTable("passive", passives)) : emptyLine(["Passives", "None."]),
-    section(`Skills (${skills.length}, in unlock order)`, abilityTable("skill", skills)));
+    section(`Skills (${skills.length})`, abilityTable("skill", skills, shownSkills.map(([, l]) => l)),
+      ...[hiddenNote(hiddenSkills, "skills")].filter((x): x is HTMLElement => x !== null)));
 }
 
 // ---------------------------------------------------------------- router

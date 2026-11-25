@@ -491,41 +491,9 @@ span.wl.enemy-link { border-bottom: 0; }
   border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent); }
 .more-names:focus-visible, span.wl.enemy-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-/* Class page: radar (left) and growth curves (right), stacked on narrow screens. */
-.cls-stats { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px 20px; align-items: start; }
-.cls-radar, .cls-growth { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; min-width: 0; }
-.cls-radar .radar-fig { max-width: 280px; }
-.cls-radar figcaption { text-align: center; margin-top: 4px; }
+/* Class page: the ascension picker (also the item pages' config). */
 .cls-asc { margin: 0 0 6px; justify-content: center; }
 .cls-asc .seg-opt { padding: 4px 12px; font-variant-numeric: tabular-nums; }
-.cls-growth h3 { margin: 0 0 2px; font-size: 1rem; }
-.lc-legend { margin: 0 0 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.lc-key { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--fg); }
-.lc-grid-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 18px; }
-.lc-fig { --lc: color-mix(in srgb, var(--c, var(--accent)) 80%, var(--fg)); margin: 0; min-width: 0; }
-.cls-growth .lc-key { --lc: color-mix(in srgb, var(--c, var(--accent)) 80%, var(--fg)); }
-.lc-fig figcaption { font-size: 0.86rem; }
-.lc-fig figcaption .muted { font-size: 0.78rem; }
-.lc-readout { margin: 2px 0 2px; display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.3em; }
-.lc-at { font-weight: 700; color: var(--fg); min-width: 4.6em; }
-.lc-val { display: inline-flex; align-items: center; gap: 3px; }
-.lc-val b { color: var(--fg); font-weight: 750; }
-.lc-swatch { display: inline-block; width: 16px; height: 0; border-top: 2.5px solid var(--lc); }
-.lc-swatch.tier-0 { border-top-style: dotted; }
-.lc-swatch.tier-1 { border-top-style: dashed; }
-.line-chart { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; cursor: crosshair; }
-.line-chart:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-.lc-grid { stroke: var(--border); stroke-width: 1; }
-.lc-axis { stroke: color-mix(in srgb, var(--muted) 55%, var(--border)); stroke-width: 1; }
-.lc-tick { fill: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
-.lc-line { fill: none; stroke: var(--lc); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.lc-line.tier-0 { stroke-width: 2; stroke-dasharray: 1 4; }
-.lc-line.tier-1 { stroke-width: 2; stroke-dasharray: 6 4; stroke-linecap: butt; }
-.lc-cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
-.lc-dot { fill: var(--lc); stroke: var(--card); stroke-width: 1.5; }
-@media (max-width: 760px) {
-  .cls-stats { grid-template-columns: minmax(0, 1fr); }
-}
 
 /* Class page: passives and skills as the same table; the whole row opens the page. */
 table.ability-rows td { white-space: normal; vertical-align: middle; }
@@ -543,7 +511,6 @@ tr.row-link:hover td.name a.wl { border-bottom-style: solid; }
   table.ability-rows th, table.ability-rows td { padding: 8px 7px; }
 }
 @media (prefers-reduced-motion: reduce) { tr.row-link { transition: none; } }
-.lc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Enemy pages (U6c): one card per variant (rotation, drops), maps with their multiplier. */
 .wl.enemy-link.rare { color: color-mix(in srgb, #ec4899 75%, var(--fg)); }
@@ -760,11 +727,6 @@ h2, h3 { color: var(--fg); }
 :root[data-theme="dark"] { --v3-asc1: var(--silver-mid); --v3-asc2: var(--gold-mid); }
 :root[data-theme="dark"] .cls-v3 .seg .asc-opt.tier-0:has(input:checked) { color: #14161f; }
 .cls-v3 .tier-0 { --lc: var(--v3-asc0); } .cls-v3 .tier-1 { --lc: var(--v3-asc1); } .cls-v3 .tier-2 { --lc: var(--v3-asc2); }
-.cls-v3 .lc-line.tier-2 { stroke-width: 2.75; }
-.lc-mark { fill: var(--card); stroke: var(--lc); stroke-width: 2.25; }
-.lc-pin { stroke: color-mix(in srgb, var(--fg) 55%, transparent); stroke-width: 1.5; }
-.lc-caption { margin: 0; font-size: 0.74rem; font-variant-numeric: tabular-nums; }
-.lc-ring { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--muted); background: var(--card); }
 .cls-v3 .radar-shape { fill: color-mix(in srgb, var(--lc, var(--accent)) 20%, transparent); stroke: var(--lc, var(--accent)); stroke-width: 2.25; }
 .cls-v3 .radar-dot { fill: var(--lc, var(--accent)); }
 .radar-layer { fill: color-mix(in srgb, var(--lc, var(--muted)) 7%, transparent); stroke: var(--lc, var(--muted)); stroke-width: 1.5; stroke-linejoin: round; }
@@ -892,7 +854,6 @@ h2, h3 { color: var(--fg); }
   font-size: 0.78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--wiki-banner-fg);
 }
 .wiki-banner .muted { color: rgba(255, 255, 255, 0.82); }
-.cls-growth .wiki-banner.sub { margin-left: 0; margin-right: 0; border-radius: 6px 6px 2px 2px; }
 
 /* Drop tables (U21, wiki-enemies.ts): every-win rewards and each loot roll, "Nothing" as a row, one column per grade. */
 .drops { display: flex; flex-direction: column; gap: 6px; }
@@ -2009,7 +1970,6 @@ footer .footer-line a { color: inherit; }
   letter-spacing: .07em; color: var(--muted); }
 #wiki .wiki-banner .muted { color: var(--muted); }
 #wiki .wiki-banner .help-q:hover, #wiki .wiki-banner .help-q[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); }
-#wiki .cls-growth .wiki-banner.sub { margin: 0 0 6px; }
 @media (max-width: 600px) {
   #wiki .wiki-section h2.wiki-banner { margin-top: 24px; }
 }
@@ -2091,14 +2051,6 @@ footer .footer-line a { color: inherit; }
 .rar-chip.rar-3, .rar-chip.rar-10 { --rc: var(--rarc-3); } .rar-chip.rar-4, .rar-chip.rar-11 { --rc: var(--rarc-4); }
 .rar-chip.rar-5, .rar-chip.rar-6 { --rc: var(--rarc-5); } .rar-chip.rar-7, .rar-chip.rar-8 { --rc: var(--rarc-7); }
 
-/* F47: the class page's level line (Crit, not charted, is in it); on a phone one growth chart, picked by stat. */
-#wiki .cls-head { margin: 8px 0 10px; }
-#wiki .cls-stat-pick { display: none; }
-@media (max-width: 600px) {
-  #wiki .cls-stat-pick { display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 6px 0 8px; padding: 2px; }
-  #wiki .cls-stat-pick .seg { flex-wrap: nowrap; }
-  #wiki .lc-grid-wrap > .cls-chart:not(.on) { display: none; }
-}
 
 /* F48: Expansions: the long cards span the row, everything in one column at 600 px and less; "In detail" closed. */
 #wiki .xp-cards > .xp-wide { flex-basis: 100%; }
@@ -2440,3 +2392,25 @@ html.wiz-open .subnav[data-section="save"] { display: none; }
 .wiz-choices { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* end U52 */
+
+/* U54 */
+/* Class page: the stat table (left) and the shape radar (right, same height); on a phone the radar under the table. */
+.cls-stats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: 14px 18px; align-items: stretch; }
+.cls-table { min-width: 0; }
+.cls-stat-table th, .cls-stat-table td { padding: 6px 10px; }
+.cls-stat-table .n { text-align: right; font-variant-numeric: tabular-nums; }
+.cls-stat-table thead th { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+.cls-stat-table tbody th { font-weight: 650; }
+.cls-stat-table .cur { font-weight: 750; color: var(--fg); background: color-mix(in srgb, var(--lc, var(--accent)) 10%, transparent); }
+.cls-stat-table .xp-badge, .ability-rows .unlock-lv .xp-badge { vertical-align: -1px; }
+.cls-shape { display: flex; align-items: center; justify-content: center; min-width: 0; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px; }
+.cls-shape .radar-fig { max-width: 240px; margin: 0; }
+.cls-v3 .cls-shape .radar-shape { fill: color-mix(in srgb, var(--c, var(--accent)) 20%, transparent); stroke: var(--c, var(--accent)); }
+.cls-v3 .cls-shape .radar-dot { fill: var(--c, var(--accent)); }
+.ability-rows .unlock-lv { width: 3.4em; white-space: nowrap; }
+@media (max-width: 600px) {
+  .cls-stats { grid-template-columns: minmax(0, 1fr); }
+  .cls-shape .radar-fig { max-width: 220px; }
+}
+/* end U54 */

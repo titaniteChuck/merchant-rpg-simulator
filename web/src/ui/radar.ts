@@ -4,7 +4,9 @@
  * Each axis has its own scale: 0 at the centre, the strongest value among the heroes being compared at
  * the rim, so the shape shows where a hero stands relative to the others. Two axes have a fixed rim on every radar
  * (heroes, enemies, all views; the user, 2026-11-25): Crit 100 and Acc 250 (FIXED_RIMS), whatever the caller passes;
- * a value above the rim sits on it. The real value is printed at
+ * a value above the rim sits on it. U54: a caller can opt out of the fixed rims (`fixedRims: false`, the class page's
+ * shape radar, rims = the best class) and hide every value (`values: false`: axis names only, no value text, no
+ * tooltips, no value in the accessible name). By default the real value is printed at
  * the end of every axis (it is what the reader wants; the shape is the summary), and hovering or focusing
  * a vertex adds the comparison. One series per chart, in the hero's class colour (--c), so no legend.
  */
@@ -50,8 +52,20 @@ export interface RadarLayer {
   label: string;
 }
 
-export function radar(given: RadarAxis[], opts: { title: string; size?: number; layers?: RadarLayer[]; shapeClass?: string } ): HTMLElement {
-  const axes = given.map(withFixedRim);
+export interface RadarOptions {
+  title: string;
+  size?: number;
+  layers?: RadarLayer[];
+  shapeClass?: string;
+  /** U54: false = keep the caller's rims on every axis (no FIXED_RIMS); default true */
+  fixedRims?: boolean;
+  /** U54: false = axis names only: no value text, no tooltips, no values in the accessible name; default true */
+  values?: boolean;
+}
+
+export function radar(given: RadarAxis[], opts: RadarOptions): HTMLElement {
+  const axes = opts.fixedRims === false ? given : given.map(withFixedRim);
+  const showValues = opts.values !== false;
   const size = opts.size ?? 280;
   const pad = 54; // room for the labels outside the rim
   const R = size / 2 - pad;
@@ -62,7 +76,7 @@ export function radar(given: RadarAxis[], opts: { title: string; size?: number; 
   const frac = (a: RadarAxis) => (a.max > 0 ? Math.max(0, Math.min(1, a.value / a.max)) : 0);
 
   const root = svg("svg", { viewBox: `0 0 ${size} ${size}`, class: "radar", role: "img" });
-  const desc = `${opts.title}: ${axes.map((a) => `${a.label} ${a.display ?? fmt.format(a.value)}`).join(", ")}`;
+  const desc = `${opts.title}: ${axes.map((a) => showValues ? `${a.label} ${a.display ?? fmt.format(a.value)}` : a.label).join(", ")}`;
   root.setAttribute("aria-label", desc);
 
   // Recessive frame: four rings and the spokes, solid hairlines.
@@ -94,12 +108,15 @@ export function radar(given: RadarAxis[], opts: { title: string; size?: number; 
     const cos = Math.cos(angle(i)), sin = Math.sin(angle(i));
     const tx = lx + cos * 10, ty = ly + sin * 12;
     const anchor = Math.abs(cos) < 0.3 ? "middle" : cos > 0 ? "start" : "end";
-    const base = sin < -0.3 ? -14 : sin > 0.3 ? 4 : -5;
+    // one line (the name) without values: centred on the spoke's end instead of leaving room for the value line
+    const base = showValues ? (sin < -0.3 ? -14 : sin > 0.3 ? 4 : -5) : (sin < -0.3 ? -4 : sin > 0.3 ? 9 : 4);
     const label = svg("text", { class: "radar-label", x: tx, y: ty + base, "text-anchor": anchor });
     label.textContent = a.label;
+    root.append(label);
+    if (!showValues) return;
     const value = svg("text", { class: "radar-value", x: tx, y: ty + base + 14, "text-anchor": anchor });
     value.textContent = a.display ?? fmt.format(a.value);
-    root.append(label, value);
+    root.append(value);
     // Hit target larger than the dot (24px), focusable, with the comparison in the tooltip. role="img" (a11y review
     // F02): a name on a plain <circle> is prohibited and readers dropped it, so each Tab stop read nothing.
     const hit = svg("circle", { class: "radar-hit", cx: x, cy: y, r: 12, tabindex: 0, role: "img" });

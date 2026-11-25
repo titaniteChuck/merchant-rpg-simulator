@@ -18,8 +18,13 @@
  */
 import type { EffectInfo, EnemyTimeline, SkillProfile } from "../tools/schedule.ts";
 import { enemyTimeline, skillProfile } from "../tools/schedule.ts";
+import { G } from "../sim/data.ts";
+import { attackListUnlocked } from "../sim/defaults.ts";
+import { seq } from "../sim/lua.ts";
 import { classesWith, enemiesWith, enemyIds, hasRare, skillNames } from "./wiki-data.ts";
 import { skillName } from "./names.ts";
+import { el } from "./dom.ts";
+import { badgeFor } from "./expansion-state.ts";
 
 /**
  * R1 F33: a skill no hero class learns and no enemy (normal or rare) plays, such as Absorb All or Titanic Clap (46 of
@@ -29,6 +34,29 @@ export const isUnusedSkill = (name: string): boolean => !classesWith("skill", na
 
 /** R2-D F38: the skills the Skills list shows (the unused ones are folded under it); the wiki home counts these. */
 export const listedSkillNames = (): string[] => skillNames().filter((n) => !isUnusedSkill(n));
+
+/**
+ * U54: the level at which each of a class's skills unlocks, in skillList order: the first level whose
+ * attackListUnlocked (defaults.ts, the game's rule) reaches the skill's slot. 10, 15 … 35 (40 for the Bard's 7th), and
+ * 51 for the last one (past heroLastSkillUnlockLevel 50: levels 51-60 need the Frozen Tome). null: never within 60.
+ */
+export function skillUnlockLevels(cls: number): (number | null)[] {
+  const n = seq<string>(G.heroList?.[cls]?.skillList ?? {}).length;
+  const out: (number | null)[] = [];
+  let lv = 1;
+  for (let k = 1; k <= n; k++) {
+    while (lv <= MAX_HERO_LEVEL && attackListUnlocked({ class: cls, level: lv }) < k) lv++;
+    out.push(lv <= MAX_HERO_LEVEL ? lv : null);
+  }
+  return out;
+}
+const MAX_HERO_LEVEL = 60;
+
+/** U54: a skill's unlock level for a table cell ("51" with the Frozen Tome badge past lvl 50); "–" when unknown. */
+export function unlockCell(level: number | null): HTMLElement {
+  const badge = level === null ? null : badgeFor("level", level);
+  return el("td", { class: "n unlock-lv" }, level === null ? "–" : String(level), ...(badge ? [" ", badge] : []));
+}
 
 /** A hero skill no enemy plays: its page drops the empty "Enemies with this skill" section. */
 export const isHeroOnlySkill = (name: string): boolean => classesWith("skill", name).length > 0 && !enemiesWith(name).length;

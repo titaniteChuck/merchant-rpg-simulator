@@ -695,19 +695,25 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   every-win materials and their game type). Included in the skills' enemy lists (they use Basic) and the battle
   picker; left out of "Good against" (nothing to answer: they never hit), the class balance and the levelling
   reference quests (no threat).
-- Class page (U6a, reworked in U19, `web/src/ui/wiki-classes.ts`): stat cards at the top (HP, Atk, Matk, Acc, Crit, Def,
-  Mdef) for the selected level and ascension (dropped in R2-D, see below); above the charts an ascension switch (0/1/2) and a level slider
-  (1..the tier's max). Clicking a growth chart (or Enter on it) picks that level for every chart, the cards and the
-  radar; hovering reads values and the crosshair returns to the picked level. URL `#/class/ID/LEVEL/ASC` (kept in step
-  with `history.replaceState`). Radar: the three ascensions on one chart at the selected level (each capped at its
-  tier's max), the selected one filled; rim = best class and ascension at that level, except Acc, always 250 (U47). Growth curves (`line-chart.ts`,
-  inline SVG): one chart per stat, Crit left out of the curves and radar (on request; Rogue, Berserker and Assassin do
-  grow it), formula as a caption under each chart. Colours: ascension 0 the site accent, 1 silver, 2 gold (`--v3-asc*`
-  tokens built on the outline tokens), plus dotted / dashed / solid lines. Level caps from the game: max level of a
-  tier = `#heroLevelRequirement[tier]` (50, 50, 60); a ring marks where the next ascension unlocks:
-  `canHeroPrestige` reads `heroPrestigeLevelRequirement[prestigeLevel + 1]`, so level 40 of ascension 0 and level 50 of
-  ascension 1 (entry 1 is never read). Passives come before skills, both in the same table (#, name, AP badge, effect);
-  the whole row opens the page.
+- Class page (U6a, reworked in U19 and U54, `web/src/ui/wiki-classes.ts`): an ascension switch (0/1/2) and a level
+  slider (1..the tier's max), URL `#/class/ID/LEVEL/ASC` (kept in step with `history.replaceState`). Under it, side by
+  side (stacked at 600 px and less, the radar at most 220 px wide):
+  - Stat table (U54, `statRows` / `statTable`): one row per stat (HP, Atk, Matk, Acc, Def, Mdef, Crit), columns Per
+    lvl (the tier's growth), Lvl 1, Lvl <picked>, Lvl <tier max>; stat = base + growth[tier] × lvl, no gear, passive
+    or attribute points. A level past 50 (ascension 2, lvl 51–60) carries the Frozen Tome badge in its header.
+  - Shape radar (U54, `shapeAxes` / `shapeRadar`): every class grows in proportion, so only the shape is drawn: the
+    class at lvl 50, ascension 0, each axis's rim the highest value of that stat among all classes (Crit left out). No
+    values anywhere (no value text, no tooltips, axis names only in the accessible name). It opts out of the fixed
+    Crit / Acc rims (`radar(…, { fixedRims: false, values: false })`); every other radar keeps them.
+  The growth charts (`line-chart.ts`) and the per-ascension radar layers are gone (U54). Level caps from the game: max
+  level of a tier = `#heroLevelRequirement[tier]` (50, 50, 60); `canHeroPrestige` reads
+  `heroPrestigeLevelRequirement[prestigeLevel + 1]`, so ascension 1 unlocks at level 40 of ascension 0 and ascension 2
+  at level 50 of ascension 1 (entry 1 is never read). Colours: ascension 0 the site accent, 1 silver, 2 gold
+  (`--v3-asc*`); the radar's shape in the class colour. Passives come before skills, both in the same table (#, name,
+  AP badge, effect); the skills' first column is the unlock lvl (U54, `skillUnlockLevels` in `wiki-skills.ts`, the
+  game's `attackListUnlocked`: 10, 15 … 35, the Bard's 7th at 40, and every class's last skill at 51, past
+  `heroLastSkillUnlockLevel` 50, so Frozen Tome content: badge in the cell, and the row hidden with a "1 skill … hidden"
+  note while expansion content is hidden). The whole row opens the page.
 - Equipment (U19, `web/src/ui/wiki-items.ts`): `isPlaceholder` drops the game's unused rows from every list and the
   search (equipment with itemSlot 0 or subType "None": "Region 5 Item", "Extra Item", "Event Item", "New Item",
   "Break", "10+ Items", the second "Grok's Trinket", headers like "Bison"…; materials and consumables with an empty
@@ -1336,8 +1342,7 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
     not owned", "your save shows no sign of it" or "no save loaded".
 - Per page:
   - Wiki: lists, home search and home counts filtered; classes columns of skills and passives without the hidden
-    classes; class pages without the hidden ascension tier (levels 51–60; the radar's rims only compare visible classes
-    and tiers); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, menu link and home card):
+    classes; class pages without the hidden ascension tier (levels 51–60) and its lvl-51 skills (U54); page titles carry the badge. New page `#/expansions` (`wiki-expansions.ts`, menu link and home card):
     no visible title or intro, like the other tabs (R1 F26): "Your expansions" with one status line (what you own,
     from the save or set by hand) and a pointer to the top bar's Expansions menu, which holds the switches and the
     save's evidence (R1-D: the page no longer repeats them; what the site does is behind its "?"), then one section per group (Frozen Tome, Scribe, content
@@ -1575,7 +1580,7 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
 - Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest
   hero of the save, real values printed at the axis ends, comparison on hover). Fixed rims on every radar (U47; the
   user, 2026-11-25): Crit always 100 and Acc always 250 (`FIXED_RIMS`, applied inside `radar()` by axis label, so hero,
-  class, save and Simulator radars all follow); a value above the rim sits on it and the tooltip reads "% of the scale
+  save and Simulator radars all follow; U54: the class page's shape radar opts out with `fixedRims: false`); a value above the rim sits on it and the tooltip reads "% of the scale
   (100)". Rotations are numbered rows (skill, AP,
   effect); grade stacks read "14 C" (count, then the grade letter in its colour).
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
