@@ -22,20 +22,26 @@ test("one marked r2-c block of CSS", () => {
   assert.ok(r2c.length > 200);
 });
 
-test("F20: the Simulate sentence is a \"?\", and the Results wait for the first run", () => {
+test("F20: the Simulate sentence is a \"?\"; U48: no section titles, no Results section, the result in the Simulate panel", () => {
   assert.doesNotMatch(sim, /run-hint|Set them up in step 3/);
-  assert.match(sim, /<h2><span class="step" aria-hidden="true"><\/span> Simulate <span id="sim-help"><\/span><\/h2>/);
-  assert.match(sim, /<section id="results-box" class="b3-results" hidden>/);
+  // U48: the "?" follows ▶ Simulate; the numbered h2 banners are gone (headings for screen readers only).
+  assert.match(sim, /<button id="run" type="button" class="primary">▶ Simulate<\/button>\s*<span id="sim-help"><\/span>\s*<div id="sim-summary" class="sim-summary" aria-live="polite"><\/div>/);
+  assert.doesNotMatch(sim, /class="step"/);
+  assert.doesNotMatch(sim, /results-box|Results<\/h2>/);
+  assert.deepEqual([...sim.matchAll(/<h2[^>]*>/g)].map((m) => m[0]), ['<h2 class="visually-hidden">', '<h2 id="setup-title" class="visually-hidden">']);
+  // The details right under the Simulate panel, before the party.
+  assert.ok(sim.indexOf('<div id="results" class="sim-details"></div>') > sim.indexOf('id="sim-summary"'));
+  assert.ok(sim.indexOf('<div id="results" class="sim-details"></div>') < sim.indexOf('class="b3-tab-row"'));
   assert.doesNotMatch(sim, /results-empty|No run yet/);
-  // The steps are numbered by CSS: a hidden section takes no number (no "1, 3").
-  assert.doesNotMatch(sim, /class="step"[^>]*>\d/);
   assert.match(r2c, /#setup\.b3-steps > section:not\(\[hidden\]\) > h2 > \.step::before \{ counter-increment: b3-step; content: counter\(b3-step\); \}/);
   for (const html of [sim, solver]) assert.match(html, /<div id="setup" class="b3-steps" hidden>/);
   assert.match(page, /helpTip\(SIMULATE_HELP, "Simulate"\)/);
-  // Shown when a run starts (before its checks, so an error shows too); hidden again for a new or forgotten save.
+  // A run's progress, error and summary go in the panel; the details under it; a new or forgotten save clears both.
   const run = fn(page, "run(): void");
-  assert.ok(run.indexOf("showResultsBox(true)") >= 0 && run.indexOf("showResultsBox(true)") < run.indexOf("req = request()"));
-  assert.equal(page.match(/showResultsBox\(false\);/g)?.length, 2);
+  assert.match(run, /const out = \$\("#sim-summary"\);/);
+  assert.match(fn(page, "drawResult"), /\$\("#sim-summary"\)\.replaceChildren\(\.\.\.shown\.head\);\s*\$\("#results"\)\.replaceChildren\(shown\.details\);/);
+  assert.equal(page.match(/clearResults\(\);/g)?.length, 2);
+  assert.doesNotMatch(page, /showResultsBox|revealResults/);
 });
 
 test("F20: Levelling and Farming write their own step numbers, so the CSS counter leaves them alone", () => {
@@ -59,7 +65,8 @@ test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are 
   }
   assert.doesNotMatch(page, /party-note|party-rules/);
   const help = fn(page, "partyHelp");
-  assert.match(help, /The setup you showed\. Edit it freely; 🔒 keeps a hero in the next solve\./);
+  // U48: the Solver's party is read-only (its edits are the Simulator's, through Open in Simulator).
+  assert.match(help, /The setup you showed: 🔒 keeps a hero in the next solve\. To change the party, open it in the Simulator\./);
   assert.match(help, /rulesText\(rules\)/);
   // Front 2 stays required on a party quest: the rule is still said, in the "?".
   assert.match(rulesText({ kind: "party", maxSize: 5, required: [{ row: "front", i: 1 }] }), /Front 2 always filled, at most 5 heroes/);

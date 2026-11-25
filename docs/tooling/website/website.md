@@ -184,10 +184,12 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - Two pages (U41; until then two modes of one page, chosen in a "What do you want to do?" step 1):
   - Menu: Battle ▾ with Simulator and Solver, in the dropdown, the second row and the phone drawer (see
     [Menus](#menus)); the Battle link itself opens the Simulator.
-  - Simulator (`battle.html`): no mode chooser. Step 1 is the Simulate box (Runs, ▶ Simulate), step 2 the Results,
-    step 3 the Party and Flow tabs with the opponent in the Party tab, as below. R2 F20: the Results section is hidden
-    until the first ▶ Simulate (`showResultsBox`), and the step numbers are CSS counters, so before a run the steps
-    read 1, 2.
+  - Simulator (`battle.html`): no mode chooser. U48: no section titles on screen (the `h2`s are visually hidden) and
+    no Results section. The Simulate panel holds Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
+    and Cancel, its error, or its summary (win rate, grade when won, Show details and the run line); the details
+    (`#results`, empty and not shown until a result) sit right under the panel; then the Party and Flow tabs with the
+    opponent in the Party tab, as below. Until U48 these were numbered steps (Simulate, Results hidden until the first
+    run, Party and opponent).
   - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
     then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
     enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map), then smallest and
@@ -199,9 +201,12 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     the panel) is hidden until a solve is done; a new solve hides the last results until it ends; a Cancel or an
     error is a line in the panel. Then "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
     the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
-    party (`SearchContext.onShow` → `revealParty`). Editing there works as on the Simulator (AP limit toast, include
-    boxes, Flow edits, map room bar, remembered tab); 🔒 locks feed the next solve. Once shown it stays for later
-    solves; a new save or Forget hides it again.
+    party (`SearchContext.onShow` → `revealParty`). U48: read-only there, since "▶ Open in Simulator" is where it gets
+    edited (`pageControls("solve")` in `battle-edit.ts`): the same cards and Flow without hero pickers, ⇄ controls,
+    include boxes, Clear all, drag and drop, the Flow's ▾ or its enemy picker; a row's empty slots are a plain count.
+    Only the 🔒 locks stay (an input of the next solve, not an edit of the party); the map room bar, the calculations
+    and the remembered tab work as on the Simulator. Once shown it stays for later solves; a new save or Forget hides
+    it again.
   - Scribe hidden (U42, both pages): when Scribe is not owned and "Show expansion content" is off (`isHidden("Scribe")`
     in `expansion-state.ts`, the rule the wiki hides Scribe content by), nothing of maps shows, the save's own maps
     included: no Quest / Map toggle at all (quests only), no map pickers, ascension or grade, no "Include scrolls" on
@@ -219,6 +224,29 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     goes to `solver.html` (`solverRedirect` in `ui/battle-links.ts`, run by the entry before the page is built). The
     old remembered mode (`battle-mode`) is removed and no longer read.
   - Tests: `web/test/battle-u41.test.ts`.
+
+- U48 (both battle pages; tests `web/test/battle-u48.test.ts`, CSS in the `U48` block):
+  - Drag and drop (Simulator): a filled hero card is picked up from anywhere but its form controls (`[data-drag]`;
+    every slot is a target, `[data-slot]`) with Pointer Events (`web/src/ui/party-drag.ts`). Mouse or pen: after 6 px
+    of movement. Touch: after a 350 ms rest within 10 px, so a finger that moves sooner scrolls the page (no
+    `touch-action` change); once on, a non-passive `touchmove` on `#party` stops the page scrolling under the finger
+    and the page scrolls by itself near the window's top or bottom edge. The card follows the pointer, the slot under
+    it is outlined, Escape or a release elsewhere puts it back, the click that ends a drag is swallowed. On a filled
+    slot the heroes swap, on an empty one the hero moves (`moveHero` in `battle-edit.ts`, pure: locks and include
+    ticks follow their hero); refused with a toast when it would empty the required slot (Front 2 of a party quest)
+    or leave Front 1 on a solo quest. The card's hero picker stays (click to pick, keyboard).
+  - The size cap: "ℹ️ At most N heroes" under the opponent's picker (`#party-cap`, filled by `renderParty`) when it
+    leaves heroes out; no names (their cards say "over the limit").
+  - Flow: no "vs <enemy> · change" line (the enemy column's head names the enemy and changes it); a map run keeps
+    "map run: <map>". One long page at every width: no scroll frame of its own (until U48, 700 px and less scrolled
+    sideways in an 85vh frame); on a phone the columns share the width (no minimum width, a 22 px turn column, the HP
+    bar over its number, "▾ calculation" shows only its ▾). A calculation opens level with its column: left-aligned,
+    as wide as its text (at most the chart, 34rem), its left edge at the column's (`calcPanelLeft` in
+    `battle-layout.ts`, col × (width + gap) / cols, clamped inside the chart; `placeCalcs` in `timeline.ts`, kept in
+    step by a `ResizeObserver`).
+  - "↑" (both pages, `initToTop`): fixed bottom right, `aria-label` "Back to top", shown once the page is scrolled
+    down more than a screen (`toTopVisible`); back to the top smoothly, at once under reduced motion, the focus on
+    `main`. The page keeps 76 px under its end so the button never covers the last content; a toast moves above it.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
@@ -581,7 +609,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       actor's cell tinted in its class colour with the skill played (planned skill struck out under a stun or a
       forced action, "miss" when an attack missed); damage (−, red) or healing (+, green) as the main text in the
       column of whoever takes it, each followed by a small "▾ calculation" toggle that opens the exact formula under the
-      line, full width, in column order (the toggle turns to "▸"; again closes it), "✝ KO" on the hit that fells a
+      line, in column order, level with its column (U48; full width before) (the toggle turns to "▸"; again closes it), "✝ KO" on the hit that fells a
       fighter, and what an effect that lands (or grows) does, as text (U40; U39 had a dot). Under the lines, the
       end-of-turn summary on its own band (U40): each fighter's HP (bar and number in fixed places, so every bar has the
       same place and width in every column and turn; an empty bar and "✝ down" once fallen) and its own effects as text
@@ -591,8 +619,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
       reachable) to change the slot's hero (the hero choices of the Party tab; the required Front 2 of a party quest
       can't be emptied); in turns 1–5 each hero's actor cell has a ▾ for that rotation slot (Basic and the unlocked
       skills with AP). Turns 6 and on are read-only (they repeat the rotation).
-    - Sticky column heads (the page scrolls normally); at 700 px and less the chart scrolls sideways in its own frame.
-    - Opponent: one line ("vs Odin ×3 · change", the link opens the Party tab). Without a party that can fight (no
+    - Sticky column heads (the page scrolls normally, at every width since U48: no scroll frame on a phone).
+    - Opponent: U48, no line for a quest (was "vs Odin ×3 · change"); a map run's line is "map run: <map>". Without a party that can fight (no
       heroes, or a party rule), the rotation's 5 turns as planned (`planGrid`) with the ▾ controls.
     - Map runs: a horizontal bar above the chart lists the run's battles in map order ("1 · Treasure Bush" …
       "Boss · Murlok Monarch"; `mapRoomTabs`), as the Map run mode's first run plays them (same seed: layout, rolls and

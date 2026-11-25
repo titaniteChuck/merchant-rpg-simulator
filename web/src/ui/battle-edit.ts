@@ -90,3 +90,54 @@ export function assignHeroChecked(s: PartyState, key: string, idx: number | null
 
 /** U40: the AP refusal's words ("Paladin: 23 / 20 AP. Change refused."). */
 export const apRefusal = (name: string, used: number, max: number): string => `${name}: ${used} / ${max} AP. Change refused.`;
+
+// ---------------------------------------------------------------- U48: drag and drop, read-only views
+/** U48: the slot rules a move must keep: the slots never emptied (Front 2 on a party quest), a solo quest. */
+export interface MoveRules {
+  required: string[];
+  solo?: boolean;
+}
+export type MoveResult = { ok: true; swapped: boolean } | { ok: false; reason: "same" | "empty" | "required" | "solo" };
+
+/**
+ * U48: a hero card dropped on another slot. On a filled slot the two heroes swap; on an empty one the hero moves there.
+ * Each hero keeps its own lock and left-out tick (they follow it). Refused, the state unchanged: an empty slot as the
+ * source, the slot itself as the target, a move that would empty a required slot, or a move out of Front 1 on a solo
+ * quest. The party's size never changes, so its cap holds; which heroes the cap leaves out follows the slot order.
+ */
+export function moveHero(s: PartyState, from: string, to: string, r: MoveRules): MoveResult {
+  const at = (k: string) => s.slots[k] ?? null;
+  if (from === to) return { ok: false, reason: "same" };
+  const a = at(from), b = at(to);
+  if (a === null) return { ok: false, reason: "empty" };
+  const swapped = b !== null;
+  if (!swapped && r.required.includes(from)) return { ok: false, reason: "required" };
+  if (!swapped && r.solo && !r.required.includes(to)) return { ok: false, reason: "solo" };
+  s.slots[to] = a;
+  s.slots[from] = b;
+  for (const flags of [s.locked, s.excluded]) {
+    const fa = flags[from], fb = flags[to];
+    delete flags[from];
+    delete flags[to];
+    if (fa) flags[to] = true;
+    if (fb && swapped) flags[from] = true;
+  }
+  return { ok: true, swapped };
+}
+
+/** U48: the words of a refused move (`slot`: the required slot, "Front 2"). */
+export const moveRefusal = (reason: "required" | "solo", slot: string): string =>
+  reason === "required" ? `${slot} can't be left empty on this quest.` : "Solo quest: one hero, in Front 1.";
+
+/**
+ * U48: what each page lets the visitor change. The Simulator edits its party (pickers, ⇄, include ticks, Clear all,
+ * the flow's ▾ and its enemy picker) and moves cards by drag and drop. The Solver's party and flow are read-only (its
+ * "Open in Simulator" hands the party over for editing); only its 🔒, an input of the next solve, stays.
+ */
+export interface PageControls {
+  edit: boolean;
+  drag: boolean;
+  lock: boolean;
+}
+export const pageControls = (kind: "simulate" | "solve"): PageControls =>
+  kind === "simulate" ? { edit: true, drag: true, lock: false } : { edit: false, drag: false, lock: true };

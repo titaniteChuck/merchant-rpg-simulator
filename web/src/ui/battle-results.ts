@@ -69,10 +69,10 @@ export function essenceLines(essence: Record<string, number>, name: (english: st
 }
 
 /**
- * The result as the page shows it: the summary (always), then the toggle with the run line beside it, then the
- * details, hidden until opened.
+ * The result as the page shows it: `head`, the summary (always) and the toggle with the run line beside it, goes in
+ * the Simulate panel after the ▶ Simulate button (U48); `details`, hidden until opened, right under that panel.
  */
-export function compactResult(summary: HTMLElement, details: HTMLElement[], runLine: HTMLElement): HTMLElement[] {
+export function compactResult(summary: HTMLElement, details: HTMLElement[], runLine: HTMLElement): { head: HTMLElement[]; details: HTMLElement } {
   let open = detailsOpen();
   const box = el("div", { id: "result-details", class: "result-details" }, ...details);
   const btn = el("button", { type: "button", class: "secondary small details-toggle", "aria-controls": "result-details" });
@@ -87,7 +87,7 @@ export function compactResult(summary: HTMLElement, details: HTMLElement[], runL
     sync();
   });
   sync();
-  return [summary, el("div", { class: "result-toggle" }, btn, runLine), box];
+  return { head: [summary, el("div", { class: "result-toggle" }, btn, runLine)], details: box };
 }
 
 // ---------------------------------------------------------------- R2 F24: compact tiles, no orphans

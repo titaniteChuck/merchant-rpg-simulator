@@ -25,26 +25,26 @@
     <div id="loaded" aria-live="polite"></div>
 
     <div id="setup" class="b3-steps" hidden>
-      <!-- R2 F20: the steps are numbered by CSS (r2-c), so the Results, hidden until the first run, leave no gap. -->
+      <!-- U48: no section titles on screen (headings for screen readers only) and no Results section: a run's
+           progress or summary (win rate, grade when won, Show details) follows ▶ Simulate in its panel
+           (#sim-summary); the details sit right under the panel (#results, empty until a result). -->
       <section>
-        <h2><span class="step" aria-hidden="true"></span> Simulate <span id="sim-help"></span></h2>
+        <h2 class="visually-hidden">Simulate</h2>
         <div class="run-box" role="group" aria-label="Simulate">
           <div class="simulate">
-            <div class="toolbar">
+            <div class="toolbar sim-bar">
               <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
               <button id="run" type="button" class="primary">▶ Simulate</button>
+              <span id="sim-help"></span>
+              <div id="sim-summary" class="sim-summary" aria-live="polite"></div>
             </div>
           </div>
         </div>
-      </section>
-
-      <section id="results-box" class="b3-results" hidden>
-        <h2 id="results-title"><span class="step" aria-hidden="true"></span> Results</h2>
-        <section id="results" aria-live="polite"></section>
+        <div id="results" class="sim-details"></div>
       </section>
 
       <section>
-        <h2><span class="step" aria-hidden="true"></span> <span id="setup-title">Party and opponent</span></h2>
+        <h2 id="setup-title" class="visually-hidden">Party and opponent</h2>
         <!-- U39: two views of one party: the cards (Party) and the whole fight, turn by turn (Flow), both editable. U40: Party first.
              R2 F23: the party's rule is in the "?" beside the tabs (#party-help), no inner "Party" heading. -->
         <div class="b3-tab-row">

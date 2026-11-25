@@ -21,6 +21,7 @@ import {
 import { type CalcTerm, calcView } from "./battle-calc.ts";
 import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
+import { calcPanelLeft } from "./battle-layout.ts";
 import { tip } from "./tooltip.ts";
 import { skillDesc, skillLink } from "./wiki-data.ts";
 import { dataJson } from "./data-files.ts";
@@ -355,11 +356,29 @@ function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) 
 }
 
 /**
- * A number's "▾ calculation" toggle (U40): it opens the calculation under the action's line (in `box`, full width,
- * in column order), and turns to "▸"; clicking again closes it.
+ * U48: each open calculation under a line sits level with its column (`data-order` = column × 2, +1 for a heal):
+ * left-aligned at the column's left edge, pulled left as far as needed to stay inside the chart (battle-layout.ts
+ * calcPanelLeft). The panel's width doesn't depend on its margin (style.css: max-content, at most the chart's width).
+ */
+function placeCalcs(box: HTMLElement): void {
+  const cols = Number(box.dataset.cols) || 1, width = box.clientWidth;
+  for (const p of [...box.children] as HTMLElement[]) {
+    p.style.marginLeft = `${calcPanelLeft(Math.floor(Number(p.dataset.order) / 2), cols, width, p.offsetWidth)}px`;
+  }
+}
+/** U48: the open calculations follow a change of the chart's width (a turned phone, a resized window, a tab shown). */
+const calcResize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver((entries) => {
+  for (const e of entries) placeCalcs(e.target as HTMLElement);
+});
+
+/**
+ * A number's "▾ calculation" toggle (U40): it opens the calculation under the action's line (in `box`, in column
+ * order, level with its column: placeCalcs), and turns to "▸"; clicking again closes it.
  */
 function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
-  const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false" }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"), " calculation");
+  // U48: the word goes on a phone (CSS), the ▾ stays; the button's name stays "calculation".
+  const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false" }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"),
+    el("span", { class: "tc-calc-word" }, " calculation"));
   tip(btn, () => `How ${what} was worked out`);
   let panel: HTMLElement | null = null;
   btn.addEventListener("click", () => {
@@ -377,6 +396,11 @@ function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, wh
       btn.setAttribute("aria-expanded", "true");
     }
     box.hidden = box.children.length === 0;
+    if (box.hidden) calcResize?.unobserve(box);
+    else {
+      placeCalcs(box);
+      calcResize?.observe(box);
+    }
   });
   return btn;
 }
@@ -456,7 +480,7 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
   const data = planTimeline(trace, occupied, nameOf);
   const turnEl = (t: TimelineTurn): HTMLElement[] => {
     const rows: HTMLElement[] = t.lines.flatMap((l) => {
-      const box = el("div", { class: "tc-calcs", role: "row", "aria-label": `${nameOf(l.who)}: calculations` });
+      const box = el("div", { class: "tc-calcs", role: "row", "aria-label": `${nameOf(l.who)}: calculations`, "data-cols": String(cols.length) });
       box.hidden = true;
       const line = el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c, k) => {
         const w = whoOf(c), actor = w === l.who;

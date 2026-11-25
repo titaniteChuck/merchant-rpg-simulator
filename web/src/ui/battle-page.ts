@@ -2,10 +2,11 @@
  * The Battle section's two pages (U41), one code: initBattlePage("simulate") for the Simulator (site/battle.html,
  * entry battle.ts) and initBattlePage("solve") for the Solver (site/solver.html, entry solver.ts).
  *
- * Simulator: step 1 is the Simulate box (runs, ▶ Simulate); step 2 the Results (progress, then the outcome; hidden until
- * the first run, R2 F20), right under
- * it; step 3 holds the party (six slots, back row | front row) on the left and the opponent card (a quest enemy or a
- * map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
+ * Simulator (U48: no section titles, no Results section): the Simulate panel (runs, ▶ Simulate, then the run's
+ * progress or its summary: win rate, grade when won, Show details), the details right under it; then the party (six
+ * slots, back row | front row; cards move by drag and drop, party-drag.ts) on the left and the opponent card (a quest
+ * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
+ * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
@@ -41,7 +42,9 @@ import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, e
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
-import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, slotKeyOfLoc } from "./battle-edit.ts";
+import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, slotKeyOfLoc } from "./battle-edit.ts";
+import { enableSlotDrag } from "./party-drag.ts";
+import { toTopVisible } from "./battle-layout.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
@@ -274,7 +277,7 @@ function refuseAp(idx: number, r: { used?: number; max?: number }, focus?: () =>
  * as apBadge, the "x / y AP" budget beside the label; each row edits in place with its ⇄ control. An empty slot
  * (`raw` null) shows the same skeleton, greyed, so every slot has the same size.
  */
-function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLElement[] {
+function abilityBlock(idx: number | null, raw: Any | null, key: string, editable = true): HTMLElement[] {
   const hero = raw ? api.newHero(raw) : null;
   const info = hero ? api.skillInfo(hero) : null;
   const apOf: Record<string, number> = Object.fromEntries((info?.skills ?? []).map((x: Any) => [x.name, x.ap]));
@@ -288,14 +291,15 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
   const pLink = raw ? passiveLink(passive || "None") : el("span", { class: "muted" }, "—");
   const pRow = el("tr", {}, el("td", { class: "name" }, pLink),
     el("td", { class: "eff" }, raw ? (passive && passive !== "None" ? passiveText(passive) : "no passive") : ""),
-    el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
+    // U48: no ⇄ column on a read-only page (the Solver).
+    ...(editable ? [el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
       ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, passiveName(x)]), passive, (v) => {
         // U40: a passive that gives AP (Wisdom) can't be dropped when the rotation then goes over the limit.
         const b = apBudgetOf(idx!, v), used = apUsed(rot, b);
         if (used > b.max && b.max < apBudgetOf(idx!, passive).max) return refuseAp(idx!, { used, max: b.max });
         edit([...rot], v);
         afterEdit(`${key}-p`);
-      }) : swapPlaceholder()));
+      }) : swapPlaceholder())] : []));
   if (raw) clickableRow(pRow, pLink);
 
   // Rotation rows: turn, skill, AP, ⇄.
@@ -304,12 +308,12 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string): HTMLEle
     const opts = rotationOptions(raw, sk);
     const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
-      el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
+      ...(editable ? [el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
         // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
         const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
         if (!r.ok) return refuseAp(idx!, r, () => document.querySelector<HTMLElement>(`[data-focus="${key}-${k}"] select`)?.focus());
         afterEdit(`${key}-${k}`);
-      }) : swapPlaceholder()));
+      }) : swapPlaceholder())] : []));
     if (raw) clickableRow(tr, link);
     return tr;
   });
@@ -364,6 +368,8 @@ function fighting(): { included: Set<string>; capped: SlotRef[] } {
 function renderParty(refreshSearch = true): void {
   const sv = state.sv!;
   const picks = !state.mode.party;
+  // U48: the Simulator edits (pickers, ⇄, include ticks, Clear all, drag and drop); the Solver's cards are read-only.
+  const ctl = pageControls(state.mode.key);
   // Party setup rules of the opponent (battle-rules.ts): required slot, solo quests, party size cap.
   const rules = rulesOf(pageTarget());
   // U36: heroes ticked out on their card stay in the slot without fighting; the size cap counts the others.
@@ -389,7 +395,7 @@ function renderParty(refreshSearch = true): void {
       persistParty();
       renderParty();
     });
-    const lock = picks && raw ? (() => {
+    const lock = ctl.lock && raw ? (() => {
       const on = Boolean(state.locked[key]);
       const b = el("button", { type: "button", class: `lock${on ? " on" : ""}`, "aria-pressed": String(on),
         title: on ? "Locked: the next solve keeps this hero (click to let it change)" : "Not locked: the next solve may replace this hero (click to keep it)" }, on ? "🔒" : "🔓");
@@ -406,7 +412,7 @@ function renderParty(refreshSearch = true): void {
     // last ones (game slot order) are left out automatically: their box is unticked and disabled.
     const capped = raw ? fight.capped.some((c) => c.key === key) : false;
     const out = raw ? Boolean(state.excluded[key]) || capped : false;
-    const include = raw ? (() => {
+    const include = raw && ctl.edit ? (() => {
       const c = el("input", { type: "checkbox", class: "include-box" }) as HTMLInputElement;
       c.checked = !out;
       c.disabled = capped;
@@ -436,8 +442,10 @@ function renderParty(refreshSearch = true): void {
       ...(out ? [el("span", { class: "pill plain out-badge" }, capped ? "over the limit" : "left out")] : []),
       ...(required ? [el("span", { class: "pill t-orange req-badge", title: rules.kind === "solo" ? "A solo quest takes one hero, here" : "A party quest always fills this slot (it can be swapped, never emptied)" }, "required")] : [])),
     el("span", { class: "slot-tools" }, ...(lock ? [lock] : []), ...(include ? [include] : [])));
-    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}` },
-      head, s, statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key));
+    // U48: every slot is a drop target (data-slot); a filled one on the Simulator is picked up by dragging (data-drag).
+    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}`,
+      "data-slot": key, ...(ctl.drag && raw ? { "data-drag": "" } : {}) },
+    head, ...(ctl.edit ? [s] : []), statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key, ctl.edit));
   };
   // R1 F20: what the rows mean is in the heading's tooltip, not a line under it. R2 F33: on the Solver, a row's empty
   // slots (not the required one) fold into one line, "3 empty back slots", that opens them (foldEmpty).
@@ -447,20 +455,26 @@ function renderParty(refreshSearch = true): void {
     return el("div", { class: "party-row" },
       el("h3", { title: row === "front" ? "Enemies hit the front row while anyone stands in it." : "Safe until the front row falls." },
         row === "front" ? "🛡️ Front row" : "🏹 Back row"),
-      el("div", { class: "slots" }, ...shown, ...(empty.length ? [foldEmpty(row, empty.map((i) => slot(row, i)))] : [])));
+      el("div", { class: "slots" }, ...shown, ...(empty.length
+        // U48: read-only (the Solver), the folded empty slots are a plain count: no hero is added by hand.
+        ? [ctl.edit ? foldEmpty(row, empty.map((i) => slot(row, i))) : el("p", { class: "small muted empty-slots" }, emptyCount(row, empty.length))] : [])));
   });
-  // U32: "Clear all" empties the six slots, with the same undo as a search's Load.
+  // U32: "Clear all" empties the six slots, with the same undo as a search's Load. U48: not on a read-only page.
   const clear = el("button", { type: "button", class: "secondary clear-all" }, "🧹 Clear all");
   clear.title = "Empty every hero slot (the edited rotations are kept)";
   if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
   clear.addEventListener("click", clearAll);
   // R2 F23 / F36: the party's rule and, on the Solver, what this party is, in the "?" beside the Party tab.
-  document.querySelector("#party-help")?.replaceChildren(...partyHelp(rules, picks));
+  document.querySelector("#party-help")?.replaceChildren(...partyHelp(rules, picks, ctl.drag));
+  // U36: heroes left out over the size cap. U48: said on the opponent's side, under its picker, without their names
+  // (their cards say "over the limit").
+  const cap = document.querySelector<HTMLElement>("#party-cap");
+  if (cap) {
+    cap.hidden = !fight.capped.length;
+    cap.replaceChildren(...(fight.capped.length ? [`ℹ️ At most ${rules.maxSize} heroes`] : []));
+  }
   $("#party").replaceChildren(
-  el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : [])),
-  // U36: the heroes left out over the size cap.
-  ...(fight.capped.length ? [el("p", { class: "small party-capped", role: "status", title: "The last ones in slot order are left out. Untick another hero to bring one in." },
-    `ℹ️ At most ${rules.maxSize}: ${fight.capped.map((c) => heroRaw(state.slots[c.key] ?? null)?.name ?? c.key).join(", ")} left out.`)] : []),
+  ...(ctl.edit ? [el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : []))] : []),
   // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
   // party fill the slots themselves.
   ...((p) => (p && !picks ? [el("p", { class: "error small party-problem", role: "status" }, `⚠ ${p}`)] : []))(partyProblem()),
@@ -480,17 +494,23 @@ const emptyOpen: Record<string, boolean> = {};
  * found come first; opening it shows the slots, to add a hero by hand.
  */
 function foldEmpty(row: "front" | "back", slots: HTMLElement[]): HTMLElement {
-  const n = slots.length;
-  const d = el("details", { class: "empty-slots" }, el("summary", { class: "small" }, `${n} empty ${row} slot${n === 1 ? "" : "s"}`), ...slots);
+  const d = el("details", { class: "empty-slots" }, el("summary", { class: "small" }, emptyCount(row, slots.length)), ...slots);
   (d as HTMLDetailsElement).open = Boolean(emptyOpen[row]);
   d.addEventListener("toggle", () => (emptyOpen[row] = (d as HTMLDetailsElement).open));
   return d;
 }
 
-/** R2 F23 / F36: the "?" beside the Party tab: the opponent's party rule, and on the Solver what the shown party is. */
-function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean): HTMLElement[] {
+/** "3 empty back slots". */
+const emptyCount = (row: "front" | "back", n: number) => `${n} empty ${row} slot${n === 1 ? "" : "s"}`;
+
+/**
+ * R2 F23 / F36: the "?" beside the Party tab: the opponent's party rule, on the Solver what the shown party is (U48:
+ * read-only there), on the Simulator that cards move by dragging (U48).
+ */
+function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean, drag: boolean): HTMLElement[] {
   const paras = [
-    ...(picks ? ["The setup you showed. Edit it freely; 🔒 keeps a hero in the next solve."] : []),
+    ...(picks ? ["The setup you showed: 🔒 keeps a hero in the next solve. To change the party, open it in the Simulator."] : []),
+    ...(drag ? ["Drag a hero card onto another slot to move it there, or onto a hero to swap them."] : []),
     ...(rulesText(rules) ? [rulesText(rules)] : []),
   ];
   return paras.length ? [helpTip(paras, "the party")] : [];
@@ -512,6 +532,24 @@ function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): st
     return v === null || v === undefined || !inc.has(slotKey(row, i)) ? null : { hero: v };
   });
   return problemOf(pageTarget(), front ?? key("front"), back ?? key("back"));
+}
+
+/**
+ * U48: a hero card dropped on another slot (party-drag.ts): the two heroes swap, or the hero moves to the empty slot
+ * (battle-edit.ts moveHero). The opponent's rules hold: the required slot (Front 2 on a party quest) is never emptied,
+ * a solo quest keeps its hero in Front 1; such a move is refused with a toast.
+ */
+function dropHero(from: string, to: string): void {
+  const rules = rulesOf(pageTarget());
+  const required = rules.required.map((x) => slotKey(x.row, x.i));
+  const r = moveHero(state, from, to, { required, solo: rules.kind === "solo" });
+  if (!r.ok) {
+    if (r.reason === "required" || r.reason === "solo") toast(moveRefusal(r.reason, slotLabel(`${from.replace(/\d$/, "")}${Number(from.slice(-1)) + 1}`)));
+    return;
+  }
+  clearUndo = null;
+  persistParty();
+  renderParty();
 }
 
 /** The "Put back the previous party" button after Clear all (until it is used or the slots change by hand). */
@@ -634,7 +672,7 @@ function renderTarget(): void {
     amount.addEventListener("change", () => (update(), renderPlan()));
     placeTarget(box, el("div", { class: "opp-controls" }, q,
       el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
-        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount), sizeNote)), card);
+        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount), sizeNote), capNote()), card);
     update();
     setRuns("200");
   } else {
@@ -683,13 +721,16 @@ function renderTarget(): void {
     asc.addEventListener("change", () => (sync(), renderPlan()));
     grade.addEventListener("change", () => (sync(), renderPlan()));
     for (const x of scrolls) x.addEventListener("change", () => (saveOpponent(), renderPlan()));
-    placeTarget(box, el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade)), card);
+    placeTarget(box, el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade), capNote()), card);
     sync();
     setRuns("50");
   }
   // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
   renderParty(false);
 }
+
+/** U48: under the opponent's picker, the size cap when it leaves heroes out (renderParty fills it). */
+const capNote = () => el("p", { id: "party-cap", class: "small party-capped", role: "status", title: "The last heroes in slot order are left out.", hidden: "" });
 
 /**
  * U42: the opponent's pickers go in #target; its card too, unless the page has a #target-card apart (the Solver: the
@@ -962,18 +1003,14 @@ function renderPlan(): void {
   const members: PlanMember[] = partyOf().members.map((m) => ({
     row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class), rotation: rotationOf(m.idx).attackList,
   }));
-  const toParty = el("button", { type: "button", class: "link-btn" }, "change");
-  toParty.addEventListener("click", () => {
-    showTab("party");
-    document.querySelector<HTMLElement>("#tab-party")?.focus();
-  });
   const problem = partyProblem();
   // U40: a hero over its AP limit (an old saved party): the warning, not a fight with the default rotation.
   const ap = problem ? null : apProblem();
-  const edit = planEdit();
+  // U48: the Solver's flow is read-only: no ▾, no enemy picker in the enemy column's head.
+  const edit = pageControls(state.mode.key).edit ? planEdit() : undefined;
   if (oppKind() === "quest" && document.querySelector("#quest")) {
+    // U48: no "vs <enemy> change" line: the enemy column's head names the enemy and, clicked, changes it.
     const t = targetOf().quest!;
-    opp.append(el("span", { class: "muted small" }, "vs "), enemyLink({ id: t.id, rare: t.rare }), t.amount > 1 ? ` ×${t.amount}` : "", " ", toParty);
     const trace = members.length ? planTrace(t) : null;
     const plan = partyPlan(t, members, trace, edit);
     if (plan) {
@@ -986,7 +1023,7 @@ function renderPlan(): void {
   }
   if (oppKind() !== "map" || !document.querySelector("#map")) return;
   const m = targetOf().map!;
-  opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""), " ", toParty);
+  opp.append(el("span", { class: "muted small" }, "map run: "), el("strong", {}, $<HTMLSelectElement>("#map").selectedOptions[0]?.textContent ?? ""));
   if (!members.length || problem || ap) {
     box.append(el("p", { class: problem || ap ? "error" : "muted" }, problem || ap ? `⚠ ${problem ?? ap}` : "Put heroes in the party (Party tab) to see the run."));
     return;
@@ -1098,31 +1135,13 @@ function openInSimulator(): void {
 
 // ---------------------------------------------------------------- run
 /**
- * A run (Simulate or a search) started: bring the Results (step 2, right under the Run button) into view. On a wide
- * screen they usually already are, and nothing moves; on a phone, or when the heading is off screen, one smooth scroll
- * puts it at the top. Only here, at the start: progress updates and the result never scroll, so a user who scrolls
- * away stays where they went.
+ * U48: no Results section. A run's progress, error or summary (win rate, grade when won, Show details) is in the
+ * Simulate panel after ▶ Simulate (#sim-summary), where the click was, so nothing scrolls; the details right under
+ * the panel (#results, empty and so not shown until a result). A new or forgotten save clears both.
  */
-function revealResults(): void {
-  const box = document.querySelector<HTMLElement>("#results-box");
-  if (!box) return;
-  const top = box.getBoundingClientRect().top;
-  const narrow = matchMedia("(max-width: 760px)").matches;
-  // Wide: in view when the heading and the progress bar under it are on screen. Narrow: near the top, so the
-  // results that replace the progress have the screen.
-  const inView = top >= 0 && top <= (narrow ? innerHeight * 0.3 : innerHeight - 160);
-  if (inView) return;
-  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  box.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
-}
-
-/**
- * R2 F20: the Simulator's Results (step 2) stay hidden until the first run (as the Solver's, U42); a new save or a
- * forgotten one hides them again. CSS counters number the steps shown (1, 2, 3, or 1, 2 before a run).
- */
-function showResultsBox(on: boolean): void {
-  const box = document.querySelector<HTMLElement>("#results-box");
-  if (box) box.hidden = !on;
+function clearResults(): void {
+  document.querySelector("#sim-summary")?.replaceChildren();
+  document.querySelector("#results")?.replaceChildren();
 }
 
 /** The six slots as the worker takes them (raw save heroes, edited rotations), and who stands where. */
@@ -1188,16 +1207,19 @@ let lastResult: (Extract<BattleResponse, { ok: true }> & { ctx: RunContext | nul
 function drawResult(): void {
   const r = lastResult;
   if (!r) return;
-  $("#results").replaceChildren(...(r.kind === "quest"
+  const shown = r.kind === "quest"
     ? questResults(r.result, r.ms, r.ctx && "quest" in r.ctx ? r.ctx.quest : null)
-    : mapResults(r.result, r.ms, r.ctx && "map" in r.ctx ? r.ctx.map : null)));
+    : mapResults(r.result, r.ms, r.ctx && "map" in r.ctx ? r.ctx.map : null);
+  // U48: the summary and its toggle in the Simulate panel, the details right under it.
+  $("#sim-summary").replaceChildren(...shown.head);
+  $("#results").replaceChildren(shown.details);
 }
 
 function run(): void {
-  const out = $("#results");
+  // U48: progress, errors and the summary in the Simulate panel, after the button; the old details go.
+  const out = $("#sim-summary");
   lastResult = null;
-  // R2 F20: the Results show from the first Simulate on (its progress, an error, then the outcome).
-  showResultsBox(true);
+  document.querySelector("#results")?.replaceChildren();
   let req: BattleRequest;
   let ctx: RunContext | null = null;
   try {
@@ -1229,7 +1251,6 @@ function run(): void {
   });
   btn.disabled = true;
   out.replaceChildren(el("div", { class: "toolbar" }, el("p", { class: "muted" }, `Simulating ${req.n} ${req.quest ? "fights" : "map runs"}…`), cancel));
-  revealResults();
   worker.onmessage = (e: MessageEvent<BattleResponse>) => {
     stop();
     const r = e.data;
@@ -1330,7 +1351,7 @@ function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
  * U43: compact first. The win rate and the average grade; "Show details" opens the rest (compactResult). Turns: the
  * average, the longest fight and the game's cap (a fight still running at turn 200 is lost).
  */
-function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): HTMLElement[] {
+function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): ReturnType<typeof compactResult> {
   const turnHint = [ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", turnCapNote(ev.turns_max),
     cappedNote(ev.turns_capped, ev.n, "fights")].filter(Boolean).join(" · ");
   // R2 F24: the details are one grid (outcome, then XP and time), label and value only, each explanation in its "?".
@@ -1378,7 +1399,7 @@ function tiles(attrs: Record<string, string>, ...items: HTMLElement[]): HTMLElem
  * U43: as questResults. The essence per run is a tile of the map-run row (craft, run time, XP), or of the first row
  * when there are no XP figures. Turns per room: the average, per run in the hint, the longest room and the cap.
  */
-function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): HTMLElement[] {
+function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): ReturnType<typeof compactResult> {
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
   const charges = ev.charges_used.map(([id, v]) => `${itemName("consumable", id) ?? id}: ${fmt1.format(v)}`).join(", ");
   const essence = resultTile("Essence per run",
@@ -1438,8 +1459,7 @@ async function loadSave(text: string, name: string): Promise<void> {
   const remembered = restoreParty(sv.raw.hero.length);
   $("#setup").hidden = false;
   lastResult = null;
-  document.querySelector("#results")?.replaceChildren();
-  showResultsBox(false);
+  clearResults();
   // The Solver: no party until a result's Show (U41).
   if (solving()) hideParty();
   renderParty();
@@ -1476,8 +1496,40 @@ function startQuest(): string | undefined {
   return id === null ? undefined : String(id);
 }
 
-/** R2 F20: the Simulate step's "?" (was the sentence at the top of its box). */
-const SIMULATE_HELP = "Your party against an enemy or a map run, hundreds of times, on the same rolls every time. Set them up under Party and opponent.";
+/** R2 F20: the Simulate panel's "?" (was the sentence at the top of its box). U48: beside ▶ Simulate (no section titles). */
+const SIMULATE_HELP = "Your party against an enemy or a map run, hundreds of times, on the same rolls every time. Set them up below.";
+
+/**
+ * U48: the "↑" button, fixed bottom right, on both battle pages (the Flow on a phone is one long page): shown once the
+ * page is scrolled down more than a screen (battle-layout.ts toTopVisible), it scrolls back to the top, smoothly unless
+ * the visitor asks for reduced motion, and puts the focus on the page's main content (the button then hides).
+ */
+function initToTop(): void {
+  const btn = el("button", { type: "button", class: "to-top", "aria-label": "Back to top", title: "Back to top", hidden: "" }, "↑");
+  document.body.append(btn);
+  let queued = false;
+  const sync = () => {
+    queued = false;
+    btn.hidden = !toTopVisible(scrollY, innerHeight);
+  };
+  addEventListener("scroll", () => {
+    if (!queued) {
+      queued = true;
+      requestAnimationFrame(sync);
+    }
+  }, { passive: true });
+  addEventListener("resize", sync, { passive: true });
+  btn.addEventListener("click", () => {
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const main = document.querySelector<HTMLElement>("main");
+    if (main) {
+      if (!main.hasAttribute("tabindex")) main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: true });
+    }
+    scrollTo({ top: 0, behavior: smooth ? "smooth" : "instant" });
+  });
+  sync();
+}
 
 /** Starts the Simulator (`simulate`, battle.ts) or the Solver (`solve`, solver.ts) on its page's HTML. */
 export function initBattlePage(kind: PageKind): void {
@@ -1491,9 +1543,7 @@ export function initBattlePage(kind: PageKind): void {
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#loaded"), load: loadSave,
     onForget: () => {
       state.sv = null;
-      document.querySelector("#results")?.replaceChildren();
-      showResultsBox(false);
-      document.querySelector("#results")?.replaceChildren();
+      clearResults();
       hideParty();
     },
   });
@@ -1510,9 +1560,12 @@ export function initBattlePage(kind: PageKind): void {
     }
     saveOpponent();
   }));
+  initToTop();
   if (solving()) initSolver();
   else {
     $("#run").addEventListener("click", run);
+    // U48: hero cards move by drag and drop (party-drag.ts); #party stays, its cards are redrawn inside it.
+    enableSlotDrag($("#party"), dropHero);
     // R2 F20: what Simulate does is in the "?" of its heading, not a sentence in the box.
     document.querySelector("#sim-help")?.replaceChildren(helpTip(SIMULATE_HELP, "Simulate"));
   }

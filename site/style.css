@@ -2349,3 +2349,70 @@ a.wiz-choice:hover { border-color: var(--accent); box-shadow: var(--shadow-hover
   line-height: 1.4; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; vertical-align: middle; cursor: help; }
 #wiki .cfg-note { margin: 6px 0 0; }
 /* end U49 */
+/* U48 */
+/* Battle Simulator and Solver, U48. The Simulate panel: the run's progress or summary (win rate, grade when won, Show
+   details) after ▶ Simulate, the details right under the panel (no Results section, no section titles). */
+.sim-bar { gap: 8px 12px; }
+.sim-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+.sim-summary:empty, .sim-details:empty { display: none; }
+.sim-summary p { margin: 0; }
+.sim-summary .toolbar { margin: 0; gap: 8px 12px; }
+.sim-summary .tiles.result-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 9.5rem)); gap: 6px; margin: 0; }
+.sim-summary .tile { padding: 4px 10px 5px; gap: 0; border-radius: 9px; box-shadow: none; }
+.sim-summary .tile::after, .sim-summary .tile-icon { display: none; }
+.sim-summary .tile-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; font-size: 0.62rem; }
+.sim-summary .tile-label .help-q { width: 1rem; height: 1rem; font-size: 0.6rem; border-width: 1px; }
+.sim-summary .tile-value { font-size: 1.05rem; line-height: 1.2; }
+.sim-summary .tile .bar { margin-top: 3px; height: 3px; }
+.sim-summary .result-toggle { margin: 0; }
+.sim-details .result-details { margin-top: 10px; }
+@media (max-width: 600px) {
+  /* A phone: the summary on its own line under Runs and ▶ Simulate, its two tiles side by side. */
+  .sim-summary { flex: 1 1 100%; }
+  .sim-summary .tiles.result-summary { flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* The size cap under the opponent's picker (it left heroes out; their cards say "over the limit"). */
+#party-cap { margin: 0; }
+/* The Solver's read-only party: a row's empty slots as a plain count (nothing to open: no hero is added by hand). */
+p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); border-radius: 10px; }
+/* Hero cards move by drag and drop (party-drag.ts): picked up from anywhere but their form controls, the card follows
+   the pointer, the slot under it is outlined. No touch-action change: a finger scrolls the page unless it rests first. */
+.b3-slot[data-drag] { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#party .b3-slot.dragging { z-index: 30; transform: translate(var(--dx, 0), var(--dy, 0)); cursor: grabbing; opacity: .92;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .35); transition: none; }
+#party.drag-on, #party.drag-on .b3-slot { cursor: grabbing; }
+#party .b3-slot.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+/* The Flow: one long page at every width, no scroll frame of its own (the column heads stick to the window's top). On
+   a phone the columns share the width (no minimum width), with a narrower turn column and tighter cells. */
+.tc .tc-scroll, .flow-panel .pg-scroll { overflow: visible; max-height: none; }
+@media (max-width: 700px) {
+  .flow-panel .pg-grid, .flow-panel .tc-grid { min-width: 0; }
+  .flow-panel .pg-row { grid-template-columns: 22px repeat(var(--pg-cols), minmax(0, 1fr)); }
+  .flow-panel .tc-turn { grid-template-columns: 22px minmax(0, 1fr); }
+  .flow-panel :is(.pg-turn, .tc-turnlab) { font-size: 0.56rem; letter-spacing: 0; }
+  .flow-panel .pg-head { padding-left: 3px; font-size: 0.66rem; }
+  .flow-panel .pg-head strong { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+  .flow-panel .pg-cell { padding: 3px; }
+  .flow-panel .tc-cell { padding: 2px; gap: 1px 3px; }
+  .flow-panel .tc-dmg, .flow-panel .tc-heal { font-size: 0.7rem; }
+  /* HP: the bar over the number, so a narrow column keeps both. */
+  .flow-panel .tc-hp { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .flow-panel .tc-hpnum { text-align: left; }
+  /* "▾ calculation" keeps only its ▾ on screen (the word stays the button's name). */
+  .flow-panel .tc-calc-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .flow-panel .tc-calc-btn { padding: 2px 4px; }
+}
+/* A calculation sits level with its column (timeline.ts placeCalcs sets its margin): left-aligned, as wide as its
+   text needs, never wider than the chart. */
+.tc-calc { box-sizing: border-box; align-self: flex-start; width: max-content; max-width: min(100%, 34rem); }
+/* The "↑" back-to-top button (battle-page.ts initToTop): fixed bottom right once the page is scrolled down. The page
+   keeps room under its end, so the button never sits on the last content; a toast goes above it. */
+.to-top { position: fixed; z-index: 40; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--card); color: var(--fg); font-size: 1.25rem; line-height: 1; box-shadow: var(--shadow); cursor: pointer; }
+.to-top[hidden] { display: none; }
+.to-top:hover { background: var(--card-2); }
+.to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body:has(> .to-top) { padding-bottom: 76px; }
+body:has(> .to-top:not([hidden])) .toast { bottom: 72px; }
+/* end U48 */
