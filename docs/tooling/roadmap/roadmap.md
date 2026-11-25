@@ -108,6 +108,7 @@ Rules:
 | L1 | **Levelling page, first batch** ([review-levelling](./review-levelling.md)): expansion-aware plan, the game's start-level rule, quest launch gold in a Gold tile, XP Boost lasting 3 quests, re-levelling to 60, solo size cap, XP already earned, heroes by slot, stale results dimmed, tooltips instead of help text, shared formatters, 4–6× faster planning with an early stop and a kept worker. | review-levelling | Done (131325b) |
 | L2 | **Levelling page, second batch** ([review-levelling](./review-levelling.md)): hero pickers show ascension and number same-named heroes, 7-column steps table (size after the quest, XP / run in the tooltip), map step craft + run tooltip, two-per-row options on phones. | L1 | Done (67f28f2) |
 | R3-L | **Levelling on phones** ([review-r3](./review-r3.md)): results scroll into view, Time / Runs / Gold on one row, no wrapping toggles, compare table Stat / After / Change, winnable default reference quest, no ascension step at max ascension, compact hero line, secondary Compare, table edge fades, tap tooltips. | review-r3 | Done (9d7a785) |
+| R3-P | **Profit on phones** ([review-r3](./review-r3.md)): real two-column options, compact No orbs / Most profit tiles, no expansion icons in rows, asc badge only on phones, no empty Asc column without orbs, non-wrapping toggles, tap help instead of title, cost breakdown alignment, sticky column borders, Lv header, table edge fade, base-game note. | review-r3 | Done (5566a9a) |
 
 ## UI lane
 
