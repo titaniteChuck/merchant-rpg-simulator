@@ -86,21 +86,30 @@ flowchart LR
   menus (U35, [Menus](#menus): the Save dropdown, the second row under the top bar once a save is loaded, the phone
   drawer); the in-page tabs are gone. A section link is a normal hash link (`hashchange` re-renders, Back works). No
   hash or an unknown one opens Overview.
+- Every load opens Overview (U52): a load the visitor starts (the file picker, a drop, the example save, Reload, the
+  Save dropdown's entries, on any page that calls `initSaveSource`) ends with `goToOverview` in `save-source.ts`:
+  `overviewAfterLoad(path, hash)` gives `#overview` on the save viewer (nothing when already there) and
+  `save.html#overview` on any other page (the Solver, Profit …), after the save is stored, so the save viewer restores
+  it. The save kept in this browser, restored when a page opens, never moves the page.
+- Width (U52): every page keeps its vertical scrollbar's room (`html { scrollbar-gutter: stable; }`), so a short page
+  (the save viewer's Overview, the wizard) has the same main width as the long ones on a desktop with classic
+  scrollbars; `save.html` uses the shared frame (`body` max 1280 px, a plain `<main>`). Tests `web/test/save-u52.test.ts`.
 - "Open your save" wizard (U46, `web/src/ui/save-wizard.ts`): `save.html#open`, a view of the save viewer like
-  `#hero=<id>`, shown with or without a save (it takes the no-save picker's place: `html.save-wizard` hides the drop
-  zone, example row and help). The Save dropdown's "📂 Choose another file", "📂 Open your own save" (example loaded)
+  `#hero=<id>`, shown with or without a save (it takes the no-save picker's place: `html.wiz-open` hides the drop
+  zone, example row, help and the Save pages' chip row; U52: the root class was `save-wizard`, the wizard section's own
+  class, so the section's 640 px max-width also narrowed the whole page). The Save dropdown's "📂 Choose another file", "📂 Open your own save" (example loaded)
   and "📂 Open your save" (no save) go there (`openWizard` in `save-source.ts`, `location.assign("save.html#open")`,
   so from another page it opens the save viewer) instead of opening the file dialog; Reload still rereads or re-picks
   the same file, and the drop zone button still opens the dialog. Step 1 (`#open`): two big choices, 💻 PC and
-  📱 Mobile (links to `#open=pc` / `#open=mobile`, side by side even on a phone), and "🧪 Example save". A platform:
+  📱 Mobile (links to `#open=pc` / `#open=mobile`), and U52's third card "🧪 Example / Anonymised real save" (a
+  `button.wiz-choice`, same icon, label and sub layout; one equal column per card, side by side even on a phone). A platform:
   "← PC or mobile" (back to `#open`), its numbered steps (`WIZARD` in `save-wizard.ts`), a "📂 Pick a file" primary
   button (the shared chooser, `chooseSave`, returned by `initSaveSource` with the example loader) and short muted
   notes. PC: copy the system's save folder (Windows, Steam Deck / Linux (Proton), macOS), paste it in the dialog's
   address bar, choose `PlayerData.txt` or `Slot2Data.txt` … `Slot5Data.txt`. Mobile: the game's bug report mail
   (see [Save loader: Phones](../save-loader/save-loader.md#phones)), "only the slot you are playing is attached",
-  "not tested on every mail app". A file loaded while the wizard shows (picked, dropped or the example: the
-  `afterPick` option of `initSaveSource`, not the stored save) moves the page to `#overview`. `#open` is none of the
-  Save pages (`currentNav` gives no sub-page; the chip row stays). The "Where is my save file?" help gains the Mac
+  "not tested on every mail app". `#open` is none of the Save pages (`currentNav` gives no sub-page, and U52 hides the
+  chip row there; the real Save pages keep it). The "Where is my save file?" help gains the Mac
   folder, a Phone line and a "Step by step" link to the wizard. CSS block `u46`; tests `web/test/save-u46.test.ts`.
 - Overview: small cards (`.save-cards`, about 80px tall, at most four per row so the eight cards make two full rows,
   two per row on a phone; the cards of a short last row grow to fill it, R1 F35), each with a label,

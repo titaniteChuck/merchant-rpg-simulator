@@ -8,8 +8,10 @@
  *
  * U46: "Choose another file", "Open your own save" (example loaded) and "Open your save" (no save) open the "Open your
  * save" wizard (save.html#open, save-wizard.ts: PC or Mobile, then that platform's steps and "Pick a file"), not the
- * file dialog. initSaveSource returns the dialog and the example save for the wizard's buttons; afterPick tells the
- * page a chosen file was loaded (the save viewer then leaves the wizard).
+ * file dialog. initSaveSource returns the dialog and the example save for the wizard's buttons.
+ *
+ * U52: every load the visitor starts (a picked or dropped file, the example save, Reload, on any page) ends on the save
+ * viewer's Overview (overviewAfterLoad); the save kept in this browser, restored when a page opens, stays where it is.
  *
  * Example save (U20): "Try with an example save" (a button under the drop zone, and an entry in the save menu) fetches
  * data/example-save.txt (an anonymised real save, web/scripts/make-example-save.ts) and loads it exactly like a picked
@@ -35,8 +37,8 @@
 import { el } from "./dom.ts";
 import { expansionsFold, mountExpansionChip, type SaveAction, unmountExpansionChip } from "./expansion-menu.ts";
 import {
-  fitMenu, foldGroup, menuHead, menuKeys, menuSep, openedAt, placeChip, refocusSaveChip, rememberSaveName, saveChipButton,
-  savePagesGroup,
+  fitMenu, foldGroup, menuHead, menuKeys, menuSep, openedAt, placeChip, refocusSaveChip, rememberSaveName, SAVE_PAGE,
+  saveChipButton, savePagesGroup,
 } from "./save-menu.ts";
 import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
@@ -47,6 +49,25 @@ import { OPEN_HREF } from "./save-wizard.ts";
 /** U46: the Save dropdown's open entries lead to the "Open your save" wizard (save.html#open, save-wizard.ts). */
 export function openWizard(): void {
   location.assign(OPEN_HREF);
+}
+
+/** U52: the save viewer's Overview, where every load the visitor starts ends. */
+export const OVERVIEW_HREF = `${SAVE_PAGE}#overview`;
+
+/**
+ * Where a page goes after a load the visitor started (U52): on the save viewer, its #overview hash ({ hash }, null when
+ * already there); on any other page, the save viewer's Overview ({ href }).
+ */
+export function overviewAfterLoad(path: string, hash: string): { hash: string } | { href: string } | null {
+  if (!/(^|\/)save\.html$/i.test(path)) return { href: OVERVIEW_HREF };
+  return hash.toLowerCase() === "#overview" ? null : { hash: "#overview" };
+}
+
+function goToOverview(): void {
+  const to = overviewAfterLoad(location.pathname, location.hash);
+  if (!to) return;
+  if ("href" in to) location.assign(to.href);
+  else location.hash = to.hash;
 }
 
 /** The no-save picker's "?" (R2 F19): what happens to the file, what the example is. */
@@ -84,8 +105,6 @@ export interface SaveSourceOptions {
   load: (text: string, name: string) => Promise<void>;
   /** Called after "Forget" (the page clears what it showed). */
   onForget?: () => void;
-  /** After a file (or the example) the visitor chose was loaded; not for the save kept in this browser. */
-  afterPick?: () => void;
   /** More entries for the save menu (e.g. the save viewer's CSV exports), asked for each time the menu opens. */
   menuExtras?: () => { title: string; items: { label: string; hint: string; run: () => void }[] };
 }
@@ -236,7 +255,7 @@ export function initSaveSource(o: SaveSourceOptions): SaveSource {
       const savedAt = Date.now();
       await putSave({ name: file.name, text, savedAt }, handle);
       await loaded(file.name, savedAt);
-      o.afterPick?.();
+      goToOverview(); // U52: not for the stored save (restored below, without moving)
     } catch (e) {
       showError(`Could not read ${file.name}: ${e instanceof Error ? e.message : e}`);
     }

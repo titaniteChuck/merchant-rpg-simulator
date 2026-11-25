@@ -424,11 +424,13 @@ function render(sv: Save, fileName: string): void {
 /**
  * save.html#open (#open=pc, #open=mobile) shows the "Open your save" wizard, with or without a save (U46);
  * #hero=<id> one hero; #overview, #heroes, #inventory, #maps, #crafters a section; anything else (no hash) the Overview.
+ * Every load the visitor starts, here or on another page, lands on #overview (U52, save-source.ts overviewAfterLoad).
  */
 function route(): void {
   const wiz = wizardRoute(location.hash);
-  // The wizard takes the no-save picker's place (style.css html.save-wizard).
-  document.documentElement.classList.toggle("save-wizard", wiz !== undefined);
+  // The wizard takes the no-save picker's place and hides the Save pages' chip row (style.css html.wiz-open). U52: not
+  // "save-wizard", the wizard section's own class: its 640 px max-width then also narrowed the whole page.
+  document.documentElement.classList.toggle("wiz-open", wiz !== undefined);
   if (wiz !== undefined) {
     $("#save-status").replaceChildren();
     $("#result").replaceChildren(saveWizard(wiz, { pick: () => source?.choose(), example: () => void source?.useExample() }));
@@ -479,10 +481,6 @@ function init(): void {
       current = null;
       markLoaded(false);
       route(); // the wizard stays when it is open
-    },
-    // A file picked in the wizard: the save's Overview.
-    afterPick: () => {
-      if (wizardRoute(location.hash) !== undefined) location.hash = "overview";
     },
     menuExtras: () => ({ title: "Export (CSV)", items: csvExports() }),
   });

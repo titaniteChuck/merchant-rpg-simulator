@@ -2305,19 +2305,18 @@ td .visually-hidden, th .visually-hidden { left: 0; top: 0; }
 /* u46 */
 /* The "Open your save" wizard (save-wizard.ts, save.html#open): it takes the no-save picker's place; step 1 is two
    big choices, then a platform's numbered steps and the Pick a file button. */
-html.save-wizard #drop, html.save-wizard details:has(> #drop), html.save-wizard .example-save, html.save-wizard .save-help { display: none !important; }
+html.wiz-open #drop, html.wiz-open details:has(> #drop), html.wiz-open .example-save, html.wiz-open .save-help { display: none !important; }
 .save-wizard { max-width: 640px; margin: 8px auto 0; }
 .save-wizard .wiz-title { margin: 0 0 12px; font-size: 1.15rem; }
 .wiz-nav { margin: 0 0 8px; }
 .wiz-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-a.wiz-choice { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 8px; border-radius: var(--radius);
+.wiz-choice { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 8px; border-radius: var(--radius);
   background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--fg); text-decoration: none; text-align: center;
   transition: border-color .15s, box-shadow .15s, transform .15s; }
-a.wiz-choice:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.wiz-choice:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); transform: translateY(-1px); }
 .wiz-icon { font-size: 2rem; line-height: 1; }
 .wiz-label { font-size: 1.1rem; font-weight: 700; }
 .wiz-sub { font-size: 0.78rem; color: var(--muted); }
-.wiz-example { margin-top: 12px; }
 .wiz-steps { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; padding-left: 22px; }
 .wiz-paths { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.85rem; }
 .wiz-pick { font-size: 1rem; }
@@ -2429,3 +2428,15 @@ body:has(> .to-top:not([hidden])) .toast { bottom: 72px; }
   .hero-pick .seg-opt { min-width: 30px; padding: 2px 6px; }
 }
 /* end U50 */
+/* U52 */
+/* Save viewer width. The wizard's root class was "save-wizard", the wizard section's own class, so the section's
+   640 px max-width narrowed the whole page on save.html#open (now html.wiz-open). And every page keeps its
+   scrollbar's room even when short (the save viewer's Overview, the wizard): same main width as the long pages on a
+   desktop with classic scrollbars. */
+html { scrollbar-gutter: stable; }
+/* The wizard is not one of the Save pages: no chip row. */
+html.wiz-open .subnav[data-section="save"] { display: none; }
+/* Step 1: one equal column per card (PC, Mobile, Example). */
+.wiz-choices { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
+/* end U52 */

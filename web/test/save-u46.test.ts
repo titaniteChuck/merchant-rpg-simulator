@@ -33,7 +33,7 @@ test("wizard state: #open is step 1, #open=pc / #open=mobile a platform, anythin
   assert.equal(OPEN_HREF, "save.html#open");
 });
 
-test("step 1: two big choices, PC and Mobile, linking to their steps; the example save as a button", () => {
+test("step 1: two big choices, PC and Mobile, linking to their steps; the example save as a third card (U52)", () => {
   let examples = 0;
   const w = saveWizard(null, { pick: () => assert.fail("no pick on step 1"), example: () => examples++ }) as unknown as FakeElement;
   assert.equal(w.getAttribute("data-step"), "platform");
@@ -41,7 +41,7 @@ test("step 1: two big choices, PC and Mobile, linking to their steps; the exampl
   assert.deepEqual(choices.map((a) => a.getAttribute("href")), ["#open=pc", "#open=mobile"]);
   assert.deepEqual(choices.map((a) => a.querySelector(".wiz-label")!.textContent), ["PC", "Mobile"]);
   assert.equal(w.querySelectorAll("button.wiz-pick").length, 0);
-  click(w.querySelector("button.wiz-example")!);
+  click(w.querySelector("button.wiz-choice.wiz-example")!);
   assert.equal(examples, 1);
   // Without an example action, no example button.
   assert.equal((saveWizard(null, { pick: () => {} }) as unknown as FakeElement).querySelectorAll("button.wiz-example").length, 0);
@@ -101,15 +101,15 @@ test("the Save dropdown's open entries lead to the wizard, not straight to the f
 
 test("the save viewer routes #open to the wizard, with or without a save, and leaves it once a file is loaded", () => {
   assert.match(viewer, /const wiz = wizardRoute\(location\.hash\);/);
-  assert.match(viewer, /classList\.toggle\("save-wizard", wiz !== undefined\)/);
+  assert.match(viewer, /classList\.toggle\("wiz-open", wiz !== undefined\)/); // U52: was "save-wizard"
   assert.match(viewer, /saveWizard\(wiz, \{ pick: \(\) => source\?\.choose\(\), example: \(\) => void source\?\.useExample\(\) \}\)/);
   assert.ok(viewer.indexOf("wizardRoute(location.hash);") < viewer.indexOf("if (!current) return void"), "the wizard routes before the no-save check");
-  assert.match(viewer, /afterPick: \(\) => \{\s*if \(wizardRoute\(location\.hash\) !== undefined\) location\.hash = "overview";/);
-  assert.match(source, /await loaded\(file\.name, savedAt\);\s*o\.afterPick\?\.\(\);/, "only a picked file, not the stored save");
+  // U52: every load goes to the Overview (save-u52.test.ts), only a load the visitor starts.
+  assert.match(source, /await loaded\(file\.name, savedAt\);\s*goToOverview\(\);/, "only a picked file, not the stored save");
   // The wizard takes the picker's place; its choices sit side by side even on a phone.
-  assert.match(u46, /html\.save-wizard #drop, [^{]*html\.save-wizard \.example-save, html\.save-wizard \.save-help \{ display: none !important; \}/);
+  assert.match(u46, /html\.wiz-open #drop, [^{]*html\.wiz-open \.example-save, html\.wiz-open \.save-help \{ display: none !important; \}/);
   assert.match(u46, /\.wiz-choices \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  // Not one of the Save pages: the chip row stays, no sub-page marked.
+  // Not one of the Save pages: no sub-page marked (U52: and its chip row hidden, style.css html.wiz-open).
   assert.deepEqual(currentNav("/save.html", "#open"), { section: "save", href: undefined });
   assert.deepEqual(currentNav("/save.html", "#open=mobile"), { section: "save", href: undefined });
   assert.deepEqual(currentNav("/save.html", "#opened"), { section: "save", href: "save.html#overview" });

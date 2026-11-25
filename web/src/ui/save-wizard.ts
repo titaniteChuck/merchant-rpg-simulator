@@ -4,7 +4,8 @@
  *
  * Routes (hash, like #hero=<id>): #open is step 1, two big choices (PC, Mobile); #open=pc and #open=mobile show that
  * platform's numbered steps and a "Pick a file" button (the shared file chooser, save-file.ts chooseSave). Back and
- * the "← PC or mobile" link go back to step 1. A file loaded from here sends the page to #overview (save-viewer.ts).
+ * the "← PC or mobile" link go back to step 1. Any load sends the page to #overview (U52, save-source.ts).
+ * U52: the example save is a third card like PC and Mobile; the Save pages' chip row is hidden on the wizard.
  *
  * Mobile: the phone's app folder is private, but the game's bug report mails the current slot's save (Options, "Bug
  * Report" row: decompiled/scene.OptionsOverlay.lua, obj.SupportEmailer.lua getGameFiles), so the player sends it to
@@ -49,6 +50,8 @@ export interface PlatformSteps {
 }
 
 export const PICK_LABEL = "📂 Pick a file";
+/** Step 1's third card (U52): the example save. */
+export const EXAMPLE_CARD = { label: "Example", icon: "🧪", sub: "Anonymised real save" };
 
 export const WIZARD: Record<Platform, PlatformSteps> = {
   pc: {
@@ -94,10 +97,16 @@ export function saveWizard(platform: Platform | null, actions: WizardActions): H
       el("span", { class: "wiz-icon", "aria-hidden": "true" }, WIZARD[p].icon),
       el("span", { class: "wiz-label" }, WIZARD[p].label), el("span", { class: "wiz-sub" }, WIZARD[p].sub))));
     const ex = actions.example;
-    const extra = ex ? [el("button", { type: "button", class: "secondary wiz-example", title: "Load an anonymised real save" }, "🧪 Example save")] : [];
-    if (ex) extra[0].addEventListener("click", () => ex());
+    if (ex) {
+      // U52: a card like PC and Mobile, in the same row.
+      const card = el("button", { type: "button", class: "wiz-choice wiz-example", title: "Load an anonymised real save" },
+        el("span", { class: "wiz-icon", "aria-hidden": "true" }, EXAMPLE_CARD.icon),
+        el("span", { class: "wiz-label" }, EXAMPLE_CARD.label), el("span", { class: "wiz-sub" }, EXAMPLE_CARD.sub));
+      card.addEventListener("click", () => ex());
+      choices.append(card);
+    }
     return el("section", { class: "save-wizard", "aria-label": "Open your save", "data-step": "platform" },
-      el("h2", { class: "wiz-title" }, "Open your save"), choices, ...extra);
+      el("h2", { class: "wiz-title" }, "Open your save"), choices);
   }
   const w = WIZARD[platform];
   const steps = el("ol", { class: "wiz-steps" }, ...w.steps.map((s) => el("li", {}, ...parts(s.text),
