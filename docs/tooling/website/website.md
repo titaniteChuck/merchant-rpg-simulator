@@ -493,7 +493,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     near-black, about 14:1 on `--card`). Still dashed (6 3), so a class colour near it stays apart. U62's purple
     `--boss` is deleted.
   - Tabs HP · Damage dealt · Heals (`CHART_TABS`, a `role=tablist`, ← → Home End) on one x axis (turn 0, then each
-    turn's end). HP as before (a share of max HP). Damage dealt and heals are cumulative: lines that only go up read
+    turn's end). HP as before (a share of max HP). Damage dealt and heals are cumulative (U66: per turn, see U66): lines that only go up read
     better than per-turn spikes (the rotation repeats every 5 turns) and compare the fighters' totals at a glance; the
     per-turn amount is in the readout and the table ("1,240 (+310)"). The y axis of those two is in round amounts
     (`niceMax`, `fmtCompact`). Who did what comes from the trace's calculations (`addCredits`): damage that landed on a
@@ -516,7 +516,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - The trace (read only): each `life` entry also has the fighter's live stats (`TRACE_STATS`), and a battle's first
     action carries the state before it (`start`: life and effects), handed on as `FightTrace.start` (a map room's too).
     Taken in the trace hooks that only read; no simulation result changes, the Lua-parity tests stay green.
-  - A map run (the user's call, replacing a turn 0 per room): only the first room has a turn 0. Every later room
+  - A map run (U66: replaced, every room has its turn 0 again, on the last room's last turn's x; see U66) (the user's call, replacing a turn 0 per room): only the first room has a turn 0. Every later room
     starts directly with its turn 1; the state before it is the previous room's last turn (the room's own start, the
     new enemy at full HP, effects cleared, HP rounded or healed by a scroll, is not a step). This holds for the x axis
     and every tab's series (a hero's cumulative damage and heals run on across the rooms, nothing resets at a skipped
@@ -540,6 +540,35 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Details panel: no "XP per hero", "Quest time" or "XP / min" (`questXpTiles`, `mapXpTiles` deleted). A quest's
     details: Turns, Enemy HP removed, Party HP left. A map's: Progress, Turns per room, Time (per run; the map's craft
     time in its "?"), Loot value, Party HP left, Essence: six tiles, no lone tile on a row.
+
+- U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
+  `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,
+  the last one of `style.css`):
+  - Every map room has its turn 0 again (c5f59a5's "only the first room" reverted), on the same x as the last turn of
+    the room before (`chartLayout`): a hero's line goes straight on (same HP; a scroll's heal rises straight up), the
+    enemy's drops to 0 (room N's enemy falls) and rises straight up to 100 % (room N+1's fresh enemy), one dashed
+    path. The dashed room boundary is on that x. Two steps share it: a click or tap there picks room N+1's turn 0
+    (`nearestStep` takes the later step), Turn −1 / ← from there is room N's last turn (the marker stays, the cards
+    change), Turn +1 / → room N+1's turn 1. Every step is reached one at a time; the table has every room's start row.
+  - Fight tabs: a row of tabs over the plot, one per fight (a quest: one, the enemy's name; a map run: the room bar's
+    names, "1 · Wolf Pack" … "Boss · …"), each exactly over its fight's turns, turn 0 to the last turn (`fightLayout`,
+    pure): the same px per turn for every fight, except one whose name (`fightTabWidth`, about 7 px a character) is
+    wider than its turns: its turns widen until the tab fits and the others share what is left. When that no longer
+    fits the box, the chart is as wide as it needs (1 unit = 1 px) and the tabs and the plot scroll sideways together
+    (`.hp-scroll`); a vertical mouse wheel moves them sideways as on the map's room bar (`roomBarWheel`), and the
+    selected turn or a clicked tab is brought into view (`scrollToShow`), both from `battle-layout.ts`. A tab click
+    picks its fight's turn 0; the selected turn's fight is `aria-current`.
+  - Damage dealt and Heals are per turn (each point that turn's damage or healing by that fighter; U65 had them added
+    up): the y axis tops the largest turn, the readout and the table show the turn's own amount, the summary still
+    gives each fighter's total. At a later room's turn 0 (nobody acts) the point repeats the last turn's, so the line
+    goes on rather than dipping to 0 on the shared x.
+  - A fighter that falls: its fall (0 on the HP tab, with its cross) is its last point on every tab; no point while
+    it is down; a revive in the trace starts a new stretch of line (`plotted`).
+  - Turn −1 / Turn +1 buttons beside the HP · Damage dealt · Heals tabs (`.hp-head`, `.hp-steps`), disabled at the
+    ends (the focus moves to the other one), move the selected turn as the keys do; the cards follow.
+  - Legend: each fighter's colour and name only (no HP, "fell turn N" or total).
+  - Clear all (and its "Put back the previous party") moved from over the hero cards into the Simulate panel, first in
+    its row (`#party-tools` in `site/battle.html`, filled by `renderParty`); same behaviour, Simulator only.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

@@ -2647,3 +2647,28 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .fc-row.active { margin: 0 -4px; padding: 0 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 18%, transparent);
   box-shadow: inset 3px 0 0 var(--accent); }
 /* end U65 */
+
+/* U66 */
+/* The Party view's chart (web/src/ui/hp-chart.ts): Turn −1 / Turn +1 beside the HP · Damage dealt · Heals tabs; one
+   tab per fight over the plot, each exactly over its fight's turns (positions from fightLayout, in % of the chart's
+   width); wider than the box, the fight tabs and the plot scroll sideways together (the wheel too). Clear all and its
+   undo sit in the Simulate panel (#party-tools). */
+.hp-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 4px 12px;
+  margin: -2px 0 6px; border-bottom: 1px solid var(--border); }
+.hp-head > .hp-tabs { margin: 0; border-bottom: 0; }
+.hp-steps { display: flex; gap: 6px; padding-bottom: 4px; }
+.hp-step { padding: 3px 10px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.hp-step[disabled] { opacity: .45; cursor: default; }
+.hp-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hp-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.hp-track { min-width: 100%; }
+.hp-fights { position: relative; height: 26px; margin-bottom: 2px; }
+.hp-fight { position: absolute; top: 0; height: 24px; box-sizing: border-box; padding: 0 6px; border: 1px solid var(--border);
+  border-radius: 7px 7px 0 0; background: var(--card-2); color: var(--muted); font-size: 0.78rem; line-height: 22px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.hp-fight:hover { color: var(--fg); }
+.hp-fight[aria-current="true"] { color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--card)); }
+.hp-fight:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sim-bar .party-tools { display: inline-flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.sim-bar .party-tools:empty { display: none; }
+/* end U66 */

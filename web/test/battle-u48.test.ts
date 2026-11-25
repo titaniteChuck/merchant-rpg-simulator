@@ -131,7 +131,8 @@ test("pageControls: the Simulator edits and drags; the Solver is read-only (U50:
   const party = fn(page, "renderParty");
   assert.match(party, /const ctl = pageControls\(state\.mode\.key\);/);
   assert.match(party, /const include = raw && ctl\.edit \?/);
-  assert.match(party, /\.\.\.\(ctl\.edit \? \[el\("div", \{ class: "toolbar party-tools" \}, clear/);
+  // U66: Clear all is in the Simulate panel (#party-tools), still only where the page edits
+  assert.match(party, /document\.querySelector\("#party-tools"\)\?\.replaceChildren\(\.\.\.\(ctl\.edit \? \[clear, /);
   assert.match(party, /heroRows\(raw \? idx : null, raw, key, ctl\.edit\)/);
   assert.match(fn(page, "heroRows"), /pick: editable && live \?/);
   assert.match(fn(page, "renderPlan"), /const edit = pageControls\(state\.mode\.key\)\.edit \? planEdit\(\) : undefined;/);

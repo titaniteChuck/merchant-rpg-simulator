@@ -42,6 +42,8 @@
           </div>
           <div class="simulate">
             <div class="toolbar sim-bar">
+              <!-- U66: the party's Clear all and its undo (battle-page.ts renderParty), first in the Simulate row. -->
+              <span id="party-tools" class="party-tools"></span>
               <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
               <button id="run" type="button" class="primary">▶ Simulate</button>
               <span id="sim-help"></span>

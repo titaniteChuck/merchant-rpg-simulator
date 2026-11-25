@@ -1,6 +1,6 @@
 // Battle Simulator and Solver U65: the chart above the cards, full width, with HP · Damage dealt · Heals tabs; a click,
 // a tap or a key on it picks the turn the cards show (HP, the engine's live stats, the effects, the row played; turn 0
-// the start), from the Flows' own trace; in a map run only the first room has a turn 0; the enemy card shows one enemy (a map
+// the start), from the Flows' own trace; a map room keeps its own turn 0 (U66: on the last turn's x); the enemy card shows one enemy (a map
 // run: the selected turn's room's), its controls in the Simulate panel; no XP tiles in the details; the enemy line
 // white (dark) or near-black (light). No browser: the data from known traces, the chart and cards in the fake DOM,
 // the page code, HTML and CSS as text.
@@ -15,7 +15,7 @@ import { traceFight, traceMapRun } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { locationOf, mapRoomTabs, planTimeline } from "../src/ui/battle-plan.ts";
 import { CARD_STATS, fighterCard, paintCard } from "../src/ui/fighter-card.ts";
-import { addCredits, CHART_TABS, chartTab, drawHpChart, hpChart, hpData, type HpFighter, HP_W, nearestStep, niceMax, pickStep, stepAfterKey } from "../src/ui/hp-chart.ts";
+import { addCredits, CHART_TABS, chartLayout, chartTab, drawHpChart, hpChart, hpData, type HpFighter, HP_W, nearestStep, niceMax, pickStep, plotted, stepAfterKey } from "../src/ui/hp-chart.ts";
 import { fmt, fmtCompact } from "../src/ui/dom.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
@@ -69,7 +69,7 @@ test("the trace records each fighter's live stats and the start, and changes no 
 });
 
 // ---------------------------------------------------------------- 1. the tabs' data
-test("tabs data: damage dealt and heals per turn and added up, per fighter, from the same trace", () => {
+test("tabs data: damage dealt and heals per turn (U66: not added up), per fighter, from the same trace", () => {
   assert.deepEqual(CHART_TABS.map((t) => t.label), ["HP", "Damage dealt", "Heals"]);
   const d = odinData;
   // every fighter's per-turn amounts are its actions' calculations of that turn; turn 0 is 0
@@ -81,19 +81,16 @@ test("tabs data: damage dealt and heals per turn and added up, per fighter, from
       for (const a of odin.actions.filter((x) => x.turn === t)) addCredits(c, a);
       assert.equal(s.dealt[t], c.dealt[s.who] ?? 0, `${s.name} dealt, turn ${t}`);
       assert.equal(s.healed[t], c.healed[s.who] ?? 0, `${s.name} healed, turn ${t}`);
-      // cumulative: never down
-      assert.ok(s.dealtSum[t]! >= s.dealtSum[t - 1]! && s.healedSum[t]! >= s.healedSum[t - 1]!);
     }
-    assert.equal(s.dealtSum[odin.turns], s.dealt.reduce<number>((a, v) => a + (v ?? 0), 0));
   }
   // the totals match the trace's own hits: the party's damage is what landed on the enemy standing, the enemy's what
   // landed on the heroes, the healing all the HP given back
   const landed = (to: (w: number) => boolean) => odin.actions.flatMap((a) => a.hits).filter((h) => to(h.who)).reduce((n, h) => n + h.dmg, 0);
-  const sum = (who: (w: number) => boolean, k: "dealtSum" | "healedSum") => d.series.filter((s) => who(s.who)).reduce((n, s) => n + s[k][odin.turns]!, 0);
-  assert.equal(sum((w) => w > 0, "dealtSum"), landed((w) => w === 0));
-  assert.equal(sum((w) => w === 0, "dealtSum"), landed((w) => w > 0));
-  assert.equal(sum(() => true, "healedSum"), odin.actions.flatMap((a) => a.hits).reduce((n, h) => n + h.heal, 0));
-  assert.ok(sum(() => true, "healedSum") > 0, "Odin's fight has heals");
+  const sum = (who: (w: number) => boolean, k: "dealt" | "healed") => d.series.filter((s) => who(s.who)).reduce((n, s) => n + s[k].reduce<number>((a, v) => a + (v ?? 0), 0), 0);
+  assert.equal(sum((w) => w > 0, "dealt"), landed((w) => w === 0));
+  assert.equal(sum((w) => w === 0, "dealt"), landed((w) => w > 0));
+  assert.equal(sum(() => true, "healed"), odin.actions.flatMap((a) => a.hits).reduce((n, h) => n + h.heal, 0));
+  assert.ok(sum(() => true, "healed") > 0, "Odin's fight has heals");
   // the drawing: one line per fighter on each tab, the damage axis in round amounts, the table per tab
   for (const t of CHART_TABS) {
     const fig = hpChart(d, { tab: t.id }) as unknown as F;
@@ -103,12 +100,17 @@ test("tabs data: damage dealt and heals per turn and added up, per fighter, from
     assert.equal(fig.querySelectorAll("path.hp-death").length > 0, t.id === "hp", "falls are marked on the HP tab");
   }
   const dmg = hpChart(d, { tab: "dmg" }) as unknown as F;
-  const top = Math.max(...d.series.map((s) => s.dealtSum[odin.turns]!));
+  // U66: per turn, so the top is over the largest turn's amount drawn (a fallen hero's later turns are not drawn)
+  const top = Math.max(...d.series.flatMap((s) => plotted(d, s, "dmg")).map((v) => v ?? 0));
   const labels = dmg.querySelectorAll("text.hp-axis").map((x) => x.textContent);
   assert.ok(labels.includes("0") && !labels.some((x) => x.endsWith("%")), "amounts, not percents");
-  assert.ok(labels.includes(fmtCompact.format(niceMax(top))) && niceMax(top) >= top && niceMax(top) < top * 2.5, "the top: a round amount over the largest total");
+  assert.ok(labels.includes(fmtCompact.format(niceMax(top))) && niceMax(top) >= top && niceMax(top) < top * 2.5, "the top: a round amount over the largest turn");
+  // U66: the legend only names; the table's cells are each turn's own amount
   const legend = dmg.querySelector("ul.hp-legend")!.children;
-  for (const [k, s] of d.series.entries()) assert.equal(legend[k].querySelector("span.hp-val")!.textContent, fmt.format(s.dealtSum[odin.turns]!));
+  for (const [k, s] of d.series.entries()) assert.equal(legend[k].textContent, s.name);
+  assert.equal(dmg.querySelectorAll("span.hp-val").length, 0);
+  const row3 = dmg.querySelector("tbody")!.children[3].querySelectorAll("td").map((c) => c.textContent);
+  assert.deepEqual(row3, d.series.map((s) => fmt.format(s.dealt[3]!)));
 });
 
 test("tabs: a click on a tab draws it, the turn kept; the arrow keys move between tabs", () => {
@@ -132,9 +134,10 @@ test("tabs: a click on a tab draws it, the turn kept; the arrow keys move betwee
 // ---------------------------------------------------------------- 2. picking the turn
 test("turn selection: a click or tap picks the nearest turn, the keys move it; a marker line and the turn number", () => {
   const n = odinData.steps.length;
-  assert.equal(nearestStep(38, n), 0);
-  assert.equal(nearestStep(HP_W - 10, n), n - 1);
-  assert.equal(nearestStep(-50, n), 0);
+  const xs = chartLayout(odinData).xs;
+  assert.equal(nearestStep(38, xs), 0);
+  assert.equal(nearestStep(HP_W - 10, xs), n - 1);
+  assert.equal(nearestStep(-50, xs), 0);
   assert.deepEqual([stepAfterKey("ArrowRight", 3, n), stepAfterKey("ArrowLeft", 3, n), stepAfterKey("ArrowUp", 3, n), stepAfterKey("ArrowDown", 0, n)], [4, 2, 4, 0]);
   assert.deepEqual([stepAfterKey("Home", 3, n), stepAfterKey("End", 3, n), stepAfterKey("PageUp", n - 2, n), stepAfterKey("a", 3, n)], [0, n - 1, n - 1, null]);
   const picks: number[] = [];
@@ -147,7 +150,7 @@ test("turn selection: a click or tap picks the nearest turn, the keys move it; a
   assert.equal(fig.querySelector("text.hp-sel-label")!.textContent, "Turn 0");
   // a click at turn 5 (the plot as wide as its viewBox)
   (svg as unknown as { getBoundingClientRect: () => object }).getBoundingClientRect = () => ({ left: 0, top: 0, width: HP_W, height: 200 });
-  const x5 = 38 + ((HP_W - 48) * 5) / (n - 1);
+  const x5 = xs[5];
   svg.listeners.get("click")![0]({ clientX: x5 } as never);
   assert.deepEqual(picks, [5]);
   assert.equal(svg.getAttribute("aria-valuenow"), "5");
@@ -262,50 +265,44 @@ test("turn 0: the start, before any action: full HP, the recorded stats, no effe
 });
 
 // ---------------------------------------------------------------- 4. a map run
-test("a map run: only the first room has a turn 0; a later room starts with its turn 1, after the last room's last turn", () => {
+test("a map run: each room keeps its turn 0 (U66: on the x of the last room's last turn), its state carried over", () => {
   const [f, b] = party();
   const rooms = traceMapRun(sim, { id: 1, prestigeLevel: 0, grade: 3 }, [...f], [...b]);
   const tabs = mapRoomTabs(rooms);
   const runs = rooms.flatMap((r, k) => (r.trace ? [{ trace: r.trace, enemy: r.name, room: tabs[k].label, quest: { id: r.questId, rare: r.isRare } }] : []));
   assert.ok(runs.length >= 2);
   const d = hpData(runs, fighters)!;
-  // the x axis: one turn 0 (the first room's), then every room's turns 1 … n one after the other
-  assert.deepEqual(d.steps.map((s) => [s.run, s.turn]),
-    [[0, 0], ...runs.flatMap((r, k) => Array.from({ length: r.trace.turns }, (_, t) => [k, t + 1]))]);
-  assert.equal(d.steps.filter((s) => s.turn === 0).length, 1, "one turn 0 in the whole run");
-  assert.equal(d.steps[0].label, `${runs[0].room}: start`);
-  assert.equal(d.steps[0].states[0].hp, d.steps[0].states[0].maxHP, "the first room's enemy at full HP");
+  // the steps: every room's turn 0 … n, one room after the other
+  assert.deepEqual(d.steps.map((s) => [s.run, s.turn]), runs.flatMap((r, k) => Array.from({ length: r.trace.turns + 1 }, (_, t) => [k, t])));
   for (const [k, i] of d.runStarts.entries()) {
     const st = d.steps[i];
-    assert.equal(st.run, k);
-    assert.equal(st.turn, k ? 1 : 0, "a later room starts with its turn 1");
+    assert.equal(st.turn, 0, "a room starts with its turn 0");
+    assert.equal(st.label, `${runs[k].room}: start`);
+    assert.equal(st.states[0].hp, st.states[0].maxHP, "the room's enemy at full HP");
     assert.deepEqual(d.runs[k].quest, runs[k].quest, "the room's enemy, for its card");
     if (!k) continue;
-    assert.equal(st.label, `${runs[k].room}, turn 1`);
-    // the state before it is the last room's last turn
+    // the heroes carry their HP over from the last room's last turn (no scroll here; the next room starts from the
+    // HP rounded), their effects are gone
     const prev = d.steps[i - 1];
-    assert.equal(prev.run, k - 1);
-    assert.equal(prev.turn, runs[k - 1].trace.turns);
-    // the enemy's damage starts again with each room's enemy (only its turn 1's); a hero's goes on, no reset
-    const enemy = d.series[0];
-    assert.equal(enemy.dealtSum[i], enemy.dealt[i]);
-    for (const hero of d.series.filter((s) => !s.enemy && s.values[i] && s.values[i - 1])) {
-      assert.equal(hero.dealtSum[i], hero.dealtSum[i - 1]! + hero.dealt[i]!);
-      assert.equal(hero.healedSum[i], hero.healedSum[i - 1]! + hero.healed[i]!);
+    for (const w of Object.keys(st.states).map(Number).filter((w) => w > 0)) {
+      assert.ok(Math.abs(st.states[w].hp - prev.states[w].hp) < 1, `hero ${w} in room ${k + 1}: ${st.states[w].hp} after ${prev.states[w].hp}`);
+      assert.deepEqual(st.states[w].fx, []);
     }
+    // nobody acts at a turn 0
+    for (const s of d.series) assert.ok(!s.dealt[i] && !s.healed[i]);
   }
-  // the room boundaries: halfway between a room's last turn and the next room's turn 1; the cards follow the steps
-  const W = HP_W, PW = W - 38 - 10, n = d.steps.length;
+  // the room boundaries: on the shared x; the keys walk room N's last turn → room N+1's turn 0 → its turn 1
+  const n = d.steps.length, xs = chartLayout(d).xs;
   const svgEl = hpChart(d, { tab: "dmg" }) as unknown as F;
   const lines = svgEl.querySelectorAll("line.hp-room").map((l) => Number(l.getAttribute("x1")));
-  assert.deepEqual(lines, d.runStarts.slice(1).map((i) => Math.round((38 + (PW * (i - 0.5)) / (n - 1)) * 10) / 10));
-  // the keys walk from the last room's last turn straight to the next room's turn 1
+  assert.deepEqual(lines, d.runStarts.slice(1).map((i) => Math.round(xs[i] * 10) / 10));
   const i1 = d.runStarts[1];
   assert.equal(stepAfterKey("ArrowRight", i1 - 1, n), i1);
-  // the table: one row per step, no later room's start row
+  assert.equal(stepAfterKey("ArrowRight", i1, n), i1 + 1);
+  // the table: one row per step, every room's start row
   const rows = svgEl.querySelectorAll("th").filter((h) => h.getAttribute("scope") === "row").map((h) => h.textContent);
   assert.deepEqual(rows, d.steps.map((s) => s.label));
-  assert.ok(!rows.some((r, k) => k > 0 && /: start$/.test(r!)));
+  assert.equal(rows.filter((r) => /: start$/.test(r!)).length, runs.length);
   // every step names its room's enemy (the enemy card follows the selected turn's room)
   for (const st of d.steps) assert.equal(d.runs[st.run].quest!.id, runs[st.run].quest.id);
   const card = fn(page, "drawEnemyCard");

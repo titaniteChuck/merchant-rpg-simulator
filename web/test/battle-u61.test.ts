@@ -88,14 +88,15 @@ test("series: the start, then every turn's end; HP from the trace's life, deaths
   assert.equal(fig.querySelector('p[id="hp-sum"]')!.textContent, hpSummary(d));
   assert.equal(svg.getAttribute("aria-describedby"), "hp-sum");
   assert.match(hpSummary(d), new RegExp(`over ${trace.turns} turns, lost\\.`));
-  // legend: every fighter with its absolute HP at the end; the table: one row per step, one column per fighter
+  // legend (U66): every fighter's colour and name, nothing else; the table: one row per step, one column per fighter
   const legend = fig.querySelector("ul.hp-legend")!.children;
   assert.equal(legend.length, d.series.length);
   for (const [k, s] of d.series.entries()) {
-    const v = s.values[trace.turns]!;
-    assert.ok(legend[k].querySelector("span.hp-val")!.textContent.startsWith(`${fmt.format(v.hp)} / ${fmt.format(v.maxHP)}`));
-    assert.equal(legend[k].querySelector("span.hp-val")!.textContent.includes("fell"), s.deaths.length > 0);
+    assert.deepEqual(legend[k].children.map((c) => c.className), ["hp-swatch", "hp-name"]);
+    assert.equal(legend[k].textContent, s.name);
   }
+  const last = d.series[1].values[trace.turns]!;
+  assert.ok(fig.querySelector("tbody")!.children[trace.turns].textContent.includes(`${fmt.format(last.hp)} / ${fmt.format(last.maxHP)}`));
   assert.equal(fig.querySelector("tbody")!.children.length, d.steps.length);
   assert.equal(fig.querySelector("thead")!.querySelectorAll("th").length, d.series.length + 1);
   assert.equal(fig.querySelector("details.hp-fold")!.hasAttribute("open"), false, "the table is folded");
@@ -136,7 +137,7 @@ test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's 
   assert.match(fn(page, "hpBox"), /col\.append\(box\);/);
 });
 
-test("a map run: the fought rooms one after the other, a boundary before each room after the first", () => {
+test("a map run: the fought rooms one after the other, each with its turn 0 on the last room's last turn's x", () => {
   const [f, b] = party();
   const rooms = traceMapRun(sim, { id: 1, prestigeLevel: 0, grade: 3 }, [...f], [...b]);
   const tabs = mapRoomTabs(rooms);
@@ -144,18 +145,16 @@ test("a map run: the fought rooms one after the other, a boundary before each ro
   assert.ok(runs.length >= 2);
   const d = hpData(runs, fighters)!;
   assert.equal(d.runStarts.length, runs.length);
-  // U65 follow-up: only the first room has a turn 0; a later room starts with its turn 1
-  assert.equal(d.steps.length, runs.reduce((n, r) => n + r.trace.turns, 1));
-  assert.equal(d.steps[d.runStarts[1]].label, `${tabs[1].label}, turn 1`);
-  // the first room's enemy starts full; no fall marked at the start; a later room's enemy is a new one, so no fall
-  // is marked where its line starts unless it really fell in its turn 1
-  assert.equal(d.series[0].values[0]!.pct, 100);
-  for (const s of d.series) assert.ok(!s.deaths.includes(0));
-  for (const i of d.runStarts.slice(1)) assert.equal(d.series[0].deaths.includes(i), d.series[0].values[i]!.hp <= 0);
+  // U66 (c5f59a5 reverted): every room has its turn 0
+  assert.equal(d.steps.length, runs.reduce((n, r) => n + r.trace.turns + 1, 0));
+  assert.equal(d.steps[d.runStarts[1]].label, `${tabs[1].label}: start`);
+  // each room's enemy starts full; no fall marked at a room's start
+  for (const i of d.runStarts) assert.equal(d.series[0].values[i]!.pct, 100);
+  for (const s of d.series) for (const i of s.deaths) assert.ok(!d.runStarts.includes(i));
   const fig = hpChart(d) as unknown as FakeElement;
   assert.equal(fig.querySelectorAll("line.hp-room").length, runs.length - 1);
-  // the enemy line restarts with each room: one move per room
-  assert.equal((fig.querySelector("path.hp-enemy")!.getAttribute("d")!.match(/M/g) ?? []).length, runs.length);
+  // U66: the enemy line goes on through the rooms: one move, a vertical segment (0 then 100 %) at each boundary
+  assert.equal((fig.querySelector("path.hp-enemy")!.getAttribute("d")!.match(/M/g) ?? []).length, 1);
   assert.match(hpSummary(d), new RegExp(`over ${runs.length} rooms`));
 });
 

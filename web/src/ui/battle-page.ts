@@ -468,8 +468,9 @@ function renderParty(refreshSearch = true): void {
     cap.hidden = !fight.capped.length;
     cap.replaceChildren(...(fight.capped.length ? [`ℹ️ At most ${rules.maxSize} heroes`] : []));
   }
+  // U66: Clear all (and its undo) sits in the Simulate panel (#party-tools), no longer over the cards.
+  document.querySelector("#party-tools")?.replaceChildren(...(ctl.edit ? [clear, ...(clearUndo ? [clearUndo] : [])] : []));
   $("#party").replaceChildren(
-  ...(ctl.edit ? [el("div", { class: "toolbar party-tools" }, clear, ...(clearUndo ? [clearUndo] : []))] : []),
   // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
   // party fill the slots themselves.
   ...((p) => (p && !picks ? [el("p", { class: "error small party-problem", role: "status" }, `⚠ ${p}`)] : []))(partyProblem()),
@@ -560,7 +561,7 @@ function clearAll(): void {
     clearUndo = null;
     persistParty();
     renderParty();
-    document.querySelector<HTMLElement>("#party .clear-all")?.focus();
+    document.querySelector<HTMLElement>("#party-tools .clear-all")?.focus();
   });
   clearUndo = b;
   persistParty();
