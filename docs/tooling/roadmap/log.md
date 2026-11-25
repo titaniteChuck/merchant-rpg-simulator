@@ -97,3 +97,4 @@
 - **Update**: U55–U59 added from the user's third 2026-11-25 batch (map table, item cards, rarity names, Flow 2 and Flow 3 to compare).
 - **Update**: U57 done (e78740e): rarity names (Common to Mythical) instead of numbers site-wide, colours kept; the wiki filter matches names; CSV exports add a rarity_name column.
 - **Update**: U55 done (f2c294e): a map's enemies in one table (Treasure Bush first, bosses last); the six level-70 maps marked not craftable.
+- **Update**: U56 done (031d388): item details show their facts as cards; equipment's sell price as a row of Stats by grade; one sell box for the page's ascension; Recipe and Used in keep their section when empty.
