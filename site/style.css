@@ -2414,3 +2414,11 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .cls-shape .radar-fig { max-width: 220px; }
 }
 /* end U54 */
+/* U53 */
+/* The wiki's "Fight in simulator" on a map and an enemy page (wiki-enemies.ts fightButton): a link drawn as a compact
+   secondary button. */
+.fight-sim { margin: 8px 0 0; }
+.fight-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); color: var(--fg); font-size: 0.88rem; font-weight: 600; text-decoration: none; transition: border-color .15s; }
+.fight-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* end U53 */

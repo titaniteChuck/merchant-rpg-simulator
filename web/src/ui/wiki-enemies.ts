@@ -7,12 +7,13 @@ import { enemyStrip, stripNote, timelineOf } from "./timeline.ts";
 import { seq } from "../sim/lua.ts";
 import { duration, el, fmt, gradeBadge, GRADE_LETTERS, pill, type Row, segField, segmented, table, withAsc } from "./dom.ts";
 import {
-  enemyDrops, enemyIds, enemyKind, enemyLevelSort, enemyLevelText, isGathering, isTreasureBush, enemyLink, enemyMapRoles, hasRare, item, itemLink, quest, regionChip, regionOf, regionSortKey, regionText,
+  enemyDrops, enemyIds, enemyKind, enemyLevelSort, enemyLevelText, isEnemy, isGathering, isTreasureBush, enemyLink, enemyMapRoles, hasRare, item, itemLink, quest, regionChip, regionOf, regionSortKey, regionText,
   skillDesc, skillLink,
 } from "./wiki-data.ts";
 import { sectionHelp } from "./wiki-help.ts";
 import { battleLink, statLink } from "./wiki-ref.ts";
-import { isVisible } from "./expansion-state.ts";
+import { isHidden, isVisible } from "./expansion-state.ts";
+import { simulatorHref, type SimulatorTarget } from "./battle-links.ts";
 import { hiddenNote } from "./expansion-menu.ts";
 import { rarityChip } from "./wiki-items.ts";
 import { enemyName, itemName, skillName } from "./names.ts";
@@ -494,4 +495,30 @@ export function enemyBody(id: number, facts: Facts, section: Section, empty: (..
     sectionHelp(section("Drops", variantCols(id, (r) => dropsBlock(id, r))), DROPS_HELP, dropsRefs()),
     roles.length ? sectionHelp(section(`Maps (${roles.length})`, mapsTable(id)), mapsHelp(id), [statLink("map-essence")]) : empty(["Maps", "None: met only as a quest."]),
   ];
+}
+
+// ---------------------------------------------------------------- U53: "Fight in simulator"
+/**
+ * The Simulator's target for an enemy page, or null when its enemy picker doesn't offer it (battle-page questOptions):
+ * a fight (HP and a rotation, battle-setup isFightable), shown by the visitor's expansions, in a region, and for a map
+ * boss or a Treasure Bush (its "– Map" group) Scribe not hidden.
+ */
+export function enemyFightTarget(id: number): SimulatorTarget | null {
+  const q = quest(id);
+  if (!(q?.enemyHp && q.attackList && q.name && isEnemy(id)) || !isVisible("enemy", id)) return null;
+  const r = regionOf("enemy", id);
+  if (!r || ((r.group === "map" || isTreasureBush(id)) && isHidden("Scribe"))) return null;
+  return { quest: id };
+}
+
+/** The Simulator's target for a map page (a catalog map run at the page's ascension), or null: no Scribe, map hidden. */
+export function mapFightTarget(id: number, cfg: { asc: number }): SimulatorTarget | null {
+  if (!item("map", id) || isHidden("Scribe") || !isVisible("map", id, { ascension: cfg.asc })) return null;
+  return { map: id, ...(cfg.asc ? { asc: cfg.asc } : {}) };
+}
+
+/** The "Fight in simulator" button (a link to battle.html), nothing without a target; `title`: what it leaves out. */
+export function fightButton(t: SimulatorTarget | null, title?: string): HTMLElement[] {
+  if (!t) return [];
+  return [el("p", { class: "fight-sim" }, el("a", { class: "fight-btn", href: simulatorHref(t), ...(title ? { title } : {}) }, "⚔️ Fight in simulator"))];
 }

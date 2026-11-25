@@ -376,6 +376,10 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     - Remembered (U36): the opponent (quest or map run, enemy, rare, size, map, grade, ascension, scrolls) is kept in
       localStorage `battle-opponent` (try/catch) and put back when the page is opened again; switching quest ⇄ map
       brings back the other kind's last choice. A remembered size the party can't take falls back to ×1.
+    - Linked opponent (U53, `battle-links.ts` `simulatorHref` / `linkedOpponent`): `battle.html?quest=ID[&rare=1]` or
+      `?map=ID[&asc=1]` (catalog map `cat:ID`, grade C) is merged into `battle-opponent` before the page builds
+      (`takeLinkedOpponent`, Simulator only; the remembered scrolls and quest size stay, the party is untouched), then
+      the query is dropped with `replaceState` so a reload keeps later changes. Storage blocked: held for the visit.
     - Fresh start (R1 F02): with no remembered quest, the page opens on `defaultQuest` (`ui/battle-setup.ts`): the
       toughest quest-board enemy (highest level, then HP × attack) of the region of the save's highest hero level, at
       or below that level; gathering bushes, Treasure Bushes, event bosses and Epic / Final bosses are skipped, the base
@@ -777,10 +781,20 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     gets its own column); rarity and sell value with the modifiers. Consumables: the Effect from
     `consumableStat(id, asc)`. Recipe: at asc N the line "the ingredients above at ascension N, plus E × essence"
     (`essenceForAscension`).
-  - Kept at the base figure and marked with a dashed "base" tag (tooltip says why): a map's Base time when the
-    prefix adds speed (the run shortens walks and fights; no base-time figure in the engine), the recipe's gold and
-    time and the crafting chain's totals on a configured page, and an enemy the engine can't build in the map. Not
-    affected by any modifier: level, region, rooms, boss list, drops.
+  - Base time with a speed prefix (U53): Quick +4 / Swift +8 cut the run's walk time, which the base time is, by the
+    speed % (`mapBaseTime` in `wiki-config.ts`, the engine's `determineMapWalkTime` with no party speed, capped at
+    75 %; see [Maps](../../game-economy/maps/maps.md#prefix-and-suffix)). The fact shows the cut time and a muted
+    "−8%", the plain time in its title; map 22 with Swift: 6,300 s → 5,796 s.
+  - Kept at the base figure and marked with a dashed "base" tag (tooltip says why): the recipe's gold and time and
+    the crafting chain's totals on a configured page, an enemy the engine can't build in the map, and the base time
+    only when the engine can't build the map. Not affected by any modifier: level, region, rooms, boss list, drops.
+  - "⚔️ Fight in simulator" (U53, `fightButton` / `enemyFightTarget` / `mapFightTarget` in `wiki-enemies.ts`): a
+    compact link-button under the lead of a map page (`battle.html?map=22&asc=1`: the catalog map run at the page's
+    ascension, grade C; the Simulator's catalog maps take no prefix or suffix, said in the button's title when the
+    page has one) and of an enemy page (`battle.html?quest=12`). Hidden when the Simulator wouldn't offer it: an
+    enemy that isn't a fight or that the visitor's expansions hide, a map boss or Treasure Bush (the picker's
+    "– Map" group) and every map run with Scribe hidden (`isHidden("Scribe")`), a map at an ascension the
+    expansions hide. The Simulator takes the link's opponent (see [Battle simulator](#battle-simulator), Linked opponent).
   - Map enemy tables (U49 change to the base figures too): they showed the quest's stats × Enemy × ("HP 110,000" for
     the Grimal-Frentir boss), which is not what the game does; they now show the engine's stats inside the map
     (`default.statModFromMap`: m = (Enemy × − 1) / 2, HP × 1.5m, Atk and Matk × m, Def, Mdef, Eva × (0.75 + 0.25m):

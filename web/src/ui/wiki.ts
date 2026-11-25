@@ -29,7 +29,9 @@ import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
 import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, sellBoxes, totalCost } from "./wiki-items.ts";
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
-import { baseTag, enemyBody, enemyLead, enemyListColumns, enemyListRows, enemyTable, regionRowClass, TREASURE_HELP } from "./wiki-enemies.ts";
+import {
+  baseTag, enemyBody, enemyFightTarget, enemyLead, enemyListColumns, enemyListRows, enemyTable, fightButton, mapFightTarget, regionRowClass, TREASURE_HELP,
+} from "./wiki-enemies.ts";
 import {
   ascCraftEssence, configRarity, configRoute, configSell, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
   modCount, NO_CONFIG, parseConfig, parseHash, prefixEffect, prefixStats, suffixEffect, validAscs, validPrefixes, validSuffixes,
@@ -732,14 +734,24 @@ function recipeNotes(type: string, id: number, cfg: ItemConfig): HTMLElement[] {
 }
 
 /** The "base" mark of a part a configuration doesn't change in the data the page has (U49). */
-function configNote(cfg: ItemConfig, what: "chain" | "recipe" | "time"): HTMLElement {
+function configNote(cfg: ItemConfig, what: "chain" | "recipe"): HTMLElement {
   const text = what === "chain" ? `The crafting chain and its totals are those of the plain item at ascension 0.`
-    : what === "recipe" ? (modCount(cfg) ? "Gold and time shown: the plain craft's. A prefix or suffix is rolled at the craft or added by the Enchanter, not crafted." : "Gold and time shown: the plain craft's.")
-    : "Before the prefix's speed, which shortens the run's walks and fights.";
+    : modCount(cfg) ? "Gold and time shown: the plain craft's. A prefix or suffix is rolled at the craft or added by the Enchanter, not crafted." : "Gold and time shown: the plain craft's.";
   return el("p", { class: "small muted cfg-note" }, el("span", { class: "cfg-base", "aria-hidden": "true" }, "base"), " ", text);
 }
 
 // ---------------------------------------------------------------- maps
+/**
+ * U53: the Base time fact. The base time is the run's walk time, which a speed prefix (Quick +4, Swift +8) cuts: the
+ * time with it (wiki-config mapBaseTime, the engine's formula), the plain time in its title. "base" only when the
+ * engine couldn't build the map.
+ */
+function baseTimeFact(plain: number, speed: number | undefined, withSpeed: number | null): HTMLElement {
+  if (!speed) return el("span", {}, duration(plain));
+  if (withSpeed === null) return el("span", {}, duration(plain), " ", baseTag(`Before the prefix's speed +${speed}: the engine could not build this map`));
+  return el("span", { title: `${duration(plain)} before the prefix's speed +${speed}` }, duration(withSpeed), el("span", { class: "muted small" }, ` −${Math.min(speed, 75)}%`));
+}
+
 /** "50 × Forest Essence" per essence of a map run. */
 function essenceParts(m: Any): HTMLElement[] {
   const br = seq<number>(m.baseReward ?? {});
@@ -781,7 +793,7 @@ function mapPage(id: number, query = new URLSearchParams()): HTMLElement {
 /**
  * A map page under its title and pickers, for one configuration (U49). The figures come from the map the engine builds
  * with it at grade C (wiki-config mapView): rarity, Enemy ×, sell value, essence per run, and every enemy's stats
- * inside the map. Rooms, level and boss don't depend on a modifier; the base time is marked when a prefix adds speed.
+ * inside the map. Rooms, level and boss don't depend on a modifier; a speed prefix cuts the base time (U53: baseTimeFact). "Fight in simulator" opens the map run.
  */
 function mapBody(id: number, cfg: ItemConfig): (Node | string)[] {
   const m = item("map", id);
@@ -802,9 +814,10 @@ function mapBody(id: number, cfg: ItemConfig): (Node | string)[] {
   return [
     // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Boss table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
+    ...fightButton(mapFightTarget(id, cfg), modCount(cfg) ? "The plain map at this ascension, grade C: the simulator's maps take no prefix or suffix." : undefined),
     // R2-D F43: compact facts, three to a row on a phone; the essence spans the row
     compactFacts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(view?.rarity ?? m.rarity)], ["Rooms", m.baseEnemyAmount],
-      ["Base time", m.baseMapTime ? el("span", {}, duration(m.baseMapTime), ...(speed ? [" ", baseTag(`Before the prefix's speed +${speed}, which shortens the run's walks and fights`)] : [])) : undefined],
+      ["Base time", m.baseMapTime ? baseTimeFact(m.baseMapTime, speed, view?.baseTime ?? null) : undefined],
       [statLink("map-essence", "Enemy ×"), `×${fmt.format(mod)}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
       [statLink("sell", "Sell value"), sell !== null ? gold(sell) : undefined],
       ...modifierFacts("map", id, cfg),
@@ -833,7 +846,7 @@ function enemyPage(id: number): HTMLElement {
   const name = enemyName(id) ?? q.name;
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
   return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
-    el("p", { class: "lead" }, enemyLead(id)),
+    el("p", { class: "lead" }, enemyLead(id)), ...fightButton(enemyFightTarget(id)),
     ...enemyBody(id, compactFacts, section, emptyLine));
 }
 

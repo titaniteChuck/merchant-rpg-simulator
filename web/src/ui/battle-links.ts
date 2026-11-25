@@ -50,3 +50,37 @@ export function simulatorPartyFrom(solver: StoredParty, simulator: Partial<Store
     excluded: { ...solver.excluded },
   };
 }
+
+/**
+ * U53: the wiki's "Fight in simulator": the Simulator opened on an opponent. `battle.html?quest=12` (an enemy, `&rare=1`
+ * its rare variant) or `battle.html?map=22&asc=1` (a catalog map run at an ascension, grade C as on the wiki). The
+ * Simulator takes it as its remembered opponent (`battle-opponent`), so the party stays the visitor's own. Catalog map
+ * runs take no prefix or suffix (only the save's own maps carry them), so a link never names one.
+ */
+export type SimulatorTarget = { quest: number; rare?: boolean } | { map: number; asc?: number };
+
+export function simulatorHref(t: SimulatorTarget): string {
+  const q = "quest" in t ? `quest=${t.quest}${t.rare ? "&rare=1" : ""}` : `map=${t.map}${t.asc ? `&asc=${t.asc}` : ""}`;
+  return `${SIMULATOR_PAGE}?${q}`;
+}
+
+/** The part of the Simulator's remembered opponent (battle-page OppChoice) a link sets. */
+export interface LinkedOpponent { kind: "quest" | "map"; quest?: string; rare?: boolean; map?: string; asc?: string; grade?: string }
+
+/** The opponent a Simulator URL's query names, else null (no `quest` / `map`, or not a positive id). */
+export function linkedOpponent(search: string): LinkedOpponent | null {
+  const q = new URLSearchParams(search.replace(/^\?/, ""));
+  const id = (k: string) => (/^\d+$/.test(q.get(k) ?? "") && Number(q.get(k)) > 0 ? String(Number(q.get(k))) : null);
+  const quest = id("quest"), map = id("map");
+  if (quest) return { kind: "quest", quest, rare: q.get("rare") === "1" };
+  if (map) return { kind: "map", map: `cat:${map}`, asc: q.get("asc") === "1" ? "1" : "0", grade: "3" };
+  return null;
+}
+
+/** The Simulator's address once a link's opponent is taken: the query gone (a reload keeps later changes), the hash kept. */
+export const withoutOpponentQuery = (path: string, search: string, hash: string): string => {
+  const q = new URLSearchParams(search.replace(/^\?/, ""));
+  for (const k of ["quest", "rare", "map", "asc"]) q.delete(k);
+  const rest = q.toString();
+  return `${path}${rest ? `?${rest}` : ""}${hash}`;
+};

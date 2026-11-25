@@ -92,7 +92,12 @@ timestamp: 2026-11-25
   `default.finalMapMod` folds it into `essenceBase` before the run, so `mapEssenceReward` rounds once (its second
   `round(amount × essenceMod)` branch never fires). Map 22 (100 / 50) at grade C: 130 / 65 with Titan's (sell 0.3),
   195 / 98 with Expert's (sell 0.3 × 1.5), 156 / 78 with Skilled.
-- Also raise rarity (sell value), cost and run time; prefixes add map stats; suffixes raise enemy strength.
+- Speed prefixes (`mapStats.speed`, not scaled by the map's tier): Quick +4, Swift +8. The run splits
+  `baseMapTime` over the rooms and the boss as walk time (`walkBaseTime = round(baseMapTime / #combats)`,
+  `obj.combat.Campaign`); each walk and each fight takes `time × questTimeMod × (1 − min((party speed + map speed)
+  / 100, 0.75))` (`questService.determineMapWalkTime` / `determineMapBattleTime`). So the base time drops by the
+  speed %: map 22 (105 min) 96 min 36 s with Swift, map 1 (15 min) 14 min 24 s with Quick (per-room rounding aside).
+- Also raise rarity (sell value) and cost; prefixes add map stats; suffixes raise enemy strength.
 - With a level-60 Scribe on low-level maps: 24% prefix, 39% suffix, so about +26% essence on average.
 
 ## Enchanting a map

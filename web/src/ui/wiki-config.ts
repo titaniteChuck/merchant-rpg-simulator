@@ -17,6 +17,7 @@
  * sim/equipment Item:applyPrefix / applySuffix, tools/engine sellValue and rarity), never by a formula of the page.
  */
 import * as api from "../sim/api.ts";
+import { determineMapWalkTime } from "../sim/campaign.ts";
 import { G } from "../sim/data.ts";
 import { consumableStat, mapEssenceReward } from "../sim/defaults.ts";
 import { Enemy } from "../sim/enemy.ts";
@@ -189,6 +190,23 @@ export interface MapView {
   prefixStats: Record<string, number>;
   /** Sell value (tools/engine sellValue with the ascension and modifier count), null when unknown. */
   sell: number | null;
+  /** U53: the run's base (walk) time in seconds with the prefix's speed, no party speed (mapBaseTime); null without one. */
+  baseTime: number | null;
+}
+
+/** A battle with no hero speed: what the walk time takes from the party (questService applyTimeMods). */
+const NO_PARTY_SPEED = { getSumOfStat: () => 0 } as unknown as Parameters<typeof determineMapWalkTime>[0];
+
+/**
+ * U53: a map run's base time with a speed prefix (Quick +4, Swift +8: data.PrefixData mapStats.speed). The game splits
+ * the map's baseMapTime over the rooms and the boss as walk time, each walk × questTimeMod × (1 − min((party speed +
+ * map speed) / 100, 0.75)) (obj.combat.Campaign, questService.determineMapWalkTime); the fights get the same factor
+ * on their own time. Here the whole base time at once (the per-room rounding aside), no party speed, through the
+ * engine's determineMapWalkTime. Null when the map has no base time.
+ */
+export function mapBaseTime(baseTime: number | undefined, speed = 0): number | null {
+  if (!baseTime) return null;
+  return determineMapWalkTime(NO_PARTY_SPEED, baseTime, speed);
 }
 
 /** The map built by the engine with a configuration, at grade C; null when the engine can't (unknown map). */
@@ -239,7 +257,8 @@ export function mapView(id: number, cfg: ItemConfig): MapView | null {
     sell = sellValue("map", id, cfg.asc, modCount(cfg)) ?? null;
   } catch { /* unknown */ }
   const essence = runEssence(id, cfg.asc, 3, map);
-  return { rarity: map.rarity, enemyMod: map.enemyMod, essenceBase: map.finalMapStats.essenceBase ?? 1, essence, stats: map.finalMapStats, prefixStats, sell };
+  const baseTime = mapBaseTime(map.baseTime, map.finalMapStats.speed ?? 0);
+  return { rarity: map.rarity, enemyMod: map.enemyMod, essenceBase: map.finalMapStats.essenceBase ?? 1, essence, stats: map.finalMapStats, prefixStats, sell, baseTime };
 }
 
 /** [engine stat, table label] of a map's enemy rows. */

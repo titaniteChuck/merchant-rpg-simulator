@@ -2,6 +2,9 @@
 
 [Root](../../index.md) > [Game Economy](../index.md) > [Maps](./index.md) > Update Log
 
+## 2026-11-25
+- **Speed prefixes (U53)**: Quick +4 / Swift +8 cut a run's walk (base) time and fights by the speed % (with the party's speed, capped at 75 %); no other modifier changes the base time.
+
 ## 2026-11-24
 - **Map-only enemies (E20)**: `questType` 8 never on the quest board; which map holds each boss; room XP formula; craft time with lower maps; level 10 to join a map.
 

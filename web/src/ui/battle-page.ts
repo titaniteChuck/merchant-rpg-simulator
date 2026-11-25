@@ -34,7 +34,7 @@ import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCo
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
-import { SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty } from "./battle-links.ts";
+import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
 import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, partyPlan, type PlanEdit, planNote, type PlanMember, timelineOf } from "./timeline.ts";
@@ -597,8 +597,26 @@ function storedOpponent(key = oppKey()): OppChoice {
     // The Solver's first visit: the Simulator's opponent.
     return key === SOLVER_OPP_KEY ? storedOpponent(OPP_KEY) : {};
   } catch {
-    return {};
+    return linkedFallback ?? {};
   }
+}
+
+/**
+ * U53: a wiki "Fight in simulator" link (`battle.html?quest=12`, `?map=22&asc=1`, battle-links linkedOpponent): its
+ * opponent becomes the remembered one before the page is built (the party stays the visitor's), then the query goes.
+ * With storage blocked it holds for this visit only.
+ */
+let linkedFallback: OppChoice | null = null;
+function takeLinkedOpponent(): void {
+  const linked = linkedOpponent(location.search);
+  if (!linked) return;
+  const o: OppChoice = { ...storedOpponent(OPP_KEY), ...linked };
+  try {
+    localStorage.setItem(OPP_KEY, JSON.stringify(o));
+  } catch {
+    linkedFallback = o;
+  }
+  history.replaceState(history.state, "", withoutOpponentQuery(location.pathname, location.search, location.hash));
 }
 
 /** Set while the page redraws for another language: the search panel keeps its form (U29). */
@@ -1519,6 +1537,7 @@ function initToTop(): void {
 /** Starts the Simulator (`simulate`, battle.ts) or the Solver (`solve`, solver.ts) on its page's HTML. */
 export function initBattlePage(kind: PageKind): void {
   state.mode = MODES[kind];
+  if (kind === "simulate") takeLinkedOpponent(); // U53: before anything builds the opponent
   // Until U41 the one page remembered its mode; the Simulator and the Solver are two pages now.
   try {
     localStorage.removeItem("battle-mode");
