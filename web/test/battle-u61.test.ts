@@ -144,11 +144,14 @@ test("a map run: the fought rooms one after the other, a boundary before each ro
   assert.ok(runs.length >= 2);
   const d = hpData(runs, fighters)!;
   assert.equal(d.runStarts.length, runs.length);
-  assert.equal(d.steps.length, runs.reduce((n, r) => n + r.trace.turns + 1, 0));
-  assert.equal(d.steps[d.runStarts[1]].label, `${tabs[1].label}: start`);
-  // each room's enemy starts full; no fall marked at a room's start
-  for (const i of d.runStarts) assert.equal(d.series[0].values[i]!.pct, 100);
-  for (const s of d.series) for (const i of s.deaths) assert.ok(!d.runStarts.includes(i));
+  // U65 follow-up: only the first room has a turn 0; a later room starts with its turn 1
+  assert.equal(d.steps.length, runs.reduce((n, r) => n + r.trace.turns, 1));
+  assert.equal(d.steps[d.runStarts[1]].label, `${tabs[1].label}, turn 1`);
+  // the first room's enemy starts full; no fall marked at the start; a later room's enemy is a new one, so no fall
+  // is marked where its line starts unless it really fell in its turn 1
+  assert.equal(d.series[0].values[0]!.pct, 100);
+  for (const s of d.series) assert.ok(!s.deaths.includes(0));
+  for (const i of d.runStarts.slice(1)) assert.equal(d.series[0].deaths.includes(i), d.series[0].values[i]!.hp <= 0);
   const fig = hpChart(d) as unknown as FakeElement;
   assert.equal(fig.querySelectorAll("line.hp-room").length, runs.length - 1);
   // the enemy line restarts with each room: one move per room

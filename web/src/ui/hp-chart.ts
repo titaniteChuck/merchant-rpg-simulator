@@ -2,15 +2,16 @@
  * U61: the Party view's chart of the traced fight the Flow tabs show (battle-page.ts renderPlan traces it once and
  * hands the same object to the open Flow layout and to this chart), so the chart and the Flows always agree.
  * U65: above the hero and opponent cards, full width; three tabs on one x axis, HP · Damage dealt · Heals; a click,
- * a tap or the arrow keys pick the turn the cards below show (the state at that turn's end, turn 0 the start).
+ * a tap or the arrow keys pick the turn the cards below show (the state at that turn's end, turn 0 the start; in a
+ * map run only the first room has a turn 0).
  *
  * - One line per hero in its class colour (`cls-N`, --c), one for the enemy, dashed, in white (dark theme) or the
  *   theme's near-black (light theme): --enemy-line (U65; was U62's purple --boss). HP is a share of max HP (heroes and
  *   enemy on one scale; the absolute HP is in the readout, the legend and the table); damage dealt and heals are
  *   cumulative (a hero's over the whole map run, the enemy's per room), the per-turn amount in the readout and table.
  * - x: the fight's start (turn 0), then the end of each turn. A map run puts its fought rooms one after the other:
- *   each room keeps its own turn 0 (the state it really starts from: the new enemy at full HP, the heroes' effects
- *   gone, a post-battle scroll's heal), a dashed boundary before each room after the first.
+ *   only the first room has a turn 0; every later room starts with its turn 1, the state before it being the last
+ *   room's last turn. A dashed boundary between a room's last turn and the next room's first.
  * - A fighter that falls: its HP line drops to 0 and a cross marks the point (again if it stands up and falls again).
  * - Accessible: the plot is a slider ("Turn", the arrow keys, Home, End) described by a one-sentence summary; a
  *   "Table" fold lists the open tab's values per turn.
@@ -91,7 +92,8 @@ export interface HpSeries {
 export interface HpChartData {
   steps: HpStep[];
   series: HpSeries[];
-  /** Index of the first step of each run (a map run's room boundaries; [0] for a quest). */
+  /** Index of the first step of each run (a map run's room boundaries; [0] for a quest): the first room's turn 0,
+   * every later room's turn 1 (it has no turn 0). */
   runStarts: number[];
   runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number }[];
 }
@@ -160,14 +162,20 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
   const steps: HpStep[] = [];
   const runStarts: number[] = [];
   const credits: Credits[] = [];
+  /** Each run's own start, kept off the x axis for a later room: a fall in its turn 1 is checked against it. */
+  const starts: Record<number, FighterState>[] = [];
   const names = new Map(fighters.map((f) => [f.who, f.name]));
   fought.forEach((r, k) => {
     runStarts.push(steps.length);
     const room = r.room ?? `Room ${k + 1}`;
     const who = (w: number) => (w ? names.get(w) ?? locationLabel(w) : r.enemy);
     const cur = startStates(r.trace, who);
-    steps.push({ run: k, turn: 0, label: many ? `${room}: start` : "Start", states: structuredClone(cur) });
-    credits.push({ dealt: {}, healed: {} });
+    starts.push(structuredClone(cur));
+    // Only the first room has a turn 0: a later room's start is shown by the last room's last turn.
+    if (!k) {
+      steps.push({ run: k, turn: 0, label: many ? `${room}: start` : "Start", states: structuredClone(cur) });
+      credits.push({ dealt: {}, healed: {} });
+    }
     const timeline = planTimeline(r.trace, [], who);
     const byTurn = new Map<number, Action[]>();
     for (const a of r.trace.actions) {
@@ -214,8 +222,11 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
       const dealt = per("dealt"), healed = per("healed");
       const deaths: number[] = [];
       values.forEach((v, i) => {
-        const was = values[i - 1];
-        // A fall within a run (a map room's enemy starts again at full HP: no fall at its start).
+        // A fall within a run. A later room's turn 1 is checked against that room's own start (its new enemy at full
+        // HP), not the last room's last turn.
+        const k = i > 0 ? runStarts.indexOf(i) : -1;
+        const s0 = k > 0 ? starts[k][f.who] : undefined;
+        const was = k > 0 ? (s0 ? { hp: s0.hp } : null) : values[i - 1];
         if (v && v.hp <= 0 && was && was.hp > 0 && steps[i].turn > 0) deaths.push(i);
       });
       return { ...f, values, dealt, healed, dealtSum: cumulative(dealt), healedSum: cumulative(healed), deaths };
@@ -225,7 +236,7 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
     runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns })) };
 }
 
-/** U65: the step to show: the one wanted (run and turn) when this fight still has it, else turn 0. */
+/** U65: the step to show: the one wanted (run and turn) when this fight still has it, else turn 0 (the first room's). */
 export function pickStep(d: HpChartData, want: { run: number; turn: number } | null): number {
   const i = want ? d.steps.findIndex((s) => s.run === want.run && s.turn === want.turn) : -1;
   return i < 0 ? 0 : i;
@@ -344,8 +355,8 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   }
   for (const t of ticks(d)) plot.append(svg("text", { class: "hp-axis", x: x(t.i), y: HP_H - 8, "text-anchor": "middle" }, t.text));
   plot.append(svg("text", { class: "hp-axis hp-axis-title", x: W - M.r, y: HP_H - 8, "text-anchor": "end" }, d.runs.length > 1 ? "room" : "turn"));
-  // Room boundaries (a map run): a dashed line before each room after the first.
-  for (const i of d.runStarts.slice(1)) plot.append(svg("line", { class: "hp-room", x1: x(i), x2: x(i), y1: M.t, y2: M.t + PH }));
+  // Room boundaries (a map run): a dashed line between a room's last turn and the next room's turn 1 (no turn 0 there).
+  for (const i of d.runStarts.slice(1)) plot.append(svg("line", { class: "hp-room", x1: r1(x(i - 0.5)), x2: r1(x(i - 0.5)), y1: M.t, y2: M.t + PH }));
   // The lines: the enemy first (under the heroes); a gap where a fighter is not in the fight, and the enemy line
   // restarts with each room.
   const ordered = [...d.series.filter((s) => s.enemy), ...d.series.filter((s) => !s.enemy)];

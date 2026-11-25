@@ -1,6 +1,6 @@
 // Battle Simulator and Solver U65: the chart above the cards, full width, with HP · Damage dealt · Heals tabs; a click,
 // a tap or a key on it picks the turn the cards show (HP, the engine's live stats, the effects, the row played; turn 0
-// the start), from the Flows' own trace; a map run's room keeps its own turn 0; the enemy card shows one enemy (a map
+// the start), from the Flows' own trace; in a map run only the first room has a turn 0; the enemy card shows one enemy (a map
 // run: the selected turn's room's), its controls in the Simulate panel; no XP tiles in the details; the enemy line
 // white (dark) or near-black (light). No browser: the data from known traces, the chart and cards in the fake DOM,
 // the page code, HTML and CSS as text.
@@ -262,32 +262,50 @@ test("turn 0: the start, before any action: full HP, the recorded stats, no effe
 });
 
 // ---------------------------------------------------------------- 4. a map run
-test("a map run: each room keeps its own turn 0 (the state it really starts from), carried over from the last room", () => {
+test("a map run: only the first room has a turn 0; a later room starts with its turn 1, after the last room's last turn", () => {
   const [f, b] = party();
   const rooms = traceMapRun(sim, { id: 1, prestigeLevel: 0, grade: 3 }, [...f], [...b]);
   const tabs = mapRoomTabs(rooms);
   const runs = rooms.flatMap((r, k) => (r.trace ? [{ trace: r.trace, enemy: r.name, room: tabs[k].label, quest: { id: r.questId, rare: r.isRare } }] : []));
   assert.ok(runs.length >= 2);
   const d = hpData(runs, fighters)!;
+  // the x axis: one turn 0 (the first room's), then every room's turns 1 … n one after the other
+  assert.deepEqual(d.steps.map((s) => [s.run, s.turn]),
+    [[0, 0], ...runs.flatMap((r, k) => Array.from({ length: r.trace.turns }, (_, t) => [k, t + 1]))]);
+  assert.equal(d.steps.filter((s) => s.turn === 0).length, 1, "one turn 0 in the whole run");
+  assert.equal(d.steps[0].label, `${runs[0].room}: start`);
+  assert.equal(d.steps[0].states[0].hp, d.steps[0].states[0].maxHP, "the first room's enemy at full HP");
   for (const [k, i] of d.runStarts.entries()) {
     const st = d.steps[i];
-    assert.equal(st.turn, 0, "a room starts with its turn 0");
-    assert.equal(st.label, `${runs[k].room}: start`);
-    assert.equal(st.states[0].hp, st.states[0].maxHP, "the room's enemy at full HP");
+    assert.equal(st.run, k);
+    assert.equal(st.turn, k ? 1 : 0, "a later room starts with its turn 1");
     assert.deepEqual(d.runs[k].quest, runs[k].quest, "the room's enemy, for its card");
     if (!k) continue;
-    // the heroes carry their HP over from the last room's last turn (no scroll here; the next room starts from the
-    // HP rounded), their effects are gone: the room's own turn 0 is not quite the last room's last turn
+    assert.equal(st.label, `${runs[k].room}, turn 1`);
+    // the state before it is the last room's last turn
     const prev = d.steps[i - 1];
-    for (const w of Object.keys(st.states).map(Number).filter((w) => w > 0)) {
-      assert.ok(Math.abs(st.states[w].hp - prev.states[w].hp) < 1, `hero ${w} in room ${k + 1}: ${st.states[w].hp} after ${prev.states[w].hp}`);
-      assert.deepEqual(st.states[w].fx, []);
+    assert.equal(prev.run, k - 1);
+    assert.equal(prev.turn, runs[k - 1].trace.turns);
+    // the enemy's damage starts again with each room's enemy (only its turn 1's); a hero's goes on, no reset
+    const enemy = d.series[0];
+    assert.equal(enemy.dealtSum[i], enemy.dealt[i]);
+    for (const hero of d.series.filter((s) => !s.enemy && s.values[i] && s.values[i - 1])) {
+      assert.equal(hero.dealtSum[i], hero.dealtSum[i - 1]! + hero.dealt[i]!);
+      assert.equal(hero.healedSum[i], hero.healedSum[i - 1]! + hero.healed[i]!);
     }
-    // the enemy's damage starts again with each room's enemy; a hero's goes on
-    assert.equal(d.series[0].dealtSum[i], 0);
-    const hero = d.series.find((s) => !s.enemy && s.values[i])!;
-    assert.equal(hero.dealtSum[i], hero.dealtSum[i - 1]);
   }
+  // the room boundaries: halfway between a room's last turn and the next room's turn 1; the cards follow the steps
+  const W = HP_W, PW = W - 38 - 10, n = d.steps.length;
+  const svgEl = hpChart(d, { tab: "dmg" }) as unknown as F;
+  const lines = svgEl.querySelectorAll("line.hp-room").map((l) => Number(l.getAttribute("x1")));
+  assert.deepEqual(lines, d.runStarts.slice(1).map((i) => Math.round((38 + (PW * (i - 0.5)) / (n - 1)) * 10) / 10));
+  // the keys walk from the last room's last turn straight to the next room's turn 1
+  const i1 = d.runStarts[1];
+  assert.equal(stepAfterKey("ArrowRight", i1 - 1, n), i1);
+  // the table: one row per step, no later room's start row
+  const rows = svgEl.querySelectorAll("th").filter((h) => h.getAttribute("scope") === "row").map((h) => h.textContent);
+  assert.deepEqual(rows, d.steps.map((s) => s.label));
+  assert.ok(!rows.some((r, k) => k > 0 && /: start$/.test(r!)));
   // every step names its room's enemy (the enemy card follows the selected turn's room)
   for (const st of d.steps) assert.equal(d.runs[st.run].quest!.id, runs[st.run].quest.id);
   const card = fn(page, "drawEnemyCard");

@@ -516,10 +516,17 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - The trace (read only): each `life` entry also has the fighter's live stats (`TRACE_STATS`), and a battle's first
     action carries the state before it (`start`: life and effects), handed on as `FightTrace.start` (a map room's too).
     Taken in the trace hooks that only read; no simulation result changes, the Lua-parity tests stay green.
-  - A map run: each room keeps its own turn 0 rather than reusing the last room's last turn as its start. The two are
-    not the same state: the new enemy at full HP, every effect cleared, the heroes' HP rounded between rooms or healed
-    by a post-battle scroll; so the room's first step is the state it really begins from, and the enemy line still
-    starts at its room's boundary.
+  - A map run (the user's call, replacing a turn 0 per room): only the first room has a turn 0. Every later room
+    starts directly with its turn 1; the state before it is the previous room's last turn (the room's own start, the
+    new enemy at full HP, effects cleared, HP rounded or healed by a scroll, is not a step). This holds for the x axis
+    and every tab's series (a hero's cumulative damage and heals run on across the rooms, nothing resets at a skipped
+    turn 0; the enemy's restart with each room's enemy at its turn 1), the room boundaries (a dashed line halfway
+    between a room's last turn and the next room's turn 1; `runStarts` is that turn 1), the turn selection (click and
+    keys go from a room's last turn straight to the next room's turn 1), the cards, the default and kept selection
+    (turn 0 is the first room's), the hover readout and the table (no "Room N: start" row after the first room). A
+    fall in a later room's turn 1 is checked against that room's own start, not the last room's last turn. The enemy
+    card follows the step's room: on room N's turn 1 it shows room N's enemy, on the previous room's last turn that
+    room's enemy.
   - The enemy card (`drawEnemyCard`, `#target-card` on both pages): one enemy, no picker, the plain "Lvl N · name"
     (`lvStart`), × the quest size, "(rare)", "Attacks first". A quest: the chosen enemy. A map run: the enemy of the
     selected turn's room ("Room 3", "Boss room"), with its live stats from the trace; before the run can be traced, one
