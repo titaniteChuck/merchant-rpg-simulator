@@ -1791,9 +1791,9 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* end u42 solver */
 /* r2-c */
 /* Battle Simulator and Solver, mobile review R2 (F20, F23–F26, F28–F36). */
-/* F20: steps numbered by CSS: a hidden section (the Results before the first run) takes no number. */
-#setup { counter-reset: b3-step; }
-#setup > section:not([hidden]) > h2 > .step::before { counter-increment: b3-step; content: counter(b3-step); }
+/* F20: steps numbered by CSS: a hidden section (the Results before the first run) takes no number. Only the Simulator and Solver (#setup.b3-steps); Levelling and Farming write their own numbers. */
+#setup.b3-steps { counter-reset: b3-step; }
+#setup.b3-steps > section:not([hidden]) > h2 > .step::before { counter-increment: b3-step; content: counter(b3-step); }
 #setup > section > h2 .help-tip { vertical-align: middle; font-size: 0.9rem; }
 /* F23 / F36: the party's "?" beside the Party / Flow tabs, no inner heading. */
 .b3-tab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
@@ -2042,6 +2042,12 @@ footer .footer-line a { color: inherit; }
 #wiki .grade-run { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); }
 #wiki .wiki-empty-line { margin: 18px 0 0; }
 #wiki .wiki-empty-line strong { color: var(--fg); font-weight: 650; }
+/* "·"-joined parts with no dangling separator (wiki.ts sepRow): each part starts with its "·"; the row sits one
+   separator to the left inside a horizontally clipped box, so a part that begins a line hides its "·". */
+#wiki .fact-strip, #wiki .wiki-empty-line { overflow-x: clip; }
+#wiki .sep-row { display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -1em; }
+#wiki .sep-part { min-width: 0; }
+#wiki .sep { display: inline-block; width: 1em; text-align: center; }
 
 /* F43: compact facts (map and enemy pages): small cards, three to a row on a phone; the essence spans the row. */
 #wiki .facts.compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-top: 12px; }
@@ -2123,3 +2129,10 @@ footer .footer-line a { color: inherit; }
 .pf-why details > .pf-why { margin: 4px 0 6px 14px; padding-left: 10px; border-left: 2px solid var(--border); }
 .pf-why-total { border-top: 1px solid var(--border); margin-top: 4px; font-weight: 700; }
 /* end profit p2 */
+
+/* sweep-375: no lone tile on a phone row (as R2-C's result tiles): two columns at 600 px and less, so an odd last tile
+   takes the whole row (Levelling's plan tiles, Farming's top three, the wiki home's categories). */
+@media (max-width: 600px) {
+  .tiles.span-last > .tile:last-child:nth-child(odd), #wiki ul.wiki-tiles > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+/* end sweep-375 */

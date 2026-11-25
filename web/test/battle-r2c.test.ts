@@ -29,12 +29,25 @@ test("F20: the Simulate sentence is a \"?\", and the Results wait for the first 
   assert.doesNotMatch(sim, /results-empty|No run yet/);
   // The steps are numbered by CSS: a hidden section takes no number (no "1, 3").
   assert.doesNotMatch(sim, /class="step"[^>]*>\d/);
-  assert.match(r2c, /#setup > section:not\(\[hidden\]\) > h2 > \.step::before \{ counter-increment: b3-step; content: counter\(b3-step\); \}/);
+  assert.match(r2c, /#setup\.b3-steps > section:not\(\[hidden\]\) > h2 > \.step::before \{ counter-increment: b3-step; content: counter\(b3-step\); \}/);
+  for (const html of [sim, solver]) assert.match(html, /<div id="setup" class="b3-steps" hidden>/);
   assert.match(page, /helpTip\(SIMULATE_HELP, "Simulate"\)/);
   // Shown when a run starts (before its checks, so an error shows too); hidden again for a new or forgotten save.
   const run = fn(page, "run(): void");
   assert.ok(run.indexOf("showResultsBox(true)") >= 0 && run.indexOf("showResultsBox(true)") < run.indexOf("req = request()"));
   assert.equal(page.match(/showResultsBox\(false\);/g)?.length, 2);
+});
+
+test("F20: Levelling and Farming write their own step numbers, so the CSS counter leaves them alone", () => {
+  for (const name of ["levelling", "farming"]) {
+    const html = read(`site/${name}.html`);
+    assert.match(html, /<div id="setup" hidden>/, name);
+    assert.doesNotMatch(html, /b3-steps/, name);
+    assert.match(html, /<span class="step">\d<\/span>/, name);
+  }
+  // Every rule that writes a counter into a step badge is scoped to .b3-steps.
+  for (const rule of css.match(/[^{}]*\.step::before\s*\{[^}]*counter\([^}]*\}/g) ?? []) assert.match(rule, /#setup\.b3-steps /, rule);
+  assert.doesNotMatch(css, /(^|[\s,}])#setup \{ counter-reset/);
 });
 
 test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are the \"?\" beside the tabs", () => {

@@ -302,7 +302,7 @@ function planTable(plan: LevellingPlan): HTMLElement {
 function planSummary(plan: LevellingPlan): Node[] {
   const split = goldSplit(plan, plan.steps.find((s) => s.source.boost)?.source.boost);
   return [
-    el("div", { class: "tiles" },
+    el("div", { class: "tiles span-last" },
       tile("Time", hoursText(plan.hours), `levels ${plan.from} → ${plan.steps.at(-1)?.toLevel ?? plan.from}`, { icon: "⏱️", tone: "t-blue" }),
       tile("Runs", fmt.format(plan.runs), undefined, { icon: "⚔️", tone: "t-violet" }),
       tile("Gold", gold(plan.gold), split || undefined, { icon: "💰", tone: "t-orange" })),

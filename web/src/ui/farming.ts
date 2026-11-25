@@ -344,7 +344,7 @@ function results(rows: FarmRow[], choices: SourceChoice[], mode: string): HTMLEl
   const top: HTMLElement[] = [];
   if (live.length) {
     const best = live[0];
-    top.push(el("div", { class: "tiles" }, ...live.slice(0, 3).map(({ r, c }, k) =>
+    top.push(el("div", { class: "tiles span-last" }, ...live.slice(0, 3).map(({ r, c }, k) =>
       tile(`#${k + 1} · ${c.source.kind === "quest" ? "quest" : "map"}`, perHour(r.value_per_hour),
         `${pct(r.win)} wins · ${fmt1.format(r.essence_per_hour)} essence/h`,
         { icon: ["🥇", "🥈", "🥉"][k], tone: r.value_per_hour > 0 ? "good" : "bad",

@@ -124,14 +124,21 @@ const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
  * parts left out.
  */
 const factStrip = (parts: (Node | string | null | undefined | false)[]) =>
-  el("p", { class: "fact-strip" }, ...joinNodes(parts.filter((p): p is Node | string => !!p), " · "));
+  el("p", { class: "fact-strip" }, sepRow(parts.filter((p): p is Node | string => !!p).map((p) => [p])));
+/**
+ * Parts joined by "·" that never dangle: each part carries its separator in front, and the row is shifted left by one
+ * separator inside a clipping box, so the separator of a part that starts a line (the first one, or one that wrapped)
+ * is cut off. No leading or trailing "·" at any width (style.css, #wiki .sep-row).
+ */
+const sepRow = (parts: (Node | string)[][]) => el("span", { class: "sep-row" },
+  ...parts.map((kids) => el("span", { class: "sep-part" }, el("span", { class: "sep", "aria-hidden": "true" }, "·"), ...kids)));
 
 /** R2-D F55: a section title is plain text over a thin rule (style.css r2-d), no longer a dark banner. */
 const section = (title: string, ...kids: (Node | string)[]) => el("section", { class: "wiki-section" }, el("h2", { class: "wiki-banner" }, title), ...kids);
 const none = (t: string) => el("p", { class: "muted" }, t);
 /** R2-D F54: an empty section as one muted line ("Recipe · Not craftable."), not a title over a sentence. */
 const emptyLine = (...parts: [string, string][]) => el("p", { class: "wiki-empty-line muted small" },
-  ...parts.flatMap(([title, text], i) => [...(i ? [el("span", { "aria-hidden": "true" }, " · ")] : []), el("strong", {}, title), ` ${text}`]));
+  sepRow(parts.map(([title, text]) => [el("strong", {}, title), ` ${text}`])));
 function joinNodes(nodes: (Node | string)[], sep = ", "): (Node | string)[] {
   return nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
 }
