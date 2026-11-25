@@ -11,8 +11,9 @@
  *   right after the action.
  * - A turn boundary is a hairline across the columns, nothing more. A fighter that is down shows a dimmed "†" once
  *   (on its first action lost to it), then nothing until it stands again.
- * - On a narrow box (container query, style.css `Flow 3` block) a card spans a few columns, starting at its own
- *   (or ending there near the right edge), a notch marking its column.
+ * - On a narrow box (a phone; container query, style.css `Flow 3` block) no columns at all: the items read as one
+ *   vertical list, full width, in the DOM's order (the chronology); no head row; each card names its fighter, a
+ *   class-colour edge on its left, and a "†" names the fallen fighter.
  * - Reading order: the DOM order is the visual order (one ordered list); each card starts with a visually hidden
  *   sentence, "Turn 3, Warrior: Slash on Boss, 1,240 damage".
  * The data comes from the same trace as Flow 1 (tools/fight-trace.ts via battle-plan.ts planTimeline), read only.
@@ -191,17 +192,6 @@ export function flow3Sentence(c: Flow3Card, whoCols: number[], nameOf: (w: numbe
   return `Turn ${c.turn}, ${nameOf(c.who)}: ${skillWords(c.line)}${parts.length ? ` on ${parts.join("; on ")}` : ""}${miss}`;
 }
 
-/**
- * Where a card sits on a narrow box: it spans `span` columns (enough for about 140 px at 375), starting at its own
- * column, or ending there when it would pass the right edge; `notch` is its own column's middle, in % of the card.
- */
-export function narrowSpan(col: number, cols: number): { start: number; span: number; notch: number } {
-  const n = Math.max(1, cols);
-  const span = Math.min(n, Math.max(1, Math.ceil((n * 140) / 343)));
-  const start = Math.min(col, n - span) + 1;
-  return { start, span, notch: Math.round(((col + 1 - start + 0.5) / span) * 1000) / 10 };
-}
-
 // ---------------------------------------------------------------- DOM
 /** One effect, a line of its own: what it does ("+15% Def"), its turns left; "<skill> from <fighter>" on hover. */
 function fxLine(c: TimelineChip): HTMLElement {
@@ -290,10 +280,14 @@ function hpEl(v: { hp: number; maxHP: number } | undefined, name: string): HTMLE
     el("span", { class: "f3-hpnum", "aria-hidden": "true" }, down ? "✝" : fmtInt.format(v.hp)))];
 }
 
-/** Where an item sits: its own grid row, its column (wide box) and its span (narrow box). */
-function place(row: number, col: number, cols: number): string {
-  const n = narrowSpan(col, cols);
-  return `grid-row: ${row}; --f3-col: ${col + 1}; --f3-nstart: ${n.start}; --f3-nspan: ${n.span}; --f3-notch: ${n.notch}%`;
+/** Where an item sits on a wide box: its own grid row and its fighter's column (a narrow box ignores both: one list). */
+function place(row: number, col: number): string {
+  return `grid-row: ${row}; --f3-col: ${col + 1}`;
+}
+
+/** The fighter's colour class: its hero class, or the enemy's trim. */
+function colourOf(col: PlanColumn): string {
+  return col.kind === "enemy" ? "enemy" : `cls-${col.member!.cls}`;
 }
 
 function turnTag(turn: number): HTMLElement {
@@ -301,9 +295,7 @@ function turnTag(turn: number): HTMLElement {
 }
 
 function cardEl(c: Flow3Card, cols: PlanColumn[], whoCols: number[], nameOf: (w: number) => string, row: number): HTMLElement {
-  const col = cols[c.col];
-  const cls = col.kind === "enemy" ? "enemy" : `cls-${col.member!.cls}`;
-  const card = el("li", { class: `f3-card ${cls}${c.first ? " f3-first" : ""}`, style: place(row, c.col, cols.length), "data-turn": String(c.turn) });
+  const card = el("li", { class: `f3-card ${colourOf(cols[c.col])}${c.first ? " f3-first" : ""}`, style: place(row, c.col), "data-turn": String(c.turn) });
   const list = touches(c, whoCols);
   card.append(
     el("span", { class: "sr-only" }, `${flow3Sentence(c, whoCols, nameOf)}.`),
@@ -316,13 +308,15 @@ function cardEl(c: Flow3Card, cols: PlanColumn[], whoCols: number[], nameOf: (w:
   return card;
 }
 
-function deadEl(d: Flow3Dead, cols: number, nameOf: (w: number) => string, row: number): HTMLElement {
-  return el("li", { class: "f3-dead", style: place(row, d.col, cols), "data-turn": String(d.turn) },
+/** A "†": alone in its column on a wide box; on a narrow one (no columns) the fighter's name follows it. */
+function deadEl(d: Flow3Dead, cols: PlanColumn[], nameOf: (w: number) => string, row: number): HTMLElement {
+  return el("li", { class: `f3-dead ${colourOf(cols[d.col])}`, style: place(row, d.col), "data-turn": String(d.turn) },
     el("span", { class: "sr-only" }, `Turn ${d.turn}, ${nameOf(d.who)} is down.`),
-    ...(d.first ? [turnTag(d.turn)] : []), el("span", { "aria-hidden": "true", title: `${nameOf(d.who)} is down` }, "†"));
+    ...(d.first ? [turnTag(d.turn)] : []), el("span", { "aria-hidden": "true", title: `${nameOf(d.who)} is down` }, "†"),
+    el("span", { class: "f3-dead-who", "aria-hidden": "true" }, nameOf(d.who)));
 }
 
-/** The column heads: name and place, in action order (orientation only: every card names its fighter). */
+/** The column heads: name and place, in action order (orientation only: every card names its fighter; hidden on a narrow box). */
 function headsEl(cols: PlanColumn[], nameOf: (w: number) => string, rare: boolean): HTMLElement {
   return el("div", { class: "f3-heads", "aria-hidden": "true" }, ...cols.map((c) => c.kind === "enemy"
     ? el("div", { class: "f3-head enemy", title: nameOf(0) }, el("strong", {}, nameOf(0)), el("span", {}, rare ? "enemy · rare" : "enemy"))
@@ -348,7 +342,7 @@ export function renderFlow3(quest: { id: number; rare: boolean }, members: PlanM
   const draw = (it: Flow3Item): HTMLElement => {
     const r = row++;
     if (it.kind === "break") return el("li", { class: "f3-break", "aria-hidden": "true", style: `grid-row: ${r}` });
-    return it.kind === "dead" ? deadEl(it, cols.length, nameOf, r) : cardEl(it, cols, whoCols, nameOf, r);
+    return it.kind === "dead" ? deadEl(it, cols, nameOf, r) : cardEl(it, cols, whoCols, nameOf, r);
   };
   const lastTurn = trace.turns;
   const firstPage = items.findIndex((it) => it.turn > FLOW_PAGE);

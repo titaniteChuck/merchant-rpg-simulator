@@ -347,9 +347,13 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (`flow3Sentence`; several fighters joined by "; on", "the party" for a party buff, "falls", "critical", "missed");
     the visible names and numbers are `aria-hidden`, the skill link, the "▾" buttons ("Calculation: the damage to Boss")
     and the HP (`role=img`) stay.
-  - Phone: one long page, no scroll frame. Under 560 px of Flow width (container query) a card spans a few columns
-    (`narrowSpan`: about 140 px at 375, 3 of 7 columns) from its own column, or ending at it near the right edge, and a
-    notch on its top edge points at its column; the "†" stays one column wide.
+  - Phone: one long page, no scroll frame. Under 560 px of Flow width (container query) there are no per-fighter
+    columns: the list becomes a flex column (the inline `grid-row` / `--f3-col` no longer apply), so the items read
+    top to bottom, full width, in the DOM's order, which is the chronology. No head row, no empty cells, no notch. Each
+    card names its fighter, bolder, with a 4 px class-colour edge on its left; a "†" shows its fighter's name
+    (`span.f3-dead-who`, hidden on a wide box) with a faint class-colour edge; the hairline and "T3" tag work as on a
+    wide box, and a "▾" opens its calculation inside the card, at the card's full width. Desktop is unchanged: one
+    column per fighter.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

@@ -2535,7 +2535,7 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .f3-heads, .f3-grid { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); column-gap: var(--f3-gap); }
 .f3-heads { position: sticky; top: 0; z-index: 3; padding: 4px 0; margin-bottom: 4px; background: var(--bg); box-shadow: 0 1px 0 var(--border); }
 .f3-head { display: flex; flex-direction: column; min-width: 0; padding-left: 5px; border-left: 3px solid var(--c, var(--border)); line-height: 1.2; }
-.f3-head.enemy, .f3-card.enemy { --c: var(--trim); }
+.f3-head.enemy, .f3-card.enemy, .f3-dead.enemy { --c: var(--trim); }
 .f3-head strong { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .f3-head span { font-size: 0.6rem; color: var(--muted); }
 .f3-grid { list-style: none; margin: 0; padding: 0; row-gap: 5px; align-items: start; }
@@ -2582,20 +2582,25 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .f3-hp.down .f3-hpnum { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
 .f3-fx { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 0; }
 .f3-fx-item { font-size: 0.6rem; line-height: 1.3; }
-/* Down: one dimmed "†" in the fighter's column. */
+/* Down: one dimmed "†" in the fighter's column (its name only in the narrow list). */
 .f3-dead { justify-self: center; font-size: 0.8rem; line-height: 1; color: var(--muted); opacity: .6; }
 .f3-dead .f3-t { margin-right: 3px; vertical-align: 2px; }
+.f3-dead-who { display: none; }
 /* A turn boundary: a hairline across the columns. */
 .f3-grid > .f3-break { grid-column: 1 / -1; height: 0; margin: 3px 0 1px; border-top: 1px solid color-mix(in srgb, var(--muted) 28%, transparent); }
 .f3-grid > .f3-more { grid-column: 1 / -1; }
-/* A narrow box (a phone): a card spans a few columns from its own (or ending at it near the right edge), a notch on
-   top marks its column; the "†" stays in its column. */
+/* A narrow box (a phone): no columns. The items are one vertical list, full width, in the DOM's order (the
+   chronology; the grid rows and columns set inline are ignored by flex); no head row. Each card names its fighter,
+   bolder, with a class-colour edge on its left; a "†" names its fighter; a calculation opens at the card's width. */
 @container (max-width: 560px) {
-  .f3-grid > .f3-card { grid-column: var(--f3-nstart) / span var(--f3-nspan); margin-top: 4px; }
-  .f3-card::before { content: ""; position: absolute; top: -8px; left: var(--f3-notch); transform: translateX(-50%);
-    border: 5px solid transparent; border-bottom-color: var(--c, var(--border)); }
-  .f3-head { padding-left: 3px; }
-  .f3-head strong { font-size: 0.62rem; white-space: normal; overflow-wrap: anywhere; }
-  .f3-head span { font-size: 0.56rem; }
+  .f3-heads { display: none; }
+  .f3-grid { display: flex; flex-direction: column; row-gap: 5px; }
+  .f3-card { border-left: 4px solid var(--c, var(--border)); padding-left: 8px; }
+  .f3-top { font-size: 0.68rem; }
+  .f3-who { color: var(--fg); }
+  .f3-dead { align-self: flex-start; display: flex; align-items: center; gap: 5px; padding-left: 4px; font-size: 0.72rem;
+    border-left: 4px solid color-mix(in srgb, var(--c, var(--border)) 60%, transparent); }
+  .f3-dead .f3-t { margin-right: 0; vertical-align: 0; }
+  .f3-dead-who { display: inline; font-weight: 700; }
 }
 /* end Flow 3 */

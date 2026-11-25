@@ -10,7 +10,7 @@ import { Sim } from "../src/tools/engine.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import type { TracedFight } from "../src/ui/battle-plan.ts";
-import { type Flow3Card, flow3Items, flow3Sentence, narrowSpan, renderFlow3 } from "../src/ui/flow3.ts";
+import { type Flow3Card, flow3Items, flow3Sentence, renderFlow3 } from "../src/ui/flow3.ts";
 import { loadTimelineData, partyPlan, type PlanMember } from "../src/ui/timeline.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
@@ -214,12 +214,36 @@ test("down: one † on the first action lost, nothing on the later turns; no hai
     ["Warrior", "Boss", "|", "Warrior", "†Mage", "Boss", "|", "Warrior", "Boss"]);
 });
 
-test("narrowSpan: a card spans about 140 px at 375 px, from its column or ending at it", () => {
-  assert.deepEqual(narrowSpan(0, 7), { start: 1, span: 3, notch: 16.7 });
-  assert.deepEqual(narrowSpan(3, 7), { start: 4, span: 3, notch: 16.7 });
-  assert.deepEqual(narrowSpan(6, 7), { start: 5, span: 3, notch: 83.3 });
-  assert.deepEqual(narrowSpan(1, 2), { start: 2, span: 1, notch: 50 });
-  assert.deepEqual(narrowSpan(0, 1), { start: 1, span: 1, notch: 50 });
+test("phone: no columns, one vertical list in chronological order, no head row, no notch", () => {
+  const narrow = block.slice(block.indexOf("@container (max-width: 560px)"));
+  assert.ok(narrow.length > 50, "a narrow-box rule");
+  // the per-fighter columns are dropped: the list is a flex column, so the inline grid rows and columns don't apply
+  assert.match(narrow, /\.f3-heads \{ display: none; \}/);
+  assert.match(narrow, /\.f3-grid \{ display: flex; flex-direction: column;/);
+  assert.doesNotMatch(narrow, /grid-column|grid-template-columns|::before/);
+  // no span and no notch left anywhere
+  assert.doesNotMatch(block, /--f3-nstart|--f3-nspan|--f3-notch/);
+  // each card's fighter stands out: a class-colour edge on its left
+  assert.match(narrow, /\.f3-card \{ border-left: 4px solid var\(--c, var\(--border\)\);/);
+  // the "†" names its fighter in the list (the name hidden on a wide box)
+  assert.match(block, /\.f3-dead-who \{ display: none; \}/);
+  assert.match(narrow, /\.f3-dead-who \{ display: inline;/);
+  const flow = render(odin);
+  const items = flow.querySelector("ol.f3-grid")!.children;
+  for (const it of items) assert.doesNotMatch(it.getAttribute("style") ?? "", /--f3-n|notch/);
+  for (const d of items.filter((i) => i.classList.contains("f3-dead"))) {
+    const who = d.querySelector("span.f3-dead-who")!;
+    assert.equal(who.getAttribute("aria-hidden"), "true");
+    assert.ok(d.querySelector("span.sr-only")!.textContent.includes(`${who.textContent} is down`));
+  }
+  // the list's order is the DOM's: the turns never go back, every card carries its fighter's name
+  const turns = items.filter((i) => i.dataset.turn !== undefined).map((i) => Number(i.dataset.turn));
+  turns.forEach((t, k) => assert.ok(k === 0 || t >= turns[k - 1], "chronological"));
+  for (const c of items.filter((i) => i.classList.contains("f3-card"))) assert.ok(c.querySelector("span.f3-who")!.textContent.length > 0);
+  // a calculation opens inside its card, so at the card's (full) width
+  const card = items.find((i) => i.querySelector("button.f3-calc-btn"))!;
+  card.querySelector("button.f3-calc-btn")!.dispatch("click");
+  assert.ok(card.querySelector("div.f3-calc"), "the calculation is a child of the card");
 });
 
 test("CSS: the Flow 3 block, one long page (no scroll frame), the columns' grid, a narrow-box rule, theme tokens", () => {
