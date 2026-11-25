@@ -108,3 +108,4 @@
 - **Update**: U60 done (bd8b718): enemy details with Fight in simulator on the title line, Grade and Size as page modifiers, XP and time in the stats table, map-only monsters on their map's run, aligned loot tables; the old XP-table CSS (qxp-*) removed.
 - **Update**: U62 (Party view cards) and U63 (Flow cleanup, Flow 1 removed) added.
 - **Update**: U63 done (2af60b5): Flow 1 removed (tabs Party · Flow 2 · Flow 3, planned rotation kept as the no-fight view); Flow 2 cards outlined in the class colour; one shared HP bar for both Flows; room bar scrolls with the mouse wheel, ‹ › buttons on PC.
+- **Update**: U62 done (c5cd0ee): Party view in three columns (heroes, opponent, HP chart); one card for heroes and the enemy with the picker as its header; rare variants in the enemy list; in-place skill picker with effects; enemy rotation instead of its spider chart. Merged on top of U63 (Flow 1 removed).
