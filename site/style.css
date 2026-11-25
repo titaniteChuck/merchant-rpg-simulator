@@ -2298,4 +2298,7 @@ footer .footer-line a { color: inherit; }
 .ref-body .table-wrap[role="region"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* F09: the older tools' "?" on the first line inside the section, out of the <summary>. */
 details.tools-other > .tools-other-help { margin: -4px 0 12px; }
+/* Screen-reader text inside a sideways-scrolling table: pinned to the positioned ancestor's left edge, so a cell far to
+   the right can't stretch the page (Profit at 375 px was 385 px wide; JOB 52 sweep). */
+td .visually-hidden, th .visually-hidden { left: 0; top: 0; }
 /* end a11y */

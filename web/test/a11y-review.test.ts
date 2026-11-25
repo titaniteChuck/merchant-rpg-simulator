@@ -261,3 +261,9 @@ test("F10: the top bar is the banner landmark and the page's h1 is inside <main>
   const home = read("site/index.html");
   assert.match(home, /<main>\s*<div class="home-head">\s*<h1>Merchant RPG Simulator<\/h1>/);
 });
+
+test("screen-reader text in table cells is pinned left, so it never widens the page", async () => {
+  const { readFileSync } = await import("node:fs");
+  const css = readFileSync(new URL("../../site/style.css", import.meta.url), "utf8");
+  assert.match(css, /td \.visually-hidden, th \.visually-hidden \{ left: 0; top: 0; \}/);
+});
