@@ -208,7 +208,7 @@ export function recipeTree(type: string, id: number, amount = 1, seen: Set<strin
 // ---------------------------------------------------------------- costs by ascension (U37)
 /** The tools' Game view of the data (for the essence an ascended craft takes), rebuilt when other data is loaded. */
 let gameCache: { data: unknown; g: Game } | null = null;
-function game(): Game {
+export function game(): Game {
   if (!gameCache || gameCache.data !== G.itemData) gameCache = { data: G.itemData, g: gameFromData() };
   return gameCache.g;
 }

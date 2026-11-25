@@ -124,7 +124,7 @@ test("hero page: quests and deaths are chips beside level and status; the old fo
 });
 
 test("hero page: gear name keeps its rarity colour without outline, the card's frame is the ascension", () => {
-  assert.match(viewer, /itemLink\("equipment", [^\n]*\{ always: true, noOutline: true \}\)/);
+  assert.match(viewer, /itemLink\("equipment", [^\n]*\{ always: true, noOutline: true[^}]*\}\)/);
   assert.match(viewer, /class: `gear-item rar-\$\{[^`]+\}\$\{gearAsc\(g\.asc\)\}`/);
   assert.match(viewer, /return n \? ` gear-asc asc-\$\{n\}` : "";/);
   assert.match(wikiData, /if \(opts\.noOutline\) a\.classList\.remove\("asc", "asc-1", "asc-2"\);/);

@@ -19,6 +19,7 @@ import { enemyName, itemName, skillName } from "./names.ts";
 import { amountOddsText, amountRange, BASE_GRADE, fixedAmounts, LOOT_GRADES, lootTable, pctText } from "./wiki-loot.ts";
 import { isBoardQuest, isCraftableMap, isMapOnlyQuest } from "../tools/quest-stats.ts";
 import { mapXpRows, partySizes, questXpRows, XP_DEFAULT_GRADE, xpText } from "./quest-xp.ts";
+import { mapEnemyStats, mapView, NO_CONFIG } from "./wiki-config.ts";
 
 /** Why a map is marked "not craftable" (R1 F42; docs/game-economy/maps/maps.md, Level-70 maps). */
 const UNCRAFTABLE_TITLE = "Level 70: above the crafters' level cap (60), so no one can make it. Dormant game data.";
@@ -80,16 +81,36 @@ function skillLine(id: number, rare: boolean): HTMLElement {
   return el("span", { class: "skill-line", title }, ...parts.flatMap((p, i) => (i ? [", ", p] : [p])));
 }
 
-/** Enemy stats for a map: one row per variant, stats × `mod`, names linked to the enemy pages. */
-export function enemyTable(ids: number[], mod: number): HTMLElement {
+/**
+ * An enemy variant inside a map: its stats as the engine gives them in the run (U49: sim/enemy with the map's run
+ * stats, default.finalMapMod, so ascension, suffix and prefix count); `base` when the engine can't build it (the
+ * row then keeps the quest's own stats, marked).
+ */
+function mapEnemyRow(id: number, rare: boolean, mapStats: unknown): Row {
+  const r = enemyRow(id, rare);
+  const inMap = mapEnemyStats(id, rare, mapStats);
+  if (inMap) Object.assign(r, inMap);
+  else r.base = true;
+  return r;
+}
+
+/** A small "base" tag: the figure beside it is the unmodified one (U49). */
+export const baseTag = (why: string): HTMLElement => el("span", { class: "cfg-base", title: why }, "base", el("span", { class: "visually-hidden" }, `: ${why}`));
+
+/**
+ * Enemy stats for a map: one row per variant, the stats each has inside the map (`mapStats`: wiki-config mapView's
+ * run stats), names linked to the enemy pages.
+ */
+export function enemyTable(ids: number[], mapStats: unknown): HTMLElement {
   const rows: Row[] = [];
   for (const id of new Set(ids)) {
     if (!quest(id)?.name) continue;
-    rows.push({ ...enemyRow(id, false, mod), skills: skillSummaryText(id, false) });
-    if (hasRare(id)) rows.push({ ...enemyRow(id, true, mod), skills: skillSummaryText(id, true) });
+    rows.push({ ...mapEnemyRow(id, false, mapStats), skills: skillSummaryText(id, false) });
+    if (hasRare(id)) rows.push({ ...mapEnemyRow(id, true, mapStats), skills: skillSummaryText(id, true) });
   }
+  const mark = (r: Row) => (r.base ? [" ", baseTag("The quest's own stats: the engine could not build this enemy in the map")] : []);
   return table(rows, [
-    { key: "name", label: "Enemy", render: nameCell },
+    { key: "name", label: "Enemy", render: (r) => el("span", { class: "nowrap" }, nameCell(r), ...mark(r)) },
     { key: "level", label: "Level", num: true, render: levelCell }, ...ENEMY_STATS.map(([, l]) => ({ key: l, label: l, num: true })),
     { key: "skills", label: "Skills", render: (r) => skillLine(Number(r.id), !!r.rare) },
   ]);
@@ -236,8 +257,11 @@ function mapsTable(id: number): HTMLElement {
   const rows: Row[] = roles.map(({ map, room, boss, treasure }) => {
     const m = item("map", map);
     const mod = m.enemyMod ?? 1;
+    // U49: the HP the engine gives the enemy inside the plain map at grade C (sim/enemy with the run's map stats)
+    const view = mapView(map, NO_CONFIG);
+    const inMap = view ? mapEnemyStats(id, false, view.stats) : null;
     return { map, name: itemName("map", map) ?? m.name, level: m.itemLevel ?? null, role: [room ? "room" : "", boss ? "boss" : "", treasure ? "treasure" : ""].filter(Boolean).join(" "),
-      mod, hp: Math.round(hp * mod) };
+      mod, hp: inMap ? inMap.HP : hp, base: !inMap };
   });
   const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
   // R1 F42: maps no crafter can make (the level-70 maps) stay listed, marked, as the XP section leaves them out.
@@ -248,7 +272,8 @@ function mapsTable(id: number): HTMLElement {
     { key: "role", label: "As", render: (r) => el("span", { class: "nowrap" }, ...String(r.role).split(" ").flatMap((x, i) => [...(i ? [" "] : []), pill(x, tone[x])])) },
     { key: "mod", label: "Enemy ×", num: true, render: (r) => el("span", { class: "mod-pair" }, `×${fmt.format(Number(r.mod))}`,
       withAsc(el("span", { class: "mod-asc" }, `×${fmt.format(Number(r.mod) * MAP_ASC_MOD)}`), 1)) },
-    { key: "hp", label: "HP there", num: true },
+    { key: "hp", label: "HP there", num: true, render: (r) => el("span", {}, fmt.format(Number(r.hp)),
+      ...(r.base ? [" ", baseTag("The quest's own HP: the engine could not build this enemy in the map")] : [])) },
   ]);
   return note ? el("div", {}, t, note) : t;
 }
@@ -257,8 +282,8 @@ function mapsTable(id: number): HTMLElement {
 export const TREASURE_HELP = "A Treasure Bush hides in a random room of every map of its level band (maps of level 1–10, 11–20 … 51–60; none in "
   + "level-70 maps) at grade B or better (1% / 8% / 10% per room at B / A / S). Its stats take the map's enemy multiplier like any room enemy.";
 function mapsHelp(id: number): string[] {
-  return [`Enemy × multiplies every stat of the enemy; the silver outline is the same map at ascension 1 (×${MAP_ASC_MOD}).`,
-    "HP there = base HP × the map's multiplier, before grade, suffix and ascension.",
+  return [`Enemy × is the map's multiplier of enemy stats; the silver outline is the same map at ascension 1 (×${MAP_ASC_MOD}).`,
+    "HP there = the enemy's HP inside the plain map at grade C, from the map's multiplier as the game applies it (HP × 1.5 × (Enemy × − 1) / 2; Stats › Map essence).",
     ...(enemyMapRoles(id).some((r) => r.treasure) ? [TREASURE_HELP] : [])];
 }
 

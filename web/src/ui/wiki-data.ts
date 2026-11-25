@@ -9,6 +9,7 @@ import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, slotName, wi
 import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansion-state.ts";
 import { tip } from "./tooltip.ts";
 import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
+import { configHref, type ItemConfig } from "./wiki-config.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
 import {
   className, compareNames, descOf, enemyName, isEnglish, ITEM_TYPE_LABELS, itemName, itemTypeText, markName, passiveName, questTitle, regionName, skillName,
@@ -552,7 +553,8 @@ function mapLine(m: Any): string {
 export const href = {
   skill: (n: string) => `wiki.html#/skill/${encodeURIComponent(n)}`,
   passive: (n: string) => `wiki.html#/passive/${encodeURIComponent(n)}`,
-  item: (t: string, id: number) => `wiki.html#/${t === "map" ? "map" : `item/${t}`}/${id}`,
+  /** U49: with a configuration, the page opens on it (#/map/22?asc=1&prefix=20&suffix=5; plain: no query). */
+  item: (t: string, id: number, cfg?: Partial<ItemConfig>) => configHref(t, id, cfg),
   cls: (id: number) => `wiki.html#/class/${id}`,
   enemy: (id: number) => `wiki.html#/enemy/${id}`,
 };
@@ -573,6 +575,11 @@ export interface LinkOpts {
   always?: boolean;
   /** No ascension outline around the name (the caller frames it: the hero page's gear cards, U46); still told in the tooltip. */
   noOutline?: boolean;
+  /**
+   * U49: the item's ascension, prefix and suffix (a save's own map or item): its wiki page opens on them. Values the
+   * item can't take are left out of the link.
+   */
+  config?: Partial<ItemConfig>;
 }
 
 /** Put the expansion badge inside a name link (plain icons: a link can't hold another link). */
@@ -616,7 +623,7 @@ export function itemLink(type: string, id: number, label?: string, rarity?: unkn
   const needs = it && kind ? needsOf(kind, id, extra) : [];
   if (needs.length && !opts.always && !isVisible(kind!, id, extra)) return placeholderFor(kind!, id, extra);
   if (!it) return opts.noOutline ? el("span", { class: `item rar-${r}` }, name) : withAsc(el("span", { class: `item rar-${r}` }, name), asc);
-  const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id) }, name);
+  const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id, opts.config) }, name);
   if (plain && kind) markName(a, kind as ItemType, id);
   const ascNote = ascLevel(asc) ? ` · ${ascText(asc)}` : "";
   tip(a, () => tipBox(itemName(type, id) ?? it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",

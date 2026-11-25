@@ -22,6 +22,7 @@ import { helpTip } from "./wiki-help.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
   ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, summary, toCsv, withAllTables,
+  savedMods,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -61,8 +62,12 @@ function csvExports(): { label: string; hint: string; run: () => void }[] {
   }));
 }
 
-/** Item name coloured by rarity, linked to its wiki page (summary on hover); `name` is "[Prefix] Item +N" (modItemName, U34). */
-const itemCell = (r: Cells) => el("span", { class: "nowrap" }, itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc, { always: true }));
+/**
+ * Item name coloured by rarity, linked to its wiki page (summary on hover); `name` is "[Prefix] Item +N" (modItemName, U34).
+ * U49: the wiki page opens on the saved item's ascension, prefix and suffix (#/map/22?asc=1&prefix=20&suffix=5).
+ */
+const itemCell = (r: Cells) => el("span", { class: "nowrap" },
+  itemLink(String(r.type), Number(r.id), String(r.name), r.rarity, r.asc, { always: true, config: savedMods(r as Row) }));
 /** A modded item sorts by its base name, not by its "[Prefix]" (U34). */
 const baseName = (r: Cells) => shownItemName(String(r.type), Number(r.id)) ?? String(r.name);
 /** The sortable "Asc" column: an outlined swatch, sorted by the number. */
@@ -220,7 +225,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
     el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}${gearAsc(g.asc)}`,
       title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}${ascOutlineText(g.asc)}` },
       el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
-      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true, noOutline: true }),
+      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true, noOutline: true, config: savedMods(g) }), // U49: opens on its mods
       el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
@@ -373,7 +378,7 @@ function renderCrafters(sv: Save): HTMLElement {
       const job = jobOf.get(String(r.crafter));
       if (!job) return el("span", { class: "muted" }, "idle");
       return el("span", { class: "nowrap" }, `🔨 ${job.amount ?? 1} × `,
-        itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel, { always: true }));
+        itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel, { always: true, config: { asc: Number(job.prestigeLevel) || 0 } }));
     } },
   ];
   const wrap = iconHeaders(table(rows, cols), cols, { level: [["Lvl"], "Level (ascension-0 items)"], asc1_level: levelHeader(1), asc2_level: levelHeader(2) });

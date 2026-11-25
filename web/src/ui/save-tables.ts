@@ -50,6 +50,18 @@ function modNames(it: Any): [string, string] {
 /** A saved item's name with its modifiers: "[Strong] Undertaker +10" (names.ts modItemName, U34). */
 export const itemLabel = (it: Any): string => modItemName(it.itemType, it.id, it);
 
+/** U49: a saved item's ascension, prefix and suffix, for its wiki link (the wiki page opens on them). */
+export interface SavedMods { asc: number; prefix: number; suffix: number }
+/** The saved item behind a table row (kept beside the row, so the row and its CSV keep their columns). */
+const rowMods = new WeakMap<Row, SavedMods>();
+/** Records the saved item's modifiers for the row and returns the row. */
+function withMods<T extends Row>(row: T, it: Any): T {
+  rowMods.set(row, { asc: Number(it?.prestigeLevel) || 0, prefix: Number(it?.prefix) || 0, suffix: Number(it?.suffix) || 0 });
+  return row;
+}
+/** The ascension, prefix and suffix of the saved item a row of inventoryRows, mapRows or a hero's gear shows. */
+export const savedMods = (row: Row): SavedMods | undefined => rowMods.get(row);
+
 function itemRow(it: Any): Row {
   const data = G.itemData[it.itemType]?.[it.id];
   const asc = it.prestigeLevel || 0;
@@ -145,7 +157,7 @@ export function heroViews(sv: Save): HeroView[] {
     const gear = (h.heroInventory as Any[]).map((it) => {
       const r: Row = { slot: SLOT_LABELS[it.itemSlot] ?? it.itemSlot, ...itemRow(it) };
       for (const k of GEAR_STATS) if (it[k] !== undefined && it[k] !== 0) r[k] = it[k];
-      return r;
+      return withMods(r, it);
     });
     return { row, cls: h.class, rotation, stats, statsError, ap, gear };
   });
@@ -180,14 +192,14 @@ export function gradeCounts(it: Any): Record<string, number> {
  */
 function inventoryRow(where: string, slot: number, it: Any): Row {
   const { grade: _grade, amount, prefix, suffix, mods, rarity, unit_sell, total_sell, ...head } = itemRow(it);
-  return { where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity };
+  return withMods({ where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity }, it);
 }
 
 /** Inventory stacks in save order, then items on the sale counter (inventory_rows). */
 export function inventoryRows(sv: Save): Row[] {
   const rows: Row[] = sv.inventory.map((it: Any, i: number) => inventoryRow("inventory", i + 1, it));
   sv.sales.forEach((it: Any, i: number) => {
-    if (it) rows.push({ ...inventoryRow("counter", i + 1, it), sale_price: it.sellPrice ?? null });
+    if (it) rows.push(withMods({ ...inventoryRow("counter", i + 1, it), sale_price: it.sellPrice ?? null }, it));
   });
   return rows;
 }
@@ -210,13 +222,13 @@ export function mapRows(sv: Save): Row[] {
   return sv.mapInventory.map((it: Any, i: number) => {
     const data = G.itemData.map?.[it.id] ?? {};
     const bosses = seq<number>(data.bossList ?? {}).map((b) => enemyName(b)).filter(Boolean);
-    return {
+    return withMods({
       slot: i + 1, ...itemRow(it),
       essence: mapEssenceOf(it).map(([id, amt]) => `${amt} ${itemName("material", id)}`).join(", "),
       boss: bosses.join(", "), enemies: data.baseEnemyAmount ?? "", enemy_mod: data.enemyMod ?? "",
       base_time_min: Math.round(((data.baseMapTime ?? 0) / 60) * 10) / 10,
       enchant_attempts: (it.enchantAttempt ?? [0, 0, 0]).join("/"), seed: it.seed ?? "",
-    };
+    }, it);
   });
 }
 

@@ -687,8 +687,47 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   detail page's tooltip (`sellTip`; `sellBoxes` since R2-D).
 - Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
   Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
-  "Stats by grade" table (with an ascension 0/1/2 switch) shows base stats and each bonus range per grade from
-  `default.getStatRange` (grade spread × `ascStat` multiplier, crafter level 60 raising the minimum).
+  "Stats by grade" table (for the page's ascension, prefix and suffix since U49, see below) shows base stats and each
+  bonus range per grade from `default.getStatRange` (grade spread × `ascStat` multiplier, crafter level 60 raising the
+  minimum).
+- Configured details pages (U49, `web/src/ui/wiki-config.ts`): map, equipment and consumable pages show the object
+  with an ascension, prefix and suffix picked in a bar under the title (`configBar` in `wiki.ts`: Ascension as the
+  class page's tier chips, Prefix and Suffix as selects, "None" first; CSS block `U49`).
+  - Who takes what: ascension from `itemAscLevels` (equipment and consumables 0–2, maps 0–1, `lockPrestige` 0 only;
+    asc 1–2 only when the visitor sees them, or the URL asks for it). Prefix and suffix on equipment and maps up to
+    level 60 (a gem / rune band), not on Worn items: every one of the 43 prefixes (the Enchanter's pool depends on its
+    own level and the item's grade, effective level 8–75, not on the item's level: `obj.Enchant:enchantPrefix`);
+    suffixes +1 … `maxSuffixFor(asc)` (+16 at asc 0, *8 at asc 1, **8 at asc 2; an asc-2 item keeps the *N of the
+    asc-1 item it was upgraded from); none on trinkets (slot 6) or on the level-70 maps. Consumables get the
+    Ascension chips only; materials nothing. Option labels: "[Titan] · essence ×1.3, enemy HP +240" (prefix tag as in
+    U34 names, then its effect on this object), "+5 · essence and Enemy × ×1.3".
+  - URL: the hash route's query, `#/map/22?asc=1&prefix=20&suffix=5`, `#/item/equipment/15?suffix=3` (ids; only the
+    values set; plain = no query). `parseHash` splits the route at the first literal "?" (names are encoded, so a "?"
+    in one is `%3F`), `parseConfig` / `normaliseConfig` drop any value the object can't take (asc 2 on a map, a *N
+    suffix at asc 0…), `configRoute` / `configHref` build it. A pick updates the URL with `replaceState` (as the class
+    page's level picker: Back leaves the page) and redraws the page under the bar, the bar keeping the focus; the scroll
+    memory keys on the full URL, so each configuration keeps its own position. The menus read the route before the "?".
+  - Figures, all from the engine at map grade C: maps (`mapView`: `GameMap` from `api.makeMap`) rarity, Enemy ×
+    (`mapEnemyMod`: ×2 at asc 1, × (1 + suffix atk), + a prefix's enemy modifier), sell value (`sellValue` with the
+    ascension and modifier count), essence per run (`mapEssenceReward` with the run's `finalMapStats`: essenceBase from
+    the prefix's sell, the suffix's atk and a prefix's essence modifier; asc 1 gives the asc-2 essence), and each
+    boss, room enemy and Treasure Bush's stats inside the map (`Enemy` with `finalMapStats`, `mapEnemyStats`).
+    Equipment (`equipmentAt`): the same seeded level-60 craft per grade, then `applyPrefix(true)` / `applySuffix(true)`
+    as after a craft or enchant (the suffix scales the base stats, the prefix adds its stat to that bonus range or
+    gets its own column); rarity and sell value with the modifiers. Consumables: the Effect from
+    `consumableStat(id, asc)`. Recipe: at asc N the line "the ingredients above at ascension N, plus E × essence"
+    (`essenceForAscension`).
+  - Kept at the base figure and marked with a dashed "base" tag (tooltip says why): a map's Base time when the
+    prefix adds speed (the run shortens walks and fights; no base-time figure in the engine), the recipe's gold and
+    time and the crafting chain's totals on a configured page, and an enemy the engine can't build in the map. Not
+    affected by any modifier: level, region, rooms, boss list, drops.
+  - Map enemy tables (U49 change to the base figures too): they showed the quest's stats × Enemy × ("HP 110,000" for
+    the Grimal-Frentir boss), which is not what the game does; they now show the engine's stats inside the map
+    (`default.statModFromMap`: m = (Enemy × − 1) / 2, HP × 1.5m, Atk and Matk × m, Def, Mdef, Eva × (0.75 + 0.25m):
+    41,250), as Stats › Map essence already said. The enemy page's Maps table "HP there" the same way.
+  - Save viewer links (`savedMods` in `save-tables.ts`, a WeakMap beside each row so the CSV columns don't change):
+    an owned map, an inventory or counter stack and a hero's gear open their wiki page on their ascension, prefix and
+    suffix (`itemLink(…, { config })`); a crafter's job on its ascension. Tests `web/test/wiki-config-u49.test.ts`.
 - Rarity: the game has no rarity names (TextData only has the word "Rarity"; "Common … Legendary!" in
   `scene.SpinGame` names the prize-wheel slices), so a "Rarity N" chip in the game's own colour (`UI.rarityColor`:
   1 white, 2 #80ff80, 3 #50a0ff, 4 #ff00ff, 5-6 #ffff00, 7-8 #ff0000, 10 = 3, 11 = 4) with dark text and a thin outline

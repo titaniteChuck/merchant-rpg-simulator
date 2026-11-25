@@ -2332,3 +2332,20 @@ a.wiz-choice:hover { border-color: var(--accent); box-shadow: var(--shadow-hover
 .wiz-pick { font-size: 1rem; }
 .wiz-note { margin: 8px 0 0; }
 /* end u46 */
+/* U49 */
+/* Wiki details pages (wiki.ts configBar): Ascension, Prefix and Suffix pickers in one compact bar under the title; it
+   wraps to one picker per line on a phone. The asc chips take the class page's tier colours (.cls-v3 .asc-opt). */
+#wiki .wiki-config { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 12px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+#wiki .wiki-config .cls-asc { margin: 0; justify-content: flex-start; }
+#wiki .cfg-pick { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+#wiki .cfg-select { min-width: 0; max-width: min(320px, 100%); text-overflow: ellipsis; }
+@media (max-width: 600px) {
+  #wiki .cfg-pick { flex: 1 1 100%; }
+  #wiki .cfg-select { flex: 1 1 auto; max-width: none; width: 100%; }
+}
+/* "base": a figure the page keeps unmodified (the engine has nothing for it, or the plain craft's gold and time). */
+.cfg-base { display: inline-block; padding: 0 5px; border: 1px dashed var(--muted); border-radius: 4px; font-size: 0.7rem;
+  line-height: 1.4; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; vertical-align: middle; cursor: help; }
+#wiki .cfg-note { margin: 6px 0 0; }
+/* end U49 */
