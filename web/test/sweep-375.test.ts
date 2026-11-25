@@ -33,7 +33,8 @@ test("wiki fact lines: the separators belong to the parts and a line's first one
 });
 
 test("no lone tile on a phone row: Levelling, Farming and the wiki home span an odd last tile", () => {
-  assert.match(ui("levelling.ts"), /el\("div", \{ class: "tiles span-last" \},\s*tile\("Time"/);
+  // R3 F04: Levelling's three plan tiles share one row instead (r3-levelling.test.ts).
+  assert.match(ui("levelling.ts"), /el\("div", \{ class: "tiles lv-tiles" \},\s*tile\("Time"/);
   assert.match(ui("farming.ts"), /el\("div", \{ class: "tiles span-last" \}, \.\.\.live\.slice\(0, 3\)/);
   assert.match(block, /@media \(max-width: 600px\)/);
   assert.match(block, /\.tiles\.span-last > \.tile:last-child:nth-child\(odd\)/);

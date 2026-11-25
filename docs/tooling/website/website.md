@@ -1049,19 +1049,23 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 
 `site/levelling.html` + `web/src/ui/levelling.ts` (page) + `web/src/ui/levelling-worker.ts` (web worker), on
 `levellingPlan` / `prestigePayoff` of `web/src/tools/levelling.ts` (E12, U12; first batch of the
-[Levelling review](../roadmap/review-levelling.md), L1; second batch L2).
+[Levelling review](../roadmap/review-levelling.md), L1; second batch L2; the Levelling quick fixes of the mobile
+[review R3](../roadmap/review-r3.md#levelling), R3-L).
 
 - Hero pickers (hero and companions): "Paladin (2) · Paladin · Lv 60 · Asc 2", the ascension always shown and heroes
   sharing a name numbered in save order (`heroLabels` in `web/src/ui/levelling-view.ts`, F24).
-- Step 1: the hero (default: the lowest one below its tier's max level) with avatar, class, level of max and
-  ascension; a hero at max level gets a "max level: planned from level 1" pill and From level 1 (a fresh hero of its
-  class and ascension). Up to 5 companions, "Companions" with no slot names (placed by the game rules: they join party
+- Step 1: the hero (default: the lowest one below its tier's max level); on the picker's line only what the picker
+  lacks: the avatar (class colour, ascension outline, no `title`) and "Lv 53 / 60" (`heroLevelText`, R3 F09); a hero
+  at max level gets a "planned from level 1" pill and From level 1 (a fresh hero of its class and ascension). Up to 5 companions, "Companions" with no slot names (placed by the game rules: they join party
   quests they may join and map runs, never solo quests, and share the XP; one tooltip says so); each hero can be
   picked once (the levelled hero and the heroes in the other selects are disabled).
 - Step 2, levelling plan: from level (the hero's by default), target level, levels per step, fights per quest (5–100),
   then three segmented controls: quest size (×1 and max, ×1, Max), minimum win rate (50 / 75 / 90 / 99 %) and XP
-  potion (None and the XP Boost items by their game names). Help is in one-line tooltips on the labels (`tip()`, also
-  on tap), no `title` attributes and no sentence by the button.
+  potion ("None · Boost · +1 · +2", the potion's game name in its tooltip, `potionShort`, R3 F05). The segmented
+  controls never wrap: above 600 px each spans two option columns, at 600 px and less a full row. Help is in
+  one-line tooltips on the labels (`tip()`), no `title` attributes and no sentence by the button. Every tooltip target
+  on the page (labels, headers, the Time / XP / Gold cells, the compare Change cells) is focusable with a dotted
+  underline (`tipOn`), so a tap opens it and it stays open (R3 F38).
 - What the plan follows (game rules): the hero opens every quest, so a quest counts from its "Required level"
   (levelReq − 2 × (tier − 1)); companions join under the join rule; the quest size cap comes from the heroes in the
   fight (a solo quest: the hero's tier); the hero's XP towards its next level counts when the plan starts at its own
@@ -1069,33 +1073,41 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   per 3 quests or per map run (its first 3 rooms); every launch costs the quest's gold × size. Expansion switches:
   only visible quests (no Frentir quests without the Frozen Tome), no map runs while Scribe is hidden
   (`planSources` with `isVisible` / `isHidden("Scribe")`).
-- Result: tiles Time (`duration()`), Runs and Gold (launch + revive + potions + maps; the split as the tile's hint),
-  then one row per step: levels, best quest with its size after the name when above ×1 ("Maexna ×5"; quest bushes
+- Result: a finished run (plan or compare) scrolls its result into view (smooth unless reduced motion, R3 F02). Three
+  compact tiles on one row at every width (`.lv-tiles`, R3 F04): Time (`duration()`), Runs and Gold (launch + revive +
+  potions + maps; the split as the tile's hint only when it has two parts or more, `goldParts` / `goldHint`; no levels
+  hint), then one row per step: levels, best quest with its size after the name when above ×1 ("Maexna ×5"; quest bushes
   with a "quest bush" pill; a map step shows the map, linked with its ascension and a "map run" pill, U33), win, runs,
   time (a map step: "Craft X + run Y" in its tooltip), XP / min (`xpText`; the XP per run in its tooltip), XP potions
   (count × name, only when the plan uses one) and gold (`gold()`, the split, maps included, in its tooltip): 7 or 8
   columns instead of 10 (L2, F17 quick part, F20). A merged step
   shows its own average win, XP / run and XP / min; runs are XP needed / XP per run over the whole step, rounded up
   once. Win, XP / min and Gold headers have one-line tooltips. "Stuck at level N" when no quest is won often enough.
-- Step 3, next ascension (none at the last tier): reference quest (quests the hero may open at its max level,
-  grouped by region, toughest first; default: the plan's last quest, else the toughest at or below the max level; the
-  comparison rule in the label's tooltip) and Compare. Now vs after: max level, enchant slots, quest size cap, stats
-  at max level, Win and HP removed (best) on the reference quest; costs: level required (reached or not), gold,
+  At 600 px and less the plan and compare tables fade at the edge that has more columns (R2-A's scroll-driven
+  `.scroll-row` fade on `.table-wrap`, R3 F37).
+- Step 3, next ascension: the whole section is hidden at the last tier (R3 F08). Reference quest (quests the hero may
+  open at its max level, grouped by region, toughest first; default: the plan's last quest, else the toughest at or
+  below the hero's level − 5, a quest it wins now, else the easiest: `defaultRefQuest`, R3 F07; the comparison rule
+  in the label's tooltip) and Compare, a secondary button (Plan is the page's one primary, R3 F10). Columns Stat /
+  After / Change / Now; at 600 px and less Now is hidden and the Change cell's tooltip gives it (R3 F06). Rows: max
+  level, enchant slots, quest size cap, stats at max level, Win and HP removed (best) on the reference quest; costs: level required (reached or not), gold,
   enchants lost, "Back to N" (hours and runs to the new tier's max level, whatever the target above) and gold on the
   way; the relevel plan in a fold-out.
 - Runs: the worker stays alive between runs (game data parsed once, price Solver kept, relevel plans cached by hero,
   tier and options, so Compare on another reference quest only re-runs the reference fights); progress per candidate
   ("Level 46 · 35 %"); Cancel, or a new run while one is going, terminates it. Any change of an input (hero,
   companions, options, reference quest, expansion switches) dims the results on screen under "Settings changed: run
-  it again for new figures." until the next run. CSS: the `levelling l1` and `levelling l2` blocks of `site/style.css`
-  (L2: below 560 px the number options and the companion selects sit two per row, the segmented options full width;
-  F23 without the chips).
+  it again for new figures." until the next run. CSS: the `levelling l1`, `levelling l2` and `r3-levelling` blocks of
+  `site/style.css` (L2: below 560 px the number options and the companion selects sit two per row, the segmented
+  options full width, F23 without the chips; R3-L moves the option breakpoint to 600 px). Tests
+  `web/test/levelling-l2.test.ts`, `web/test/r3-levelling.test.ts`.
 - Speed (example save, ascension-2 Cleric 1 → 60, Node): solo 7–16 s → 1.8 s, with 5 level-60 companions 39–78 s →
   13 s (same plan); candidates are tried best bound first and stop as soon as they can't win the band.
 - Left for the user's design choices (D1–D7 of the review): the page layout and options fold (F13, F23), the result
   layout (F17 beyond the quick part), the companion model (F07; chips for F23, F24), who opens a party quest (now always the levelled hero: D4 A), the XP
   potion's form (kept as a picked potion, modelled per step: D5 A), the next-ascension block and map runs (asc 0,
-  grade 3, craft time in full).
+  grade 3, craft time in full). R3 F01 (Plan button below the fold: D1, D3) and F03 (phone columns of the steps
+  table: D2) wait for them too.
 
 ## Class balance page
 

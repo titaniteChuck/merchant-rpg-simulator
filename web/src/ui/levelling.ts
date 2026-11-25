@@ -6,6 +6,7 @@
  * Quest bushes (gathering quests) count: they are the best early XP, so they are listed with a "quest bush" label.
  * The plan follows the expansion switches: only visible quests, and no map runs while Scribe is hidden.
  * Any change of an input dims the results shown until the next run.
+ * R3 (review-r3.md): a finished run scrolls its result into view; help in tip() only, focusable so a tap keeps it open.
  */
 import * as api from "../sim/api.ts";
 import { G } from "../sim/data.ts";
@@ -19,7 +20,9 @@ import {
 } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import type { LevelRequest, LevelResponse } from "./levelling-worker.ts";
-import { heroLabels, sizeText, stepTimeTip, xpRunTip } from "./levelling-view.ts";
+import {
+  defaultRefQuest, type GoldParts, goldHint, goldParts, heroLabels, heroLevelText, potionShort, sizeText, stepTimeTip, xpRunTip,
+} from "./levelling-view.ts";
 import { xpText } from "./quest-xp.ts";
 import { initSaveSource } from "./save-source.ts";
 import { tip } from "./tooltip.ts";
@@ -58,10 +61,15 @@ const companionSelects = () => [...document.querySelectorAll<HTMLSelectElement>(
 /** A field label with a one-line tooltip (shown on hover, focus and tap). */
 function labelTip(id: string, text: string): void {
   const l = document.getElementById(id);
-  if (!l) return;
-  l.classList.add("lv-tip");
-  l.tabIndex = 0;
-  tip(l, () => text);
+  if (l) tipOn(l, () => text);
+}
+
+/** R3 F38: a tooltip a tap keeps open (the tap focuses it), marked by a dotted underline. */
+function tipOn<T extends HTMLElement>(e: T, text: () => string): T {
+  e.classList.add("lv-tip");
+  e.tabIndex = 0;
+  tip(e, text);
+  return e;
 }
 
 /** A quest's name: a link to the enemy's wiki page, or plain text with a "quest bush" label; its size after it (F17). */
@@ -88,15 +96,8 @@ function sourceCell(r: Row): HTMLElement {
 
 const potionName = (id: number) => itemName("consumable", id) ?? G.itemData.consumable?.[id]?.name ?? `potion ${id}`;
 
-/** "launch 1,200 g · revive 300 g · 12 XP Boost +2: 2,400 g · maps 0 g", the parts that aren't 0. */
-function goldSplit(g: { launchGold: number; reviveGold: number; potionGold: number; mapGold: number; potions: number }, potion?: number): string {
-  const parts: string[] = [];
-  if (g.launchGold) parts.push(`launch ${gold(g.launchGold)}`);
-  if (g.reviveGold) parts.push(`revive ${gold(g.reviveGold)}`);
-  if (g.potions) parts.push(`${fmt.format(g.potions)} ${potion ? potionName(potion) : "potions"} ${gold(g.potionGold)}`);
-  if (g.mapGold) parts.push(`maps ${gold(g.mapGold)}`);
-  return parts.join(" · ");
-}
+/** "launch 1,200 g · revive 300 g · 12 XP Boost +2 2,400 g", or nothing when the gold has one part (R3 F04). */
+const goldSplit = (g: GoldParts, potion?: number) => goldHint(goldParts(g, potion ? potionName(potion) : undefined));
 const stepGold = (s: LevelStep) => s.launchGold + s.reviveGold + s.potionGold + s.mapGold;
 
 // ---------------------------------------------------------------- stale results
@@ -133,7 +134,7 @@ function renderHero(): void {
   // Default: the lowest hero below its tier's max level (the one that needs levelling most), else the first.
   const below = heroes.map((h, i) => [h, i] as const).filter(([h]) => (h.level ?? 1) < maxLevel(h.prestigeLevel ?? 1));
   hero.value = String(below.sort((a, b) => (a[0].level ?? 1) - (b[0].level ?? 1))[0]?.[1] ?? 0);
-  const info = el("div", { class: "lv-hero" });
+  const info = el("span", { class: "lv-hero-row" });
   const comps = Array.from({ length: COMPANIONS }, (_, k) => select({ class: "companion", "aria-label": `Companion ${k + 1}` },
     [["", "— none —"], ...heroes.map((_, i): [string, string] => [String(i), labels[i]])]));
   const sync = () => {
@@ -145,12 +146,11 @@ function renderHero(): void {
     from.max = String(max - 1);
     // A hero at max level: plan a fresh hero of its class and ascension.
     from.value = String(atMax ? 1 : Math.min(h.level ?? 1, max - 1));
-    info.replaceChildren(
-      el("span", { class: `cls-${h.class}` }, withAsc(el("span", { class: "avatar big" }, String(h.name).slice(0, 1).toUpperCase()), heroAsc(tier), h.name)),
-      el("div", {}, el("h3", {}, h.name),
-        el("div", { class: "pills" }, el("span", { class: `cls-${h.class}` }, markName(pill(className(h.class)), "class", h.class)),
-          pill(`level ${h.level} of ${max}`, "plain"), pill(ascText(heroAsc(tier)), "plain"),
-          ...(atMax ? [pill("max level: planned from level 1", "t-green")] : []))));
+    // R3 F09: the avatar and what the picker lacks, on its line; F38: no `title` on the avatar (the picker says it all).
+    const avatar = withAsc(el("span", { class: "avatar" }, String(h.name).slice(0, 1).toUpperCase()), heroAsc(tier), h.name);
+    avatar.removeAttribute("title");
+    info.replaceChildren(el("span", { class: `cls-${h.class}` }, avatar), el("span", { class: "lv-hero-lv" }, heroLevelText(h.level ?? 1, max)),
+      ...(atMax ? [pill("planned from level 1", "t-green")] : []));
     syncCompanions();
     state.lastPlanQuest = null;
     renderRefQuests();
@@ -159,7 +159,7 @@ function renderHero(): void {
   hero.addEventListener("change", sync);
   for (const c of comps) c.addEventListener("change", () => (syncCompanions(), markStale()));
   const head = el("h3", { class: "sub" }, el("span", { id: "companions-label" }, "Companions"));
-  $("#hero-box").replaceChildren(el("div", { class: "toolbar" }, hero), info, head,
+  $("#hero-box").replaceChildren(el("div", { class: "toolbar lv-hero-bar" }, hero, info), head,
     el("div", { class: "lv-companions" }, ...comps));
   labelTip("companions-label", "Up to 5. They join party quests they may join and map runs, never solo quests, and share the XP.");
   sync();
@@ -202,10 +202,22 @@ function renderSegments(): void {
   ], state.amounts, changed("amounts")));
   put("#minwin-field", segmented("lv-minwin", "Minimum win rate", ["0.5", "0.75", "0.9", "0.99"].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}%` })),
     state.minWin, changed("minWin")));
-  put("#xpboost-field", segmented("lv-xpboost", "XP potion", [
-    { value: "0", label: "None" },
-    ...xpBoosts().map((b) => ({ value: String(b.id), label: markName(el("span", {}, potionName(b.id)), "consumable", b.id) })),
-  ], state.xpBoost, changed("xpBoost")));
+  // R3 F05: short labels ("None · Boost · +1 · +2") so the row fits; the potion's full name in its tooltip.
+  const boosts = xpBoosts();
+  const seg = segmented("lv-xpboost", "XP potion", [
+    { value: "0", label: "None" }, ...boosts.map((b, i) => ({ value: String(b.id), label: potionShort(i) })),
+  ], state.xpBoost, changed("xpBoost"));
+  seg.querySelectorAll<HTMLLabelElement>(".seg-opt").forEach((opt, i) => {
+    const b = boosts[i - 1];
+    if (!b) return;
+    const name = () => potionName(b.id);
+    const input = opt.querySelector("input")!;
+    input.setAttribute("aria-label", name());
+    // Hover on the option; a tap or the keyboard focuses its radio.
+    tip(opt, name);
+    tip(input, name);
+  });
+  put("#xpboost-field", seg);
 }
 
 // ---------------------------------------------------------------- worker
@@ -220,6 +232,12 @@ function killWorker(): void {
   state.busy?.replaceChildren(el("p", { class: "muted" }, "Cancelled."));
   state.busy = null;
   document.querySelectorAll<HTMLButtonElement>("#plan-run, #prestige-run").forEach((b) => (b.disabled = false));
+}
+
+/** R3 F02: a finished run brings its result into view (the button that started it sits right above). */
+function reveal(out: HTMLElement): void {
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  out.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
 }
 
 function run(req: LevelRequest, out: HTMLElement, button: HTMLButtonElement, render: (m: Extract<LevelResponse, { type: "done" }>) => Node[]): void {
@@ -250,6 +268,7 @@ function run(req: LevelRequest, out: HTMLElement, button: HTMLButtonElement, ren
     finish();
     if (m.type === "error") out.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
     else out.replaceChildren(el("div", { class: "lv-result" }, ...render(m)));
+    reveal(out);
   };
   w.onerror = (e) => {
     state.busy = null;
@@ -264,9 +283,7 @@ function run(req: LevelRequest, out: HTMLElement, button: HTMLButtonElement, ren
 function headTip(t: HTMLElement, col: number, text: string): void {
   const th = t.querySelectorAll("thead th")[col];
   if (!th) return;
-  th.classList.add("lv-tip");
-  th.setAttribute("tabindex", "0");
-  tip(th, () => text);
+  tipOn(th as HTMLElement, () => text);
 }
 
 function planTable(plan: LevellingPlan): HTMLElement {
@@ -279,8 +296,7 @@ function planTable(plan: LevellingPlan): HTMLElement {
   }));
   const withTip = (text: string, t: unknown) => {
     const c = el("span", {}, text);
-    if (t) tip(c, () => String(t));
-    return c;
+    return t ? tipOn(c, () => String(t)) : c;
   };
   const t = table(rows, [
     { key: "levels", label: "Levels" },
@@ -302,10 +318,11 @@ function planTable(plan: LevellingPlan): HTMLElement {
 function planSummary(plan: LevellingPlan): Node[] {
   const split = goldSplit(plan, plan.steps.find((s) => s.source.boost)?.source.boost);
   return [
-    el("div", { class: "tiles span-last" },
-      tile("Time", hoursText(plan.hours), `levels ${plan.from} → ${plan.steps.at(-1)?.toLevel ?? plan.from}`, { icon: "⏱️", tone: "t-blue" }),
+    // R3 F04: three compact tiles on one row; no levels hint (the table's first cell), the gold split only with 2+ parts.
+    el("div", { class: "tiles lv-tiles" },
+      tile("Time", hoursText(plan.hours), undefined, { icon: "⏱️", tone: "t-blue" }),
       tile("Runs", fmt.format(plan.runs), undefined, { icon: "⚔️", tone: "t-violet" }),
-      tile("Gold", gold(plan.gold), split || undefined, { icon: "💰", tone: "t-orange" })),
+      tile("Gold", gold(plan.gold), split, { icon: "💰", tone: "t-orange" })),
     ...(plan.stuckAt !== undefined ? [el("p", { class: "error", role: "alert" },
       `Stuck at level ${plan.stuckAt}: no quest this hero may take is won often enough. Add companions or lower the minimum win rate.`)] : []),
   ];
@@ -336,9 +353,12 @@ function renderRefQuests(): void {
   if (!state.sv) return;
   const h = heroRaw();
   const tier = h.prestigeLevel ?? 1;
+  // R3 F08: nothing to compare at the last ascension: no step 3.
   const last = tier >= (G.heroMaxPrestigeLevel ?? 3);
+  $("#prestige-step").hidden = last;
   if (last) {
-    box.replaceChildren(el("p", { class: "muted" }, `${h.name} is at the last ascension: nothing more to unlock.`));
+    box.replaceChildren();
+    $("#prestige-out").replaceChildren();
     return;
   }
   // U28: the next tier may be expansion content (ascension 2 = prestige 3 needs the Frozen Tome).
@@ -348,8 +368,8 @@ function renderRefQuests(): void {
       + "Set it in the expansions menu of the top bar to compare."));
     return;
   }
-  // Quests the hero could open at its tier's max level, by region (toughest region first), toughest first. Default:
-  // the plan's last quest, else the toughest one at or below that max level.
+  // Quests the hero could open at its tier's max level, by region (toughest region first), toughest first. Default
+  // (R3 F07): the plan's last quest, else one the hero wins now (defaultRefQuest).
   const max = maxLevel(tier);
   const ids = openableQuests(max, tier).filter((id) => isEnemy(id) && !isGathering(id) && isVisible("enemy", id))
     .sort((a, b) => (G.questData[b].levelReq ?? 0) - (G.questData[a].levelReq ?? 0));
@@ -357,11 +377,11 @@ function renderRefQuests(): void {
     ids.filter((id) => G.questData[id].region === r.id).map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${enemyName(id)}`])])
     .filter(([, list]) => list.length);
   const ref = select({ id: "ref-quest", "aria-label": "Quest to compare on" }, groups);
-  const fit = ids.find((id) => (G.questData[id].levelReq ?? 0) <= max);
-  if (state.lastPlanQuest !== null && ids.includes(state.lastPlanQuest)) ref.value = String(state.lastPlanQuest);
-  else if (fit !== undefined) ref.value = String(fit);
+  const pick = defaultRefQuest(ids, (id) => G.questData[id].levelReq ?? 0, h.level ?? 1, state.lastPlanQuest);
+  if (pick !== undefined) ref.value = String(pick);
   ref.addEventListener("change", markStale);
-  const go = el("button", { type: "button", class: "primary", id: "prestige-run" }, `Compare with ${ascText(tier)}`);
+  // R3 F10: one primary button per screen (Plan); Compare is secondary.
+  const go = el("button", { type: "button", class: "secondary", id: "prestige-run" }, `Compare with ${ascText(tier)}`);
   go.addEventListener("click", runPrestige);
   box.replaceChildren(el("div", { class: "toolbar" }, el("label", { class: "pf-field lv-ref" }, el("span", { id: "ref-label" }, "Reference quest"), ref), go));
   labelTip("ref-label", "Both tiers at their max level, solo; the new tier without enchants, as right after ascending.");
@@ -378,16 +398,21 @@ function payoffView(p: PrestigePayoff, raw: Any): Node[] {
     ...STATS.map(([k, l]): [string, number, number] => [l, cur.stats[k] ?? 0, nxt.stats[k] ?? 0]),
     ["Win", cur.ref.win, nxt.ref.win, pct], ["HP removed (best)", cur.ref.enemyPeak, nxt.ref.enemyPeak, pct],
   ];
-  const head = el("tr", {}, el("th", {}, ""), el("th", { class: "num" }, `Now (${ascText(cur.tier - 1)})`),
-    el("th", { class: "num" }, `After (${ascText(nxt.tier - 1)})`), el("th", { class: "num" }, "Change"));
+  // R3 F06: Stat / After / Change / Now; on a phone Now is hidden (CSS) and sits in the Change tooltip.
+  const now = `Now (${ascText(cur.tier - 1)})`;
+  const head = el("tr", {}, el("th", {}, "Stat"), el("th", { class: "num" }, `After (${ascText(nxt.tier - 1)})`),
+    el("th", { class: "num" }, "Change"), el("th", { class: "num lv-now" }, now));
   /** Rates (f = pct) change in percentage points, counts and stats by their difference. */
   const change = (a: number, b: number, rate: boolean) => {
     if (!rate) return delta(a, b);
     const d = (b - a) * 100;
     return el("span", { class: d > 0.05 ? "up" : d < -0.05 ? "down" : "muted" }, Math.abs(d) < 0.05 ? "=" : `${d > 0 ? "+" : "−"}${fmt1.format(Math.abs(d))} pts`);
   };
-  const body = rows.map(([label, a, b, f]) => el("tr", {}, el("td", {}, label), el("td", { class: "num" }, f ? f(a) : fmt.format(a)),
-    el("td", { class: "num" }, f ? f(b) : fmt.format(b)), el("td", { class: "num" }, change(a, b, Boolean(f)))));
+  const body = rows.map(([label, a, b, f]) => {
+    const was = f ? f(a) : fmt.format(a);
+    return el("tr", {}, el("td", {}, label), el("td", { class: "num" }, f ? f(b) : fmt.format(b)),
+      el("td", { class: "num" }, tipOn(change(a, b, Boolean(f)), () => `${now}: ${was}`)), el("td", { class: "num lv-now" }, was));
+  });
   const ok = (raw.level ?? 1) >= p.levelRequired;
   const r = p.relevel;
   return [

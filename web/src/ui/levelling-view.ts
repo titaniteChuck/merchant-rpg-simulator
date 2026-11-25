@@ -1,10 +1,12 @@
 /**
  * Levelling page (levelling.ts) texts without DOM, so Node tests can check them (review-levelling.md, L2): hero picker
  * labels with the ascension and a number for heroes sharing a name (F24), the quest size beside the quest (F17), the
- * XP per run and the map craft + run split as tooltips (F17, F20).
+ * XP per run and the map craft + run split as tooltips (F17, F20). R3 (review-r3.md): the hero's level beside the
+ * picker (F09), the gold split only when it has two parts or more (F04), short XP potion labels (F05) and the default
+ * reference quest (F07).
  */
 import type { LevelStep } from "../tools/levelling.ts";
-import { duration, heroAsc, lv } from "./dom.ts";
+import { duration, fmt, gold, heroAsc, lv } from "./dom.ts";
 import { xpText } from "./quest-xp.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -39,4 +41,34 @@ export function stepTimeTip(s: Pick<LevelStep, "source" | "hours" | "runsExact" 
   if (!(craft > 0)) return undefined;
   const craftTotal = craft * (s.runsExact ?? s.runs);
   return `Craft ${duration(craftTotal * 3600)} + run ${duration(Math.max(0, s.hours - craftTotal) * 3600)}`;
+}
+
+/** R3 F09: what the hero picker doesn't say, beside it: "Lv 53 / 60". */
+export const heroLevelText = (level: number, max: number): string => `${lv(level)} / ${max}`;
+
+export interface GoldParts { launchGold: number; reviveGold: number; potionGold: number; mapGold: number; potions: number }
+
+/** The parts of a gold total that aren't 0: "launch 1,200 g", "revive 300 g", "12 XP Boost +2 2,400 g", "maps 0 g". */
+export function goldParts(g: GoldParts, potion = "potions"): string[] {
+  const parts: string[] = [];
+  if (g.launchGold) parts.push(`launch ${gold(g.launchGold)}`);
+  if (g.reviveGold) parts.push(`revive ${gold(g.reviveGold)}`);
+  if (g.potions) parts.push(`${fmt.format(g.potions)} ${potion} ${gold(g.potionGold)}`);
+  if (g.mapGold) parts.push(`maps ${gold(g.mapGold)}`);
+  return parts;
+}
+
+/** R3 F04: the split as a hint only when it has two parts or more (one part is the total again). */
+export const goldHint = (parts: string[]): string | undefined => (parts.length > 1 ? parts.join(" · ") : undefined);
+
+/** R3 F05: XP potion option labels, weakest first: "Boost", "+1", "+2" (the full name in the option's tooltip). */
+export const potionShort = (index: number): string => (index ? `+${index}` : "Boost");
+
+/**
+ * R3 F07: the reference quest to compare on by default: the plan's last quest when it is in the list, else the
+ * toughest quest at or below the hero's level − 5 (one it wins now), else the easiest. `ids` is toughest first.
+ */
+export function defaultRefQuest(ids: number[], levelReq: (id: number) => number, heroLevel: number, lastPlanQuest: number | null): number | undefined {
+  if (lastPlanQuest !== null && ids.includes(lastPlanQuest)) return lastPlanQuest;
+  return ids.find((id) => levelReq(id) <= heroLevel - 5) ?? ids.at(-1);
 }
