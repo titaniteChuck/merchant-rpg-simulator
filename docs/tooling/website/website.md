@@ -572,6 +572,44 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     beyond those is "Other" (the game keeps an enemy's Acc % across stat updates). `card-turn.ts` reads these for a
     card at a step (`cardTurnOf`: `modsAt`, `statMods`, `outcomeAt`, `nonStatFx`); `battle-page.ts` keeps the chart's
     fought runs (`chartRuns`) and heroes' names for it (`turnOfCard`).
+- U69, the Party view's fighter cards, third pass (both pages; `web/src/ui/fighter-card.ts`, `card-turn.ts`,
+  `pick-list.ts`, `battle-edit.ts`, `battle-layout.ts`, `battle-page.ts`; tests `web/test/battle-u69.test.ts`, CSS in
+  the `U69` block, the last one of `style.css`; the U62, U65 and U67 tests updated):
+  - The skill and passive picker floats over the page (`pickButton` / `openPick` with `float`): the list is a child of
+    `<body>`, `position: fixed` (`.pk-list.pk-float`, z-index 55), anchored to the clicked row by `placePopup` (pure):
+    the row's left edge and width (at least 260 px, at most the viewport less 8 px margins, moved in to stay on
+    screen), under the row, or above it when the room under is short of a full list and there is more above, its
+    height capped by that room (320 px at most). It follows the row on scroll and resize and closes when the row is
+    gone (the cards drawn again), on a tap outside the list and its button, on Escape (focus back on the button) and on
+    Tab (focus back on the button, so Tab moves on from the row). The listbox keys are U62's. The Flows' cells (U64)
+    keep their list in place (no `float`).
+  - The skills over the AP budget are greyed out (`.pk-opt.off`, `aria-disabled="true"`, struck through, the AP they
+    would reach as the title, "22 / 20 AP"): reachable with the arrows, never picked (click and Enter do nothing).
+    The rule is the edit's own (`skillFits` in `battle-edit.ts`, which `editRotationSkill` now calls): the rotation's
+    AP with the candidate in this slot instead of its skill within the hero's limit (`apBudgetOf`: its passive's AP
+    included), or, for a rotation already over the limit (an old save), no higher than now. `budgetOptions` marks the
+    list. A passive the edit would refuse (dropping Wisdom's AP under the rotation's use) is greyed the same way.
+  - A phone (560 px and less): the party's two columns stay side by side, back row | front row
+    (`PARTY_COLUMNS` in `battle-layout.ts`, the order every width uses), so hero cards are two per row in formation
+    (Front 2, required on a party quest, in the second column); the old rule that stacked the two rows and U67's two
+    cards per row inside a row are gone.
+  - The stats stay two per row on a phone (U67's one per row reverted): hero cards use smaller type and gaps, the
+    modifier's brackets are hidden (`.fc-paren` spans; the text still reads "(+15%)"), and a value from four digits
+    shows its short form ("1.2K", the whole one in the title; HP "12.3K / 20K" from five digits).
+  - The turn's outcome colours its pieces (`outcomeParts`, joined they are `outcomeText`'s text): the damage red
+    (`.o-dmg`, `--bad` 70% with `--fg`), the heals green (`.o-heal`, `--good` 70% with `--fg`), Miss muted: at least
+    4.5:1 on the card and on the played row's highlight in both themes. The text stays (the "!" marks a crit; U67's
+    amber crit colour is gone).
+  - HP's modifier is the HP change during the selected turn (`hpDeltaText`: "+120", "−340", "±0" when hit and healed
+    as much, nothing when untouched; green, red, muted), never a % (a max HP passive or item no longer shows there). Its
+    tooltip (`hpDeltaTipLines`): "Turn 3: −280 HP", the damage taken then the heals received, each by source
+    ("Odin · Fireball", a damage or heal over time under its effect's name), and "Other" for what they don't explain.
+    `card-turn.ts` `hpDeltaAt` reads it from the trace: the HP at the turn's end less the previous turn's (`hpAt`), the
+    HP each hit really took and each heal really gave (no overkill, no overheal, nothing on a fighter already down).
+  - No effects line under the stats any more (`fxList`, `nonStatFx` and `.fc-fx` deleted; `cardTurnOf` no longer
+    takes the chart's effects). Effects that no card shows now: a taunt, a shield (Mana Shield), a damage or heal over
+    time between its ticks (its ticks are in HP's tooltip), and the like; the Flows and the chart's tooltips still
+    list them.
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,

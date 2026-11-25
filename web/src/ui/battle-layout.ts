@@ -4,7 +4,14 @@
  * - toTopVisible: when the "↑" back-to-top button shows.
  * - turnBand (U51): the Flow's turn row before each turn.
  * - roomBarWheel, rowStep, scrollToShow (U63): the map room bar's mouse wheel, ‹ › buttons and selected room in view.
+ * - PARTY_COLUMNS (U69): the Party view's hero columns, in formation order.
  */
+
+/**
+ * U69: the Party view's two hero columns, left to right: the back row, then the front row (nearest the enemy). Every
+ * width keeps them (a phone too: two cards per row, the back row's in the first column, the front row's in the second).
+ */
+export const PARTY_COLUMNS = ["back", "front"] as const;
 
 /**
  * U51: the grid column (1-based, CSS `grid-column`) of a calculation panel under a flow line. `order` is column × 2,

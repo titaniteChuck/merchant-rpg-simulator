@@ -15,10 +15,9 @@ import { Sim } from "../src/tools/engine.ts";
 import { fightSeed } from "../src/tools/combat.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
-import { cardTurnOf, modLabel, modsAt, nonStatFx, outcomeAt, statMods } from "../src/ui/card-turn.ts";
+import { cardTurnOf, modLabel, modsAt, outcomeAt, statMods } from "../src/ui/card-turn.ts";
 import { type CardOutcome, fighterCard, type ModPart, modSums, modText, modTipLines, outcomeText, paintCard, signedPct, statCell, statGrid }
   from "../src/ui/fighter-card.ts";
-import type { TimelineChip } from "../src/ui/battle-plan.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -158,11 +157,8 @@ test("card data: the parts at a turn, named; the outcome on the turn's row; the 
   const stun = traceOf(STUN);
   const lost = stun.actions.find((x) => x.did === false)!;
   assert.deepEqual(outcomeAt(stun, lost.turn, lost.who, names), { row: (lost.turn - 1) % 5, lost: "Stun", targets: [] });
-  // the effects listed: not those in the stats
-  const chip = (name: string): TimelineChip => ({ who: 1, name, label: name, debuff: false, title: name });
-  assert.deepEqual(nonStatFx([chip("Holy Blessing"), chip("Stun"), chip("Taunt")], [m({})]).map((c) => c.name), ["Stun", "Taunt"]);
-  // no trace: the chart's effects only
-  assert.deepEqual(cardTurnOf(undefined, 3, 1, [chip("Stun")], names), { fx: [chip("Stun")], outcome: null });
+  // U69: no effects list any more; no trace: nothing more
+  assert.deepEqual(cardTurnOf(undefined, 3, 1, names), { outcome: null });
 });
 
 // ---------------------------------------------------------------- 4. the text builders
@@ -175,10 +171,12 @@ test("text: the stat cell, name value (modifier); HP now / max; no modifier part
     def: [{ kind: "pct", value: -0.2, label: "Shield Slam" }, { kind: "flat", value: 30, label: "Inspiration" }],
     mdef: [{ kind: "set", value: 0, label: "Holy Shield" }],
   };
-  assert.deepEqual(statCell("atk", "Atk", stats, { mods }), { name: "Atk", value: "1,234", mod: "(+15%)" });
+  // U69: from four digits a short form too (a hero card on a phone)
+  assert.deepEqual(statCell("atk", "Atk", stats, { mods }), { name: "Atk", value: "1,234", short: "1.2K", mod: "(+15%)" });
   assert.deepEqual(statCell("acc", "Acc", stats, { mods }), { name: "Acc", value: "100", mod: "" });
+  // U69: HP's modifier is the turn's HP change, never a %
   assert.deepEqual(statCell("maxHP", "HP", stats, { hp: 12_345, mods }),
-    { name: "HP", value: "12,345 / 20,000", mod: "(+10%)", short: "12.3K / 20K" });
+    { name: "HP", value: "12,345 / 20,000", mod: "", short: "12.3K / 20K" });
   assert.deepEqual(statCell("maxHP", "HP", { ...stats, maxHP: 900 }, { hp: -5 }), { name: "HP", value: "0 / 900", mod: "" });
   assert.deepEqual(statCell("matk", "Matk", stats), { name: "Matk", value: "15K", full: "15,000", mod: "" });
   assert.deepEqual(statCell("atk", "Atk", null), { name: "Atk", value: "–", mod: "" });
@@ -233,12 +231,12 @@ test("card: no HP bar; the stats two per row with the modifier focusable and its
   const mods = { atk: [{ kind: "pct" as const, value: 0.15, label: "Might (passive)" }], def: [{ kind: "pct" as const, value: -0.2, label: "Shield Slam" }] };
   const rot = [0, 1, 2, 3, 4].map((k) => ({ text: `Skill ${k}`, ap: 1 }));
   const card = fighterCard({ kind: "hero", head: document.createElement("span") as unknown as HTMLElement, stats, rotation: rot,
-    turn: { hp: 1500, mods, fx: [], active: 2, outcome: { row: 2, targets: [{ name: "Odin", dmg: 300, heal: 0, hits: 1, heals: 0, miss: 0, crit: 1 }] } } }) as unknown as F;
+    turn: { hp: 1500, mods, active: 2, outcome: { row: 2, targets: [{ name: "Odin", dmg: 300, heal: 0, hits: 1, heals: 0, miss: 0, crit: 1 }] } } }) as unknown as F;
   assert.equal(card.querySelectorAll(".fc-hp").length, 0);
   assert.doesNotMatch(cardSrc, /hpBar|flow-hp/, "no HP bar on the cards");
   const cells = card.querySelectorAll("div.fc-stat");
   assert.deepEqual(cells.map((c) => c.children.map((x) => x.textContent)), [
-    ["HP", "1,500 / 2,000", ""], ["Atk", "1,150", "(+15%)"], ["Matk", "80", ""], ["Def", "60", "(−20%)"], ["Mdef", "50", ""], ["Acc", "95", ""], ["Crit", "12", ""]]);
+    ["HP", "1,500 / 2,000", ""], ["Atk", "1,1501.2K", "(+15%)"], ["Matk", "80", ""], ["Def", "60", "(−20%)"], ["Mdef", "50", ""], ["Acc", "95", ""], ["Crit", "12", ""]]);
   assert.ok(cells[0].classList.contains("fc-stat-hp"));
   const up = card.querySelector("span.fc-mod-btn")!;
   assert.equal(up.getAttribute("tabindex"), "0");
@@ -271,7 +269,7 @@ test("card: no HP bar; the stats two per row with the modifier focusable and its
 
 test("page: the cards take the modifiers, effects and outcome from the trace; CSS: two per row, HP across, phone two cards per row", () => {
   const turn = fn(page, "turnOfCard");
-  assert.match(turn, /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, now\.fx, nameOf\)/);
+  assert.match(turn, /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, nameOf\)/);
   assert.match(fn(page, "paintTurn"), /\.\.\.turnOfCard\(at, w, now\)/);
   assert.match(fn(page, "drawEnemyCard"), /turn: turnOfCard\(at, 0, now\)/);
   assert.doesNotMatch(page, /chartRuns/, "the cards read the chart\'s own fought runs (chart.runs[i].trace)");
@@ -280,8 +278,11 @@ test("page: the cards take the modifiers, effects and outcome from the trace; CS
   assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: auto minmax\(0, 1fr\) auto auto minmax\(0, 1fr\) auto;/);
   assert.match(block, /\.fc-stat \{ display: contents; \}/);
   assert.match(block, /\.fc-stat-hp > \.fc-val \{ grid-column: 2 \/ span 4; \}/);
-  const phone = block.slice(block.indexOf("@media (max-width: 560px)"));
-  assert.match(phone, /\.party-cols \.slots \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  // U69: the phone rules moved to the U69 block (the two columns back | front, the stats two per row)
+  assert.doesNotMatch(block, /@media \(max-width: 560px\)/);
+  const u69 = css.slice(css.indexOf("/* U69 */"), css.indexOf("/* end U69 */"));
+  const phone = u69.slice(u69.indexOf("@media (max-width: 560px)"));
+  assert.match(phone, /\.party-cols \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(phone, /\.fc-hero \.fc-val \.v-short \{ display: inline; \}/);
   assert.doesNotMatch(css, /\.fc-hp \{/, "the bar's rule is gone");
 });

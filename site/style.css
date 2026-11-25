@@ -526,7 +526,6 @@ a.secondary-link:hover { text-decoration: underline; }
 @media (max-width: 760px) { .hero-detail-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .party-cols { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 560px) { .party-cols { grid-template-columns: minmax(0, 1fr); } }
 .party-cols .party-row h3 { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
 .col-title { margin: 0 0 10px; font-size: 1rem; }
 .opp-col { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
@@ -2634,11 +2633,7 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-svg { cursor: pointer; border-radius: 6px; }
 .hp-sel { stroke: var(--accent); stroke-width: 1.5; }
 .hp-sel-label { fill: var(--accent); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
-/* The cards at the chart's turn: the effects inline under the stats, the row played marked (U67: no HP bar). */
-.fc-fx { display: flex; flex-wrap: wrap; gap: 1px 10px; list-style: none; margin: 0; padding: 0; font-size: 0.74rem; font-weight: 650; }
-.fc-fx > .buff { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
-.fc-fx > .debuff { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
-.fc-fx-t { margin-left: 2px; color: var(--muted); font-weight: 500; }
+/* The cards at the chart's turn: the row played marked (U67: no HP bar; U69: no effects line). */
 .fc-row.active { margin: 0 -4px; padding: 0 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 18%, transparent);
   box-shadow: inset 3px 0 0 var(--accent); }
 /* end U65 */
@@ -2691,20 +2686,44 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* The turn's row: what came of it, after the skill (💫 action lost, damage, "!" a crit, Miss, +heal). */
 .fc-out { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: 0.74rem; font-weight: 700;
   font-variant-numeric: tabular-nums; cursor: help; }
-.fc-out.miss { color: var(--muted); }
-.fc-out.crit { color: color-mix(in srgb, #f59e0b 80%, var(--fg)); }
-.fc-out.heal { color: color-mix(in srgb, var(--good) 75%, var(--fg)); }
 .fc-out.lost { font-size: 0.9rem; }
-/* A phone (560 px and less): hero cards two per row (a folded "empty slots" line across both); in a card, one stat per
-   row, a hero's long HP shortened ("12.3K / 20K"). */
+/* U69: the outcome's colours (damage, heals, Miss) and the phone layout are in the U69 block. */
+/* end U67 */
+
+/* U69 */
+/* The Party view's cards (fighter-card.ts). A row's skill or passive picker floats over the page (pick-list.ts
+   `float`): fixed in the viewport, placed by placePopup (left, top or bottom, width, max height inline), over the
+   cards and the sticky bars. A choice over the AP budget is greyed out and can't be picked. */
+.pk-list.pk-float { position: fixed; z-index: 55; flex: none; box-sizing: border-box; margin: 0; overscroll-behavior: contain;
+  font-size: 0.82rem; }
+.pk-opt.off { cursor: not-allowed; }
+.pk-opt.off .pk-name, .pk-opt.off .pk-note { color: var(--muted); }
+.pk-opt.off .pk-name { font-weight: 500; text-decoration: line-through; text-decoration-thickness: 1px; }
+.pk-opt.off .ap-badge { opacity: 0.5; }
+.pk-opt.off:hover { background: none; }
+.pk-opt.off.active { background: color-mix(in srgb, var(--muted) 14%, transparent); }
+/* HP's modifier: the turn's HP change ("+120" green, "−340" red, "±0" plain). */
+.fc-mod-btn.even { color: var(--muted); }
+/* The turn's row: damage red, heals green, Miss muted, the text kept (theme tokens mixed with --fg: AA on the card and
+   on the played row's highlight, light and dark). */
+.fc-out .o-dmg { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
+.fc-out .o-heal { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
+.fc-out .o-miss { color: var(--muted); }
+/* A phone (560 px and less): the two hero columns stay side by side, back row | front row (battle-layout.ts
+   PARTY_COLUMNS), one card each per row; the stats stay two per row, compact: smaller type, tighter gaps, no brackets
+   round a modifier, a hero's values from four digits shortened ("1.2K", HP "12.3K / 20K"; the whole in the title). */
 @media (max-width: 560px) {
-  .party-cols .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .party-cols .slots > :not(.fc) { grid-column: 1 / -1; }
-  .fc-hero { padding: 7px 7px 7px 11px; }
-  .fc-stats { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .fc-stat-hp > .fc-val { grid-column: auto; }
-  .fc-stat:nth-child(2n+3) > dt { padding-left: 0; }
+  .party-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .party-cols .party-row h3 { font-size: 0.85rem; }
+  .party-cols .slots { gap: 8px; }
+  .fc-hero { padding: 6px 5px 6px 9px; }
+  .fc-hero .fc-stats { gap: 0 2px; }
+  .fc-hero .fc-stats dt { font-size: 0.6rem; }
+  .fc-hero .fc-stat:nth-child(2n+3) > dt { padding-left: 3px; }
+  .fc-hero .fc-stats .fc-val { font-size: 0.7rem; }
+  .fc-hero .fc-stats .fc-mod { font-size: 0.58rem; }
+  .fc-hero .fc-paren { display: none; }
   .fc-hero .fc-val .v-full { display: none; }
   .fc-hero .fc-val .v-short { display: inline; }
 }
-/* end U67 */
+/* end U69 */

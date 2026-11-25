@@ -59,9 +59,9 @@ import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, e
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
-import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, slotKeyOfLoc } from "./battle-edit.ts";
+import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, budgetOptions, slotKeyOfLoc } from "./battle-edit.ts";
 import { enableSlotDrag } from "./party-drag.ts";
-import { roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
+import { PARTY_COLUMNS, roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
@@ -313,7 +313,13 @@ function heroRows(idx: number | null, raw: Any | null, key: string, editable = t
     end: ap,
     pick: editable && live ? {
       label: `${raw.name}: passive`, value: passive, focus: `${key}-p`,
-      options: () => (info!.passives as string[]).map((x): PickOption => ({ value: x, label: x === "None" ? "No passive" : passiveName(x), note: x === "None" ? "" : passiveText(x) })),
+      // U69: a passive the onPick below would refuse (the rotation over the limit it gives) is greyed out.
+      options: () => (info!.passives as string[]).map((x): PickOption => {
+        const b = x === passive ? null : apBudgetOf(idx!, x), u = b ? apUsed(rot, b) : 0;
+        const off = b !== null && u > b.max && b.max < apBudgetOf(idx!, passive).max;
+        return { value: x, label: x === "None" ? "No passive" : passiveName(x), note: x === "None" ? "" : passiveText(x),
+          ...(off ? { disabled: true, why: `${u} / ${b!.max} AP` } : {}) };
+      }),
       onPick: (v) => {
         // U40: a passive that gives AP (Wisdom) can't be dropped when the rotation then goes over the limit.
         const b = apBudgetOf(idx!, v), u = apUsed(rot, b);
@@ -329,7 +335,8 @@ function heroRows(idx: number | null, raw: Any | null, key: string, editable = t
     tip: raw && sk !== "Basic" ? (e) => skillTip(e, sk) : undefined,
     pick: editable && live ? {
       label: `${raw.name}: turn ${k + 1} skill`, value: sk, focus: `${key}-${k}`,
-      options: () => rotationChoices(raw, sk).map(skillOption),
+      // U69: the skills the AP budget can't take in this slot (this slot's skill replaced) are greyed out.
+      options: () => budgetOptions(rotationChoices(raw, sk).map(skillOption), rot, k, apBudgetOf(idx!)),
       onPick: (v) => {
         // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
         const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
@@ -444,7 +451,8 @@ function renderParty(refreshSearch = true): void {
   };
   // R1 F20: what the rows mean is in the heading's tooltip, not a line under it. R2 F33: on the Solver, a row's empty
   // slots (not the required one) fold into one line, "3 empty back slots", that opens them (foldEmpty).
-  const cols = (["back", "front"] as const).map((row) => {
+  // U69: back row | front row at every width (battle-layout.ts PARTY_COLUMNS): a phone keeps the formation, two cards a row.
+  const cols = PARTY_COLUMNS.map((row) => {
     const empty = picks ? [0, 1, 2].filter((i) => isEmptySlot(row, i) && !rules.required.some((x) => x.row === row && x.i === i)) : [];
     const shown = [0, 1, 2].filter((i) => !empty.includes(i)).map((i) => slot(row, i));
     return el("div", { class: "party-row" },
@@ -1213,11 +1221,11 @@ function paintTurn(): void {
 
 /**
  * U67: a card's state at the chart's step beyond the chart's own (cardTurnOf, card-turn.ts): HP now, each stat's
- * modifier parts, the effects that are no stat modifier, the row played and what came of it.
+ * modifier parts, the row played and what came of it. U69: HP's change during the turn; no effects list.
  */
 function turnOfCard(at: HpChartData["steps"][number], who: number, now: FighterState): Omit<CardTurn, "stats"> {
   const nameOf = (w: number) => (w ? chartNames.get(w) ?? locationLabel(w) : chart?.runs[at.run]?.enemy ?? "Enemy");
-  return { hp: now.hp, active: now.active, ...cardTurnOf(chart?.runs[at.run]?.trace, at.turn, who, now.fx, nameOf) };
+  return { hp: now.hp, active: now.active, ...cardTurnOf(chart?.runs[at.run]?.trace, at.turn, who, nameOf) };
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)

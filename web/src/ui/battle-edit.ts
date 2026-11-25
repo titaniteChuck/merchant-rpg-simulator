@@ -3,6 +3,7 @@
  * 10-turn flow diagram). Both change the one party state through these functions, so an edit in either view is the
  * same edit; the page then saves the state, redraws both views and simulates again. Pure (no DOM): Node tests check it.
  */
+import type { PickOption } from "./pick-list.ts";
 
 export interface SkillChoice {
   attackList: string[];
@@ -66,13 +67,23 @@ export const apUsed = (attackList: string[], b: ApBudget): number =>
  */
 export function editRotationSkill(s: PartyState, idx: number, k: number, skill: string, current: SkillChoice, b: ApBudget):
   { ok: boolean; used: number; max: number } {
-  const next = [...current.attackList];
+  const r = skillFits(current.attackList, k, skill, b);
+  if (!r.ok) return r;
+  setRotationSkill(s, idx, k, skill, current);
+  return r;
+}
+
+/**
+ * U69: whether `skill` may take slot k of a rotation (the rule editRotationSkill enforces, for the picker to grey the
+ * others out): the rotation's AP with it there (the slot's own skill's cost taken off, the candidate's added) within
+ * the limit, or, for a rotation already over it (an old saved party), no higher than now. `used`: the AP it would use.
+ */
+export function skillFits(attackList: string[], k: number, skill: string, b: ApBudget): { ok: boolean; used: number; max: number } {
+  const next = [...attackList];
   while (next.length < 5) next.push("Basic");
   next[k] = skill;
   const used = apUsed(next, b);
-  if (used > b.max && used > apUsed(current.attackList, b)) return { ok: false, used, max: b.max };
-  setRotationSkill(s, idx, k, skill, current);
-  return { ok: true, used, max: b.max };
+  return { ok: used <= b.max || used <= apUsed(attackList, b), used, max: b.max };
 }
 
 /**
@@ -84,6 +95,17 @@ export function assignHeroChecked(s: PartyState, key: string, idx: number | null
   if (idx !== null && over) return { ok: false, ...over };
   assignHero(s, key, idx);
   return { ok: true };
+}
+
+/**
+ * U69: a rotation slot's choices with those over the AP budget disabled (skillFits, the rule the edit
+ * enforces: the rotation's AP with the candidate in slot k instead of its skill), each with the AP it would reach.
+ */
+export function budgetOptions(opts: PickOption[], rot: string[], k: number, b: ApBudget): PickOption[] {
+  return opts.map((o) => {
+    const f = skillFits(rot, k, o.value, b);
+    return f.ok ? o : { ...o, disabled: true, why: `${f.used} / ${f.max} AP` };
+  });
 }
 
 /** U40: the AP refusal's words ("Paladin: 23 / 20 AP. Change refused."). */

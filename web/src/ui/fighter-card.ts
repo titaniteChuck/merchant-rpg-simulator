@@ -8,18 +8,21 @@
  *   2,000"), then a hero's Atk Matk / Def Mdef / Acc Crit, the enemy's Atk Matk / Def Mdef / Acc Eva (statGrid). At
  *   the chart's selected turn the values are the engine's live ones (its effects applied) and the modifier is that
  *   stat's % sum (and an effect's flat points) then, its parts and the calculation on hover, focus or tap;
- * - U65 / U67: the effects at that turn that are no stat modifier (a stun, a taunt, a damage over time), inline (fxList);
+ *   U69: HP's modifier is the HP change during that turn ("+120", "−340"), the damage taken and the heals received
+ *   with their sources in its tooltip (hpDeltaText, hpDeltaTipLines);
+ * - U69: no effects line any more (U65 / U67's fxList): a stat effect is in its stat's modifier, a lost action the 💫;
  * - a hero's passive (with the rotation's AP total at its right), then the rotation: one row per turn 1-5, the skill
  *   and its AP. No turn numbers (the list is ordered) and no titles. A row with a picker is a button opening the
- *   choices with their effects in place (pick-list.ts); otherwise plain text. Both carry the effect on hover. U65: the
- *   row of the skill played at the selected turn is highlighted (`active`, aria-current); U67: the row of that turn
- *   says what came of it: 💫 when an effect took the action, else the damage per target ("!" a crit), "Miss", "+N" a
- *   heal (outcomeText).
+ *   choices with their effects (pick-list.ts; U69: floating over the page, the choices over the AP budget greyed
+ *   out); otherwise plain text. Both carry the effect on hover. U65: the row of the skill played at the selected turn
+ *   is highlighted (`active`, aria-current); U67: the row of that turn says what came of it: 💫 when an effect took
+ *   the action, else the damage per target ("!" a crit), "Miss", "+N" a heal (outcomeText); U69: the damage in red,
+ *   the heals in green (outcomeParts).
  *
  * U65: paintCard puts another turn's state on a card in place (the pickers, an open list and the focus stay).
- * The text builders (statCell, modText, modTipLines, outcomeText) are pure, for the tests.
+ * The text builders (statCell, modText, modTipLines, hpDeltaText, hpDeltaTipLines, outcomeText, outcomeParts) are
+ * pure, for the tests.
  */
-import type { TimelineChip } from "./battle-plan.ts";
 import { apBadge, el, fmt, fmtCompact, pct } from "./dom.ts";
 import { pickButton, type PickOption } from "./pick-list.ts";
 import { tip } from "./tooltip.ts";
@@ -69,22 +72,60 @@ export function modText(key: string, parts: ModPart[] | undefined): string {
   return bits.length ? bits.join(" ") : s.set ? "set" : "";
 }
 
+// ---------------------------------------------------------------- U69: HP's change during the turn (pure text)
+/** U69: one source of damage taken or healing received ("Odin · Fireball"), and the HP it took or gave. */
+export interface HpSource {
+  label: string;
+  value: number;
+}
+/** U69: a fighter's HP change during one turn (card-turn.ts hpDeltaAt): the net change, then its parts by source. */
+export interface HpDelta {
+  turn: number;
+  net: number;
+  taken: HpSource[];
+  healed: HpSource[];
+}
+const total = (xs: HpSource[]) => xs.reduce((a, x) => a + x.value, 0);
+const short = (n: number) => (Math.abs(n) >= 10_000 ? fmtCompact.format(n) : fmt.format(n));
+
+/** U69: HP's modifier: the turn's net HP change, "+120", "−340" ("±0": hit and healed as much); "" when nothing happened. */
+export function hpDeltaText(d: HpDelta | null | undefined): string {
+  if (!d) return "";
+  if (Math.round(d.net) === 0) return d.taken.length || d.healed.length ? "±0" : "";
+  return `${d.net < 0 ? MINUS : "+"}${short(Math.abs(d.net))}`;
+}
+
+/**
+ * U69: HP's modifier tooltip: the turn's change, the damage taken then the heals received with their sources, and
+ * what neither explains (a max HP change) as "Other".
+ */
+export function hpDeltaTipLines(d: HpDelta): string[] {
+  const dmg = total(d.taken), heal = total(d.healed), other = d.net - (heal - dmg);
+  return [`Turn ${d.turn}: ${hpDeltaText(d) || "±0"} HP`,
+    ...(d.taken.length ? [`Damage taken: ${fmt.format(dmg)}`, ...d.taken.map((x) => `${x.label}: ${fmt.format(x.value)}`)] : []),
+    ...(d.healed.length ? [`Heals received: ${fmt.format(heal)}`, ...d.healed.map((x) => `${x.label}: ${fmt.format(x.value)}`)] : []),
+    ...(Math.round(other) !== 0 ? [`Other: ${signedNum(other)}`] : [])];
+}
+
 /**
  * U67: one stat cell's three parts: "HP" "1,234 / 2,000" "(+10%)"; `full` the whole value when `value` is shortened;
- * HP from five digits also has a `short` form ("12.3K / 20K", what a hero card on a phone shows).
+ * HP from five digits also has a `short` form ("12.3K / 20K", what a hero card on a phone shows). U69: HP's modifier
+ * is the turn's HP change (`hpDelta`, hpDeltaText), never a %; another stat from four digits has a `short` form too
+ * ("1.2K": a hero card on a phone, two stats per row).
  */
-export function statCell(key: string, label: string, stats: Record<string, number> | null, o: { hp?: number; mods?: StatMods } = {}):
-  { name: string; value: string; full?: string; short?: string; mod: string } {
+export function statCell(key: string, label: string, stats: Record<string, number> | null,
+  o: { hp?: number; mods?: StatMods; hpDelta?: HpDelta | null } = {}): { name: string; value: string; full?: string; short?: string; mod: string } {
   if (!stats) return { name: label, value: "–", mod: "" };
   const v = Number(stats[key] ?? 0);
-  const m = modText(key, o.mods?.[key]);
+  const m = key === "maxHP" ? hpDeltaText(o.hpDelta) : modText(key, o.mods?.[key]);
   const mod = m ? `(${m})` : "";
   if (key === "maxHP" && o.hp !== undefined) {
     const hp = Math.max(0, o.hp);
     return { name: label, value: `${fmt.format(hp)} / ${fmt.format(v)}`, mod,
       ...(v >= 10_000 ? { short: `${fmtCompact.format(hp)} / ${fmtCompact.format(v)}` } : {}) };
   }
-  return Math.abs(v) >= 10_000 ? { name: label, value: fmtCompact.format(v), full: fmt.format(v), mod } : { name: label, value: fmt.format(v), mod };
+  if (Math.abs(v) >= 10_000) return { name: label, value: fmtCompact.format(v), full: fmt.format(v), mod };
+  return Math.abs(v) >= 1000 ? { name: label, value: fmt.format(v), short: fmtCompact.format(v), mod } : { name: label, value: fmt.format(v), mod };
 }
 
 /**
@@ -117,18 +158,24 @@ const tipBox = (lines: string[]) => el("div", { class: "fc-tip" }, ...lines.map(
  * both). Dashes without stats (an empty slot). From five digits a value is shortened ("12.3K"), the whole one in its
  * title. U67: a modifier is focusable, its parts and calculation in the tooltip (hover, focus, tap).
  */
-export function statGrid(stats: Record<string, number> | null, kind: "hero" | "enemy" = "hero", o: { hp?: number; mods?: StatMods } = {}): HTMLElement {
+export function statGrid(stats: Record<string, number> | null, kind: "hero" | "enemy" = "hero",
+  o: { hp?: number; mods?: StatMods; hpDelta?: HpDelta | null } = {}): HTMLElement {
   return el("dl", { class: "fc-stats" }, ...cardStats(kind).map(([k, label]) => {
     const c = statCell(k, label, stats, o);
     const parts = o.mods?.[k];
     const mod = el("dd", { class: "fc-mod" });
-    if (c.mod && parts?.length && stats) {
-      const m = el("span", { class: `fc-mod-btn ${c.mod.startsWith(`(${MINUS}`) ? "down" : "up"}`, tabindex: "0" }, c.mod);
-      tip(m, () => tipBox(modTipLines(k, label, Number(stats[k] ?? 0), parts)));
+    // U69: HP's modifier is the turn's HP change, its sources in the tooltip; the brackets go on a phone (CSS)
+    const lines = !c.mod || !stats ? null : k === "maxHP" ? (o.hpDelta ? hpDeltaTipLines(o.hpDelta) : null)
+      : parts?.length ? modTipLines(k, label, Number(stats[k] ?? 0), parts) : null;
+    if (lines) {
+      const tone = c.mod.startsWith(`(${MINUS}`) ? "down" : c.mod.startsWith("(+") ? "up" : "even";
+      const m = el("span", { class: `fc-mod-btn ${tone}`, tabindex: "0" },
+        el("span", { class: "fc-paren" }, "("), c.mod.slice(1, -1), el("span", { class: "fc-paren" }, ")"));
+      tip(m, () => tipBox(lines));
       mod.append(m);
     }
     return el("div", { class: `fc-stat${k === "maxHP" ? " fc-stat-hp" : ""}` }, el("dt", {}, c.name),
-      el("dd", { class: "fc-val", ...(c.full ? { title: `${label} ${c.full}` } : {}) },
+      el("dd", { class: "fc-val", ...(c.full || c.short ? { title: `${label} ${c.full ?? c.value}` } : {}) },
         ...(c.short ? [el("span", { class: "v-full" }, c.value), el("span", { class: "v-short" }, c.short)] : [c.value])), mod);
   }));
 }
@@ -151,8 +198,6 @@ export interface CardOutcome {
   lost?: string;
   targets: OutcomeTarget[];
 }
-
-const short = (n: number) => (Math.abs(n) >= 10_000 ? fmtCompact.format(n) : fmt.format(n));
 
 /**
  * U67: the outcome's text on the row ("💫"; "1,234!" a crit; "Miss"; "+560" a heal; several targets "980 · Miss ·
@@ -180,13 +225,36 @@ export function outcomeText(o: CardOutcome): { text: string; label: string; line
   return { text: pieces.join(" · "), label: lines.join("; "), lines, tone };
 }
 
-/** U67: the outcome on its row: focusable, the per-target lines in its tooltip. */
+/** U69: an outcome text's pieces, each with its colour: damage (red), a heal (green), a miss (muted); none: the joins. */
+export type OutcomePart = { text: string; kind?: "dmg" | "heal" | "miss" };
+
+/**
+ * U69: outcomeText's text in pieces (their texts joined are that text), so the row colours the damage red and the
+ * heals green; the text itself stays (the colour is not the only cue). Null as outcomeText; [] for 💫.
+ */
+export function outcomeParts(o: CardOutcome): OutcomePart[] | null {
+  if (o.lost !== undefined) return [];
+  const ts = o.targets.filter((t) => t.hits || t.heals || t.miss);
+  if (!ts.length) return null;
+  return ts.flatMap((t, k): OutcomePart[] => [
+    ...(k ? [{ text: " · " }] : []),
+    ...(!t.hits && !t.heals ? [{ text: "Miss", kind: "miss" as const }] : [
+      ...(t.hits ? [{ text: `${short(t.dmg)}${t.crit ? "!" : ""}`, kind: "dmg" as const }] : []),
+      ...(t.hits && t.heals ? [{ text: " " }] : []),
+      ...(t.heals ? [{ text: `+${short(t.heal)}`, kind: "heal" as const }] : []),
+      ...(t.miss ? [{ text: ` (${t.miss} miss${t.miss === 1 ? "" : "es"})` }] : []),
+    ]),
+  ]);
+}
+
+/** U67: the outcome on its row: focusable, the per-target lines in its tooltip. U69: damage red, heals green. */
 function outcomeEl(o: CardOutcome): HTMLElement | null {
   const t = outcomeText(o);
   if (!t) return null;
+  const parts = (outcomeParts(o) ?? []).map((p) => (p.kind ? el("span", { class: `o-${p.kind}` }, p.text) : p.text));
   const e = t.tone === "lost"
     ? el("span", { class: "fc-out lost", role: "img", "aria-label": t.label, tabindex: "0" }, t.text)
-    : el("span", { class: `fc-out ${t.tone}`, tabindex: "0" }, el("span", { "aria-hidden": "true" }, t.text), el("span", { class: "visually-hidden" }, t.label));
+    : el("span", { class: `fc-out ${t.tone}`, tabindex: "0" }, el("span", { "aria-hidden": "true" }, ...parts), el("span", { class: "visually-hidden" }, t.label));
   tip(e, () => tipBox(t.lines));
   return e;
 }
@@ -209,25 +277,13 @@ export interface CardRow {
 function rowEl(r: CardRow, cls: string): HTMLElement {
   const li = el("li", { class: `fc-row ${cls}` });
   const name = r.pick
-    ? pickButton({ ...r.pick, text: r.text, host: () => li })
+    ? pickButton({ ...r.pick, text: r.text, host: () => li, float: true })
     : el("span", { class: `fc-skill${r.text === "—" ? " muted" : ""}` }, r.text);
   if (r.tip) r.tip(name);
   li.append(name);
   if (r.ap !== undefined) li.append(r.ap === null ? el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–") : apBadge(r.ap));
   if (r.end) li.append(r.end);
   return li;
-}
-
-/**
- * U65: a fighter's buffs and debuffs at one turn, inline (green, red), each with its turns left ("·2") and its source
- * on hover (Flow 2's text, battle-plan.ts TimelineChip); null when it has none. U67: the page passes only the effects
- * that are no stat modifier (those are in the stats' modifiers).
- */
-export function fxList(fx: TimelineChip[]): HTMLElement | null {
-  if (!fx.length) return null;
-  return el("ul", { class: "fc-fx", "aria-label": "Effects" }, ...fx.map((c) => el("li", { class: c.debuff ? "debuff" : "buff", title: c.title },
-    el("span", { class: "visually-hidden" }, c.debuff ? "Debuff: " : "Buff: "), c.label,
-    ...(c.turns !== undefined && c.turns > 0 ? [el("span", { class: "fc-fx-t", "aria-label": `, ${c.turns} turn${c.turns === 1 ? "" : "s"} left` }, `·${c.turns}`)] : []))));
 }
 
 /** U65: a fighter at the chart's selected turn (none: no fight to show, the card's own stats). */
@@ -237,7 +293,8 @@ export interface CardTurn {
   hp?: number;
   /** U67: the stats' modifier parts then. */
   mods?: StatMods;
-  fx?: TimelineChip[];
+  /** U69: the HP change during this turn (HP's modifier). */
+  hpDelta?: HpDelta | null;
   /** The rotation row of the skill played this turn (0-4), or none. */
   active?: number | null;
   /** U67: what came of its action this turn. */
@@ -276,18 +333,16 @@ export function fighterCard(s: FighterCardSpec): HTMLElement {
 }
 
 /**
- * U65: put a turn's state on a built card, in place: the stats (U67: with their modifiers), the effects under them
- * (above the passive), the played row highlighted, its outcome on the turn's row. Without `fx`, `active` or `outcome`
- * the card has none of them.
+ * U65: put a turn's state on a built card, in place: the stats (U67: with their modifiers; U69: HP's the turn's HP
+ * change), the played row highlighted, its outcome on the turn's row. Without `active` or `outcome` the card has
+ * none of them. U69: no effects line.
  */
 export function paintCard(card: HTMLElement, t: CardTurn): void {
-  card.querySelector("ul.fc-fx")?.remove();
   card.querySelectorAll(".fc-out").forEach((x) => x.remove());
   const kind = card.classList.contains("fc-enemy") ? "enemy" : "hero";
-  const grid = statGrid(t.stats, kind, { ...(t.hp !== undefined ? { hp: t.hp } : {}), ...(t.mods ? { mods: t.mods } : {}) });
+  const grid = statGrid(t.stats, kind, { ...(t.hp !== undefined ? { hp: t.hp } : {}), ...(t.mods ? { mods: t.mods } : {}),
+    ...(t.hpDelta ? { hpDelta: t.hpDelta } : {}) });
   card.querySelector("dl.fc-stats")?.replaceWith(grid);
-  const fx = fxList(t.fx ?? []);
-  if (fx) grid.after(fx);
   const rows = card.querySelectorAll<HTMLElement>("li.fc-turn");
   rows.forEach((li, k) => {
     const on = t.active === k;

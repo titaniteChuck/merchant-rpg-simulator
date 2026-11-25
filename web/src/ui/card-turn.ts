@@ -1,19 +1,21 @@
 /**
  * U67: what the Party view's cards need of a traced fight at one turn beyond the chart's states (hp-chart.ts
  * FighterState): each stat's modifier parts, named (fighter-card.ts ModPart), and what the fighter's action of that
- * turn did (fighter-card.ts CardOutcome). Read from the same trace the chart and the Flows use (sim/api.ts TraceMod,
- * TraceOutcome); pure, for the tests.
+ * turn did (fighter-card.ts CardOutcome). U69: and its HP change during the turn, by source (fighter-card.ts HpDelta).
+ * Read from the same trace the chart and the Flows use (sim/api.ts TraceMod, TraceOutcome, TraceHit); pure, for the
+ * tests.
  */
-import type { TraceMod, TraceOutcome } from "../sim/api.ts";
+import type { TraceCalc, TraceMod, TraceOutcome } from "../sim/api.ts";
 import { effectName } from "./battle-calc.ts";
-import type { TimelineChip } from "./battle-plan.ts";
-import type { CardOutcome, ModPart, StatMods } from "./fighter-card.ts";
+import type { CardOutcome, HpDelta, HpSource, ModPart, StatMods } from "./fighter-card.ts";
 import { itemNameFromEnglish, passiveName } from "./names.ts";
 
-type Life = { who: number; mods?: TraceMod[] };
+type Life = { who: number; hp?: number; mods?: TraceMod[] };
+type Calc = Pick<TraceCalc, "kind" | "from" | "to" | "src" | "hpBefore" | "hpAfter"> & { missed?: boolean };
 /** What this module reads of a traced fight (tools/fight-trace.ts FightTrace). */
 export interface CardTrace {
-  actions: { turn: number; who: number; did: string | false | null; by?: string; out?: TraceOutcome[]; life?: Life[] }[];
+  actions: { turn: number; who: number; did: string | false | null; by?: string; out?: TraceOutcome[]; life?: Life[];
+    hits?: { who: number; calc?: Calc[] }[] }[];
   start?: { life: Life[] };
 }
 
@@ -75,20 +77,54 @@ export function outcomeAt(trace: CardTrace, turn: number, who: number, nameOf: (
   return { row, targets: (a.out ?? []).map((o) => ({ name: nameOf(o.who), dmg: o.dmg, heal: o.heal, hits: o.hits, heals: o.heals, miss: o.miss, crit: o.crit })) };
 }
 
-/** The effects a card lists: those that are no stat modifier (a stun, a taunt, a damage over time); the others are in the stats. */
-export function nonStatFx(fx: TimelineChip[], mods: TraceMod[]): TimelineChip[] {
-  const inStats = new Set(mods.filter((m) => m.src === "effect").map((m) => m.name));
-  return fx.filter((c) => !inStats.has(c.name));
+/** U69: the fighter's HP at the end of `turn` (turn 0: the start), its last record up to then (0 when down); null: none. */
+export function hpAt(trace: CardTrace, turn: number, who: number): number | null {
+  let hp = trace.start?.life.find((l) => l.who === who)?.hp;
+  if (turn > 0) {
+    for (const a of trace.actions) {
+      if (a.turn > turn) break;
+      const l = a.life?.find((x) => x.who === who);
+      if (l?.hp !== undefined) hp = l.hp;
+    }
+  }
+  return hp === undefined ? null : Math.max(0, hp);
+}
+
+/**
+ * U69: the fighter's HP change during `turn` (its HP at the turn's end less at the previous one's), and the hits and
+ * heals behind it by source ("Odin · Fireball", "Ana · Heal"; a damage or heal over time under its effect's name):
+ * the HP each really took or gave (no overkill, no overheal; nothing on a fighter already down). Null at turn 0 or
+ * without HP records.
+ */
+export function hpDeltaAt(trace: CardTrace, turn: number, who: number, nameOf: (who: number) => string): HpDelta | null {
+  if (turn <= 0) return null;
+  const now = hpAt(trace, turn, who), before = hpAt(trace, turn - 1, who);
+  if (now === null || before === null) return null;
+  const taken = new Map<string, number>(), healed = new Map<string, number>();
+  for (const a of trace.actions) {
+    if (a.turn !== turn) continue;
+    for (const h of a.hits ?? []) {
+      if (h.who !== who) continue;
+      for (const c of h.calc ?? []) {
+        if (c.to !== who || (c.kind === "dmg" && c.missed)) continue;
+        const v = c.kind === "heal" ? Math.max(0, c.hpAfter) - Math.max(0, c.hpBefore) : Math.max(0, c.hpBefore) - Math.max(0, c.hpAfter);
+        if (v <= 0) continue;
+        const label = `${c.from >= 0 ? `${nameOf(c.from)} · ` : ""}${effectName(c.src)}`;
+        const into = c.kind === "heal" ? healed : taken;
+        into.set(label, (into.get(label) ?? 0) + v);
+      }
+    }
+  }
+  const list = (m: Map<string, number>): HpSource[] => [...m].map(([label, value]) => ({ label, value }));
+  return { turn, net: now - before, taken: list(taken), healed: list(healed) };
 }
 
 /**
  * A card's state at a turn beyond the chart's (battle-page.ts paintTurn, drawEnemyCard): the stats' modifier parts,
- * the effects to list (`fx`, the chart's, without the stat modifiers), what came of its action. No trace: the chart's
- * effects only.
+ * what came of its action, U69: its HP change. No trace: nothing more (U69: no effects list).
  */
-export function cardTurnOf(trace: CardTrace | undefined, turn: number, who: number, fx: TimelineChip[], nameOf: (who: number) => string):
-  { mods?: StatMods; fx: TimelineChip[]; outcome: CardOutcome | null } {
-  if (!trace) return { fx, outcome: null };
-  const mods = modsAt(trace, turn, who);
-  return { mods: statMods(mods, nameOf), fx: nonStatFx(fx, mods), outcome: outcomeAt(trace, turn, who, nameOf) };
+export function cardTurnOf(trace: CardTrace | undefined, turn: number, who: number, nameOf: (who: number) => string):
+  { mods?: StatMods; outcome: CardOutcome | null; hpDelta?: HpDelta | null } {
+  if (!trace) return { outcome: null };
+  return { mods: statMods(modsAt(trace, turn, who), nameOf), outcome: outcomeAt(trace, turn, who, nameOf), hpDelta: hpDeltaAt(trace, turn, who, nameOf) };
 }

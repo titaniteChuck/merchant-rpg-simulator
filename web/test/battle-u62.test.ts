@@ -114,8 +114,10 @@ test("clicking a skill opens its picker in place (keyboard: a button with an ari
   assert.equal(b.getAttribute("aria-expanded"), "false");
   assert.ok(!row.querySelector("a"), "no wiki link");
   b.dispatch("click");
-  const list = row.querySelector("ul.pk-list")!;
-  assert.ok(list, "the list opens in the row");
+  // U69: the list floats over the page (in <body>), no longer in the row
+  const body = document.body as unknown as F;
+  const list = body.querySelector("ul.pk-list")!;
+  assert.ok(list && !row.querySelector("ul.pk-list"), "the list opens over the page");
   assert.equal(list.getAttribute("role"), "listbox");
   assert.equal(b.getAttribute("aria-expanded"), "true");
   assert.equal(b.getAttribute("aria-controls"), list.id);
@@ -126,12 +128,12 @@ test("clicking a skill opens its picker in place (keyboard: a button with an ari
   assert.equal(list.getAttribute("aria-activedescendant"), list.children[1].id);
   key("Enter");
   assert.deepEqual(picked, ["Fireball"]);
-  assert.ok(!row.querySelector("ul.pk-list"), "closed");
+  assert.ok(!body.querySelector("ul.pk-list"), "closed");
   assert.equal(b.getAttribute("aria-expanded"), "false");
   // Escape closes without a change
   b.dispatch("click");
-  row.querySelector("ul.pk-list")!.listeners.get("keydown")![0]({ key: "Escape", preventDefault() {}, stopPropagation() {} } as never);
-  assert.ok(!row.querySelector("ul.pk-list"));
+  body.querySelector("ul.pk-list")!.listeners.get("keydown")![0]({ key: "Escape", preventDefault() {}, stopPropagation() {} } as never);
+  assert.ok(!body.querySelector("ul.pk-list"));
   assert.deepEqual(picked, ["Fireball"]);
   // read-only (the Solver): text, no button
   const ro = fighterCard({ kind: "hero", head: document.createElement("span") as unknown as HTMLElement, stats: STATS, rotation: rows() }) as unknown as F;
@@ -155,7 +157,7 @@ test("the picker shows each choice's effect; the passive's effect is not on its 
   const row = card.querySelector("li.fc-pas")!;
   assert.equal(row.textContent.includes("Atk +10%"), false, "not on the passive's line");
   row.querySelector("button")!.dispatch("click");
-  const opts = row.querySelectorAll("li.pk-opt");
+  const opts = (document.body as unknown as F).querySelectorAll("li.pk-opt"); // U69: over the page
   assert.equal(opts.length, 2);
   assert.equal(opts[1].querySelector("span.pk-note")!.textContent, "Atk +10%");
   assert.equal(opts[1].getAttribute("aria-selected"), "true");
@@ -164,7 +166,7 @@ test("the picker shows each choice's effect; the passive's effect is not on its 
   assert.match(page, /const skillOption = \(c: \{ name: string; ap: number \| undefined \}\): PickOption => \(\{ value: c\.name, label: skillName\(c\.name\), ap: c\.ap, note: skillDesc\(c\.name\) \}\);/);
   assert.match(fn(page, "heroRows"), /note: x === "None" \? "" : passiveText\(x\)/);
   assert.doesNotMatch(fn(page, "heroRows"), /class: "eff"/);
-  // a phone: the list sits in the row, full width, its notes wrap (no native <select>)
+  // in place (the Flows), the list sits in the row, full width; its notes wrap (no native <select>). U69: the cards float it
   assert.match(block, /\.pk-list \{ flex: 1 0 100%;/);
   assert.match(block, /\.pk-opt \.pk-note \{ grid-column: 1 \/ -1;/);
 });

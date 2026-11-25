@@ -212,25 +212,20 @@ test("the cards at a turn: HP, the engine's live stats, the effects and the row 
   const rot = [0, 1, 2, 3, 4].map((k) => ({ text: `Skill ${k}` }));
   const kind = Number(w) ? "hero" : "enemy";
   const card = fighterCard({ kind, head: document.createElement("span") as unknown as HTMLElement, stats,
-    turn: { hp: s.hp, fx: s.fx, active: s.active }, passive: { text: "Might" }, rotation: rot }) as unknown as F;
+    turn: { hp: s.hp, active: s.active }, passive: { text: "Might" }, rotation: rot }) as unknown as F;
   const kids = card.children.map((c) => c.className);
   // U67: no HP bar; the HP cell reads "HP now / max HP"
-  assert.deepEqual(kids.slice(1, 4), ["fc-stats", "fc-fx", "fc-rows fc-passive"], "stats, effects, then the passive");
+  // U69: no effects line: the stats, then the passive
+  assert.deepEqual(kids.slice(1, 4), ["fc-stats", "fc-rows fc-passive", "fc-rows fc-rot"], "stats, then the passive");
   assert.deepEqual(card.querySelectorAll("dd.fc-val").map((x) => (x.querySelector("span.v-full") ?? x).textContent),
     cardStats(kind).map(([k]) => (k === "maxHP" ? `${fmt.format(s.hp)} / ${fmt.format(s.maxHP)}`
       : Math.abs(stats[k]) >= 10_000 ? fmtCompact.format(stats[k]) : fmt.format(stats[k]))));
-  const fx = card.querySelector("ul.fc-fx")!;
-  assert.equal(fx.children.length, s.fx.length);
-  for (const [k, c] of s.fx.entries()) {
-    assert.equal(fx.children[k].className, c.debuff ? "debuff" : "buff");
-    assert.ok(fx.children[k].textContent.includes(c.label));
-    assert.equal(fx.children[k].title, c.title);
-  }
+  assert.equal(card.querySelectorAll("ul.fc-fx").length, 0, "U69: no effects line");
   const rows = card.querySelectorAll("li.fc-turn");
   assert.deepEqual(rows.map((r) => r.classList.contains("active")), [0, 1, 2, 3, 4].map((k) => k === s.active));
   assert.equal(rows[s.active!].getAttribute("aria-current"), "true");
   // another turn painted in place: one grid, the effects and the mark follow (turn 0: none of them)
-  paintCard(card as unknown as HTMLElement, { stats: odinData.steps[0].states[Number(w)].stats!, hp: 1, fx: [], active: null });
+  paintCard(card as unknown as HTMLElement, { stats: odinData.steps[0].states[Number(w)].stats!, hp: 1, active: null });
   assert.equal(card.querySelectorAll(".fc-hp").length, 0, "U67: no HP bar");
   assert.equal(card.querySelectorAll("dl.fc-stats").length, 1);
   assert.equal(card.querySelectorAll("ul.fc-fx").length, 0);
