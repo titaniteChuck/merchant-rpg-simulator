@@ -29,14 +29,25 @@ export const GOLD_HELP = "Gold only: loot sell value minus the run's cost (quest
   "Essence isn't counted.";
 
 /** The ranking figure (F27): "3,544 value/h". */
-export const valueText = (v: number): string => `${fmt.format(v)} value/h`;
+export const valueText = (v: number): string => valueParts(v).join(" ");
+
+/** The ranking figure in two parts (R3 375 px fixes): the number, then the unit the podium tile sets smaller beside it. */
+export const valueParts = (v: number): [number: string, unit: string] => [fmt.format(v), "value/h"];
 
 /** Essence that shows as more than "0.0". */
 export const hasEssence = (x: number): boolean => x >= 0.05;
 
+/**
+ * Value / h as its gold amount and the rest (R3 375 px fixes), so the podium tile colours a gold loss as the table
+ * does: ["-1,283 g", " + 79.2 essence /h"], ["1,250 g", "/h"].
+ */
+export function valueSplitParts(goldPerHour: number, essencePerHour: number): [gold: string, rest: string] {
+  return [gold(goldPerHour), hasEssence(essencePerHour) ? ` + ${fmt1.format(essencePerHour)} essence /h` : "/h"];
+}
+
 /** Value / h in its parts (F27): "-1,283 g + 79.2 essence /h"; "1,250 g/h" when the source gives no essence. */
 export function valueSplit(goldPerHour: number, essencePerHour: number): string {
-  return hasEssence(essencePerHour) ? `${gold(goldPerHour)} + ${fmt1.format(essencePerHour)} essence /h` : `${gold(goldPerHour)}/h`;
+  return valueSplitParts(goldPerHour, essencePerHour).join("");
 }
 
 /** An essence cell (F36): "–" when the source gives none. */

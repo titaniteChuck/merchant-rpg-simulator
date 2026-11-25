@@ -34,7 +34,7 @@ import type { FarmRequest, FarmResponse } from "./farming-worker.ts";
 import { FARM_SLOTS, farmQuestIds, fightingSlots, questGroups, readStoredParty, storedPartyWith, tickedByDefault } from "./farming-party.ts";
 import {
   costTip, ERRORS_TIP, essenceText, foldSummary, GOLD_HELP, gradeTip, LEFT_OUT_TIP, NO_SCROLL, PARTY_TIP, RANDOM_OFFER,
-  RANDOM_OFFER_TIP, SCROLLS_TIP, setupSignature, sourceSub, timeTip, toneOf, valueHelp, valueSplit, valueText,
+  RANDOM_OFFER_TIP, SCROLLS_TIP, setupSignature, sourceSub, timeTip, toneOf, valueHelp, valueParts, valueSplit, valueSplitParts, valueText,
 } from "./farming-view.ts";
 import { heroLabels } from "./levelling-view.ts";
 import { tip } from "./tooltip.ts";
@@ -384,6 +384,11 @@ function results(rows: FarmRow[], choices: SourceChoice[], mode: string): HTMLEl
         { icon: `#${k + 1}`, tone: r.value_per_hour > 0 ? "good" : "bad",
           ...(r.value_per_hour > 0 && best.r.value_per_hour > 0 ? { bar: r.value_per_hour / best.r.value_per_hour } : {}) });
       t.querySelector(".tile-label")?.replaceChildren(c.name());
+      // R3 375 px fixes: the unit smaller beside the number, on the same line; a gold loss red as in the table.
+      const [num, unit] = valueParts(r.value_per_hour);
+      t.querySelector(".tile-value")?.replaceChildren(`${num} `, el("span", { class: "farm-unit" }, unit));
+      const [g, rest] = valueSplitParts(r.gold_per_hour, r.essence_per_hour);
+      t.querySelector(".tile-hint")?.replaceChildren(el("span", { class: toneOf(r.gold_per_hour) }, g), rest);
       return t;
     })));
   }
