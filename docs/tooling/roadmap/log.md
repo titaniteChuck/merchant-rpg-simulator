@@ -91,3 +91,4 @@
 - **Update**: U50 done (49401a8): Solver hero table with Must include / Neutral / Exclude per hero (saved per save; old locks become Must include), locks removed; the solve honours the states and refuses impossible ones.
 - **Update**: U51–U54 added from the user's second 2026-11-25 batch (Solver rows, Flow turn rows, save width and overview, wiki map time and Fight button, class page).
 - **Update**: U52 done (554fd3f): loading a save opens the Overview from any page; save.html as wide as the other pages, stable scrollbar gutter site-wide; no save chips on the open-save wizard; Example save as a third card.
+- **Update**: U54 done (80e43e3): class details show a stat table and a shape-only spider chart instead of the line chart; skills show their unlock level, lvl 51 marked Frozen Tome.
