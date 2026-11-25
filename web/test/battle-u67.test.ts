@@ -15,7 +15,7 @@ import { Sim } from "../src/tools/engine.ts";
 import { fightSeed } from "../src/tools/combat.ts";
 import { traceFight } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
-import { cardTurnOf, modLabel, modsAt, outcomeAt, statMods } from "../src/ui/card-turn.ts";
+import { cardTurnOf, modLabel, modLeft, modsAt, outcomeAt, statMods } from "../src/ui/card-turn.ts";
 import { type CardOutcome, fighterCard, type ModPart, modSums, modText, modTipLines, outcomeText, paintCard, signedPct, statCell, statGrid }
   from "../src/ui/fighter-card.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
@@ -136,15 +136,18 @@ test("card data: the parts at a turn, named; the outcome on the turn's row; the 
   for (const l of last.life) assert.deepEqual(modsAt(odin, t, l.who), l.mods ?? []);
   // labels
   const m = (x: Partial<api.TraceMod>): api.TraceMod => ({ stat: "atk", kind: "pct", value: 0.1, src: "effect", name: "Holy Blessing", ...x });
-  assert.equal(modLabel(m({ from: 2, skill: "Holy Blessing", turns: 2 }), names), "Holy Blessing from Hero 2, 2 turns left");
-  assert.equal(modLabel(m({ from: 0, turns: 1 }), names), "Holy Blessing from Odin, 1 turn left");
-  assert.equal(modLabel(m({ turns: 0 }), names), "Holy Blessing, ends at its next action");
-  assert.equal(modLabel(m({ src: "passive", name: "Might" }), names), "Might (passive)");
-  assert.equal(modLabel(m({ src: "item", name: "Sturdy Inferno Chapeau" }), names), "[Sturdy] Inferno Chapeau");
-  assert.equal(modLabel(m({ src: "scroll", name: "Scrolls" }), names), "Scrolls");
+  // U71: no caster; the time left apart (modLeft), after the value in the tooltip
+  assert.equal(modLabel(m({ from: 2, skill: "Holy Blessing", turns: 2 })), "Holy Blessing");
+  assert.equal(modLeft(m({ from: 2, skill: "Holy Blessing", turns: 2 })), "2 turns left");
+  assert.equal(modLeft(m({ from: 0, turns: 1 })), "1 turn left");
+  assert.equal(modLeft(m({ turns: 0 })), "ends at its next action");
+  assert.equal(modLeft(m({ src: "passive", name: "Might" })), undefined);
+  assert.equal(modLabel(m({ src: "passive", name: "Might" })), "Might (passive)");
+  assert.equal(modLabel(m({ src: "item", name: "Sturdy Inferno Chapeau" })), "[Sturdy] Inferno Chapeau");
+  assert.equal(modLabel(m({ src: "scroll", name: "Scrolls" })), "Scrolls");
   // by stat; two enchantments of a kind add up
   const sm = statMods([m({ src: "passive", name: "Might" }), m({ src: "enchant", name: "Enchantment", value: 0.02 }),
-    m({ src: "enchant", name: "Enchantment", value: 0.03 }), m({ stat: "crit", kind: "flat", value: 25, name: "Expose Weakness" })], names);
+    m({ src: "enchant", name: "Enchantment", value: 0.03 }), m({ stat: "crit", kind: "flat", value: 25, name: "Expose Weakness" })]);
   assert.deepEqual(Object.keys(sm), ["atk", "crit"]);
   assert.deepEqual(sm.atk.map((p) => [p.label, p.value]), [["Might (passive)", 0.1], ["Enchantments", 0.05]]);
   assert.deepEqual(sm.crit, [{ kind: "flat", value: 25, label: "Expose Weakness" }]);
@@ -192,20 +195,21 @@ test("text: the stat cell, name value (modifier); HP now / max; no modifier part
 });
 
 test("text: the modifier's tooltip: the parts with their sources, then the game's calculation", () => {
-  const atk: ModPart[] = [{ kind: "pct", value: 0.1, label: "Might (passive)" }, { kind: "pct", value: 0.05, label: "Song of Courage from Hero 5, 2 turns left" }];
+  // U71: no header, no caster, the time left after the value, no "Base"
+  const atk: ModPart[] = [{ kind: "pct", value: 0.1, label: "Might (passive)" }, { kind: "pct", value: 0.05, label: "Song of Courage", left: "2 turns left" }];
   assert.deepEqual(modTipLines("atk", "Atk", 1150, atk),
-    ["Atk 1,150", "Might (passive): +10%", "Song of Courage from Hero 5, 2 turns left: +5%", "Base 1,000 × (1 + 15%) = 1,150"]);
+    ["Might (passive): +10%", "Song of Courage: +5% (2 turns left)", "1,000 × (1 + 15%) = 1,150"]);
   assert.deepEqual(modTipLines("maxHP", "HP", 2500, [{ kind: "pct", value: 0.25, label: "Juggernaut (passive)" }]),
-    ["Max HP 2,500", "Juggernaut (passive): +25%", "Base 2,000 × (1 + 25%) = 2,500"]);
+    ["Juggernaut (passive): +25%", "2,000 × (1 + 25%) = 2,500"]);
   // flat points first, then the %
   assert.deepEqual(modTipLines("def", "Def", 80, [{ kind: "pct", value: -0.2, label: "Shield Slam" }, { kind: "flat", value: 30, label: "Inspiration" }]),
-    ["Def 80", "Shield Slam: −20%", "Inspiration: +30", "(Base 70 + 30) × (1 − 20%) = 80"]);
+    ["Shield Slam: −20%", "Inspiration: +30", "(70 + 30) × (1 − 20%) = 80"]);
   assert.deepEqual(modTipLines("crit", "Crit", 37, [{ kind: "flat", value: 25, label: "Expose Weakness" }]),
-    ["Crit 37", "Expose Weakness: +25", "Base 12 + 25 = 37"]);
+    ["Expose Weakness: +25", "12 + 25 = 37"]);
   assert.deepEqual(modTipLines("acc", "Acc", 0, [{ kind: "pct", value: -1.4, label: "Other" }]),
-    ["Acc 0", "Other: −140%", "Base × (1 − 100%) = 0", "% sum −140%, floored at −100%"]);
-  assert.deepEqual(modTipLines("mdef", "Mdef", 300, [{ kind: "set", value: 0, label: "Holy Shield from Hero 1" }]),
-    ["Mdef 300", "Holy Shield from Hero 1: sets Mdef"]);
+    ["Other: −140%", "Acc × (1 − 100%) = 0", "% sum −140%, floored at −100%"]);
+  assert.deepEqual(modTipLines("mdef", "Mdef", 300, [{ kind: "set", value: 0, label: "Holy Shield" }]),
+    ["Holy Shield: sets Mdef"]);
 });
 
 test("text: the outcome on the turn's row: 💫, damage with a crit mark, Miss, heals, several targets compactly", () => {
@@ -246,7 +250,7 @@ test("card: no HP bar; the stats two per row with the modifier focusable and its
   up.dispatch("focus");
   const box = (document.body as unknown as F).children.find((c) => c.id === "tip") as F;
   assert.ok(box && !box.hidden);
-  assert.equal(box.textContent, "Atk 1,150Might (passive): +15%Base 1,000 × (1 + 15%) = 1,150");
+  assert.equal(box.textContent, "Might (passive): +15%1,000 × (1 + 15%) = 1,150");
   // the enemy card: Eva, no Crit
   const foe = fighterCard({ kind: "enemy", head: document.createElement("span") as unknown as HTMLElement, stats, rotation: rot }) as unknown as F;
   assert.deepEqual(foe.querySelectorAll("dt").map((d) => d.textContent), ["HP", "Atk", "Matk", "Def", "Mdef", "Acc", "Eva"]);
@@ -275,9 +279,10 @@ test("page: the cards take the modifiers, effects and outcome from the trace; CS
   assert.doesNotMatch(page, /chartRuns/, "the cards read the chart\'s own fought runs (chart.runs[i].trace)");
   assert.match(hpChartSrc, /won: r\.trace\.won, turns: r\.trace\.turns, trace: r\.trace \}/);
   assert.doesNotMatch(page, /hpTexts/);
-  assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: auto minmax\(0, 1fr\) auto auto minmax\(0, 1fr\) auto;/);
+  // U71: the value right after its name, the room left between the two stats; HP its own line (the U71 block)
+  assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: auto minmax\(0, max-content\) minmax\(max-content, 1fr\) auto minmax\(0, max-content\) minmax\(max-content, 1fr\);/);
   assert.match(block, /\.fc-stat \{ display: contents; \}/);
-  assert.match(block, /\.fc-stat-hp > \.fc-val \{ grid-column: 2 \/ span 4; \}/);
+  assert.doesNotMatch(block, /\.fc-stat-hp > \.fc-val \{ grid-column: 2 \/ span 4; \}/);
   // U69: the phone rules moved to the U69 block (the two columns back | front, the stats two per row)
   assert.doesNotMatch(block, /@media \(max-width: 560px\)/);
   const u69 = css.slice(css.indexOf("/* U69 */"), css.indexOf("/* end U69 */"));

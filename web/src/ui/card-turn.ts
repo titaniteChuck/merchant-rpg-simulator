@@ -35,13 +35,16 @@ export function modsAt(trace: CardTrace, turn: number, who: number): TraceMod[] 
 /** "2 turns left"; an effect at 0 still works until its owner's next action. */
 const left = (t: number) => (t <= 0 ? "ends at its next action" : `${t} turn${t === 1 ? "" : "s"} left`);
 
-/** A part's source in words: "Might (passive)", "Holy Blessing from Ana, 2 turns left", "[Sturdy] Inferno Chapeau". */
-export function modLabel(m: TraceMod, nameOf: (who: number) => string): string {
+/** U71: an effect part's time left ("2 turns left"); undefined for a part without one (a passive, an item…). */
+export const modLeft = (m: TraceMod): string | undefined => (m.src === "effect" && m.turns !== undefined ? left(m.turns) : undefined);
+
+/**
+ * A part's source in words: "Might (passive)", "Holy Blessing", "[Sturdy] Inferno Chapeau". U71: no caster ("from
+ * Ana") and no time left (modLeft: the tooltip puts it after the value).
+ */
+export function modLabel(m: TraceMod): string {
   switch (m.src) {
-    case "effect": {
-      const from = m.from !== undefined && m.from >= 0 ? ` from ${nameOf(m.from)}` : "";
-      return `${effectName(m.skill ?? m.name)}${from}${m.turns !== undefined ? `, ${left(m.turns)}` : ""}`;
-    }
+    case "effect": return effectName(m.skill ?? m.name);
     case "passive": return `${passiveName(m.name)} (passive)`;
     case "item": return itemNameFromEnglish("equipment", m.name);
     case "potion": return `${itemNameFromEnglish("consumable", m.name)} (potion)`;
@@ -51,15 +54,18 @@ export function modLabel(m: TraceMod, nameOf: (who: number) => string): string {
   }
 }
 
-/** The parts by stat, named; parts of one kind with the same name are added up (several enchantments). */
-export function statMods(mods: TraceMod[], nameOf: (who: number) => string): StatMods {
+/**
+ * The parts by stat, named; parts of one kind with the same name are added up (several enchantments; U71: one effect
+ * from two casters with the same time left, the caster no longer shown).
+ */
+export function statMods(mods: TraceMod[]): StatMods {
   const out: StatMods = {};
   for (const m of mods) {
-    const label = modLabel(m, nameOf);
+    const label = modLabel(m), lft = modLeft(m);
     const list = (out[m.stat] ??= []);
-    const same = list.find((p) => p.kind === m.kind && p.label === label);
+    const same = list.find((p) => p.kind === m.kind && p.label === label && p.left === lft);
     if (same) same.value += m.value;
-    else list.push({ kind: m.kind, value: m.value, label } satisfies ModPart);
+    else list.push({ kind: m.kind, value: m.value, label, ...(lft !== undefined ? { left: lft } : {}) } satisfies ModPart);
   }
   return out;
 }
@@ -92,11 +98,11 @@ export function hpAt(trace: CardTrace, turn: number, who: number): number | null
 
 /**
  * U69: the fighter's HP change during `turn` (its HP at the turn's end less at the previous one's), and the hits and
- * heals behind it by source ("Odin · Fireball", "Ana · Heal"; a damage or heal over time under its effect's name):
- * the HP each really took or gave (no overkill, no overheal; nothing on a fighter already down). Null at turn 0 or
- * without HP records.
+ * heals behind it by source (U71: the skill or effect only, "Fireball", "Heal", one line per source whoever cast it; a
+ * damage or heal over time under its effect's name): the HP each really took or gave (no overkill, no overheal; nothing
+ * on a fighter already down). Null at turn 0 or without HP records.
  */
-export function hpDeltaAt(trace: CardTrace, turn: number, who: number, nameOf: (who: number) => string): HpDelta | null {
+export function hpDeltaAt(trace: CardTrace, turn: number, who: number): HpDelta | null {
   if (turn <= 0) return null;
   const now = hpAt(trace, turn, who), before = hpAt(trace, turn - 1, who);
   if (now === null || before === null) return null;
@@ -109,7 +115,7 @@ export function hpDeltaAt(trace: CardTrace, turn: number, who: number, nameOf: (
         if (c.to !== who || (c.kind === "dmg" && c.missed)) continue;
         const v = c.kind === "heal" ? Math.max(0, c.hpAfter) - Math.max(0, c.hpBefore) : Math.max(0, c.hpBefore) - Math.max(0, c.hpAfter);
         if (v <= 0) continue;
-        const label = `${c.from >= 0 ? `${nameOf(c.from)} · ` : ""}${effectName(c.src)}`;
+        const label = effectName(c.src);
         const into = c.kind === "heal" ? healed : taken;
         into.set(label, (into.get(label) ?? 0) + v);
       }
@@ -126,5 +132,5 @@ export function hpDeltaAt(trace: CardTrace, turn: number, who: number, nameOf: (
 export function cardTurnOf(trace: CardTrace | undefined, turn: number, who: number, nameOf: (who: number) => string):
   { mods?: StatMods; outcome: CardOutcome | null; hpDelta?: HpDelta | null } {
   if (!trace) return { outcome: null };
-  return { mods: statMods(modsAt(trace, turn, who), nameOf), outcome: outcomeAt(trace, turn, who, nameOf), hpDelta: hpDeltaAt(trace, turn, who, nameOf) };
+  return { mods: statMods(modsAt(trace, turn, who)), outcome: outcomeAt(trace, turn, who, nameOf), hpDelta: hpDeltaAt(trace, turn, who) };
 }

@@ -20,8 +20,8 @@
  *   the heals in green (outcomeParts).
  *
  * U65: paintCard puts another turn's state on a card in place (the pickers, an open list and the focus stay).
- * The text builders (statCell, modText, modTipLines, hpDeltaText, hpDeltaTipLines, outcomeText, outcomeParts) are
- * pure, for the tests.
+ * The text builders (statCell, modText, modTip, hpDeltaText, hpDeltaTip, outcomeText, outcomeParts) are pure, for the
+ * tests. U71: the tooltips have no header and no caster names; their values coloured (TipLine), the signs kept.
  */
 import { apBadge, el, fmt, fmtCompact, pct } from "./dom.ts";
 import { pickButton, type PickOption } from "./pick-list.ts";
@@ -38,12 +38,14 @@ export const ENEMY_STATS = pick(["maxHP", "atk", "matk", "def", "mdef", "acc", "
 export const cardStats = (kind: "hero" | "enemy") => (kind === "hero" ? HERO_STATS : ENEMY_STATS);
 
 // ---------------------------------------------------------------- U67: stat modifiers (pure text)
-/** U67: one part of a stat's modifier, its source already named ("Might (passive)", "Holy Blessing from Ana, 2 turns left"). */
+/** U67: one part of a stat's modifier, its source already named ("Might (passive)", "Holy Blessing"). */
 export interface ModPart {
   kind: "pct" | "flat" | "set";
   /** A share for "pct" (0.15 = +15%), points for "flat", 0 for "set". */
   value: number;
   label: string;
+  /** U71: an effect's time left ("1 turn left"), shown after the value; none for a passive, an item… */
+  left?: string;
 }
 /** U67: a card's modifier parts, by stat key. */
 export type StatMods = Record<string, ModPart[]>;
@@ -72,8 +74,15 @@ export function modText(key: string, parts: ModPart[] | undefined): string {
   return bits.length ? bits.join(" ") : s.set ? "set" : "";
 }
 
+// ---------------------------------------------------------------- U71: tooltip lines with coloured pieces
+/** U71: a piece of a tooltip line: a bonus or a heal "good" (green), a malus or damage "bad" (red), else plain. */
+export type TipPart = { text: string; tone?: "good" | "bad" };
+/** U71: a tooltip line, in pieces; its text is the pieces joined (the sign stays: the colour is not the only cue). */
+export type TipLine = TipPart[];
+export const tipLineText = (l: TipLine): string => l.map((p) => p.text).join("");
+
 // ---------------------------------------------------------------- U69: HP's change during the turn (pure text)
-/** U69: one source of damage taken or healing received ("Odin · Fireball"), and the HP it took or gave. */
+/** U69: one source of damage taken or healing received (U71: the skill or effect only, "Fireball"), and the HP it took or gave. */
 export interface HpSource {
   label: string;
   value: number;
@@ -96,16 +105,17 @@ export function hpDeltaText(d: HpDelta | null | undefined): string {
 }
 
 /**
- * U69: HP's modifier tooltip: the turn's change, the damage taken then the heals received with their sources, and
- * what neither explains (a max HP change) as "Other".
+ * U69: HP's modifier tooltip. U71: one line per source, no header, no caster: the damage taken ("Fireball: −300",
+ * red) then the heals received ("Heal: +60", green), and what neither explains (a max HP change) as "Other" (plain).
  */
-export function hpDeltaTipLines(d: HpDelta): string[] {
+export function hpDeltaTip(d: HpDelta): TipLine[] {
   const dmg = total(d.taken), heal = total(d.healed), other = d.net - (heal - dmg);
-  return [`Turn ${d.turn}: ${hpDeltaText(d) || "±0"} HP`,
-    ...(d.taken.length ? [`Damage taken: ${fmt.format(dmg)}`, ...d.taken.map((x) => `${x.label}: ${fmt.format(x.value)}`)] : []),
-    ...(d.healed.length ? [`Heals received: ${fmt.format(heal)}`, ...d.healed.map((x) => `${x.label}: ${fmt.format(x.value)}`)] : []),
-    ...(Math.round(other) !== 0 ? [`Other: ${signedNum(other)}`] : [])];
+  return [...d.taken.map((x): TipLine => [{ text: `${x.label}: ${MINUS}${fmt.format(x.value)}`, tone: "bad" }]),
+    ...d.healed.map((x): TipLine => [{ text: `${x.label}: +${fmt.format(x.value)}`, tone: "good" }]),
+    ...(Math.round(other) !== 0 ? [[{ text: `Other: ${signedNum(other)}` }]] : [])];
 }
+/** U69: hpDeltaTip's lines as text. */
+export const hpDeltaTipLines = (d: HpDelta): string[] => hpDeltaTip(d).map(tipLineText);
 
 /**
  * U67: one stat cell's three parts: "HP" "1,234 / 2,000" "(+10%)"; `full` the whole value when `value` is shortened;
@@ -129,13 +139,30 @@ export function statCell(key: string, label: string, stats: Record<string, numbe
 }
 
 /**
- * U67: a modifier's tooltip, line by line: the stat, each part with its source, then the calculation in the game's
- * order (statsService): stat = (base + flat parts) × (1 + sum of % parts), the sum floored.
+ * U67: a modifier's tooltip, line by line: each part with its source, then the calculation in the game's order
+ * (statsService): stat = (base + flat parts) × (1 + sum of % parts), the sum floored. U71: no header; a part reads
+ * "Holy Blessing: +40% (1 turn left)", the value green for a bonus, red for a malus; no caster; the calculation
+ * without the word "Base" ("200 × (1 + 40%) = 280").
  */
-export function modTipLines(key: string, label: string, value: number, parts: ModPart[]): string[] {
+export function modTip(key: string, label: string, value: number, parts: ModPart[]): TipLine[] {
   const name = key === "maxHP" ? "Max HP" : label;
-  const lines = [`${name} ${fmt.format(value)}`];
-  for (const p of parts) lines.push(`${p.label}: ${p.kind === "pct" ? signedPct(p.value) : p.kind === "flat" ? signedNum(p.value) : `sets ${name}`}`);
+  const lines: TipLine[] = parts.map((p): TipLine => {
+    const left: TipLine = p.left ? [{ text: ` (${p.left})` }] : [];
+    if (p.kind === "set") return [{ text: `${p.label}: sets ${name}` }, ...left];
+    const v: TipPart = { text: p.kind === "pct" ? signedPct(p.value) : signedNum(p.value) };
+    if (Math.abs(p.value) > 1e-9) v.tone = p.value < 0 ? "bad" : "good";
+    return [{ text: `${p.label}: ` }, v, ...left];
+  });
+  for (const l of modCalcLines(key, name, value, parts)) lines.push([{ text: l }]);
+  return lines;
+}
+/** U67: modTip's lines as text. */
+export const modTipLines = (key: string, label: string, value: number, parts: ModPart[]): string[] =>
+  modTip(key, label, value, parts).map(tipLineText);
+
+/** U67: the calculation's lines (U71: no "Base"): "(70 + 30) × (1 − 20%) = 80", "12 + 25 = 37", the floor's note. */
+function modCalcLines(key: string, name: string, value: number, parts: ModPart[]): string[] {
+  const lines: string[] = [];
   const s = modSums(key, parts);
   const flat = Math.abs(s.flat) > 1e-9;
   if (Math.abs(s.raw) > 1e-9) {
@@ -143,15 +170,17 @@ export function modTipLines(key: string, label: string, value: number, parts: Mo
     const factor = `× (1 ${s.pct < 0 ? MINUS : "+"} ${pct(Math.abs(s.pct), Math.abs(s.pct * 100 - Math.round(s.pct * 100)) < 0.05 ? 0 : 1)})`;
     if (mult > 1e-9) {
       const base = value / mult - s.flat;
-      const start = flat ? `(Base ${fmt.format(base)} ${s.flat < 0 ? MINUS : "+"} ${fmt.format(Math.abs(s.flat))})` : `Base ${fmt.format(base)}`;
+      const start = flat ? `(${fmt.format(base)} ${s.flat < 0 ? MINUS : "+"} ${fmt.format(Math.abs(s.flat))})` : fmt.format(base);
       lines.push(`${start} ${factor} = ${fmt.format(value)}`);
-    } else lines.push(`Base ${factor} = ${fmt.format(value)}`);
+    } else lines.push(`${name} ${factor} = ${fmt.format(value)}`);
     if (s.raw < s.floor) lines.push(`% sum ${signedPct(s.raw)}, floored at ${signedPct(s.floor)}`);
-  } else if (flat) lines.push(`Base ${fmt.format(value - s.flat)} ${s.flat < 0 ? MINUS : "+"} ${fmt.format(Math.abs(s.flat))} = ${fmt.format(value)}`);
+  } else if (flat) lines.push(`${fmt.format(value - s.flat)} ${s.flat < 0 ? MINUS : "+"} ${fmt.format(Math.abs(s.flat))} = ${fmt.format(value)}`);
   return lines;
 }
 
-const tipBox = (lines: string[]) => el("div", { class: "fc-tip" }, ...lines.map((l) => el("div", {}, l)));
+/** The tooltip's box: a line per <div>; U71: a toned piece in a `t-good` / `t-bad` span. A plain string: one piece. */
+const tipBox = (lines: (string | TipLine)[]) => el("div", { class: "fc-tip" }, ...lines.map((l) =>
+  el("div", {}, ...(typeof l === "string" ? [l] : l.map((p) => (p.tone ? el("span", { class: `t-${p.tone}` }, p.text) : p.text))))));
 
 /**
  * The stats as a <dl>: per stat a row of three cells (name, value, modifier; CSS lines them up two per row, HP across
@@ -165,8 +194,8 @@ export function statGrid(stats: Record<string, number> | null, kind: "hero" | "e
     const parts = o.mods?.[k];
     const mod = el("dd", { class: "fc-mod" });
     // U69: HP's modifier is the turn's HP change, its sources in the tooltip; the brackets go on a phone (CSS)
-    const lines = !c.mod || !stats ? null : k === "maxHP" ? (o.hpDelta ? hpDeltaTipLines(o.hpDelta) : null)
-      : parts?.length ? modTipLines(k, label, Number(stats[k] ?? 0), parts) : null;
+    const lines = !c.mod || !stats ? null : k === "maxHP" ? (o.hpDelta ? hpDeltaTip(o.hpDelta) : null)
+      : parts?.length ? modTip(k, label, Number(stats[k] ?? 0), parts) : null;
     if (lines) {
       const tone = c.mod.startsWith(`(${MINUS}`) ? "down" : c.mod.startsWith("(+") ? "up" : "even";
       const m = el("span", { class: `fc-mod-btn ${tone}`, tabindex: "0" },

@@ -2664,16 +2664,17 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 
 /* U67 */
 /* The cards' stats (fighter-card.ts statGrid): "name value (modifier)", two per row on six columns so the three parts
-   line up; HP first, its value across both stats' middle columns. The modifier is green (up) or red (down), dotted:
-   its parts and calculation in the tooltip. */
-.fc-stats { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto minmax(0, 1fr) auto; align-items: baseline; gap: 1px 4px;
+   line up; HP first, across the row (U71: its own line, see the U71 block). The modifier is green (up) or red (down),
+   dotted: its parts and calculation in the tooltip. U71: the value sits right after its name (a column as wide as its
+   longest value, the numbers right-aligned in it); the room left goes after each modifier, between the two stats. */
+.fc-stats { display: grid; grid-template-columns: auto minmax(0, max-content) minmax(max-content, 1fr) auto minmax(0, max-content) minmax(max-content, 1fr);
+  align-items: baseline; gap: 1px 4px;
   margin: 0; font-variant-numeric: tabular-nums; }
 .fc-stat { display: contents; }
 .fc-stats dt { color: var(--muted); font-size: 0.68rem; font-weight: 700; }
-.fc-stat:nth-child(2n+3) > dt { padding-left: 6px; }
+.fc-stat:nth-child(2n+3) > dt { padding-left: 12px; }
 .fc-stats dd { margin: 0; white-space: nowrap; }
 .fc-stats .fc-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; font-weight: 650; font-size: 0.8rem; }
-.fc-stat-hp > .fc-val { grid-column: 2 / span 4; }
 .fc-val .v-short { display: none; }
 .fc-stats .fc-mod { font-size: 0.7rem; font-weight: 650; }
 .fc-mod-btn { border-bottom: 1px dotted currentColor; cursor: help; }
@@ -2718,7 +2719,7 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .fc-hero { padding: 6px 5px 6px 9px; }
   .fc-hero .fc-stats { gap: 0 2px; }
   .fc-hero .fc-stats dt { font-size: 0.6rem; }
-  .fc-hero .fc-stat:nth-child(2n+3) > dt { padding-left: 3px; }
+  .fc-hero .fc-stat:nth-child(2n+3) > dt { padding-left: 6px; }
   .fc-hero .fc-stats .fc-val { font-size: 0.7rem; }
   .fc-hero .fc-stats .fc-mod { font-size: 0.58rem; }
   .fc-hero .fc-paren { display: none; }
@@ -2738,3 +2739,17 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-fight.hp-all { padding: 0 2px; text-overflow: clip; text-align: center; }
 .hp-fights.zoomed .hp-fight[aria-current="true"] { cursor: default; }
 /* end U68 */
+
+/* U71 */
+/* The Party view's cards (fighter-card.ts). HP's stat is a line of its own across the card, "HP 1,234 / 2,000 (−340)",
+   the value right after the name (the other stats: the U67 grid). */
+.fc-stats .fc-stat-hp { display: flex; grid-column: 1 / -1; align-items: baseline; gap: 4px; min-width: 0; }
+.fc-stat-hp > .fc-val { flex: 0 1 auto; }
+/* The modifier tooltips: a bonus or a heal green, a malus or damage red (the U69 outcome tokens: AA on the tooltip's
+   --card, light and dark); the sign stays, so the colour is not the only cue. */
+.fc-tip .t-good { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
+.fc-tip .t-bad { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
+@media (max-width: 560px) {
+  .fc-hero .fc-stats .fc-stat-hp { gap: 2px; }
+}
+/* end U71 */

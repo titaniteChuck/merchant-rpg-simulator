@@ -254,8 +254,9 @@ test("HP: the modifier is the turn's net HP change, its damage and heals by sour
   assert.equal(hpDeltaText(d({ net: -12_345 })), "−12.3K");
   assert.equal(hpDeltaText(d({ net: 0, taken: [{ label: "a", value: 50 }], healed: [{ label: "b", value: 50 }] })), "±0");
   const both = d({ net: -280, taken: [{ label: "Odin · Fireball", value: 300 }, { label: "Burn", value: 40 }], healed: [{ label: "Ana · Heal", value: 60 }] });
-  assert.deepEqual(hpDeltaTipLines(both), ["Turn 3: −280 HP", "Damage taken: 340", "Odin · Fireball: 300", "Burn: 40", "Heals received: 60", "Ana · Heal: 60"]);
-  assert.deepEqual(hpDeltaTipLines(d({ net: 100, healed: [{ label: "Ana · Heal", value: 60 }] })), ["Turn 3: +100 HP", "Heals received: 60", "Ana · Heal: 60", "Other: +40"]);
+  // U71: one line per source (no header, no caster), damage then heals, signed
+  assert.deepEqual(hpDeltaTipLines(both), ["Odin · Fireball: −300", "Burn: −40", "Ana · Heal: +60"]);
+  assert.deepEqual(hpDeltaTipLines(d({ net: 100, healed: [{ label: "Ana · Heal", value: 60 }] })), ["Ana · Heal: +60", "Other: +40"]);
   // the cell: never a % on HP; "(−280)" red, "(+120)" green, "(±0)" plain, the tooltip on focus
   const stats = { maxHP: 2000, atk: 100, matk: 80, def: 60, mdef: 50, acc: 95, eva: 30, crit: 12 };
   const hpMods = { maxHP: [{ kind: "pct" as const, value: 0.1, label: "Juggernaut (passive)" }] };
@@ -281,7 +282,7 @@ test("HP change from a real trace: the end-of-turn HP difference, the hits and h
   const whos = [0, ...new Set(odin.actions.flatMap((a) => a.life.map((l) => l.who)))];
   for (let t = 1; t <= odin.turns; t++) {
     for (const w of new Set(whos)) {
-      const x = hpDeltaAt(odin, t, w, names);
+      const x = hpDeltaAt(odin, t, w);
       if (!x) continue;
       assert.equal(x.net, hpAt(odin, t, w)! - hpAt(odin, t - 1, w)!);
       const taken = x.taken.reduce((a, s) => a + s.value, 0), healed = x.healed.reduce((a, s) => a + s.value, 0);
@@ -292,9 +293,9 @@ test("HP change from a real trace: the end-of-turn HP difference, the hits and h
     }
   }
   assert.ok(seen > 0 && healedSeen > 0, "damage and heals both met in the Odin fight");
-  assert.equal(hpDeltaAt(odin, 0, 1, names), null, "turn 0: no change");
+  assert.equal(hpDeltaAt(odin, 0, 1), null, "turn 0: no change");
   // cardTurnOf hands it to the card
-  assert.deepEqual(cardTurnOf(odin, 3, 0, names).hpDelta, hpDeltaAt(odin, 3, 0, names));
+  assert.deepEqual(cardTurnOf(odin, 3, 0, names).hpDelta, hpDeltaAt(odin, 3, 0));
   assert.deepEqual(cardTurnOf(undefined, 3, 0, names), { outcome: null });
 });
 

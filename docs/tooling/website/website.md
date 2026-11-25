@@ -641,6 +641,30 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     takes the chart's effects). Effects that no card shows now: a taunt, a shield (Mana Shield), a damage or heal over
     time between its ticks (its ticks are in HP's tooltip), and the like; the Flows and the chart's tooltips still
     list them.
+- U71, the Party view's fighter cards, fourth pass (`web/src/ui/fighter-card.ts`, `card-turn.ts`; tests
+  `web/test/battle-u71.test.ts`, the U67 and U69 tests updated; CSS in the `U71` block, the last one of `style.css`,
+  and U67's grid and U69's phone padding edited in place):
+  - Stat spacing: the grid's columns are `auto minmax(0, max-content) minmax(max-content, 1fr)` twice (name, value,
+    modifier): the value sits right after its name (its column as wide as the longest value, numbers right-aligned,
+    still shrinking with an ellipsis on a narrow card), and the room left goes after each modifier, i.e. between the
+    two stats of a row; the second stat's name has 12 px more on its left (6 px on a phone). HP is a line of its own
+    across the card (`.fc-stat-hp` a flex row: "HP 1,234 / 2,000 (−340)"), no longer spanning the middle columns.
+  - HP's modifier tooltip (`hpDeltaTip`, text `hpDeltaTipLines`): one line per source, no "Turn N" / "Damage taken" /
+    "Heals received" header and no caster: the damage first ("Bulawa Strike: −123", red), then the heals ("Light's
+    Grace: +456", green), then "Other: ±N" (plain) for what they don't explain. `hpDeltaAt` names a source by its skill
+    or effect only (`effectName`), so the same skill from two casters is one line.
+  - A stat modifier's tooltip (`modTip`, text `modTipLines`): no "MDef 280" header; each part "<source>: +40% (1 turn
+    left)", the value green for a bonus, red for a malus, the time left plain (a part without one: "Might (passive):
+    +10%"); no caster (`modLabel` gives the name, `modLeft` the time left, kept on `ModPart.left`; `statMods` adds up
+    one effect of the same time left from two casters). The calculation has no "Base": "200 × (1 + 40%) = 280",
+    "(70 + 30) × (1 − 20%) = 80", "12 + 25 = 37"; a stat brought to 0 reads "Acc × (1 − 100%) = 0"; the floor's note
+    stays.
+  - The colours are pieces of a line (`TipLine`, `TipPart.tone` "good" / "bad", spans `.t-good` / `.t-bad`, the U69
+    outcome tokens: `--good` / `--bad` 70% with `--fg`, AA on the tooltip's `--card`). The signs stay, so the text
+    read out (the tooltip is the button's `aria-describedby`) says the same without the colour.
+  - Game names in these tooltips go through the site's translation helpers (`effectName` → `skillName` → `tr`), as
+    the rotation rows do: English by default, the visitor's language when picked (or when the browser's is one the
+    game has): "Bénédiction Sacrée" for Holy Blessing in French.
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,
