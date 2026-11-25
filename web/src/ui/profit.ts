@@ -5,6 +5,7 @@
  * items the player owns. With Scribe hidden there are no orbs or maps: no Orbs tab, orb sources, map-modifier chip,
  * ascension filter or "no orbs" tile. With the default settings the page shows the answer the build precomputed
  * (data/profit-default.json) and starts the worker only on a change.
+ * Help is in tip() tooltips (hover, focus and tap), never in `title` (R3 F18).
  */
 import * as api from "../sim/api.ts";
 import { loadSaveText, owned } from "../tools/save.ts";
@@ -17,11 +18,23 @@ import {
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, REGIONS } from "./wiki-data.ts";
 import { isHidden, isVisible, subscribe } from "./expansion-state.ts";
+import { EXPANSION_IDS } from "../tools/expansions.ts";
+import { tip } from "./tooltip.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
 import { ITEM_TYPE_PLURALS, itemName, regionName } from "./names.ts";
 
 /** Orbs and maps are Scribe content. */
 export const orbsHidden = (): boolean => isHidden("Scribe");
+/** No expansion shown: the tables are the base game only (R3 F11). */
+export const baseGameOnly = (): boolean => EXPANSION_IDS.every((x) => isHidden(x));
+
+/** Help on an element, shown on hover, focus and tap (R3 F18); inside a <label> a tap shows it instead of focusing the field. */
+export function helpOn(e: HTMLElement, text: string): void {
+  e.classList.add("pf-tip");
+  e.tabIndex = 0;
+  if (e.closest("label")) e.addEventListener("click", (ev) => ev.preventDefault());
+  tip(e, () => text);
+}
 
 /** U28: an orb source on a map (or an orb) of an expansion the visitor hides is left out. */
 const visibleOrbRow = (x: Row) => isVisible("map", Number(x.map_id), { ascension: Number(x.map_asc) || 0 }) && isVisible("material", Number(x.essence_id));
@@ -312,16 +325,19 @@ function itemsPanel(r: Result): HTMLElement[] {
   return [filterBar({ types: true, owned: true }), tableFor("Items", rows, itemColumnsCached())];
 }
 
-let colsCache: { owned: boolean; cols: InfoColumn[] } | null = null;
+/** No orbs: every row is ascension 0, so no Asc column (R3 F16). */
+const withoutAsc = (cols: InfoColumn[]): InfoColumn[] => (orbsHidden() ? cols.filter((c) => c.key !== "asc") : cols);
+
+let colsCache: { owned: boolean; noAsc: boolean; cols: InfoColumn[] } | null = null;
 function itemColumnsCached(): InfoColumn[] {
-  const o = Boolean(state.owned);
-  if (!colsCache || colsCache.owned !== o) colsCache = { owned: o, cols: itemColumns(o) };
+  const o = Boolean(state.owned), noAsc = orbsHidden();
+  if (!colsCache || colsCache.owned !== o || colsCache.noAsc !== noAsc) colsCache = { owned: o, noAsc, cols: withoutAsc(itemColumns(o)) };
   return colsCache.cols;
 }
 
 function enchantPanel(r: Result): HTMLElement[] {
   const rows = itemFilter(withOwned(r.enchant, "equipment"), false).filter((x) => !state.filters.gainsOnly || gains(x));
-  const cols = enchantColumns();
+  const cols = withoutAsc(enchantColumns());
   if (state.owned) cols.push({ key: "owned", label: "You have", num: true, tip: "Copies in your save: inventory, shop and hero gear." });
   return [filterBar({ owned: true, gains: true }), tableFor("Enchanting", rows, cols)];
 }
@@ -360,9 +376,11 @@ function summaryTiles(r: Result): HTMLElement {
   const topAsc0 = items.filter((x) => x.asc === 0).reduce<Row | null>((a, b) => (a === null || Number(b.best_profit) > Number(a.best_profit) ? b : a), null);
   // The item, outlined for its ascension (silver 1, gold 2).
   const mk = (x: Row | null): Node | string => (x ? itemLink(String(x.type ?? "equipment"), Number(x.id), String(x.name), x.rarity, x.asc) : "—");
-  return el("div", { class: "tiles" },
+  const tiles = el("div", { class: "tiles pf-tiles" },
     tile("Most profit", mk(top), top ? `${gold(Number(top.best_profit))} · ${STRATEGY[String(top.best_strategy)] ?? ""}` : undefined, { icon: "🏆", tone: "t-gold" }),
-    ...(orbsHidden() ? [] : [tile("Most profit, no orbs", mk(topAsc0), topAsc0 ? `${gold(Number(topAsc0.best_profit))}, no ascension` : undefined, { icon: "🔨", tone: "t-blue" })]));
+    ...(orbsHidden() ? [] : [tile("No orbs", mk(topAsc0), topAsc0 ? `${gold(Number(topAsc0.best_profit))}, no ascension` : undefined, { icon: "🔨", tone: "t-blue" })]));
+  if (!baseGameOnly()) return tiles;
+  return el("div", {}, tiles, el("p", { class: "muted small pf-base" }, "Base game only · add your expansions in 📜 Save ▾"));
 }
 
 function renderPanel(keepFocus = false): void {
@@ -430,14 +448,21 @@ function buildSettings(changed: () => void): void {
   const s = state.settings;
   $("#grade-seg").replaceChildren(segmented("pf-grade", "Run grade", ["D", "C", "B", "A", "S"].map((l, i) => ({ value: String(i + 1), label: l })),
     s.grade, (v) => (s.grade = v)));
-  $("#alloc-seg").replaceChildren(segmented("pf-alloc", "Who pays for a run", [
-    { value: "value", label: "Shared", title: "A run's cost is split between everything it drops, by sell value." },
-    { value: "full", label: "Full", title: "Every drop carries the whole run cost: \"I farm this only for that\". Pessimistic." },
-  ], s.alloc, (v) => (s.alloc = v as "value" | "full")));
-  $("#mapmods-box").replaceChildren(chipToggle("Count map modifiers", s.mapMods, (v) => {
+  const alloc = segmented("pf-alloc", "Who pays for a run", [
+    { value: "value", label: "Shared" },
+    { value: "full", label: "Full" },
+  ], s.alloc, (v) => (s.alloc = v as "value" | "full"));
+  const allocHelp = ["A run's cost is split between everything it drops, by sell value.",
+    "Every drop carries the whole run cost: \"I farm this only for that\". Pessimistic."];
+  alloc.querySelectorAll<HTMLElement>(".seg-opt").forEach((o, i) => tip(o, () => allocHelp[i]));
+  $("#alloc-seg").replaceChildren(alloc);
+  const mods = chipToggle("Count map modifiers", s.mapMods, (v) => {
     s.mapMods = v;
     changed();
-  }, "Crafted maps roll modifiers that raise their orb yield (about +26%). Off: plain maps only."));
+  });
+  tip(mods, () => "Crafted maps roll modifiers that raise their orb yield (about +26%). Off: plain maps only.");
+  $("#mapmods-box").replaceChildren(mods);
+  document.querySelectorAll<HTMLElement>("#options [data-tip]").forEach((e) => helpOn(e, e.dataset.tip!));
 }
 
 /** Scribe hidden: no orb sources, map-modifier chip or orb note. */

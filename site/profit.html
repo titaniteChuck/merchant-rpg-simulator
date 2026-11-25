@@ -22,17 +22,17 @@
     <section>
       <h2><span class="step">1</span> Your workshop</h2>
       <form id="options" class="pf-options" autocomplete="off">
-        <div class="pf-field" title="Grade your quests and map runs end with. Better grades drop more loot and orbs, and better ingredients craft better items."><span>Run grade</span>
+        <div class="pf-field pf-seg"><span data-tip="Grade your quests and map runs end with. Better grades drop more loot and orbs, and better ingredients craft better items.">Run grade</span>
           <div id="grade-seg"></div></div>
-        <label class="pf-field"><span>Party luck</span>
-          <input id="luck" type="number" min="0" max="1000" step="1" value="0" inputmode="numeric" title="Your party's luck: more and better quest drops."></label>
-        <label class="pf-field"><span>Crafter level</span>
-          <input id="crafter" type="number" min="1" max="60" step="1" value="60" inputmode="numeric" title="Level of your crafters: it sets the craft grade and the odds of modifiers."></label>
-        <label class="pf-field"><span>Enchanter level</span>
-          <input id="enchanter" type="number" min="0" max="60" step="1" value="60" inputmode="numeric" title="Level of your Enchanter: it sets the odds of adding a modifier. 0 = no Enchanter."></label>
-        <label class="pf-field"><span>Hero time (g/h)</span>
-          <input id="herohour" type="number" min="0" step="10" value="0" inputmode="numeric" title="Gold one hour of your heroes' time is worth, added to every quest and map run. 0 = free."></label>
-        <div class="pf-field"><span>Who pays for a run</span>
+        <label class="pf-field"><span data-tip="Your party's luck: more and better quest drops.">Party luck</span>
+          <input id="luck" type="number" min="0" max="1000" step="1" value="0" inputmode="numeric"></label>
+        <label class="pf-field"><span data-tip="Level of your crafters: it sets the craft grade and the odds of modifiers.">Crafter level</span>
+          <input id="crafter" type="number" min="1" max="60" step="1" value="60" inputmode="numeric"></label>
+        <label class="pf-field"><span data-tip="Level of your Enchanter: it sets the odds of adding a modifier. 0 = no Enchanter.">Enchanter level</span>
+          <input id="enchanter" type="number" min="0" max="60" step="1" value="60" inputmode="numeric"></label>
+        <label class="pf-field"><span data-tip="Gold one hour of your heroes' time is worth, added to every quest and map run. 0 = free.">Hero time (g/h)</span>
+          <input id="herohour" type="number" min="0" step="10" value="0" inputmode="numeric"></label>
+        <div class="pf-field pf-seg"><span data-tip="Shared: a run&#39;s cost is split between everything it drops, by sell value. Full: every drop carries the whole run cost (&quot;I farm this only for that&quot;), pessimistic.">Who pays for a run</span>
           <div id="alloc-seg"></div></div>
         <div id="mapmods-box" class="pf-check"></div>
         <details id="orb-sources" class="help pf-orbs">

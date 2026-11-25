@@ -1,9 +1,9 @@
 /**
- * Tables of the profit page: column sets with plain-language headers and the explanation shown on hover,
+ * Tables of the profit page: column sets with plain-language headers and the explanation shown on hover, focus and tap,
  * and a sortable table (dom.ts `table`) that keeps its sort when the rows are filtered and shows only the
  * first rows, then more in steps of 300 (P2). "Cost to make" opens the cost breakdown under the row (P2, F22).
  */
-import { ascSwatch, type Column, duration, el, fmt, fmt1, gold, goldNumber, GRADE_LETTERS, gradeBadge, pct, type Row, table } from "./dom.ts";
+import { ascSwatch, type Column, duration, el, fmt, fmt1, gold, goldNumber, GRADE_LETTERS, gradeBadge, LV, pct, type Row, table } from "./dom.ts";
 import type { CostPart, Row as ProfitRow } from "./profit-worker.ts";
 import { tip } from "./tooltip.ts";
 import { itemLink } from "./wiki-data.ts";
@@ -77,10 +77,25 @@ export function howText(how: string, ref: number | null = null): string {
   return how.replace(/\basc(\d)\b/g, "ascension $1");
 }
 
+/** A span with help on hover, focus and tap (R3 F18: a tooltip, not a `title`). */
+export function helpSpan(e: HTMLElement, text: string): HTMLElement {
+  e.removeAttribute("title");
+  e.tabIndex = 0;
+  tip(e, () => text);
+  return e;
+}
+
+/** The ascension swatch: the number shows, the column header explains it (no `title`). */
+const swatch = (asc: unknown): HTMLElement => {
+  const s = ascSwatch(asc);
+  s.removeAttribute("title");
+  return s;
+};
+
 /** The ascension next to the name, shown on a phone where the Asc column is out of view (P2). */
 export function ascBadge(asc: unknown): HTMLElement | null {
   if (!(Number(asc) > 0)) return null;
-  const b = ascSwatch(asc);
+  const b = swatch(asc);
   b.classList.add("pf-asc-badge");
   return b;
 }
@@ -88,7 +103,7 @@ export function ascBadge(asc: unknown): HTMLElement | null {
 // Ascension is the name's outline (silver 1, gold 2), as on the other pages; on a phone also a badge.
 const itemCell = (r: Row) => el("span", { class: "nowrap" }, itemLink(String(r.type ?? "equipment"), Number(r.id), String(r.name), r.rarity, r.asc),
   ...[ascBadge(r.asc)].filter((x) => x !== null),
-  ...(Number(r.owned) > 0 ? [el("span", { class: "pf-owned", title: `You have ${r.owned}` }, `✓ ${fmt.format(Number(r.owned))}`)] : []));
+  ...(Number(r.owned) > 0 ? [el("span", { class: "pf-owned" }, `✓ ${fmt.format(Number(r.owned))}`)] : []));
 
 /** "type|id|asc", the key of a row's cost breakdown. */
 export const costKey = (r: Row): string => `${r.type ?? "equipment"}|${r.id}|${r.asc ?? 0}`;
@@ -126,14 +141,14 @@ export function whyPanel(costs: Record<string, CostPart>, key: string): HTMLElem
     el("p", {}, howText(e.how, e.ref)),
     ...(lines.length ? [el("ul", {}, ...lines, el("li", { class: "pf-why-total" }, el("span", {}, "Total"), el("span", { class: "num" }, gold(e.cost))))] : []));
 }
-const ascCell = (r: Row) => ascSwatch(r.asc);
+const ascCell = (r: Row) => swatch(r.asc);
 
 /** What to make and sell, ranked. */
 export function itemColumns(withOwned: boolean): InfoColumn[] {
   return [
-    { key: "name", label: "Item", render: itemCell, tip: "Hover a name for its stats, click it for its wiki page." },
+    { key: "name", label: "Item", render: itemCell, tip: "Tap a name for its wiki page." },
     { key: "type", label: "Type", show: (v) => ITEM_TYPE_LABELS[String(v)] ?? String(v ?? "") },
-    { key: "level", label: "Lvl", num: true, tip: "Item level." },
+    { key: "level", label: LV, num: true, tip: "Item level." },
     { key: "asc", label: "Asc", num: true, render: ascCell, tip: "Ascension: 0 is the plain item; 1 and 2 are ascended with orbs (essence) and sell for 2× and 4×." },
     { key: "best_profit", label: "Profit", num: true, render: (r) => money(r.best_profit),
       tip: "Gold you keep per item with the best plan: average sale price minus everything it took to make it (gold, ingredients, orbs, enchanting)." },
@@ -146,13 +161,12 @@ export function itemColumns(withOwned: boolean): InfoColumn[] {
     { key: "ev_sell", label: "Average sale", num: true, show: (v) => goldCell(v),
       tip: "Average price when you sell it as made: crafting sometimes adds modifiers, which sell for more." },
     { key: "cost", label: "Cost to make", num: true, show: (v) => goldCell(v), render: costCell,
-      tip: "Full cost of one item made the cheapest way: crafting gold plus every ingredient at its own cheapest cost, orbs for ascending, quest or map costs for drops. Click a value for its breakdown." },
+      tip: "Full cost of one item made the cheapest way: crafting gold plus every ingredient at its own cheapest cost, orbs for ascending, quest or map costs for drops. Tap a value for its breakdown." },
     { key: "p_any", label: "Modifier chance", num: true, render: (r) => {
       if (!isNum(r.p_any) || r.p_any === 0) return el("span", { class: "muted" }, "—");
-      const s = el("span", { class: "pf-odds" }, percent(r.p_any));
-      tip(s, () => `Prefix ${percent(r["p_prefix%"])}, suffix ${percent(r["p_suffix%"])}, both ${percent(r["p_both%"])}`);
-      return s;
-    }, tip: "Chance that crafting adds at least one modifier (prefix or suffix). Hover a value for prefix / suffix / both. Top gear rarely gets any: use the Enchanter." },
+      return helpSpan(el("span", { class: "pf-odds" }, percent(r.p_any)),
+        `Prefix ${percent(r["p_prefix%"])}, suffix ${percent(r["p_suffix%"])}, both ${percent(r["p_both%"])}`);
+    }, tip: "Chance that crafting adds at least one modifier (prefix or suffix). Tap a value for prefix / suffix / both. Top gear rarely gets any: use the Enchanter." },
     { key: "craft_min", label: "Craft time", num: true, show: minutes, tip: "Crafter time for one item (or the ascension time when it is ascended)." },
     { key: "how", label: "Cheapest way to get it", show: (v, r) => howText(String(v ?? ""), isNum(r.how_id) ? r.how_id : null),
       tip: "Where the cheapest copy comes from: crafted, ascended from the level below, or dropped by a quest or map." },
@@ -162,11 +176,11 @@ export function itemColumns(withOwned: boolean): InfoColumn[] {
 
 /** Enchanting one modifier onto an owned piece of equipment. */
 export function enchantColumns(): InfoColumn[] {
-  const chance = (key: string) => (r: Row) => (isNum(r[key]) ? percent(r[key]) : el("span", { class: "muted", title: "Not possible on this item" }, "—"));
+  const chance = (key: string) => (r: Row) => (isNum(r[key]) ? percent(r[key]) : helpSpan(el("span", { class: "muted" }, "—"), "Not possible on this item"));
   const tries = (v: unknown) => (isNum(v) ? fmt1.format(v) : "—");
   return [
-    { key: "name", label: "Item", render: (r) => itemCell({ ...r, type: "equipment" }), tip: "Hover a name for its stats, click it for its wiki page." },
-    { key: "level", label: "Lvl", num: true, tip: "Item level." },
+    { key: "name", label: "Item", render: (r) => itemCell({ ...r, type: "equipment" }), tip: "Tap a name for its wiki page." },
+    { key: "level", label: LV, num: true, tip: "Item level." },
     { key: "asc", label: "Asc", num: true, render: ascCell, tip: "Ascension level of the item you enchant. Ascended items also use orbs per attempt." },
     { key: "item_grade", label: "Grade", num: true, render: (r) => gradeBadge(GRADE_LETTERS[Number(r.item_grade) - 1] ?? "?"),
       tip: "Grade the item comes out of the crafter with (from the crafter's level and the ingredients' grade). It sets the Enchanter's odds." },

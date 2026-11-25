@@ -83,7 +83,7 @@ test("B4: with Scribe hidden, no Orbs tab, orb tile, orb sources, map-modifier c
   const page = read("web/src/ui/profit.ts");
   assert.match(page, /export const orbsHidden = \(\): boolean => isHidden\("Scribe"\);/);
   assert.match(page, /for \(const id of \["#orb-sources", "#mapmods-box", "#orb-note"\]\)/);
-  assert.match(page, /\.\.\.\(orbsHidden\(\) \? \[\] : \[tile\("Most profit, no orbs"/);
+  assert.match(page, /\.\.\.\(orbsHidden\(\) \? \[\] : \[tile\("No orbs"/);
   assert.match(page, /if \(!orbsHidden\(\)\) \{\s+kids\.push\(segField\("Ascension"/);
   assert.match(page, /if \(type === "map" && orbsHidden\(\)\) continue;/);
   const html = read("site/profit.html");

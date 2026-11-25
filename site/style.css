@@ -2176,3 +2176,47 @@ footer .footer-line a { color: inherit; }
   }
 }
 /* end r3-levelling */
+/* r3-profit */
+/* F12: two option columns on a phone (the card is 313 px wide at 375); the segmented fields and the chip take a full row. */
+@media (max-width: 600px) {
+  #options.pf-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #options.pf-options > .pf-seg, #options.pf-options > .pf-check { grid-column: 1 / -1; }
+}
+/* F17: segmented options and the modifier chip on one line; above 600 px they span two columns. */
+#options .seg { flex-wrap: nowrap; }
+#options .seg-opt { flex: none; white-space: nowrap; }
+#options .pf-check .chip-toggle { white-space: nowrap; }
+@media (min-width: 601px) {
+  #options.pf-options > .pf-seg, #options.pf-options > .pf-check { grid-column: span 2; }
+}
+/* F18: help on hover, focus and tap. */
+.pf-tip { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; width: fit-content; }
+/* F20: no empty status line above the tiles. */
+.pf-status:empty { min-height: 0; }
+/* F14 / F21: two tiles at most 320 px wide; the item name at body size on one line, no expansion icons. */
+.pf-tiles { grid-template-columns: repeat(2, minmax(0, 320px)); }
+.pf-tiles .tile-value { font-size: 1rem; font-weight: 700; min-width: 0; }
+.pf-tiles .tile-value > a, .pf-tiles .tile-value > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; vertical-align: bottom; }
+.pf-tiles .tile-label { white-space: nowrap; }
+.pf-tiles .xp-badge, .pf-table .xp-badge { display: none; }
+/* F11: the base-game note under the tiles. */
+.pf-base { margin: -18px 0 18px; }
+/* F15: the ascension badge only where the Asc column is off screen. */
+.pf-table .pf-asc-badge { display: none; }
+@media (max-width: 600px) { .pf-table .pf-asc-badge { display: inline-grid; } }
+/* F19: breakdown amounts on one line, aligned right on every line. */
+.pf-why .num { white-space: nowrap; flex: none; }
+.pf-why li > details { flex: 1 1 auto; min-width: 0; }
+.pf-why li > span:first-child, .pf-why summary > span:first-child { min-width: 0; }
+@media (max-width: 600px) {
+  /* F22: the sticky Item cell draws its own bottom line. */
+  .pf-table td:first-child { box-shadow: inset 0 -1px 0 var(--border); }
+  /* F37: a fade at the right edge while the table has more columns (the first column stays sticky, so no left fade). */
+  .table-wrap.pf-table {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade-r)), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--fade-r)), transparent);
+    animation: row-fade linear both; animation-timeline: scroll(self inline);
+  }
+}
+/* end r3-profit */

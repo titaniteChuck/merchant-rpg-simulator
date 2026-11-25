@@ -964,12 +964,17 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - Options: run grade and who pays for a run (`alloc` Shared / Full) as `segmented()` controls, party luck, crafter
   level, Enchanter level, hero time in gold per hour (the model's `heroHourCost`, added to every quest and map run;
   0 by default), "Count map modifiers" as a `chipToggle()`, and a forced map per orb (`essenceFrom`). Any change
-  recomputes. On a phone the options grid keeps two columns.
-- Tiles: most profit, most profit without orbs.
+  recomputes. At 600 px and less the options grid has two equal columns, run grade, who pays and the modifier chip on
+  a full row; above, those three span two columns and never wrap. Each option's help is a `tip()` on its label
+  (hover, focus or tap; a tap on the label shows it instead of focusing the field), and "Shared" / "Full" and the
+  modifier chip carry theirs the same way: no `title` help on the page (R3 F18, F38).
+- Tiles (at most 320 px each, two per row): "Most profit" and "No orbs", the item name at body size on one line (cut
+  with an ellipsis), no expansion icons. When no expansion is shown, a muted line under them: "Base game only · add
+  your expansions in 📜 Save ▾".
 - Tabs "What to make", "Enchanting", "Orbs":
   - What to make: every item × ascension, sorted by `best_profit`; filter by name, type chips (Equipment,
     Consumables, Maps), ascension (`segmented` Any / 0 / 1 / 2), level range. Columns: profit and return of the best
-    plan, best plan, sell value, average sale, cost to make, modifier chance (prefix / suffix / both on hover), craft
+    plan, best plan, sell value, average sale, cost to make, modifier chance (prefix / suffix / both in its tooltip), craft
     time, cheapest way to get it. A "Cost to make" value opens its breakdown in a row under the item (`whyPanel`):
     the cheapest way, the crafting gold, each part as amount × unit cost with its own source, and the total; a part
     made from parts opens the same way, one level at a time. Open breakdowns stay open across sorting and filtering.
@@ -979,16 +984,19 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Orbs: cheapest map per orb for ascension 1 and 2, then every map × orb (`buildEssenceRows`).
 - Numbers through `dom.ts`: `gold()` (cost per orb with one decimal), signed gold built on `goldNumber()`, `duration()`
   for craft time, `pct()` for shares.
-- Every column header explains its metric on hover or focus (`tooltip.ts`). Tables show 100 rows, then "First 100 of
+- Every column header explains its metric on hover, focus or tap (`tooltip.ts`; "Tap a value…" wording). The level
+  header is "Lv" (`LV`); expansion icons are left out of the tables (the expansion menu already filters them); the
+  breakdown's amounts stay on one line and align right on every line. Tables show 100 rows, then "First 100 of
   N. Show 300 more", 300 rows per click (`MORE_STEP`), never the whole table at once; the sort applies to the whole
   filtered list and survives filtering. Below 600 px the first column (the item) stays in view when a table scrolls
-  sideways, and an ascended item shows its ascension as a badge after its name (the Asc column is out of view there;
-  one row per item × ascension until [D5](../roadmap/review-profit.md#d5-ascension-rows)).
+  sideways (with its own bottom line), the table fades at its right edge while there are more columns (the scroll-driven
+  `--fade-r` of the phone rows), and an ascended item shows its ascension as a badge after its name (only there: the
+  Asc column is out of view; one row per item × ascension until [D5](../roadmap/review-profit.md#d5-ascension-rows)).
 - A save opened from the top-bar Save dropdown (or dropped on the page) marks the items the player owns ("You have"
   column, "Only what I own" chip), from `owned()` in `save.ts`, matched in the page: no recompute. The page has no save
   panel of its own (a hidden picker for `initSaveSource`).
-- With Scribe hidden (`isHidden("Scribe")`): no Orbs tab, "no orbs" tile, orb sources, map-modifier chip, ascension
-  filter or Maps type chip.
+- With Scribe hidden (`isHidden("Scribe")`): no Orbs tab, "No orbs" tile, orb sources, map-modifier chip, ascension
+  filter, Asc column or Maps type chip.
 - A forced orb source fails only when the map's recipe uses at least as many of that orb as a run yields (Treant /
   Golem Revenge and Archon's Reality with Glacial Essence, Vanquishers with Necro Essence): "<orb> can't come from
   <map> alone: a run yields fewer than its recipe uses."
