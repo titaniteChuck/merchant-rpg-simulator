@@ -111,3 +111,4 @@
 - **Update**: U62 done (c5cd0ee): Party view in three columns (heroes, opponent, HP chart); one card for heroes and the enemy with the picker as its header; rare variants in the enemy list; in-place skill picker with effects; enemy rotation instead of its spider chart. Merged on top of U63 (Flow 1 removed).
 - **Update**: U64 added (Flow skill names open the picker, no wiki links in Flows).
 - **Update**: U64 done (0c3fee2): in the Flows a hero's skill name opens the in-place skill picker (effects and AP); no wiki links in any Flow; read-only views show plain text with the effect tooltip.
+- **Update**: U65 added (turn-driven Party view).
