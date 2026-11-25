@@ -96,3 +96,4 @@
 - **Update**: U51 done (bfcfe09): Solver rows show grade, life left % and heroes dead; one "?" by the Party / Flow switch; Flow without the Turn column; calculation panels exactly their column's width. The U51–U54 batch is complete.
 - **Update**: U55–U59 added from the user's third 2026-11-25 batch (map table, item cards, rarity names, Flow 2 and Flow 3 to compare).
 - **Update**: U57 done (e78740e): rarity names (Common to Mythical) instead of numbers site-wide, colours kept; the wiki filter matches names; CSV exports add a rarity_name column.
+- **Update**: U55 done (f2c294e): a map's enemies in one table (Treasure Bush first, bosses last); the six level-70 maps marked not craftable.
