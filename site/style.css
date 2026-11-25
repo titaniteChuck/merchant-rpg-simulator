@@ -1990,20 +1990,15 @@ footer .footer-line a { color: inherit; }
 #wiki thead th .help-q { width: 1.05rem; height: 1.05rem; font-size: 0.64rem; }
 .help-pop .asc-legend { margin: 0; }
 
-/* F42: the item page's facts as one strip; the sell values in labelled ascension boxes; merged grade rows; the empty
+/* F42: the sell value in its ascension box (U56: the item facts are cards, style.css U56); merged grade rows; the empty
    sections as one muted line (F54). */
-#wiki .fact-strip { margin: 10px 0 0; line-height: 1.9; font-weight: 600; }
-#wiki .fact-strip .region-cell, #wiki .fact-strip .rar-chip { vertical-align: 1px; }
-#wiki .nowrap-group { white-space: nowrap; }
-#wiki .sell-boxes { display: inline-flex; flex-wrap: wrap; gap: 3px; vertical-align: 1px; white-space: normal; }
 #wiki .av.av-l { text-align: left; font-weight: 650; }
-#wiki .av-k { color: var(--muted); font-size: 0.72rem; font-weight: 600; }
 #wiki .grade-run { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); }
 #wiki .wiki-empty-line { margin: 18px 0 0; }
 #wiki .wiki-empty-line strong { color: var(--fg); font-weight: 650; }
 /* "·"-joined parts with no dangling separator (wiki.ts sepRow): each part starts with its "·"; the row sits one
    separator to the left inside a horizontally clipped box, so a part that begins a line hides its "·". */
-#wiki .fact-strip, #wiki .wiki-empty-line { overflow-x: clip; }
+#wiki .wiki-empty-line { overflow-x: clip; }
 #wiki .sep-row { display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -1em; }
 #wiki .sep-part { min-width: 0; }
 #wiki .sep { display: inline-block; width: 1em; text-align: center; }
@@ -2457,3 +2452,19 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .map-enemies tr:is(.me-treasure, .me-boss) td:first-child { background: color-mix(in srgb, var(--c) 7%, var(--card)); }
 }
 /* end U55 */
+/* U56 */
+/* Item page facts (wiki-data factCards): one small card per fact, as many to a row as fit (three on a 375 px phone).
+   Labels keep their case ("Lvl"). */
+#wiki .fact-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; margin: 12px 0 0; }
+#wiki .fact-card { min-width: 0; padding: 5px 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+#wiki .fact-card dt { color: var(--muted); font-size: 0.7rem; font-weight: 700; line-height: 1.3; }
+#wiki .fact-card dt a.ref-link { color: inherit; }
+#wiki .fact-card dd { margin: 2px 0 0; font-size: 0.88rem; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+#wiki .fact-card .region-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+/* The Sell row closing an equipment's Stats by grade: the price at the picked ascension, one cell across the stats. */
+#wiki tfoot .sell-row th, #wiki tfoot .sell-row td { border-top: 1px solid var(--border); }
+#wiki tfoot .sell-row th { text-align: left; font-weight: 650; }
+#wiki tfoot .sell-row th a.ref-link { color: inherit; }
+/* Recipe / Used in with nothing to list: the section's title, then one muted line where the list would be. */
+#wiki .wiki-empty-state { margin: 0; }
+/* end U56 */

@@ -66,13 +66,10 @@ test("F42: identical grades merge into one row, runs into a range", () => {
   assert.equal(mergeGradeRows([{ grade: "D", atk: 1 }, { grade: "C" }]).length, 2);
 });
 
-test("F42 / F54: the item page's fact strip, labelled sell boxes and one muted line for the empty sections", () => {
+test("F54: an empty Drops is one muted line (U56: the fact strip, sell labels and empty Recipe / Used in changed, wiki-u56.test.ts)", () => {
   const wiki = ui("wiki.ts");
-  assert.match(wiki, /factStrip\(\[/);
-  assert.match(wiki, /statLink\("sell", "Sell"\), " ", sellBoxes\(type, id, sells\)/);
-  assert.match(ui("wiki-items.ts"), /class: "av-k" \}, `asc \$\{a\}`/);
   assert.doesNotMatch(wiki, /none\("Not craftable\."\)|none\(hidden \? "Not used/);
-  assert.match(wiki, /empty\.push\(\["Recipe", "Not craftable\."\]\)/);
+  assert.match(wiki, /empty\.push\(\["Drops", /);
   assert.match(wiki, /if \(empty\.length\) kids\.push\(emptyLine\(\.\.\.empty\)\)/);
 });
 

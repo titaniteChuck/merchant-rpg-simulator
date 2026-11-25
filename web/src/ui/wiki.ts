@@ -27,14 +27,14 @@ import { isCraftableMap } from "../tools/quest-stats.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
-import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, sellBoxes, totalCost } from "./wiki-items.ts";
+import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGradeRows, rarityChip, sellAt, totalCost } from "./wiki-items.ts";
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import {
   baseTag, enemyBody, enemyFightTarget, enemyLead, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, TREASURE_HELP, uncraftableTag,
 } from "./wiki-enemies.ts";
 import {
-  ascCraftEssence, configRarity, configRoute, configSell, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
+  ascCraftEssence, configRarity, configRoute, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
   modCount, NO_CONFIG, parseConfig, parseHash, prefixEffect, prefixStats, suffixEffect, validAscs, validPrefixes, validSuffixes,
 } from "./wiki-config.ts";
 import { helpTip, sectionHelp } from "./wiki-help.ts";
@@ -52,7 +52,7 @@ import {
   classesWith, classes, classLink, classText, dropSources, enemiesWith, enemyIds, enemyLink, enemyNamesWith, GRADES, hasRare, href,
   isEnemy, item, itemLink, items, itemText, loadWikiText, mapEnemies, passiveLink, passiveNames, passiveText, quest,
   recipe, regionChip, regionOf, regionSortKey, regionText, skillAp, skillDesc, skillLink, skillNames, statText,
-  treasureBushOf, usedInRecipes, enemyLevelText, enemyLines, type EnemyLine, isGathering, mapFlavour,
+  treasureBushOf, usedInRecipes, enemyLevelText, enemyLines, type EnemyLine, isGathering, mapFlavour, itemFactCards, sellFoot,
 } from "./wiki-data.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -132,12 +132,6 @@ const facts = (pairs: FactPair[], compact = false) =>
 const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
 
 /**
- * R2-D F42: an item's facts as one line, "Weapon · Dagger · lvl 0 · Tuvale · Common · Sell 10 / 20 / 40 g", empty
- * parts left out.
- */
-const factStrip = (parts: (Node | string | null | undefined | false)[]) =>
-  el("p", { class: "fact-strip" }, sepRow(parts.filter((p): p is Node | string => !!p).map((p) => [p])));
-/**
  * Parts joined by "·" that never dangle: each part carries its separator in front, and the row is shifted left by one
  * separator inside a clipping box, so the separator of a part that starts a line (the first one, or one that wrapped)
  * is cut off. No leading or trailing "·" at any width (style.css, #wiki .sep-row).
@@ -151,6 +145,8 @@ const none = (t: string) => el("p", { class: "muted" }, t);
 /** R2-D F54: an empty section as one muted line ("Recipe · Not craftable."), not a title over a sentence. */
 const emptyLine = (...parts: [string, string][]) => el("p", { class: "wiki-empty-line muted small" },
   sepRow(parts.map(([title, text]) => [el("strong", {}, title), ` ${text}`])));
+/** U56: what an item page's Recipe or Used in says inside its section when it has nothing to list. */
+const emptyState = (t: string) => el("p", { class: "wiki-empty-state muted small" }, t);
 function joinNodes(nodes: (Node | string)[], sep = ", "): (Node | string)[] {
   return nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
 }
@@ -530,9 +526,13 @@ function gradeRows(id: number, cfg: ItemConfig): HTMLElement {
     const [a, b] = g.split("–");
     return b ? el("span", { class: "grade-run", title: `Grades ${a} to ${b}` }, gradeBadge(a), "–", gradeBadge(b)) : gradeBadge(a);
   };
-  return table(mergeGradeRows(rows), [{ key: "grade", label: "Grade", render: (r) => gradeCell(String(r.grade)) },
+  const wrap = table(mergeGradeRows(rows), [{ key: "grade", label: "Grade", render: (r) => gradeCell(String(r.grade)) },
     ...keys.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), num: true })),
     ...bonusKeys.map((k) => ({ key: `b_${k}`, label: `${bonusLabel(k).replace(/^./, (x) => x.toUpperCase())} (bonus)` }))]);
+  // U56: the price at the picked ascension closes the table (one row: no grade changes it)
+  const foot = sellFoot("equipment", id, cfg, keys.length + bonusKeys.length);
+  if (foot) wrap.querySelector("table")?.append(foot);
+  return wrap;
 }
 
 /** U49: the grade table follows the page's configuration (its Ascension, Prefix and Suffix pickers at the top). */
@@ -664,32 +664,25 @@ function itemBody(type: string, id: number, cfg: ItemConfig): (Node | string)[] 
   // R1 F18: no lead line when the Effect card says the same ("Restores 40 health" beside "+40 HP")
   const effect = type === "consumable" && Object.keys(it.stat ?? {}).length > 0;
   const desc = effect ? "" : itemText(type, id);
-  // R1 F43: the stackables' data pair is in each box's tooltip; ascension 1–2 only where the visitor sees them.
-  // U49: with the configuration's prefix and suffix (a modifier raises the rarity, so the price).
-  const sells = [0, 1, 2].filter((a) => (type !== "material" || a === 0) && (!a || a === cfg.asc || isVisible(type as ContentKind, id, { ascension: a })))
-    .map((a): [number, number | null] => [a, itemAscLevels(type, id).includes(a) || !a ? configSell(type, id, a, cfg) : null])
-    .filter((x): x is [number, number] => x[1] !== null);
   const bonus = type === "equipment" ? bonusLines(it) : [];
   // U49: a consumable's effect at the picked ascension (default.consumableStat: ascended potions and scrolls scale)
   const stats = effect ? consumableStatsAt(id, cfg.asc) : {};
   const mods = modifierFacts(type, id, cfg);
+  // U56: an equipment's price is the Sell row of its Stats by grade (at the picked ascension), not a header card
+  const grades = type === "equipment" ? gradeRows(id, cfg) : null;
+  const pricedInTable = !!grades?.querySelector("tfoot");
   const kids: (Node | string)[] = [
     ...(desc ? [el("p", { class: "lead" }, desc)] : []),
-    // R2-D F42: one strip of facts instead of five cards; the region's reason is its chip's tooltip
-    factStrip([
-      itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined),
-      `lvl ${it.itemLevel ?? 0}`, ((r) => (r ? regionChip(r) : null))(regionOf(type as "equipment", id)), rarityChip(configRarity(type, id, cfg) ?? it.rarity),
-      it.crafterID ? crafterName(it.crafterID) : null,
-      sells.length ? el("span", { class: "nowrap-group" }, statLink("sell", "Sell"), " ", sellBoxes(type, id, sells)) : null,
-    ]),
+    // U56: the header facts as small cards, one fact each (wiki-data itemFactCards; the sell value at the picked ascension)
+    itemFactCards(type, id, cfg, { sell: !pricedInTable }),
     ...(bonus.length || effect || modCount(cfg) ? [facts([
       [statLink("item-stats", "Bonus stats"), bonus.length ? bonus.join(", ") : undefined],
       ["Effect", effect ? Object.entries<number>(stats).map(([k, v]) => statText(k, v)).join(", ") : undefined],
       ...mods,
     ])] : []),
   ];
-  if (type === "equipment") kids.push(sectionHelp(section("Stats by grade", gradeRows(id, cfg)), gradeHelp(cfg), [statLink("item-stats")]));
-  // R2-D F54: the empty sections end the page as one muted line ("Recipe · Not craftable. · Used in · Not used…")
+  if (grades) kids.push(sectionHelp(section("Stats by grade", grades), gradeHelp(cfg), [statLink("item-stats")]));
+  // R2-D F54: an empty Drops ends the page as one muted line ("Drops · Not dropped…")
   const empty: [string, string][] = [];
   // Sources in content the visitor hides (a Frentir enemy, a map without Scribe) are counted, not listed.
   const allSrc = type === "material" || type === "equipment" ? dropSources(id, type) : [];
@@ -706,15 +699,13 @@ function itemBody(type: string, id: number, cfg: ItemConfig): (Node | string)[] 
   }
   const chain = recipeChain(type, id);
   if (chain) kids.push(chainSection(chain), ...(isPlain(cfg) ? [] : [configNote(cfg, "chain")]));
+  // U56: Recipe and Used in are always their section (title, then the list or one empty-state line in the same place)
   const rec = recipeList(type, id);
-  if (rec) kids.push(section("Recipe", rec, ...recipeNotes(type, id, cfg)));
-  else empty.push(["Recipe", "Not craftable."]);
+  kids.push(rec ? section("Recipe", rec, ...recipeNotes(type, id, cfg)) : section("Recipe", emptyState("Not craftable.")));
   const used = usedInList(type, id);
-  if (used.list) kids.push(section("Used in", used.list, ...(used.note ? [used.note] : [])));
-  else empty.push(["Used in", used.empty]);
+  kids.push(section("Used in", used.list ?? emptyState(used.empty), ...(used.note ? [used.note] : [])));
   if (empty.length) kids.push(emptyLine(...empty));
   if (!src.length && srcNote) kids.push(srcNote);
-  if (!used.list && used.note) kids.push(used.note);
   return kids;
 }
 

@@ -771,7 +771,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     names the raw-material gold.
 - List columns (U37): no Description column on the Consumables and Materials lists (the item's hover card has it,
   the filter still matches it); the data's sell pair ("15–20") is no longer shown beside a sell value, only in the
-  detail page's tooltip (`sellTip`; `sellBoxes` since R2-D).
+  detail page's tooltip (`sellTip`; `sellBox` since U56).
 - Bonus stats: `bonusStat` values are ranges `{ 1: min, 2: max }`; `statText` treated them as numbers ("+NaN Str" on
   Archanos and every item with bonus stats). Now "+20–25 Str", fractions in % ("+5–15% Atk"), and the item page's
   "Stats by grade" table (for the page's ascension, prefix and suffix since U49, see below) shows base stats and each
@@ -837,6 +837,21 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Save viewer links (`savedMods` in `save-tables.ts`, a WeakMap beside each row so the CSV columns don't change):
     an owned map, an inventory or counter stack and a hero's gear open their wiki page on their ascension, prefix and
     suffix (`itemLink(…, { config })`); a crafter's job on its ascension. Tests `web/test/wiki-config-u49.test.ts`.
+- Item page facts (U56; equipment, consumable and material details): the facts under the title are small cards, one
+  fact each, in a grid that fits three to a row at 375 px (`itemFactCards` / `factCards` in `wiki-data.ts`, one helper
+  for the three kinds; CSS block `U56`): Type, Lvl (`LV`), Region, Rarity (the chip, after the configuration's
+  modifiers), Crafter, Sell. Bonus stats and Effect stay as the wider cards under them.
+  - Sell: one value, at the ascension picked in the U49 bar with its prefix and suffix (`pageSell` / `pageSellBox`,
+    the engine's `sellValue` through `configSell`), in a box outlined in that ascension's tier colour, no "asc N"
+    text inside (`sellBox` in `wiki-items.ts`, replacing `sellBoxes`); materials have no picker and show their single
+    value. The stackables' data pair stays in the box's tooltip.
+  - Equipment price: not a header card but the Sell row closing Stats by grade (`sellFoot`: a `tfoot` row, "Sell"
+    then one cell spanning the stat columns), so it follows the picked ascension and modifiers with the table. No
+    grade changes an item's sell value (`default.itemSellValue`), so a row, not a column repeating one number down
+    the grades (it also adds no width on a phone). An equipment without a stat table keeps the Sell card.
+  - Recipe and Used in: always their section with its title; with nothing to list, one muted line inside it ("Not
+    craftable.", "Not used in any recipe." / "… you can make."), in the same place a list would be; the hidden-recipes
+    note inside Used in. Tests `web/test/wiki-u56.test.ts`.
 - Rarity: the game has no rarity names (TextData only has the word "Rarity"; "Common … Legendary!" in
   `scene.SpinGame` names the prize-wheel slices), so the site uses the user's names (U57, `rarityName` /
   `RARITY_NAMES` in `web/src/ui/names.ts`): 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary, 6 Legendary+1,
@@ -1110,12 +1125,11 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Priced lists (F41): no legend paragraph above Equipment, Consumables, Materials and Maps; the ascension key (the
     outlined boxes) and the definitions are in a "?" on the Cost header (cost, total cost) and on the Sell value
     header (`priceHeads`, `headHelp`). `helpTip` takes nodes as paragraphs (`HelpText`).
-  - Item page (F42, F54): one fact strip, "Weapon · Dagger · lvl 0 · Tuvale · Rarity 1 · Crafter · Sell asc 0 10 g
-    asc 1 20 g asc 2 40 g" (`factStrip`; the sell boxes are labelled, `sellBoxes` in `wiki-items.ts`; the region's
-    reason is the chip's tooltip, no "Item lvl 0" beside it); Bonus stats and Effect stay as cards. Stats by grade
-    merges grades with the same numbers into one row, "D–S" when all five are the same (`mergeGradeRows`). Empty
-    sections (no drops, not craftable, not used in any recipe) end the page as one muted line ("Drops · … · Recipe ·
-    Not craftable. · Used in · Not used in any recipe."), the hidden-content notes after it.
+  - Item page (F42, F54; replaced in U56, see Item page facts below): was one fact strip, "Weapon · Dagger · lvl 0 ·
+    Tuvale · Rarity 1 · Crafter · Sell asc 0 10 g asc 1 20 g asc 2 40 g"; the region's reason is the chip's tooltip, no
+    "Item lvl 0" beside it; Bonus stats and Effect stay as cards. Stats by grade merges grades with the same numbers
+    into one row, "D–S" when all five are the same (`mergeGradeRows`). An empty Drops ends the page as one muted line
+    ("Drops · Not dropped …"), the hidden-content notes after it (Recipe and Used in were in that line until U56).
   - Map and enemy pages (F43): the facts are compact cards, three to a row on a phone (the essence and the bush facts
     span the row); map "Boss · None." and "Recipe · Not craftable." as one line.
   - Enemy pages (F44, F45): the XP block's Grade, Party and Ascension pickers sit on one row (it scrolls sideways when

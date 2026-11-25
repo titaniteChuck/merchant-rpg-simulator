@@ -316,16 +316,13 @@ export function sellTip(type: string, id: number, asc = 0): string {
 }
 
 /**
- * R2-D F42: an item's sell values in a row of labelled boxes ("asc 0 10 g", "asc 1 20 g"), each outlined in its tier
- * colour; one value alone (materials) has no label. `values`: [ascension, gold] of the variants shown.
+ * An item's sell value in a box outlined in its ascension's tier colour (R2-D F42). U56: one value, the page's
+ * ascension (materials: their only one), no "asc N" text inside; the stackables' data pair is in its tooltip.
  */
-export function sellBoxes(type: string, id: number, values: [number, number][]): HTMLElement {
-  const one = values.length === 1;
-  return el("span", { class: "sell-boxes" }, ...values.map(([a, v]) => {
-    const tip = sellTip(type, id, a);
-    return el("span", { class: `av av-l tier-${a}`, title: `Ascension ${a}: ${gold(v)}${tip ? `. ${tip}` : ""}` },
-      ...(one ? [] : [el("span", { class: "av-k" }, `asc ${a}`), " "]), gold(v));
-  }));
+export function sellBox(type: string, id: number, asc: number, v: number): HTMLElement {
+  const tip = sellTip(type, id, asc);
+  const what = type === "material" ? gold(v) : `Ascension ${asc}: ${gold(v)}`;
+  return el("span", { class: `av av-l sell-box tier-${asc}`, title: `${what}${tip ? `. ${tip}` : ""}` }, gold(v));
 }
 
 // ---------------------------------------------------------------- grade rows (R2-D F42)

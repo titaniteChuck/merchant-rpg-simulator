@@ -5,14 +5,16 @@
  */
 import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
-import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, slotName, withAsc } from "./dom.ts";
+import { ascLevel, ascText, el, expansionBadge, expansionNote, fmt, LV, slotName, withAsc } from "./dom.ts";
 import { type ContentKind, isVisible, needsOf, placeholderFor } from "./expansion-state.ts";
 import { tip } from "./tooltip.ts";
-import { bonusPair, bonusText, isPlaceholder } from "./wiki-items.ts";
-import { configHref, type ItemConfig } from "./wiki-config.ts";
+import { bonusPair, bonusText, isPlaceholder, rarityChip, sellBox } from "./wiki-items.ts";
+import { configHref, configRarity, configSell, type ItemConfig } from "./wiki-config.ts";
 import { BASE_GRADE, lootTable } from "./wiki-loot.ts";
+import { statLink } from "./wiki-ref.ts";
 import {
-  className, compareNames, descOf, enemyName, isEnglish, ITEM_TYPE_LABELS, itemName, itemTypeText, markName, passiveName, questTitle, regionName, skillName,
+  className, compareNames, crafterName, descOf, enemyName, isEnglish, ITEM_TYPE_LABELS, itemName, itemTypeText, markName, passiveName, questTitle, regionName,
+  skillName,
 } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -662,4 +664,53 @@ export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts
   if (plain) markName(a, e.rare ? "enemyB" : "enemy", e.id);
   tip(a, () => tipBox(plain ? enemyName(e.id, !!e.rare) ?? name : name, kind(), where(), "", needs));
   return withBadge(a, needs);
+}
+
+// ---------------------------------------------------------------- item header facts (U56)
+/** One fact card: [label, value]; an empty value (null, undefined, false, "") leaves the card out. */
+export type FactCard = [label: string | Node, value: Node | string | number | null | undefined | false];
+
+/** U56: facts as small cards, one fact per card (label over value), in a compact grid that wraps (style.css U56). */
+export function factCards(cards: FactCard[]): HTMLElement {
+  return el("dl", { class: "fact-cards" }, ...cards.filter(([, v]) => v !== null && v !== undefined && v !== false && v !== "")
+    .map(([k, v]) => el("div", { class: "fact-card" }, el("dt", {}, k), el("dd", {}, typeof v === "number" ? fmt.format(v) : v as Node | string))));
+}
+
+/** U56: an item's sell value on its page: at the page's ascension with its prefix and suffix (materials: their one value). */
+export const pageSell = (type: string, id: number, cfg: ItemConfig): number | null => configSell(type, id, type === "material" ? 0 : cfg.asc, cfg);
+
+/** U56: the page's sell value in its tier box, or null when unknown. */
+export function pageSellBox(type: string, id: number, cfg: ItemConfig): HTMLElement | null {
+  const v = pageSell(type, id, cfg);
+  return v === null ? null : sellBox(type, id, type === "material" ? 0 : cfg.asc, v);
+}
+
+/**
+ * U56: the facts under an item page's title (equipment, consumables, materials), one card each: type, level, region,
+ * rarity (after the configuration's modifiers), crafter and the sell value at the page's ascension. `sell: false`
+ * leaves the sell card out (equipment: its price is the Sell row of Stats by grade).
+ */
+export function itemFactCards(type: string, id: number, cfg: ItemConfig, o: { sell?: boolean } = {}): HTMLElement {
+  const it = item(type, id) ?? {};
+  const region = regionOf(type as ItemType, id);
+  return factCards([
+    ["Type", itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined)],
+    [LV, it.itemLevel ?? 0],
+    ["Region", region ? regionChip(region) : null],
+    ["Rarity", rarityChip(configRarity(type, id, cfg) ?? it.rarity)],
+    ["Crafter", it.crafterID ? crafterName(it.crafterID) ?? `crafter ${it.crafterID}` : null],
+    [statLink("sell", "Sell"), o.sell === false ? null : pageSellBox(type, id, cfg)],
+  ]);
+}
+
+/**
+ * U56: the Sell row closing an equipment's Stats by grade: the price at the page's ascension (the table follows the
+ * Ascension picker) with its modifiers. No grade changes the price (default.itemSellValue), so one cell spans the
+ * stat columns. Null when unknown.
+ */
+export function sellFoot(type: string, id: number, cfg: ItemConfig, span: number): HTMLElement | null {
+  const box = pageSellBox(type, id, cfg);
+  if (!box) return null;
+  return el("tfoot", {}, el("tr", { class: "sell-row" }, el("th", { scope: "row" }, statLink("sell", "Sell")),
+    el("td", { colspan: String(Math.max(1, span)) }, box)));
 }

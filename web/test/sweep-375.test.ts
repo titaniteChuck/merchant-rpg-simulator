@@ -18,16 +18,14 @@ test("one sweep-375 block in style.css", () => {
 
 test("wiki fact lines: the separators belong to the parts and a line's first one is clipped", () => {
   const wiki = ui("wiki.ts");
-  // The item strip and the empty-sections line no longer join with a bare " · " between parts.
-  const strip = wiki.slice(wiki.indexOf("const factStrip"), wiki.indexOf("const section = "));
-  assert.doesNotMatch(strip, /" · "/);
-  assert.match(strip, /sepRow\(parts\.filter\(/);
-  assert.match(strip, /el\("span", \{ class: "sep", "aria-hidden": "true" \}, "·"\)/);
+  // The empty-sections line no longer joins with a bare " · " between parts (U56: the item strip became fact cards).
+  const sep = wiki.slice(wiki.indexOf("const sepRow"), wiki.indexOf("const section = "));
+  assert.match(sep, /el\("span", \{ class: "sep", "aria-hidden": "true" \}, "·"\)/);
   const empty = wiki.slice(wiki.indexOf("const emptyLine"), wiki.indexOf("function joinNodes"));
   assert.match(empty, /sepRow\(parts\.map\(/);
   assert.doesNotMatch(empty, /" · "/);
   // The row sits one separator to the left in a clipped box: the separator width and the shift agree.
-  assert.match(css, /#wiki \.fact-strip, #wiki \.wiki-empty-line \{ overflow-x: clip; \}/);
+  assert.match(css, /#wiki \.wiki-empty-line \{ overflow-x: clip; \}/);
   assert.match(css, /#wiki \.sep-row \{ display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -1em; \}/);
   assert.match(css, /#wiki \.sep \{ display: inline-block; width: 1em; text-align: center; \}/);
 });
