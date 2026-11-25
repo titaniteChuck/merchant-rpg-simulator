@@ -106,3 +106,4 @@
 - **Update**: U60 (wiki enemy details) and U61 (party HP chart) added; Flow 3 HP bar and phone list, wiki fact cards shipped as U59/U56 follow-ups.
 - **Update**: U61 done (155a930): HP by turn chart under the Party spider chart (heroes and enemy, % of max, deaths and map rooms marked), from the same traced run as the Flows.
 - **Update**: U60 done (bd8b718): enemy details with Fight in simulator on the title line, Grade and Size as page modifiers, XP and time in the stats table, map-only monsters on their map's run, aligned loot tables; the old XP-table CSS (qxp-*) removed.
+- **Update**: U62 (Party view cards) and U63 (Flow cleanup, Flow 1 removed) added.
