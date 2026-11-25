@@ -67,7 +67,7 @@ export function storedPartyWith(prev: Record<string, unknown> | null, slots: Sto
 export const EVENT_QUEST_TYPE = 6;
 export const isEventQuest = (id: number): boolean => G.questData?.[id]?.questType === EVENT_QUEST_TYPE;
 
-/** One fieldset of the quest list: a level band ("Lv 50–59") or the event bosses ("Event"). */
+/** One fieldset of the quest list: a level band ("Lvl 50–59") or the event bosses ("Event"). */
 export interface QuestGroup {
   label: string;
   ids: number[];
@@ -85,7 +85,7 @@ export function questGroups(ids: number[]): QuestGroup[] {
     const b = Math.floor((Number(G.questData[id]?.levelReq) || 0) / 10) * 10;
     bands.set(b, [...(bands.get(b) ?? []), id]);
   }
-  return [...[...bands].sort((a, b) => a[0] - b[0]).map(([b, list]) => ({ label: `Lv ${b}–${b + 9}`, ids: list })),
+  return [...[...bands].sort((a, b) => a[0] - b[0]).map(([b, list]) => ({ label: `Lvl ${b}–${b + 9}`, ids: list })),
     ...(events.length ? [{ label: "Event", ids: events }] : [])];
 }
 

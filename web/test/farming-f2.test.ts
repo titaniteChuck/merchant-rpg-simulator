@@ -31,7 +31,7 @@ test("F22: event bosses (questType 6) get their own group, last, and start untic
   assert.equal(last.label, "Event");
   assert.deepEqual(last.ids, events);
   for (const g of groups.slice(0, -1)) {
-    assert.match(g.label, /^Lv \d+–\d+$/);
+    assert.match(g.label, /^Lvl \d+–\d+$/);
     assert.ok(!g.ids.some(isEventQuest), `${g.label} holds no event boss`);
   }
   assert.equal(groups.reduce((n, g) => n + g.ids.length, 0), ids.length, "every quest in one group");

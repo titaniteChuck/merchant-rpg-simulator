@@ -33,7 +33,7 @@ const CRIT = GROWTH.find(([, b]) => b === "crit")!;
 
 /** R2-D F47 / F52: the radar's caption, now the "?" of the class page's Stats section. */
 export const RADAR_HELP = ["The class's own stats at the picked level and ascension: no gear, passive or attribute points.",
-  "The radar's other shapes are the other ascensions, each capped at its max level. Rim = the best class at that level."];
+  "The radar's other shapes are the other ascensions, each capped at its max level. Rim = the best class at that level; Acc's rim is always 250."];
 
 const dec = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 

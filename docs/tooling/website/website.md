@@ -114,7 +114,8 @@ flowchart LR
   - Combat stats (R2 F15): a compact number grid first, four per row (HP Atk Matk Acc / Def Mdef Crit, "Crit dmg
     ×2.00"; then Eva and Speed when not 0; AP only when there is no budget line: `gridStats` in `save-tables.ts`);
     each radar stat's tooltip names the save's best value and who holds it. The radar folds under the grid
-    ("Radar against the save's best", open above 760 px, closed on a phone, at most 200 px wide there).
+    ("Radar against the save's best", open above 760 px, closed on a phone, at most 200 px wide there). On the radar
+    itself Crit's rim is always 100 and Acc's 250 (U47, see [Shared page parts](#shared-page-parts)).
   - Passive (R2 F15): one line, "PASSIVE Juggernaut · +25% HP" (`passiveLine`; the name opens its wiki page;
     "none" muted), no table.
   - Rotation: the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
@@ -137,9 +138,9 @@ flowchart LR
     "Ascension 1 (silver outline)" (`ascOutlineText`). No gear at all is one muted line.
   - Tests: `web/test/hero-page.test.ts` (AP budget against the formula for levels 10-60, rotation AP, slot order),
     `web/test/save-r2b.test.ts` (R2-B: Basic merging, stat grid, picker, crafter headers, empty states).
-- Crafters: headers "Lv" (ascension 0), "Asc 1" + a silver bar, "Asc 2" + a gold bar (R2 F18), the bar being the
+- Crafters: headers "Lvl" (ascension 0), "Asc 1" + a silver bar, "Asc 2" + a gold bar (R2 F18), the bar being the
   ascension outline's gradient (`.lvl-asc`), named "Level for ascension-1 items" / "…-2 items" for screen readers
-  (`crafterLevelFor` in `save-tables.ts`). How the levels work is a "?" on the "Lv" header, not a paragraph under
+  (`crafterLevelFor` in `save-tables.ts`). How the levels work is a "?" on the "Lvl" header, not a paragraph under
   the table. The save keeps `level`,
   `ascLevel` (ascensions unlocked) and `prestigeLevel` (the level reached in the current ascension, 1 after each
   ascension). As in `obj.Crafter.lua` `getEffectiveLevelForItem`, an item of the crafter's current ascension uses
@@ -622,7 +623,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   (1..the tier's max). Clicking a growth chart (or Enter on it) picks that level for every chart, the cards and the
   radar; hovering reads values and the crosshair returns to the picked level. URL `#/class/ID/LEVEL/ASC` (kept in step
   with `history.replaceState`). Radar: the three ascensions on one chart at the selected level (each capped at its
-  tier's max), the selected one filled; rim = best class and ascension at that level. Growth curves (`line-chart.ts`,
+  tier's max), the selected one filled; rim = best class and ascension at that level, except Acc, always 250 (U47). Growth curves (`line-chart.ts`,
   inline SVG): one chart per stat, Crit left out of the curves and radar (on request; Rogue, Berserker and Assassin do
   grow it), formula as a caption under each chart. Colours: ascension 0 the site accent, 1 silver, 2 gold (`--v3-asc*`
   tokens built on the outline tokens), plus dotted / dashed / solid lines. Level caps from the game: max level of a
@@ -816,7 +817,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   as a level-10 enemy sorted after Tuvale's level-9 ones, and looked like Yarsol's. Now a bush shows the level range of
   the maps it spawns in (`bushMaps`, `bushLevels`, `enemyLevelText` in `wiki-data.ts`: 99 = maps 1–10, 100 = 13–20 …
   104 = 52–60), sorts by the lowest one, and its region is the lowest map's ("bush of maps level 1–10": 99 Tuvale …
-  104 Frentir). Same in enemy links, the skill pages and the battle picker ("Lv 1–10 · Treasure Bush"). The enemy page
+  104 Frentir). Same in enemy links, the skill pages and the battle picker ("Lvl 1–10 · Treasure Bush"). The enemy page
   keeps `levelReq` as a detail ("maps level 1–10 (quest level 10)", "Quest level" in its stats table) and lists the maps
   in its Maps section (role "treasure"). The game inserts the bush at a random room position (`math.random(1,
   #self.enemies)`, `obj.Map.lua:186-203`), not as the first room; its stats take the map's multiplier like any room
@@ -885,8 +886,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     kinds of battle / Map runs); Mainly drops = the every-win materials and their game type from the data
     (`bushDropKinds` / `bushDropText`: quest bushes "herbs", a moss and a root; Treasure Bushes "crystals and gems",
     a region's crystal and its gem, e.g. Forest Crystal and Emerald) (F44, R1-D).
-  - Neutral formats around translated names (F40): "Lv 9" (lead line, tooltips, Level card "Maps Lv 1–10 · quest
-    Lv 10"), region reasons "Board: <region>", "Event: <region>", "First map: <map>", "Map Lv N", tooltips
+  - Neutral formats around translated names (F40): "lvl 9" (lead line, tooltips, Level card "Maps lvl 1–10 · quest
+    lvl 10"; U47), region reasons "Board: <region>", "Event: <region>", "First map: <map>", "Map lvl N", tooltips
     "<region> · <reason>", enemy tooltips "Maps: <names>".
   - Rare variants (F11): the variant's own name and a small "rare" pill everywhere on the enemy and map pages, the
     Enemies list's Rare variant column, the Rare variant card and the home search (was the kind "Enemy (rare)").
@@ -933,9 +934,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Priced lists (F41): no legend paragraph above Equipment, Consumables, Materials and Maps; the ascension key (the
     outlined boxes) and the definitions are in a "?" on the Cost header (cost, total cost) and on the Sell value
     header (`priceHeads`, `headHelp`). `helpTip` takes nodes as paragraphs (`HelpText`).
-  - Item page (F42, F54): one fact strip, "Weapon · Dagger · Lv 0 · Tuvale · Rarity 1 · Crafter · Sell asc 0 10 g
+  - Item page (F42, F54): one fact strip, "Weapon · Dagger · lvl 0 · Tuvale · Rarity 1 · Crafter · Sell asc 0 10 g
     asc 1 20 g asc 2 40 g" (`factStrip`; the sell boxes are labelled, `sellBoxes` in `wiki-items.ts`; the region's
-    reason is the chip's tooltip, no "Item Lv 0" beside it); Bonus stats and Effect stay as cards. Stats by grade
+    reason is the chip's tooltip, no "Item lvl 0" beside it); Bonus stats and Effect stay as cards. Stats by grade
     merges grades with the same numbers into one row, "D–S" when all five are the same (`mergeGradeRows`). Empty
     sections (no drops, not craftable, not used in any recipe) end the page as one muted line ("Drops · … · Recipe ·
     Not craftable. · Used in · Not used in any recipe."), the hidden-content notes after it.
@@ -1011,7 +1012,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - Numbers through `dom.ts`: `gold()` (cost per orb with one decimal), signed gold built on `goldNumber()`, `duration()`
   for craft time, `pct()` for shares.
 - Every column header explains its metric on hover, focus or tap (`tooltip.ts`; "Tap a value…" wording). The level
-  header is "Lv" (`LV`); expansion icons are left out of the tables (the expansion menu already filters them); the
+  header is "Lvl" (`LV`); expansion icons are left out of the tables (the expansion menu already filters them); the
   breakdown's amounts stay on one line and align right on every line. Tables show 100 rows, then "First 100 of
   N. Show 300 more", 300 rows per click (`MORE_STEP`), never the whole table at once; the sort applies to the whole
   filtered list and survives filtering. Below 600 px the first column (the item) stays in view when a table scrolls
@@ -1080,7 +1081,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   and three equal columns, one column on a phone (F31); the scroll selects' empty option is "None", each select
   sized to its option (F32); no `title` help: the cost split, the time split, the average grade, "random offer",
   "left out", the Party heading, Scrolls and "N of M runs" use `tip()` (hover, focus and tap, dotted line), the
-  column "?" open on tap (F33, F38); the source cell is two lines, the name then a muted "Lv 51" for a quest or
+  column "?" open on tap (F33, F38); the source cell is two lines, the name then a muted "Lvl 51" for a quest or
   "Map grade S" for a map, so a map row has one grade badge, the run's (F34, F35); "–" for no essence in Essence / h
   and Essence / run (F36); at 600 px and less the table's edges fade while it scrolls sideways (R2-A's row-fade, F37).
   Texts in `farming-view.ts`; CSS in the `r3-farming` block. F25 and F28 wait for D1.
@@ -1100,10 +1101,10 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 [Levelling review](../roadmap/review-levelling.md), L1; second batch L2; the Levelling quick fixes of the mobile
 [review R3](../roadmap/review-r3.md#levelling), R3-L).
 
-- Hero pickers (hero and companions): "Paladin (2) · Paladin · Lv 60 · Asc 2", the ascension always shown and heroes
+- Hero pickers (hero and companions): "Paladin (2) · Paladin · lvl 60 · Asc 2", the ascension always shown and heroes
   sharing a name numbered in save order (`heroLabels` in `web/src/ui/levelling-view.ts`, F24).
 - Step 1: the hero (default: the lowest one below its tier's max level); on the picker's line only what the picker
-  lacks: the avatar (class colour, ascension outline, no `title`) and "Lv 53 / 60" (`heroLevelText`, R3 F09); a hero
+  lacks: the avatar (class colour, ascension outline, no `title`) and "Lvl 53 / 60" (`heroLevelText`, R3 F09); a hero
   at max level gets a "planned from level 1" pill and From level 1 (a fresh hero of its class and ascension). Up to 5 companions, "Companions" with no slot names (placed by the game rules: they join party
   quests they may join and map runs, never solo quests, and share the XP; one tooltip says so); each hero can be
   picked once (the levelled hero and the heroes in the other selects are disabled).
@@ -1404,8 +1405,10 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     of Merchant." plus the page's own small print (its `data-note`, else its former text, `footerNote`). The pages'
     HTML keeps its footer text as the fallback without script.
   - Formats (F56): `pct(x, digits = 1)` in `dom.ts` is THE percentage ("42.5%", `pct(x, 0)` "90%", no space before
-    "%", "—" when not a number); `LV` / `lv(n)` THE level abbreviation ("Lv", "Lv 49"; not "Lvl", "LV" or
-    "level 49"); `sentenceCase(label)` for labels written lower case ("Time budget (s)"). Applied in the shared
+    "%", "—" when not a number); `LV` / `lv(n)` / `lvStart(n)` THE level abbreviation, "lvl" since U47 (the user,
+    2026-11-25: "lvl", not "lv"): "Lvl" in column headers and at the start of a cell or line (`LV`, `lvStart(49)`
+    "Lvl 49"), lowercase "lvl 49" inline (`lv(49)`); not "Lv", "LV" or "level 49"; the game's translated names keep
+    their own wording; `sentenceCase(label)` for labels written lower case ("Time budget (s)"). Applied in the shared
     helpers and the menus; the Battle, Solver, Wiki, Save viewer and frozen pages adopt them in their own batches.
   - Sideways rows (F58): `.scroll-row` is THE row of chips or links that scrolls sideways: one line, no scrollbar, a
     fade at the edge that has more (the U20 scroll-driven fade), children at their width, focus rings inside. The
@@ -1454,7 +1457,10 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
 - File picker (`save-file.ts`): Chrome/Edge start in the folder of the last opened save, else Documents; other browsers
   open the plain file dialog wherever the OS decides. A page can't open a dialog in `%APPDATA%` by itself.
 - Hero stats: radar chart per hero (`radar.ts`; axes HP, Atk, Matk, Def, Mdef, Acc, Crit, each from 0 to the strongest
-  hero of the save, real values printed at the axis ends, comparison on hover). Rotations are numbered rows (skill, AP,
+  hero of the save, real values printed at the axis ends, comparison on hover). Fixed rims on every radar (U47; the
+  user, 2026-11-25): Crit always 100 and Acc always 250 (`FIXED_RIMS`, applied inside `radar()` by axis label, so hero,
+  class, save and Simulator radars all follow); a value above the rim sits on it and the tooltip reads "% of the scale
+  (100)". Rotations are numbered rows (skill, AP,
   effect); grade stacks read "14 C" (count, then the grade letter in its colour).
 - Battle page: the party and edited rotations are remembered per save name (localStorage).
 - Ascension is an outline, not text: silver for 1, gold for 2 (`withAsc` / `ascSwatch` in

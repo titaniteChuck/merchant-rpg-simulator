@@ -6,14 +6,14 @@
  * reference quest (F07).
  */
 import type { LevelStep } from "../tools/levelling.ts";
-import { duration, fmt, gold, heroAsc, lv } from "./dom.ts";
+import { duration, fmt, gold, heroAsc, lv, lvStart } from "./dom.ts";
 import { xpText } from "./quest-xp.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
 /**
- * One label per hero, in save order: "Paladin (2) · Paladin · Lv 60 · Asc 2". Heroes sharing a name get a number,
+ * One label per hero, in save order: "Paladin (2) · Paladin · lvl 60 · Asc 2". Heroes sharing a name get a number,
  * counted in save order, so the pickers tell them apart.
  */
 export function heroLabels(heroes: Any[], className: (cls: number) => string): string[] {
@@ -43,8 +43,8 @@ export function stepTimeTip(s: Pick<LevelStep, "source" | "hours" | "runsExact" 
   return `Craft ${duration(craftTotal * 3600)} + run ${duration(Math.max(0, s.hours - craftTotal) * 3600)}`;
 }
 
-/** R3 F09: what the hero picker doesn't say, beside it: "Lv 53 / 60". */
-export const heroLevelText = (level: number, max: number): string => `${lv(level)} / ${max}`;
+/** R3 F09: what the hero picker doesn't say, beside it: "Lvl 53 / 60". */
+export const heroLevelText = (level: number, max: number): string => `${lvStart(level)} / ${max}`;
 
 export interface GoldParts { launchGold: number; reviveGold: number; potionGold: number; mapGold: number; potions: number }
 

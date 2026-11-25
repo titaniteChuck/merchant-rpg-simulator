@@ -229,7 +229,7 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
     el("article", { class: `card hero hero-detail cls-${v.cls}` },
       el("header", { class: "hero-head" }, avatar(v, "big"),
         el("div", {}, el("h2", {}, name),
-          el("div", { class: "sub" }, pill(String(r.class)), ...[badgeFor("class", v.cls)].filter((x): x is HTMLElement => x !== null), pill(`lv ${r.level}`, "plain"),
+          el("div", { class: "sub" }, pill(String(r.class)), ...[badgeFor("class", v.cls)].filter((x): x is HTMLElement => x !== null), pill(`Lvl ${r.level}`, "plain"),
             pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
       el("div", { class: "hero-detail-grid" },
         el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
@@ -352,7 +352,7 @@ function renderCrafters(sv: Save): HTMLElement {
     [`Asc ${asc}`, el("span", { class: `lvl-asc asc-${asc}`, "aria-hidden": "true" })], `Level for ascension-${asc} items`];
   const cols: Column[] = [
     { key: "crafter", label: "Crafter", render: (r) => el("strong", {}, String(r.crafter)) },
-    { key: "level", label: "Lv", num: true },
+    { key: "level", label: "Lvl", num: true },
     { key: "asc1_level", label: "Asc 1", num: true, render: levelCell("asc1_level", 1) },
     { key: "asc2_level", label: "Asc 2", num: true, render: levelCell("asc2_level", 2) },
     { key: "crafting", label: "Working on", render: (r) => {
@@ -362,7 +362,7 @@ function renderCrafters(sv: Save): HTMLElement {
         itemLink(String(job.itemType), Number(job.id), itemLabel(job), undefined, job.prestigeLevel, { always: true }));
     } },
   ];
-  const wrap = iconHeaders(table(rows, cols), cols, { level: [["Lv"], "Level (ascension-0 items)"], asc1_level: levelHeader(1), asc2_level: levelHeader(2) });
+  const wrap = iconHeaders(table(rows, cols), cols, { level: [["Lvl"], "Level (ascension-0 items)"], asc1_level: levelHeader(1), asc2_level: levelHeader(2) });
   // R2 F18 / F52: the explanation is a "?" on the header row, not a paragraph under the table.
   wrap.querySelectorAll("th")[1]?.append(" ", helpTip(CRAFTER_HELP, "the crafter levels"));
   return wrap;
@@ -370,7 +370,7 @@ function renderCrafters(sv: Save): HTMLElement {
 
 /** The crafters' "?" (R2 F18): one level per ascension. */
 export const CRAFTER_HELP = [
-  "Lv: the crafter's level, used for items of ascension 0.",
+  "Lvl: the crafter's level, used for items of ascension 0.",
   "Asc 1, Asc 2: each crafter has its own level per ascension. Crafting items of its current ascension uses that level (it restarts at 1 when the crafter ascends).",
   "Above that level, it can only craft them one ascension lower. \"—\": the crafter hasn't reached that ascension.",
 ];

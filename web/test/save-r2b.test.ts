@@ -49,8 +49,8 @@ test("F14 / F17 / F52: inventory filter on one line with its count and a ?, chip
   assert.doesNotMatch(viewer, /el\("p", \{ class: "muted small" \}, "Value = /, "no sentence under the table");
 });
 
-test("F18: crafter headers Lv · Asc 1 · Asc 2, the explanation in a ? on the header row", () => {
-  assert.match(viewer, /label: "Lv", num: true/);
+test("F18: crafter headers Lvl · Asc 1 · Asc 2, the explanation in a ? on the header row", () => {
+  assert.match(viewer, /label: "Lvl", num: true/);
   assert.match(viewer, /label: "Asc 1"/);
   assert.match(viewer, /label: "Asc 2"/);
   assert.doesNotMatch(viewer, /"Level \(ascension [12]\)"/);

@@ -17,9 +17,9 @@ test("F24: hero labels show level and ascension, and number heroes sharing a nam
     { name: "Paladin", class: 1, level: 42, prestigeLevel: 2 },
   ], cls);
   assert.deepEqual(labels, [
-    "Paladin (1) · Warrior · Lv 60 · Asc 2",
-    "Aria · Cleric · Lv 12 · Asc 0",
-    "Paladin (2) · Warrior · Lv 42 · Asc 1",
+    "Paladin (1) · Warrior · lvl 60 · Asc 2",
+    "Aria · Cleric · lvl 12 · Asc 0",
+    "Paladin (2) · Warrior · lvl 42 · Asc 1",
   ]);
   assert.equal(new Set(labels).size, labels.length, "every label differs");
 });

@@ -70,8 +70,8 @@ test("F08: no step 3 at the last ascension", () => {
   assert.doesNotMatch(page, /nothing more to unlock/);
 });
 
-test("F09: the hero line is the picker, the avatar and Lv N / max", () => {
-  assert.equal(heroLevelText(53, 60), "Lv 53 / 60");
+test("F09: the hero line is the picker, the avatar and Lvl N / max", () => {
+  assert.equal(heroLevelText(53, 60), "Lvl 53 / 60");
   assert.doesNotMatch(page, /`level \$\{h\.level\} of \$\{max\}`/);
   assert.match(page, /pill\("planned from level 1", "t-green"\)/);
   assert.match(page, /el\("div", \{ class: "toolbar lv-hero-bar" \}, hero, info\)/);

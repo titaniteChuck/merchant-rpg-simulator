@@ -2,7 +2,9 @@
  * Radar ("spider") chart of one hero's combat stats, as inline SVG.
  *
  * Each axis has its own scale: 0 at the centre, the strongest value among the heroes being compared at
- * the rim, so the shape shows where a hero stands relative to the others. The real value is printed at
+ * the rim, so the shape shows where a hero stands relative to the others. Two axes have a fixed rim on every radar
+ * (heroes, enemies, all views; the user, 2026-11-25): Crit 100 and Acc 250 (FIXED_RIMS), whatever the caller passes;
+ * a value above the rim sits on it. The real value is printed at
  * the end of every axis (it is what the reader wants; the shape is the summary), and hovering or focusing
  * a vertex adds the comparison. One series per chart, in the hero's class colour (--c), so no legend.
  */
@@ -14,7 +16,7 @@ const NS = "http://www.w3.org/2000/svg";
 export interface RadarAxis {
   label: string;
   value: number;
-  /** rim value (largest among the compared heroes) */
+  /** rim value (largest among the compared heroes); Crit and Acc are replaced by their fixed rim (FIXED_RIMS) */
   max: number;
   /** text for the value; default: integer with separators */
   display?: string;
@@ -22,6 +24,15 @@ export interface RadarAxis {
   best?: string;
   /** what the rim is, for the tooltip instead of "of the best (…)": "the scale (3,000: its highest stat)" (U39) */
   rim?: string;
+}
+
+/** Fixed rims by axis label (the user, 2026-11-25): Crit always 100, Accuracy always 250, on every radar. */
+export const FIXED_RIMS: Readonly<Record<string, number>> = { Crit: 100, Acc: 250, Accuracy: 250 };
+
+/** The axis as drawn: a Crit or Acc axis gets its fixed rim, its tooltip says "of the scale (100)"; others unchanged. */
+export function withFixedRim(a: RadarAxis): RadarAxis {
+  const rim = FIXED_RIMS[a.label];
+  return rim === undefined ? a : { ...a, max: rim, best: undefined, rim: `the scale (${fmt.format(rim)})` };
 }
 
 function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
@@ -39,7 +50,8 @@ export interface RadarLayer {
   label: string;
 }
 
-export function radar(axes: RadarAxis[], opts: { title: string; size?: number; layers?: RadarLayer[]; shapeClass?: string } ): HTMLElement {
+export function radar(given: RadarAxis[], opts: { title: string; size?: number; layers?: RadarLayer[]; shapeClass?: string } ): HTMLElement {
+  const axes = given.map(withFixedRim);
   const size = opts.size ?? 280;
   const pad = 54; // room for the labels outside the rim
   const R = size / 2 - pad;

@@ -90,11 +90,11 @@ test("F22: the sticky Item cell draws its own bottom line on a phone", () => {
   assert.match(block, /\.pf-table td:first-child \{ box-shadow: inset 0 -1px 0 var\(--border\); \}/);
 });
 
-test("F24: the level header is Lv", () => {
-  assert.equal(LV, "Lv");
-  assert.equal(itemColumns(false).find((c) => c.key === "level")!.label, "Lv");
-  assert.equal(enchantColumns().find((c) => c.key === "level")!.label, "Lv");
-  assert.doesNotMatch(tables, /"Lvl"/);
+test("F24: the level header is Lvl (the user, 2026-11-25)", () => {
+  assert.equal(LV, "Lvl");
+  assert.equal(itemColumns(false).find((c) => c.key === "level")!.label, "Lvl");
+  assert.equal(enchantColumns().find((c) => c.key === "level")!.label, "Lvl");
+  assert.doesNotMatch(tables, /"Lv"/);
 });
 
 test("F37: Profit tables fade at the right edge while they scroll", () => {

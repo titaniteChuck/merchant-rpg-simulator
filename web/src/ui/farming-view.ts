@@ -8,7 +8,7 @@
  * source's second line (F34, F35); "–" when there is no essence (F36).
  */
 import type { FarmRow } from "../tools/farming.ts";
-import { duration, fmt, fmt1, gold, lv } from "./dom.ts";
+import { duration, fmt, fmt1, gold, lvStart } from "./dom.ts";
 
 /** Tag of a rare quest row (F07): rare quests only show up at random on the quest board. */
 export const RANDOM_OFFER = "random offer";
@@ -68,7 +68,7 @@ export const gradeTip = (avg: number): string => `Average grade ${fmt1.format(av
 
 /** A source's second line (F34, F35): a quest's level; a map's own grade, apart from the run's Grade column. */
 export function sourceSub(s: { kind: "quest"; level: number | undefined } | { kind: "map"; grade: string }): string {
-  return s.kind === "quest" ? lv(s.level) : `Map grade ${s.grade}`;
+  return s.kind === "quest" ? lvStart(s.level) : `Map grade ${s.grade}`;
 }
 
 /** Help shown by tip() (F33, F38). */

@@ -36,8 +36,8 @@ test("F33: cost and grade tips", () => {
 });
 
 test("F34, F35: a quest's level, a map's own grade on the source's second line", () => {
-  assert.equal(sourceSub({ kind: "quest", level: 51 }), "Lv 51");
-  assert.equal(sourceSub({ kind: "quest", level: undefined }), "Lv ?");
+  assert.equal(sourceSub({ kind: "quest", level: 51 }), "Lvl 51");
+  assert.equal(sourceSub({ kind: "quest", level: undefined }), "Lvl ?");
   assert.equal(sourceSub({ kind: "map", grade: "S" }), "Map grade S");
 });
 

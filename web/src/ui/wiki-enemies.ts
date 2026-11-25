@@ -436,9 +436,9 @@ export function mapsFact(total: number, bossOf: number, craftable: number): stri
   return [String(total), ...(bossOf && bossOf < total ? [`boss in ${bossOf}`] : []), ...(craftable < total ? [`${craftable} craftable`] : [])].join(" · ");
 }
 
-/** The line under an enemy page's title: kind, level, region (R1 F40: "Lv N", no English glue around names). */
+/** The line under an enemy page's title: kind, level, region (R1 F40: "lvl N", no English glue around names). */
 export function enemyLead(id: number): string {
-  return [enemyKind(id), isTreasureBush(id) ? `Maps Lv ${enemyLevelText(id)}` : `Lv ${quest(id)?.levelReq ?? "?"}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ");
+  return [enemyKind(id), isTreasureBush(id) ? `Maps lvl ${enemyLevelText(id)}` : `lvl ${quest(id)?.levelReq ?? "?"}`, regionOf("enemy", id)?.full ?? ""].filter(Boolean).join(" · ");
 }
 
 /** An enemy page's body, below its title. `empty`: an empty section as one muted line (R2-D F54). */
@@ -453,7 +453,7 @@ export function enemyBody(id: number, facts: Facts, section: Section, empty: (..
   return [
     facts([["Kind", enemyKind(id)],
       // A bush: the maps it spawns in (their levels), its quest level only as a detail (U28 follow-up).
-      ["Level", isTreasureBush(id) ? el("span", { class: "fact-compact" }, `Maps Lv ${enemyLevelText(id)}`, el("span", { class: "muted small" }, ` · quest Lv ${q.levelReq}`)) : q.levelReq],
+      ["Level", isTreasureBush(id) ? el("span", { class: "fact-compact" }, `Maps lvl ${enemyLevelText(id)}`, el("span", { class: "muted small" }, ` · quest lvl ${q.levelReq}`)) : q.levelReq],
       // R1 F41: no "map boss" / "event boss" tag (the Kind card says it); the reason only for a map boss (its first map).
       ["Region", regionChip(region, region?.group === "map", { tag: false })],
       ["Fought", bushWhere(id)], ["Mainly drops", bushDrops(id)],

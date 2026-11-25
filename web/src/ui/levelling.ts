@@ -52,7 +52,7 @@ function loadData(): Promise<void> {
 }
 
 const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
-/** The heroes in the pickers: "Paladin (2) · Paladin · Lv 60 · Asc 2" (class in the visitor's language, U29; F24). */
+/** The heroes in the pickers: "Paladin (2) · Paladin · lvl 60 · Asc 2" (class in the visitor's language, U29; F24). */
 const pickerLabels = () => heroLabels(state.sv!.raw.hero as Any[], className);
 const heroRaw = () => state.sv!.raw.hero[Number($<HTMLSelectElement>("#hero").value)];
 const isGathering = (id: number) => G.questData[id]?.questType === 1;
@@ -375,7 +375,7 @@ function renderRefQuests(): void {
   const ids = openableQuests(max, tier).filter((id) => isEnemy(id) && !isGathering(id) && isVisible("enemy", id))
     .sort((a, b) => (G.questData[b].levelReq ?? 0) - (G.questData[a].levelReq ?? 0));
   const groups = REGIONS.slice().reverse().map((r): [string, [string, string][]] => [regionName(r.id, r.full),
-    ids.filter((id) => G.questData[id].region === r.id).map((id): [string, string] => [String(id), `Lv ${G.questData[id].levelReq} · ${enemyName(id)}`])])
+    ids.filter((id) => G.questData[id].region === r.id).map((id): [string, string] => [String(id), `Lvl ${G.questData[id].levelReq} · ${enemyName(id)}`])])
     .filter(([, list]) => list.length);
   const ref = select({ id: "ref-quest", "aria-label": "Quest to compare on" }, groups);
   const pick = defaultRefQuest(ids, (id) => G.questData[id].levelReq ?? 0, h.level ?? 1, state.lastPlanQuest);

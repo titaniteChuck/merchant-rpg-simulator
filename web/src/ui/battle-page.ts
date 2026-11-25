@@ -123,7 +123,7 @@ function loadData(): Promise<void> {
 
 const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
 // No "asc N" in option text: the chosen hero's avatar carries the ascension outline.
-const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lv ${h.level}`;
+const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lvl ${h.level}`;
 const slotKey = (row: string, i: number) => `${row}${i}`;
 const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"} ${key.endsWith("1") ? 1 : key.endsWith("2") ? 2 : 3}`;
 
@@ -140,14 +140,14 @@ function questOptions(): [string, [string, string][]][] {
   return enemyGroups(ids, !mapsHidden()).map((g) => [g.label, g.ids.map((id): [string, string] => {
     const q = G.questData[id];
     const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${enemyName(id, true)}` : "";
-    return [String(id), `Lv ${enemyLevelText(id)} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", id))}`];
+    return [String(id), `Lvl ${enemyLevelText(id)} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", id))}`];
   })]);
 }
 
 function mapOptions(sv: Save | null): [string, [string, string][]][] {
   const catalog = Object.entries<Any>(G.itemData.map ?? {}).filter(([id, m]) => m.name && isVisible("map", Number(id)))
     .sort((a, b) => (a[1].itemLevel ?? 0) - (b[1].itemLevel ?? 0) || Number(a[0]) - Number(b[0]))
-    .map(([id, m]): [string, string] => [`cat:${id}`, `Lv ${m.itemLevel ?? "?"} · ${itemName("map", id) ?? m.name}${expansionMark(needsOf("map", Number(id)))}`]);
+    .map(([id, m]): [string, string] => [`cat:${id}`, `Lvl ${m.itemLevel ?? "?"} · ${itemName("map", id) ?? m.name}${expansionMark(needsOf("map", Number(id)))}`]);
   const groups: [string, [string, string][]][] = [];
   const owned = sv?.mapInventory ?? [];
   if (owned.length) {
@@ -927,7 +927,7 @@ function flowEnemyOptions(): [string, [string, string][]][] {
   return questOptions().map(([g, list]) => [g, list.flatMap(([id, label]): [string, string][] => {
     const d = G.questData[id];
     const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined && d.nameB;
-    const lv = `Lv ${enemyLevelText(Number(id))} · `, mark = expansionMark(needsOf("enemy", Number(id)));
+    const lv = `Lvl ${enemyLevelText(Number(id))} · `, mark = expansionMark(needsOf("enemy", Number(id)));
     return hasRare ? [[id, `${lv}${enemyName(id)}${mark}`], [`${id}:rare`, `${lv}${enemyName(id, true)} (rare)${mark}`]] : [[id, label]];
   })]);
 }

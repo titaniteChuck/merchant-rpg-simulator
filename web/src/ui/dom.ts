@@ -42,11 +42,14 @@ export function pct(x: number, digits: 0 | 1 | 2 = 1): string {
 }
 
 /**
- * THE level abbreviation (R2 F56): "Lv" everywhere, in headers ("Lv"), labels and text ("Lv 49", lv(49)); not
- * "Lvl", "LV" or "level 49". `n` undefined or null: "Lv ?".
+ * THE level abbreviation (R2 F56; wording changed by the user on 2026-11-25: "lvl", not "lv"): column headers and
+ * any label that starts a cell or line read "Lvl" (LV, lvStart(49) = "Lvl 49"); inline text reads lowercase
+ * "lvl 49" (lv(49)). Not "Lv", "LV" or "level 49". `n` undefined or null: "lvl ?". The game's own translated names
+ * are not affected.
  */
-export const LV = "Lv";
-export const lv = (n: number | string | null | undefined): string => `${LV} ${n ?? "?"}`;
+export const LV = "Lvl";
+export const lv = (n: number | string | null | undefined): string => `lvl ${n ?? "?"}`;
+export const lvStart = (n: number | string | null | undefined): string => `${LV} ${n ?? "?"}`;
 
 /** Sentence case for a label (R2 F56): "time budget (s)" → "Time budget (s)"; the rest of the label is kept as written. */
 export const sentenceCase = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);

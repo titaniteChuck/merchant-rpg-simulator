@@ -180,7 +180,7 @@ function renderSources(): void {
       el("div", { class: "toolbar" }, ...g.ids.map((id) => {
         const q = G.questData[id];
         return checkbox(el("span", {}, enemyName(id) ?? q.name,
-          el("span", { class: "muted small" }, ` Lv ${q.levelReq ?? "?"}`), badgeFor("enemy", id) ?? ""), tickedByDefault(id, maxLevel), `quest:${id}`);
+          el("span", { class: "muted small" }, ` lvl ${q.levelReq ?? "?"}`), badgeFor("enemy", id) ?? ""), tickedByDefault(id, maxLevel), `quest:${id}`);
       })))),
     rare);
   // Maps you own, then catalog maps at ascension 0/1; nothing of maps with Scribe hidden (F15, as the Battle pages).
@@ -196,7 +196,7 @@ function renderSources(): void {
   if (catalog.length) {
     mapBlocks.push(el("details", { class: "help farm-fold", "data-label": "Catalog maps" }, el("summary", {}, "Catalog maps"),
       el("div", { class: "toolbar" }, ...catalog.flatMap(([id, m]) => [
-        checkbox(el("span", {}, itemLink("map", id), el("span", { class: "muted small" }, ` Lv ${m.itemLevel ?? "?"}`), " ", gradeBadge("S")), false, `cat:${id}:0`),
+        checkbox(el("span", {}, itemLink("map", id), el("span", { class: "muted small" }, ` lvl ${m.itemLevel ?? "?"}`), " ", gradeBadge("S")), false, `cat:${id}:0`),
         ...(isVisible("map", id, { ascension: 1 }) ? [checkbox(el("span", {}, itemLink("map", id, undefined, undefined, 1), " ", gradeBadge("S")), false, `cat:${id}:1`)] : []),
       ]))));
   }

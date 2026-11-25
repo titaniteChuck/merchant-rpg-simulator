@@ -315,15 +315,15 @@ function enemyRegion(id: number): Region | null {
   const name = () => regionShort(q.region);
   if (q.questType === 6) return mkRegion(q.region, "event", () => `Event: ${name()}`);
   const bush = bushLevels(id);
-  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", () => `Bush of maps Lv ${bush.lo}–${bush.hi}`);
+  if (bush) return mkRegion(mapRegionId(item("map", bushMaps(id)[0])), "region", () => `Bush of maps lvl ${bush.lo}–${bush.hi}`);
   if (q.title === "Treasure Bush") return mkRegion(q.region, "region", () => `Maps: ${name()}`);
   if (q.region !== undefined) return mkRegion(q.region, "region", () => `Board: ${name()}`);
-  return mkRegion(regionOfLevel(q.levelReq), "region", () => `Lv ${q.levelReq}`);
+  return mkRegion(regionOfLevel(q.levelReq), "region", () => `Lvl ${q.levelReq}`);
 }
 
 function mapRegion(id: number): Region | null {
   const m = item("map", id);
-  return m ? mkRegion(mapRegionId(m), "region", () => `Map Lv ${m.itemLevel ?? 0}`) : null;
+  return m ? mkRegion(mapRegionId(m), "region", () => `Map lvl ${m.itemLevel ?? 0}`) : null;
 }
 
 let sourcesOf: Map<string, { fixed: number[]; loot: number[]; essence: number[] }> | null = null;
@@ -374,7 +374,7 @@ function itemRegion(type: string, id: number): Region | null {
     const best = [...counts].sort((a, b) => b[1] - a[1] || Math.abs(a[0] - band) - Math.abs(b[0] - band) || a[0] - b[0])[0][0];
     return mkRegion(best, "region", () => "Where its recipe's materials come from");
   }
-  return mkRegion(band, "region", () => `Item Lv ${it.itemLevel ?? 0}`);
+  return mkRegion(band, "region", () => `Item lvl ${it.itemLevel ?? 0}`);
 }
 
 const GROUP_TAG: Record<RegionGroup, string> = { region: "", event: "event", map: "map boss" };
@@ -646,7 +646,7 @@ export function enemyLink(e: { id: number; name?: string; rare?: boolean }, opts
   if (needs.length && !opts.always && !isVisible("enemy", e.id)) return placeholderFor("enemy", e.id);
   if (!isEnemy(e.id)) return withBadge(el("span", { class: "wl" }, name), needs);
   const maps = enemyMaps(e.id);
-  const kind = () => `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps Lv ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · Lv ${q.levelReq}` : ""}`;
+  const kind = () => `${enemyKind(e.id)}${e.rare ? " · rare" : ""}${bushLevels(e.id) ? ` · maps lvl ${enemyLevelText(e.id)}` : q?.levelReq !== undefined ? ` · lvl ${q.levelReq}` : ""}`;
   const where = () => (maps.length ? `Maps: ${maps.map((m) => itemName("map", m)).join(", ")}` : "Quest only, in no map.");
   const a = el("a", { class: `wl enemy-link${e.rare ? " rare" : ""}`, href: href.enemy(e.id) }, name);
   if (plain) markName(a, e.rare ? "enemyB" : "enemy", e.id);

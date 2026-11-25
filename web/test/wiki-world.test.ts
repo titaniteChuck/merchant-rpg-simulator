@@ -69,7 +69,7 @@ test("F40: neutral formats around translated names (no English glue)", () => {
   } finally {
     setLanguage("en");
   }
-  assert.match(enemyLead(20), /· Lv \d+ ·/);
+  assert.match(enemyLead(20), /· lvl \d+ ·/);
 });
 
 test("F03: the XP block's picks are kept per enemy across a re-render", () => {

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { FOOTER_LINE, footerNote, NAV, saveLabel } from "../src/ui/nav.ts";
 import { chipSlot, openedAt, parseKeptSave, SAVE_NAME_KEY } from "../src/ui/save-menu.ts";
-import { LV, lv, pct, sentenceCase } from "../src/ui/dom.ts";
+import { LV, lv, lvStart, pct, sentenceCase } from "../src/ui/dom.ts";
 import { OLDER_TOOLS_NOTE } from "../src/ui/home.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -123,9 +123,12 @@ test("F56: one percent formatter, one level abbreviation, sentence case", () => 
   assert.equal(pct(0.12345, 2), "12.35%");
   assert.equal(pct(Number.NaN), "—");
   assert.doesNotMatch(pct(0.5, 0), / %/);
-  assert.equal(LV, "Lv");
-  assert.equal(lv(49), "Lv 49");
-  assert.equal(lv(undefined), "Lv ?");
+  // The user, 2026-11-25: "lvl", not "lv"; "Lvl" in headers and at the start of a cell or line.
+  assert.equal(LV, "Lvl");
+  assert.equal(lv(49), "lvl 49");
+  assert.equal(lv(undefined), "lvl ?");
+  assert.equal(lvStart(49), "Lvl 49");
+  assert.equal(lvStart(null), "Lvl ?");
   assert.equal(sentenceCase("time budget (s)"), "Time budget (s)");
   assert.equal(sentenceCase(""), "");
 });

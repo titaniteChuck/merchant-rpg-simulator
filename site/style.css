@@ -2144,7 +2144,7 @@ footer .footer-line a { color: inherit; }
 
 /* r3-levelling */
 /* Review R3, Levelling quick fixes (F02, F04-F10) and F37 / F38 on this page. */
-/* F09: the avatar and "Lv 53 / 60" on the hero picker's line. */
+/* F09: the avatar and "Lvl 53 / 60" on the hero picker's line. */
 .lv-hero-bar { flex-wrap: nowrap; }
 .lv-hero-bar > select { flex: 0 1 auto; min-width: 0; }
 .lv-hero-row { display: inline-flex; flex: none; align-items: center; gap: 8px; }

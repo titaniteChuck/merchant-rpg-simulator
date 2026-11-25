@@ -122,7 +122,7 @@ const facts = (pairs: FactPair[], compact = false) =>
 const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
 
 /**
- * R2-D F42: an item's facts as one line, "Weapon · Dagger · Lv 0 · Tuvale · Rarity 1 · Sell 10 / 20 / 40 g", empty
+ * R2-D F42: an item's facts as one line, "Weapon · Dagger · lvl 0 · Tuvale · Rarity 1 · Sell 10 / 20 / 40 g", empty
  * parts left out.
  */
 const factStrip = (parts: (Node | string | null | undefined | false)[]) =>
@@ -560,7 +560,7 @@ function itemPage(type: string, id: number): HTMLElement {
     // R2-D F42: one strip of facts instead of five cards; the region's reason is its chip's tooltip
     factStrip([
       itemTypeText(type, it.subType, type === "equipment" ? slotName(it.itemSlot) : undefined),
-      `Lv ${it.itemLevel ?? 0}`, ((r) => (r ? regionChip(r) : null))(regionOf(type as "equipment", id)), rarityChip(it.rarity),
+      `lvl ${it.itemLevel ?? 0}`, ((r) => (r ? regionChip(r) : null))(regionOf(type as "equipment", id)), rarityChip(it.rarity),
       it.crafterID ? crafterName(it.crafterID) : null,
       sells.length ? el("span", { class: "nowrap-group" }, statLink("sell", "Sell"), " ", sellBoxes(type, id, sells)) : null,
     ]),
