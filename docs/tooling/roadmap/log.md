@@ -79,3 +79,4 @@
 - **Update**: P2 done (98af089): Profit page second batch; the default answer is built into the site (data/profit-default.json, 2.3 MB), not committed.
 - **Update**: R3-L done (9d7a785): Levelling on phones; review R3 committed with it.
 - **Update**: R3-P done (5566a9a): Profit on phones (review-r3).
+- **Update**: R3-F done (ecbd48c): Farming on phones (review-r3).

@@ -109,6 +109,7 @@ Rules:
 | L2 | **Levelling page, second batch** ([review-levelling](./review-levelling.md)): hero pickers show ascension and number same-named heroes, 7-column steps table (size after the quest, XP / run in the tooltip), map step craft + run tooltip, two-per-row options on phones. | L1 | Done (67f28f2) |
 | R3-L | **Levelling on phones** ([review-r3](./review-r3.md)): results scroll into view, Time / Runs / Gold on one row, no wrapping toggles, compare table Stat / After / Change, winnable default reference quest, no ascension step at max ascension, compact hero line, secondary Compare, table edge fades, tap tooltips. | review-r3 | Done (9d7a785) |
 | R3-P | **Profit on phones** ([review-r3](./review-r3.md)): real two-column options, compact No orbs / Most profit tiles, no expansion icons in rows, asc badge only on phones, no empty Asc column without orbs, non-wrapping toggles, tap help instead of title, cost breakdown alignment, sticky column borders, Lv header, table edge fade, base-game note. | review-r3 | Done (5566a9a) |
+| R3-F | **Farming on phones** ([review-r3](./review-r3.md)): podium tiles named, value / h with the gold and essence split, losses coloured, hero labels with ascension, party grid, scroll selects not cut, tap help instead of title, one grade badge per map row, two-line source cells, – for no essence, table edge fade. | review-r3 | Done (ecbd48c) |
 
 ## UI lane
 
