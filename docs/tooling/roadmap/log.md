@@ -92,3 +92,4 @@
 - **Update**: U51–U54 added from the user's second 2026-11-25 batch (Solver rows, Flow turn rows, save width and overview, wiki map time and Fight button, class page).
 - **Update**: U52 done (554fd3f): loading a save opens the Overview from any page; save.html as wide as the other pages, stable scrollbar gutter site-wide; no save chips on the open-save wizard; Example save as a third card.
 - **Update**: U54 done (80e43e3): class details show a stat table and a shape-only spider chart instead of the line chart; skills show their unlock level, lvl 51 marked Frozen Tome.
+- **Update**: U53 done (491b2d7): speed prefixes shorten a map's base time on its wiki page; "Fight in simulator" on map and enemy details opens the Simulator on that opponent.
