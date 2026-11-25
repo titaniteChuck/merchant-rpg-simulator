@@ -77,3 +77,4 @@
 - **Update**: L1 done (131325b): Levelling page first batch (review-levelling); Lua parity tests ran on the merge.
 - **Update**: L2 done (67f28f2): Levelling page second batch.
 - **Update**: P2 done (98af089): Profit page second batch; the default answer is built into the site (data/profit-default.json, 2.3 MB), not committed.
+- **Update**: R3-L done (9d7a785): Levelling on phones; review R3 committed with it.
