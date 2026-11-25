@@ -322,7 +322,34 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     row is a `role=row` named "Turn 3: each fighter at its start", each card a cell with its HP and "Buff: …" /
     "Debuff: …, 2 turns left" as text. A narrow card (a phone) puts the bar over the number and shortens a long number
     (container query at 84 px). Without a traced fight, Flow 1's planned rotation.
-  - Flow 3 (`web/src/ui/flow3.ts`, `renderFlow3`): U59's layout; until it lands, "Coming soon".
+  - Flow 3 (`web/src/ui/flow3.ts`, `renderFlow3`): U59's layout, below.
+- U59, Flow 3 (`web/src/ui/flow3.ts`; tests `web/test/battle-u59-flow3.test.ts`, CSS in the `Flow 3` block), one of
+  the three Flow layouts the user compares (Party · Flow 1 · Flow 2 · Flow 3; the tabs and the registry
+  `web/src/ui/flow-layouts.ts` are U58's). Entry point `renderFlow3(quest, members, trace, edit)`, the same inputs and
+  result as Flow 1's `partyPlan` (`timeline.ts`, unchanged); without a traced fight it returns Flow 1's planned rotation.
+  - Columns: one per fighter in action order (`planGrid`), a compact sticky head row (name, place; `aria-hidden`, since
+    every card names its fighter). No turn bands, no end-of-turn summary.
+  - One card per action, each on its own grid row of one ordered list (`ol.f3-grid`, `grid-row` set per item), so a
+    card always sits lower than the previous action's card in any column and the DOM order is the reading order.
+    `flow3Items` builds them from the same trace as Flow 1: each action goes through `planTimeline` as a turn of its own,
+    so its "end of turn" state is the state right after that action (HP, live effects, the same chips and calculations).
+  - A card, top to bottom: the fighter's name (class colour on the card's top edge; the enemy in the gold trim) with a
+    tiny "T3" on each turn's first item; the skill as headline (the planned one struck out under a stun or a forced
+    action, "miss"); the result, one row per fighter touched (name or "self", −damage / +healing with a "▾" each, "crit",
+    "miss", "✝ KO", the effects that landed; heroes that only got the same effects share one "Party" row, or their
+    names); then, quieter under a line, the HP bar and number right after the action and the fighter's effects, one per
+    line, text only (turns left after "·"). A "▾" opens its calculation inside the card (`calcView`, as Flow 1).
+  - Turns: a hairline across the columns between two turns (`li.f3-break`, `aria-hidden`), none before a turn that
+    shows nothing.
+  - Down: the trace has no action for a fallen fighter, so a dimmed "†" goes once in its column at the place of the
+    first turn it misses (`dead` items; an old trace's `did = null` action the same), nothing more until it stands again.
+  - Screen readers: each card starts with a visually hidden sentence, "Turn 3, Warrior: Slash on Boss, 1,240 damage"
+    (`flow3Sentence`; several fighters joined by "; on", "the party" for a party buff, "falls", "critical", "missed");
+    the visible names and numbers are `aria-hidden`, the skill link, the "▾" buttons ("Calculation: the damage to Boss")
+    and the HP (`role=img`) stay.
+  - Phone: one long page, no scroll frame. Under 560 px of Flow width (container query) a card spans a few columns
+    (`narrowSpan`: about 140 px at 375, 3 of 7 columns) from its own column, or ending at it near the right edge, and a
+    notch on its top edge points at its column; the "†" stays one column wide.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

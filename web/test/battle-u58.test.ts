@@ -213,9 +213,11 @@ test("Flow 2 without a fight: Flow 1's planned rotation; Flow 1 keeps its heads,
   assert.equal(f1.querySelectorAll("div.f2-card").length, 0);
 });
 
-test("Flow 3: registered; until U59 lands, \"Coming soon\"", () => {
+test("Flow 3: registered, U59's real layout (one card per action), not the stub", () => {
   const out = renderFlow3({ id: 72, rare: false }, members, traceOf(72)) as unknown as FakeElement | null;
   assert.ok(out);
+  assert.ok(out!.querySelector("ol.f3-grid"), "Flow 3's card grid");
+  assert.doesNotMatch(out!.textContent ?? "", /Coming soon/);
 });
 
 test("CSS: Flow 2's own block: the cards share the lines' columns; a narrow card stacks its bar over its number", () => {

@@ -29,7 +29,7 @@ export interface FlowLayout {
 export const FLOW_LAYOUTS: readonly FlowLayout[] = [
   { id: "flow1", label: "Flow 1", render: partyPlan, help: (q) => planNote(q) },
   { id: "flow2", label: "Flow 2", render: renderFlow2, help: (_q, editable) => flow2Note(editable) },
-  { id: "flow3", label: "Flow 3", render: renderFlow3, help: () => "Flow 3: another layout of the same fight." },
+  { id: "flow3", label: "Flow 3", render: renderFlow3, help: () => "Flow 3: one card per action, in order; ▾ opens a calculation." },
 ];
 
 export const isFlow = (t: string | null | undefined): t is FlowId => FLOW_LAYOUTS.some((l) => l.id === t);

@@ -2526,3 +2526,76 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .flow-panel .f2-name { font-size: 0.66rem; }
 }
 /* end Flow 2 */
+
+/* Flow 3 */
+/* U59 (web/src/ui/flow3.ts): one card per action in its fighter's column, each card on its own grid row so the
+   cards read top to bottom in the order the fighters act. No turn bands: a hairline between turns and a "T3" tag on
+   each turn's first card. One long page: no scroll frame, no fixed widths. */
+.f3 { container-type: inline-size; --f3-gap: 3px; }
+.f3-heads, .f3-grid { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); column-gap: var(--f3-gap); }
+.f3-heads { position: sticky; top: 0; z-index: 3; padding: 4px 0; margin-bottom: 4px; background: var(--bg); box-shadow: 0 1px 0 var(--border); }
+.f3-head { display: flex; flex-direction: column; min-width: 0; padding-left: 5px; border-left: 3px solid var(--c, var(--border)); line-height: 1.2; }
+.f3-head.enemy, .f3-card.enemy { --c: var(--trim); }
+.f3-head strong { font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f3-head span { font-size: 0.6rem; color: var(--muted); }
+.f3-grid { list-style: none; margin: 0; padding: 0; row-gap: 5px; align-items: start; }
+.f3-grid > li { min-width: 0; grid-column: var(--f3-col) / span 1; }
+/* The card: the fighter's colour on top, the skill as headline, the result next, the state quieter under a line. */
+.f3-card { position: relative; box-sizing: border-box; padding: 4px 7px 6px; border-radius: 8px; font-size: 0.7rem; line-height: 1.3;
+  overflow-wrap: anywhere; background: color-mix(in srgb, var(--c, var(--border)) 7%, var(--card-2));
+  border: 1px solid color-mix(in srgb, var(--c, var(--border)) 30%, transparent); border-top: 3px solid var(--c, var(--border));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+:root[data-theme="light"] .f3-card { box-shadow: 0 1px 2px rgba(60, 40, 10, 0.12); }
+.f3-top { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 0.62rem; font-weight: 700;
+  color: color-mix(in srgb, var(--muted) 80%, var(--fg)); }
+.f3-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f3-t { flex: none; padding: 0 4px; border-radius: 4px; font-size: 0.56rem; font-weight: 800; letter-spacing: .03em; color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 13%, transparent); }
+.f3-skill { margin: 1px 0 2px; font-size: 0.8rem; font-weight: 750; line-height: 1.2; color: var(--fg); }
+.f3-planned { font-weight: 500; color: var(--muted); }
+.f3-tag { display: inline-block; padding: 0 3px; border-radius: 3px; font-size: 0.56rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .03em; vertical-align: 1px; }
+.f3-crit { color: var(--fg); background: color-mix(in srgb, var(--mid) 30%, transparent); }
+.f3-miss, .f3-void { font-weight: 650; text-transform: none; font-style: italic; color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
+.f3-stun { color: #fff; background: #7c3aed; }
+.f3-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.f3-hit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; min-width: 0; }
+.f3-to { font-size: 0.62rem; color: color-mix(in srgb, var(--muted) 80%, var(--fg)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%; }
+.f3-num { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.f3-landed { display: flex; flex-direction: column; flex-basis: 100%; }
+.f3-landed .tc-fx { cursor: help; }
+.f3-calc-btn { border: 0; background: none; padding: 0 3px; font: inherit; font-size: 0.8rem; line-height: 1; cursor: pointer;
+  color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
+.f3-calc-btn:hover, .f3-calc-btn[aria-expanded="true"] { color: var(--fg); }
+.f3-calc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+/* A calculation opens inside its card: exactly the card's width, its text wrapping. */
+.f3-calc { margin-top: 5px; padding: 4px 5px; border-radius: 5px; font-size: 0.64rem; text-align: left; overflow-wrap: anywhere;
+  background: color-mix(in srgb, var(--fg) 6%, var(--card)); border: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.f3-state { margin-top: 4px; padding-top: 4px; border-top: 1px solid color-mix(in srgb, var(--muted) 22%, transparent); }
+.f3-hp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; font-size: 0.62rem;
+  font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--muted) 80%, var(--fg)); }
+.f3-hpbar { height: 4px; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--muted) 25%, transparent); }
+.f3-hpbar > span { display: block; height: 100%; background: var(--good); }
+.f3-hp.mid .f3-hpbar > span { background: var(--mid); }
+.f3-hp.low .f3-hpbar > span { background: #ef4444; }
+.f3-hp.down .f3-hpnum { color: color-mix(in srgb, var(--bad) 85%, var(--fg)); font-weight: 750; }
+.f3-fx { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 0; }
+.f3-fx-item { font-size: 0.6rem; line-height: 1.3; }
+/* Down: one dimmed "†" in the fighter's column. */
+.f3-dead { justify-self: center; font-size: 0.8rem; line-height: 1; color: var(--muted); opacity: .6; }
+.f3-dead .f3-t { margin-right: 3px; vertical-align: 2px; }
+/* A turn boundary: a hairline across the columns. */
+.f3-grid > .f3-break { grid-column: 1 / -1; height: 0; margin: 3px 0 1px; border-top: 1px solid color-mix(in srgb, var(--muted) 28%, transparent); }
+.f3-grid > .f3-more { grid-column: 1 / -1; }
+/* A narrow box (a phone): a card spans a few columns from its own (or ending at it near the right edge), a notch on
+   top marks its column; the "†" stays in its column. */
+@container (max-width: 560px) {
+  .f3-grid > .f3-card { grid-column: var(--f3-nstart) / span var(--f3-nspan); margin-top: 4px; }
+  .f3-card::before { content: ""; position: absolute; top: -8px; left: var(--f3-notch); transform: translateX(-50%);
+    border: 5px solid transparent; border-bottom-color: var(--c, var(--border)); }
+  .f3-head { padding-left: 3px; }
+  .f3-head strong { font-size: 0.62rem; white-space: normal; overflow-wrap: anywhere; }
+  .f3-head span { font-size: 0.56rem; }
+}
+/* end Flow 3 */
