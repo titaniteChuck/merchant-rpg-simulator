@@ -2,7 +2,8 @@
  * U63: the parts the Flow layouts share (Flow 2, flow2.ts; Flow 3, flow3.ts; the planned rotation, flow-planned.ts),
  * moved out of timeline.ts when Flow 1 (its `partyPlan` / `flowChart`) was removed:
  * - the edit callbacks (PlanEdit) and their controls: a hero's or the opponent's name with its picker (nameEdit), a
- *   rotation slot's ▾ (skillEdit);
+ *   rotation slot's skill name (slotSkill, U64: the Party view's in-place picker);
+ * - a skill's name as plain text with its effect on hover (skillText; U64: no wiki link in the Flows);
  * - an action line's pieces: the actor's skill (actorEl), a number's "▾ calculation" (calcToggle, calcPanel), the turn
  *   band (turnRow) and the rotation turns a short fight never reached (unreachedRows);
  * - fmtInt and FLOW_PAGE.
@@ -14,7 +15,8 @@ import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
 import { calcColumn, turnBand } from "./battle-layout.ts";
 import { tip } from "./tooltip.ts";
-import { skillLink } from "./wiki-data.ts";
+import { skillTip } from "./wiki-data.ts";
+import { pickButton, type PickOption } from "./pick-list.ts";
 import { skillName } from "./names.ts";
 
 export const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -29,8 +31,11 @@ export interface PlanEdit {
   /** The hero choices for a party location ([value, label]) and its current value. */
   heroes(loc: number): { options: [string, string][]; value: string };
   setHero(loc: number, value: string): void;
-  /** The skills the hero at a location can play in its rotation ([skill, label]), or null. */
-  skills(loc: number): [string, string][] | null;
+  /**
+   * U64: the skills the hero at a location can play in its rotation (the Party view's picker choices: name, AP,
+   * effect; `current` listed even when not unlocked), or null.
+   */
+  skills(loc: number, current: string): PickOption[] | null;
   /** Rotation slot k (0-4) of the hero at a location. */
   setSkill(loc: number, k: number, skill: string): void;
   /**
@@ -56,15 +61,6 @@ function selectEl(label: string, options: [string, string][] | OptionGroups, val
 }
 
 /**
- * A small ▾ over a transparent <select> (U39): unobtrusive until hover or focus, keyboard-reachable (Tab, then the
- * arrow keys or Enter). `focus`: a key the page uses to put the focus back after the redraw.
- */
-function editControl(label: string, options: [string, string][], value: string, focus: string, onChange: (v: string) => void): HTMLElement {
-  return el("span", { class: "fl-edit", title: label, "data-flow-focus": focus }, el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"),
-    selectEl(label, options, value, onChange));
-}
-
-/**
  * A name with a ▾ (U40): the transparent <select> covers the name and the ▾, so clicking the name opens the choices
  * (Flow 2's turn-1 cards, the planned rotation's heads).
  */
@@ -74,25 +70,36 @@ export function nameEdit(name: Node | string, label: string, options: [string, s
     el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"), selectEl(label, options, value, onChange));
 }
 
-/** The rotation slot's ▾ (turns 1-5 only: later turns repeat it). */
-export function skillEdit(edit: PlanEdit | undefined, loc: number, turn: number, planned: string): HTMLElement[] {
-  const opts = turn <= 5 ? edit?.skills(loc) : null;
-  if (!edit || !opts) return [];
-  const list = opts.some(([v]) => v === planned) ? opts : [...opts, [planned, skillName(planned)] as [string, string]];
-  return [editControl(`${locationLabel(loc)}: turn ${turn} skill`, list, planned, `skill-${loc}-${turn}`, (v) => edit.setSkill(loc, turn - 1, v))];
+/** A skill's name as plain text, its effect on hover (U64: the Flows don't link to the wiki). */
+export function skillText(name: string): HTMLElement {
+  const s = el("span", {}, skillName(name));
+  return name === "Basic" ? s : skillTip(s, name);
 }
 
-/** The actor's cell: the skill it played (the planned one struck out under a stun or a forced action). */
-export function actorEl(l: TimelineLine): HTMLElement[] {
+/**
+ * U64: a hero's rotation slot (turns 1-5) with `edit`: the skill's name is a button opening the Party view's picker
+ * in place (pick-list.ts: each choice's name, AP and effect), the list appended to `host`; else plain text.
+ */
+export function slotSkill(skill: string, host: () => HTMLElement, edit: PlanEdit | undefined, loc: number, turn: number): HTMLElement {
+  const opts = edit && turn <= 5 ? edit.skills(loc, skill) : null;
+  if (!opts) return skillText(skill);
+  const b = pickButton({ label: `${locationLabel(loc)}: turn ${turn} skill`, text: skillName(skill), value: skill, options: () => opts,
+    onPick: (v) => edit!.setSkill(loc, turn - 1, v), focus: `skill-${loc}-${turn}`, host });
+  return skill === "Basic" ? b : skillTip(b, skill);
+}
+
+/**
+ * The actor's cell: the skill it played (the planned one struck out under a stun or a forced action). `planned`: the
+ * planned skill's node (a hero's slotSkill), else plain text.
+ */
+export function actorEl(l: TimelineLine, planned: HTMLElement = skillText(l.planned)): HTMLElement[] {
   if (l.did === null) return [el("span", { class: "tc-skill tc-down", title: "Down: no action" }, "down")];
   const played = l.did === false ? null : l.did;
-  const skill = played === null
-    ? el("span", { class: "tc-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(l.planned)}` }, skillName(l.planned)), " ",
-      el("span", { class: "tl-forced", title: "Stunned: the action is lost" }, "stun"))
-    : played !== l.planned
-    ? el("span", { class: "tc-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(l.planned)}` }, skillName(l.planned)), " ",
-      el("span", { class: "tl-forced", title: "Forced: another action than the planned one" }, played === "Basic" ? "Basic" : skillLink(played)))
-    : el("span", { class: "tc-skill" }, played === "Basic" ? "Basic" : skillLink(played));
+  const skill = played === l.planned
+    ? el("span", { class: "tc-skill" }, planned)
+    : el("span", { class: "tc-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(l.planned)}` }, planned), " ",
+      played === null ? el("span", { class: "tl-forced", title: "Stunned: the action is lost" }, "stun")
+        : el("span", { class: "tl-forced", title: "Forced: another action than the planned one" }, skillText(played)));
   return [skill, ...(l.misses ? [el("span", { class: "tc-miss", title: `${l.misses} attack${l.misses > 1 ? "s" : ""} missed` }, "miss")] : [])];
 }
 
@@ -165,8 +172,8 @@ export function turnRow(turn: number, cols: number): HTMLElement {
 
 /**
  * R3 QA: the rotation turns (1-5) the fight never reached (it ended sooner), one compact muted row each, "planned, not
- * reached": each hero's planned skill with its ▾ (the same PlanEdit, so the same party state and AP limit refusal as
- * the reached turns). Nothing when every rotation turn was played.
+ * reached": each hero's planned skill, its picker with `edit` (the same PlanEdit, so the same party state and AP
+ * limit refusal as the reached turns). Nothing when every rotation turn was played.
  */
 export function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit): HTMLElement[] {
   const turns = [1, 2, 3, 4, 5].filter((t) => !reached.has(t));
@@ -176,8 +183,8 @@ export function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: P
       turnRow(t, cols.length),
       el("div", { class: "tc-lines" }, el("div", { class: "tc-line", role: "row" }, ...cols.map((c) => {
         if (c.kind !== "hero") return el("div", { class: "tc-cell", role: "cell" });
-        const planned = (c.cells[t - 1] as HeroCell).planned;
-        return el("div", { class: "tc-cell tc-planned", role: "cell" },
-          el("span", { class: "tc-skill" }, planned === "Basic" ? "Basic" : skillLink(planned)), ...skillEdit(edit, c.loc!, t, planned));
+        const cell = el("div", { class: "tc-cell tc-planned", role: "cell" });
+        cell.append(el("span", { class: "tc-skill" }, slotSkill((c.cells[t - 1] as HeroCell).planned, () => cell, edit, c.loc!, t)));
+        return cell;
       })))))];
 }

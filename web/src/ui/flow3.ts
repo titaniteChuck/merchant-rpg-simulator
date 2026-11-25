@@ -26,12 +26,11 @@ import {
 import type { TraceCalc } from "../sim/api.ts";
 import { el } from "./dom.ts";
 import { enemyName, skillName } from "./names.ts";
-import { FLOW_PAGE, type PlanEdit } from "./flow-parts.ts";
+import { FLOW_PAGE, type PlanEdit, skillText } from "./flow-parts.ts";
 import { hpBar } from "./flow-hp.ts";
 import { plannedRotation } from "./flow-planned.ts";
 import { timelineOf } from "./timeline.ts";
 import { tip } from "./tooltip.ts";
-import { skillLink } from "./wiki-data.ts";
 
 const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -240,15 +239,17 @@ function calcToggle(card: HTMLElement, open: () => HTMLElement, what: string): H
   return btn;
 }
 
-/** The skill line: the skill played (linked), the planned one struck out under a stun or a forced action. */
+/**
+ * The skill line: the skill played (U64: plain text, its effect on hover; Flow 3 is read-only), the planned one struck
+ * out under a stun or a forced action.
+ */
 function skillEl(line: TimelineLine, misses: boolean): HTMLElement {
-  const link = (s: string) => (s === "Basic" ? el("span", {}, "Basic") : skillLink(s));
   const planned = () => el("s", { class: "f3-planned", title: `Planned: ${skillName(line.planned)}` }, skillName(line.planned));
   const kids: (Node | string)[] = line.did === false
     ? [planned(), " ", el("span", { class: "f3-tag f3-stun", title: "Stunned: the action is lost" }, "stun")]
     : line.did !== line.planned
-    ? [planned(), " ", el("span", { title: "Forced: another action than the planned one" }, link(line.did!))]
-    : [link(line.did!)];
+    ? [planned(), " ", el("span", { title: "Forced: another action than the planned one" }, skillText(line.did!))]
+    : [skillText(line.did!)];
   return el("div", { class: "f3-skill" }, ...kids,
     ...(misses ? [" ", el("span", { class: "f3-tag f3-miss", title: `${line.misses} attack${line.misses > 1 ? "s" : ""} missed` }, "miss")] : []));
 }

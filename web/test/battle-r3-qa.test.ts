@@ -1,6 +1,6 @@
 // Browser QA fixes after R3 (no browser here: a tiny fake DOM, helpers/fake-dom.ts, builds the Flow for real):
 // the calculation's terms explain themselves through the shared tooltip (hover, focus, tap), not a hover-only title;
-// rotation turns a short fight never reached keep their ▾ editors in "planned, not reached" rows; a map run that
+// rotation turns a short fight never reached keep their editors (U64: the skill name's picker) in "planned, not reached" rows; a map run that
 // Scribe hidden pushed back to a quest comes back when Scribe shows again; the Profit table's scroll stops clear of
 // its sticky Item column. Game data and the site's example save only, CI runs it.
 import "./helpers/fake-dom.ts";
@@ -41,7 +41,7 @@ function recorder() {
   const edit: PlanEdit = {
     heroes: () => ({ options: [["x", "x"]], value: "x" }),
     setHero: () => {},
-    skills: () => [["Basic", "Basic"]],
+    skills: () => [{ value: "Basic", label: "Basic", ap: 0 }, { value: "Test Skill", label: "Test Skill", ap: 1, note: "Does a test" }],
     setSkill: (loc, k, skill) => void calls.push([loc, k, skill]),
   };
   return { edit, calls };
@@ -90,7 +90,7 @@ test("calculation terms: no title, the shared tooltip on hover, focus and tap in
   assert.doesNotMatch(toggle, /title:/);
 });
 
-test("flow: a fight over on turn 1 lists turns 2-5 as planned, not reached, each hero with its ▾", () => {
+test("flow: a fight over on turn 1 lists turns 2-5 as planned, not reached, each hero with its skill picker", () => {
   const { edit, calls } = recorder();
   const plan = flow(92, edit); // Murlok Monarch falls on turn 1
   const rows = plan.querySelectorAll("div.tc-unreached");
@@ -106,19 +106,18 @@ test("flow: a fight over on turn 1 lists turns 2-5 as planned, not reached, each
     assert.equal(cells.length, members.length, `turn ${turn}: one planned cell per hero`);
     for (const c of cells) {
       assert.ok(c.querySelector(".tc-skill")!.textContent.length > 0, "the planned skill is shown");
-      const ed = c.querySelector("span.fl-edit")!;
-      assert.match(ed.getAttribute("data-flow-focus")!, new RegExp(`^skill-\\d-${turn}$`));
+      const ed = c.querySelector("button.pk-btn")!; // U64: the skill's name opens its picker
+      assert.match(ed.getAttribute("data-focus")!,new RegExp(`^skill-\\d-${turn}$`));
     }
   }
   // the editor changes the same rotation slot as on a reached turn (same PlanEdit: same state, same AP refusal)
-  const sel = rows[2].querySelector("select")!; // turn 4
-  sel.value = "Basic";
-  sel.dispatch("change");
+  const cell = rows[2].querySelector("div.tc-planned")!; // turn 4
+  cell.querySelector("button.pk-btn")!.dispatch("click");
+  cell.querySelectorAll("li.pk-opt").find((o) => o.getAttribute("aria-selected") === "false")!.dispatch("click");
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1], 3, "turn 4 is rotation slot 3");
-  assert.equal(calls[0][2], "Basic");
   // turn 1 (reached) keeps its editors in the fight itself, not a planned row
-  assert.ok(plan.querySelectorAll("div.tc-turn").some((t) => !t.classList.contains("tc-unreached") && t.querySelector("span.fl-edit")));
+  assert.ok(plan.querySelectorAll("div.tc-turn").some((t) => !t.classList.contains("tc-unreached") && t.querySelector("button.pk-btn")));
 });
 
 test("flow: no planned rows once the fight reached turn 5", () => {

@@ -13,7 +13,7 @@
 import { lv, el } from "./dom.ts";
 import { locationLabel, type PlanColumn, planGrid, type PlanMember, planTimeline, type TimelineCell, type TimelineChip,
   type TimelineTurn, type TracedFight } from "./battle-plan.ts";
-import { actorEl, calcPanel, calcToggle, FLOW_PAGE, fmtInt, nameEdit, type PlanEdit, skillEdit, turnRow, unreachedRows } from "./flow-parts.ts";
+import { actorEl, calcPanel, calcToggle, FLOW_PAGE, fmtInt, nameEdit, type PlanEdit, slotSkill, turnRow, unreachedRows } from "./flow-parts.ts";
 import { hpBar } from "./flow-hp.ts";
 import { PLANNED_NOTE, plannedRotation } from "./flow-planned.ts";
 import { timelineOf, tlName } from "./timeline.ts";
@@ -136,8 +136,10 @@ export function renderFlow2(quest: { id: number; rare: boolean }, members: PlanM
       const line = el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c, k) => {
         const w = whoOf(c), actor = w === l.who;
         const cls = actor ? ` actor ${c.kind === "enemy" ? "enemy" : `cls-${c.member!.cls}`}` : "";
-        return el("div", { class: `tc-cell${cls}`, role: "cell" }, ...(actor ? actorEl(l) : []),
-          ...(actor && c.kind === "hero" ? skillEdit(edit, w, t.turn, l.planned) : []), ...takenEl(l.cells[w], w, nameOf, box, k));
+        const cell = el("div", { class: `tc-cell${cls}`, role: "cell" });
+        cell.append(...(actor ? actorEl(l, c.kind === "hero" ? slotSkill(l.planned, () => cell, edit, w, t.turn) : undefined) : []),
+          ...takenEl(l.cells[w], w, nameOf, box, k));
+        return cell;
       }));
       return [line, box];
     });
@@ -171,6 +173,6 @@ export function flow2Note(editable: boolean): string {
     + "(the number: turns left). Then the turn's actions in order, one line each: the skill in the actor's column, damage (−) "
     + "and healing (+) in the target's; ▾ calculation opens how a number was worked out. Heroes play rotation slot k on turn k; "
     + "turn 6 is turn 1 again."
-    + (editable ? " In turn 1, a name changes the hero or the opponent; ▾ changes a skill in turns 1–5." : "")
+    + (editable ? " In turn 1, a name changes the hero or the opponent; in turns 1–5, a hero's skill name changes it." : "")
     + ` ${PLANNED_NOTE}`;
 }

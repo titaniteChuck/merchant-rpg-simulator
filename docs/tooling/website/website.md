@@ -369,7 +369,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     "flow" or "flow1" opens Flow 2 (`parseTab`), the panel starts on Flow 2 and `flowLayout` falls back to it.
   - Code: Flow 1's rendering (`partyPlan`'s traced view `flowChart`, its end-of-turn band `hpEl` / `fxEl`, `takenEl`,
     `planNote`) is deleted. The parts the Flows share moved from `timeline.ts` to `web/src/ui/flow-parts.ts`:
-    `PlanEdit`, `OptionGroups`, `nameEdit`, `skillEdit`, `actorEl`, `calcPanel`, `calcToggle`, `turnRow`,
+    `PlanEdit`, `OptionGroups`, `nameEdit`, `skillEdit` (U64: replaced by `slotSkill`), `actorEl`, `calcPanel`, `calcToggle`, `turnRow`,
     `unreachedRows`, `fmtInt`, `FLOW_PAGE`. `timelineOf`, `tlName` and `loadTimelineData` stay in `timeline.ts` (the
     wiki's enemy strip uses them too). Dead CSS removed: `.tc-status`, `.tc-hp*`, `.tc-fxs`, `.tc .pg-heads`, the
     phone `.tc-hp` rules, Flow 2's `.f2-hp` / `.f2-bar` / `.f2-full` / `.f2-short` / asc frames, Flow 3's `.f3-hp*`.
@@ -378,7 +378,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     and ▾), now `plannedRotation` in `web/src/ui/flow-planned.ts`; both Flows return it. Chosen over redrawing the
     plan in Flow 2's cards: it is the one view that shows the enemy's effects on each hero per turn, and its heads keep
     every picker when there is no fight. Nothing editable is lost: with a fight, Flow 2's turn-1 cards carry the hero
-    and opponent pickers (Flow 1's heads did) and its lines the ▾ of turns 1-5; without one, the planned view does.
+    and opponent pickers (Flow 1's heads did) and its lines the ▾ of turns 1-5 (U64: the skill name itself); without
+    one, the planned view does.
   - "?" texts: Flow 2's says how to read the cards and lines, the rotation rule (slot k on turn k, turn 6 is turn 1)
     and, on the Simulator, the pickers; both end with the planned rotation's line (`PLANNED_NOTE`).
   - Flow 2's hero card is outlined in its class colour (`.f2-card:not(.dead)`, border 80 % of `--c`); no ascension
@@ -459,6 +460,23 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     open list alone (`.pk-list` in `party-drag.ts`).
   - The enemy's rotation: its skill on turns 1-5 from its timeline (`enemyTurns`, the data of the Flow and the wiki's
     strip; without it, the game's rotation), the same rows, read-only, no AP.
+
+- U64, the Flows' skill names (tests `web/test/battle-u64.test.ts`, CSS in the `U64` block; R3 QA, U48 and U63 tests
+  updated):
+  - No wiki link on a skill name in Flow 2, Flow 3 or the planned rotation (`skillLink` is gone from the Flow
+    modules). A name that can't be edited is plain text with its effect on hover (`skillText` in `flow-parts.ts`,
+    `skillTip`): the enemy's skills, a hero's forced action, turns 6 and later, Flow 3's fight (read-only), and every
+    skill on the Solver.
+  - On the Simulator, a hero's skill name in turns 1-5 (Flow 2's action lines and "Planned, not reached" rows, the
+    planned rotation's cells; struck out under a stun or a forced action) is the slot's picker: `slotSkill` builds a
+    U62 `pickButton` (`pick-list.ts`) whose list opens in the cell, each choice with its AP and effect, the same
+    keyboard. The separate ▾ (`skillEdit`, `editControl`, `.fl-edit` CSS) is gone. `PlanEdit.skills(loc, current)`
+    returns the Party view's choices (`rotationChoices(...).map(skillOption)`; `rotationOptions` deleted), so both
+    views share one option builder. `setSkill` is unchanged: U40's AP refusal toast, then `renderParty` and
+    `renderPlan` trace the fight again, redrawing the Flow and the HP chart, and the focus goes back to the name
+    (`#flow-panel [data-focus="skill-<loc>-<turn>"]`).
+  - Hero and opponent names in the Flows were never wiki links: in an editable view they keep U40's `nameEdit`
+    (the hero list, and the opponent's `questOptions` with its rare entries); read-only, plain text. Unchanged.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

@@ -3,16 +3,16 @@
  * can't fight, a map room not reached). The smallest part kept of Flow 1 (U36's plan, timeline.ts `partyPlan` until
  * U63): one column per actor in action order (heroes by party location, then the enemy; the enemy first on questType
  * 6), a head row with the hero and opponent pickers, then turns 1-5, each with its band: hero cells with the planned
- * skill (struck out under a stun or a forced action), its ▾ and the enemy's effects on that hero; enemy cells with its
- * skill, its buffs still on and what the heroes put on it. Compact words ("[Tidal Wave] atk −50%"), the full sentence
- * on hover. CSS: the `pg-` rules of style.css.
+ * skill (struck out under a stun or a forced action; U64: its name opens the slot's picker) and the enemy's effects on
+ * that hero; enemy cells with its skill, its buffs still on and what the heroes put on it. Compact words ("[Tidal Wave]
+ * atk −50%"), the full sentence on hover. Skill names are plain text with their effect on hover, never wiki links.
+ * CSS: the `pg-` rules of style.css.
  */
 import { type EnemyCell, type HeroCell, locationLabel, type PlanColumn, type PlanMark, type PlanMember, planGrid } from "./battle-plan.ts";
 import type { EnemyTimeline } from "../tools/schedule.ts";
 import { el } from "./dom.ts";
-import { nameEdit, type PlanEdit, skillEdit, turnRow } from "./flow-parts.ts";
+import { nameEdit, type PlanEdit, skillText, slotSkill, turnRow } from "./flow-parts.ts";
 import { timelineOf, tlName } from "./timeline.ts";
-import { skillLink } from "./wiki-data.ts";
 import { skillName } from "./names.ts";
 
 /** A plan marker: "[Source] compact", the full sentence on hover. */
@@ -28,21 +28,23 @@ function wordsEl(words: { short: string; long: string }[]): HTMLElement[] {
 }
 
 function heroCellEl(c: HeroCell, loc: number, edit?: PlanEdit): HTMLElement {
-  const planned = skillLink(c.planned);
   const changed = c.does !== c.planned;
+  const cell = el("div", { class: `pg-cell hero${c.marks.length ? " hit" : ""}${changed ? " forced" : ""}`, role: "cell",
+    "aria-label": `${locationLabel(loc)}, turn ${c.turn}` });
+  // U64: the planned skill's name opens the slot's picker (with `edit`), else plain text; never a wiki link.
+  const planned = slotSkill(c.planned, () => cell, edit, loc, c.turn);
   const skill = changed
     ? el("span", { class: "tl-skill" }, el("s", { class: "tl-planned", title: `Planned: ${skillName(c.planned)}` }, planned), " ",
       el("span", { class: "tl-forced", title: c.does === null ? `Stunned by ${skillName(c.stunBy ?? "")}: the action is lost`
         : `Abilities disabled by ${skillName(c.forcedBy ?? "")}: Basic attack only` }, c.does === null ? "stun" : "→ Basic"))
     : el("span", { class: "tl-skill" }, planned);
-  return el("div", { class: `pg-cell hero${c.marks.length ? " hit" : ""}${changed ? " forced" : ""}`, role: "cell",
-    "aria-label": `${locationLabel(loc)}, turn ${c.turn}` }, skill, ...skillEdit(edit, loc, c.turn, c.planned),
-  ...wordsEl(c.tags), ...c.marks.map((m) => markEl(m, "on-hero")));
+  cell.append(skill, ...wordsEl(c.tags), ...c.marks.map((m) => markEl(m, "on-hero")));
+  return cell;
 }
 
 function enemyCellEl(c: EnemyCell): HTMLElement {
   return el("div", { class: "pg-cell enemy", role: "cell", "aria-label": `Enemy, turn ${c.turn}` },
-    el("span", { class: "tl-skill" }, skillLink(c.skill)),
+    el("span", { class: "tl-skill" }, skillText(c.skill)),
     ...(c.short ? [el("span", { class: "pg-words", title: c.long }, c.short)] : []),
     ...c.own.map((m) => markEl(m, "own")), ...c.maluses.map((m) => markEl(m, "malus")));
 }
@@ -64,7 +66,7 @@ function planHeads(tl: EnemyTimeline, cols: PlanColumn[], edit?: PlanEdit): HTML
   });
 }
 
-/** The rotation's 5 turns as planned; `edit`: the pickers and ▾. Null without a timeline for this enemy. */
+/** The rotation's 5 turns as planned; `edit`: the pickers. Null without a timeline for this enemy. */
 export function plannedRotation(quest: { id: number; rare: boolean }, members: PlanMember[], edit?: PlanEdit): HTMLElement | null {
   const tl = timelineOf(quest.id, quest.rare);
   if (!tl) return null;

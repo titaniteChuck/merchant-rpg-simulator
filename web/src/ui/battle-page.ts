@@ -219,13 +219,10 @@ function afterEdit(focusKey: string): void {
 }
 
 /**
- * The skills a hero can put in a rotation slot, [skill, label with AP]: Basic and its unlocked skills. `current`: a
- * skill it plays but hasn't unlocked (old save) stays listed, so the control shows the truth. Both tabs use it (U39).
+ * The skills a hero can put in a rotation slot, with their AP: Basic and its unlocked skills. `current`: a skill it
+ * plays but hasn't unlocked (old save) stays listed, so the picker shows the truth. The Party view's cards and the
+ * Flows' skill names use it (U62, U64), shown with their effects (skillOption).
  */
-function rotationOptions(raw: Any | null, current?: string): [string, string][] {
-  return rotationChoices(raw, current).map((c): [string, string] => [c.name, `${skillName(c.name)} (${c.ap ?? "?"} AP)`]);
-}
-/** The same choices as skill names and AP (U62: the card's picker shows them with their effects). */
 function rotationChoices(raw: Any | null, current?: string): { name: string; ap: number | undefined }[] {
   if (!raw) return [];
   const info = api.skillInfo(api.newHero(raw));
@@ -236,7 +233,7 @@ function rotationChoices(raw: Any | null, current?: string): { name: string; ap:
   }
   return out;
 }
-/** U62: a skill choice of the card's picker: its name, AP and effect. */
+/** U62: a skill choice of the picker (the Party view's cards; U64, the Flows): its name, AP and effect. */
 const skillOption = (c: { name: string; ap: number | undefined }): PickOption => ({ value: c.name, label: skillName(c.name), ap: c.ap, note: skillDesc(c.name) });
 
 /** The rotation and passive a hero (save index) plays: its edited one, else its save's. */
@@ -913,10 +910,14 @@ function setRoom(room: number): void {
   } catch { /* not remembered */ }
 }
 
-/** The flow's edits (the ▾ in its heads and in turns 1-5): the same edits as the Party tab's, then both redraw. */
+/**
+ * The flow's edits (the names in its heads, U64 the skill names in turns 1-5): the same edits as the Party tab's, then
+ * both redraw and the fight is traced again.
+ */
 function planEdit(): PlanEdit {
   const rules = rulesOf(pageTarget());
-  const refocus = (key: string) => document.querySelector<HTMLElement>(`[data-flow-focus="${key}"] select`)?.focus();
+  // a head name's <select> (nameEdit), or a skill name's picker button (U64: pick-list.ts, data-focus)
+  const refocus = (key: string) => document.querySelector<HTMLElement>(`[data-flow-focus="${key}"] select, #flow-panel [data-focus="${key}"]`)?.focus();
   const idxAt = (loc: number) => state.slots[slotKeyOfLoc(loc)] ?? null;
   return {
     heroes: (loc) => {
@@ -936,9 +937,9 @@ function planEdit(): PlanEdit {
       renderParty();
       refocus(`hero-${loc}`);
     },
-    skills: (loc) => {
+    skills: (loc, current) => {
       const idx = idxAt(loc);
-      return idx === null ? null : rotationOptions(state.sv!.raw.hero[idx]);
+      return idx === null ? null : rotationChoices(state.sv!.raw.hero[idx], current).map(skillOption);
     },
     setSkill: (loc, k, skill) => {
       const idx = idxAt(loc);

@@ -104,7 +104,7 @@ const traceOf = (quest: number) => {
 const edit: PlanEdit = {
   heroes: () => ({ options: [["x", "x"]], value: "x" }),
   setHero: () => {},
-  skills: () => [["Basic", "Basic"]],
+  skills: () => [{ value: "Basic", label: "Basic", ap: 0 }],
   setSkill: () => {},
   enemies: () => ({ label: "Opponent", groups: [["Quests", [["72", "Odin"]]]], value: "72" }),
   setEnemy: () => {},
@@ -114,13 +114,13 @@ test("nothing editable lost: Flow 2's turn-1 cards and the planned rotation's he
   const f2 = renderFlow2({ id: 72, rare: false }, members, traceOf(72), edit) as unknown as FakeElement;
   const first = f2.querySelector("div.f2-cards")!;
   assert.equal(first.querySelectorAll("span.fl-name").length, members.length + 1, "a picker per hero and the opponent");
-  assert.ok(f2.querySelectorAll("span.fl-edit").length > 0, "the rotation's ▾");
+  assert.ok(f2.querySelectorAll("button.pk-btn").length > 0, "the rotation's skill pickers (U64)");
   for (const render of [renderFlow2, renderFlow3]) {
     const planned = render({ id: 72, rare: false }, members, null, edit) as unknown as FakeElement;
     assert.ok(planned.querySelector("div.pg-heads"), "no fight: the rotation as planned");
     assert.equal(planned.querySelectorAll("div.pg-turngroup").length, 5);
     assert.equal(planned.querySelectorAll("span.fl-name").length, members.length + 1);
-    assert.equal(planned.querySelectorAll("span.fl-edit").length, members.length * 5);
+    assert.equal(planned.querySelectorAll("button.pk-btn").length, members.length * 5);
   }
   assert.equal(plannedRotation({ id: 999999, rare: false }, members), null, "no timeline: null");
 });

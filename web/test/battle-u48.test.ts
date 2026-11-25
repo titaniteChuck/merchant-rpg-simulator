@@ -179,7 +179,7 @@ const flow = (quest: number) => {
 test("the read-only Flow (no PlanEdit, the Solver): no ▾, no picker; the calculations still open", () => {
   const plan = flow(72);
   assert.equal(plan.querySelectorAll("select").length, 0);
-  assert.equal(plan.querySelectorAll("span.fl-edit").length + plan.querySelectorAll("span.fl-name").length, 0);
+  assert.equal(plan.querySelectorAll("span.fl-name").length + plan.querySelectorAll("button.pk-btn").length, 0);
   assert.ok(plan.querySelectorAll("button.tc-calc-btn").length > 0);
 });
 
