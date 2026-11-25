@@ -75,7 +75,8 @@ flowchart LR
 
 - Decoding: `web/src/tools/save.ts`.
 - Tables: `web/src/ui/save-tables.ts`, same columns as the former Python `savegame.py --export` (checked equal to its CSVs on a real
-  save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below).
+  save: inventory 167, maps 5, heroes 17, gear 102 rows), except the inventory's grade split (below) and, after the
+  `rarity` number of the item, map and gear rows, a `rarity_name` column ("Epic", U57).
 - Hero combat stats: built with the TypeScript engine (`api.newHero` + `heroStats`), shown as a radar chart.
 - Sections: Overview (default), Heroes, Inventory (filter, sort, base value), Maps, Crafters. CSV downloads (heroes,
   hero gear, inventory, maps, crafters; whole tables) are in the top-bar Save dropdown, "All" first (U44): every table
@@ -825,9 +826,14 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     an owned map, an inventory or counter stack and a hero's gear open their wiki page on their ascension, prefix and
     suffix (`itemLink(…, { config })`); a crafter's job on its ascension. Tests `web/test/wiki-config-u49.test.ts`.
 - Rarity: the game has no rarity names (TextData only has the word "Rarity"; "Common … Legendary!" in
-  `scene.SpinGame` names the prize-wheel slices), so a "Rarity N" chip in the game's own colour (`UI.rarityColor`:
-  1 white, 2 #80ff80, 3 #50a0ff, 4 #ff00ff, 5-6 #ffff00, 7-8 #ff0000, 10 = 3, 11 = 4) with dark text and a thin outline
-  (readable in both themes). Item links keep the contrast-tuned `--rar-*` text colours; 10 and 11 now map to 3 and 4.
+  `scene.SpinGame` names the prize-wheel slices), so the site uses the user's names (U57, `rarityName` /
+  `RARITY_NAMES` in `web/src/ui/names.ts`): 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary, 6 Legendary+1,
+  7 Mythical; any other rarity (0, 8 = a rarity-7 item with a modifier, 10 and 11) reads "Rarity N". The chip shows the
+  name in the game's own colour (`UI.rarityColor`: 1 white, 2 #80ff80, 3 #50a0ff, 4 #ff00ff, 5-6 #ffff00, 7-8 #ff0000,
+  10 = 3, 11 = 4), its tooltip adds the number ("Epic: rarity 4"). Colour classes (`rar-N`, `--rarc-N`) and sorting stay
+  keyed by the number (the Rarity column sorts Common → Mythical); the items list filter matches the names. Stats ›
+  Sell value's rarity table heads and the sell / essence examples use the names; the formulas keep `rarity` as a
+  number. Item links keep the contrast-tuned `--rar-*` text colours; 10 and 11 map to 3 and 4.
 - Crafting chain (U19, `web/src/ui/recipe-chain.ts`): on equipment pages, a horizontal diagram of boxes and arrows
   (HTML + CSS borders, scrolls sideways in its frame on a phone). Only equipment gets a box (crafted equipment
   ingredients on the left, the item on the right); raw materials and crafted materials such as ingots or lumber stay in

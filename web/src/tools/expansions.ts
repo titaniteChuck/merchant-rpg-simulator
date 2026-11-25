@@ -59,7 +59,7 @@ export const EXPANSIONS: Record<Expansion, ExpansionInfo> = {
       "The Scribe crafter: maps and scrolls",
       "Maps & dungeons, their bosses and essences",
       "Crafter and item ascension",
-      "17 locked rarity-7 recipes (equipment 764-780)",
+      "17 locked Mythical recipes (equipment 764-780)",
       "+3 hero slots",
       "+16 inventory slots",
     ],

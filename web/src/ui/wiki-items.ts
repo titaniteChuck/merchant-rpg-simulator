@@ -9,6 +9,7 @@ import { sellValue } from "../tools/engine.ts";
 import { type Game, gameFromData, PRESTIGE_TYPES } from "../tools/gamedata.ts";
 import { ascLevels } from "../tools/profit.ts";
 import { el, fmt, gold } from "./dom.ts";
+import { RARITY_NAMES, rarityName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -33,13 +34,14 @@ export function isPlaceholder(type: string, it: Any): boolean {
 /**
  * The game's rarity colours (data.UIData UI.rarityColor, RGB 0..1 as hex): 10 and 11 reuse 3 and 4. The game has no
  * rarity names (TextData only has the word "Rarity"; the "Common … Legendary!" list in scene.SpinGame names the prize
- * wheel's slices, not items), so the wiki shows "Rarity N" in the game's colour.
+ * wheel's slices, not items), so the wiki shows the site's names (U57, names.ts rarityName: "Epic") in the game's colour.
  */
 export const RARITY_COLOURS: Record<number, string> = {
   0: "#000000", 1: "#ffffff", 2: "#80ff80", 3: "#50a0ff", 4: "#ff00ff", 5: "#ffff00", 6: "#ffff00", 7: "#ff0000", 8: "#ff0000",
   10: "#50a0ff", 11: "#ff00ff",
 };
-export const rarityLabel = (r: unknown): string => `Rarity ${typeof r === "number" ? r : "?"}`;
+/** A rarity's chip text: its name (U57). */
+export const rarityLabel = (r: unknown): string => rarityName(typeof r === "number" ? r : NaN);
 
 /** Rarities the game draws in another rarity's colour (UI.rarityColor[10] = [3], [11] = [4]); essences are rarity 10. */
 export const RARITY_SAME_COLOUR: Record<number, number> = { 10: 3, 11: 4 };
@@ -48,7 +50,8 @@ export const RARITY_SAME_COLOUR: Record<number, number> = { 10: 3, 11: 4 };
 export function rarityTip(r: unknown): string {
   const n = typeof r === "number" ? r : NaN;
   const same = RARITY_SAME_COLOUR[n];
-  return same ? `${rarityLabel(r)}: the game draws it in the colour of rarity ${same}` : `${rarityLabel(r)} (the game's colour for it)`;
+  if (same) return `${rarityLabel(r)}: the game draws it in the colour of ${rarityName(same)} (rarity ${same})`;
+  return Number.isFinite(n) && RARITY_NAMES[n] ? `${rarityLabel(r)}: rarity ${n} (the game's colour for it)` : `${rarityLabel(r)} (the game's colour for it)`;
 }
 
 /**

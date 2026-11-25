@@ -10,7 +10,7 @@ import { G } from "../sim/data.ts";
 import { seq } from "../sim/lua.ts";
 import { itemName as englishItemName, rarity, sellValue } from "../tools/engine.ts";
 import {
-  className as classNameOf, crafterName, enemyName, itemName as shownItemName, itemTypeText, modItemName, prefixTag, suffixName,
+  className as classNameOf, crafterName, enemyName, itemName as shownItemName, itemTypeText, modItemName, prefixTag, rarityName, suffixName,
 } from "./names.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
 import { mapRunEssence } from "./wiki-config.ts";
@@ -68,10 +68,12 @@ function itemRow(it: Any): Row {
   const mods = Number(Boolean(it.prefix)) + Number((it.suffix ?? 0) > 0);
   const amount = stackAmount(it);
   const unit = data ? sellValue(it.itemType, it.id, asc, mods) ?? null : null;
+  const rar = data ? rarity(it.itemType, it.id, mods) : "";
   return {
     type: it.itemType, id: it.id, name: itemLabel(it), subtype: itemTypeText(it.itemType, data?.subType), // "Essence", "Health", "Hood" (R1 F30)
     item_level: data?.itemLevel ?? "", asc, grade: gradeLabel(it.grade), prefix: pre, suffix: suf, mods,
-    rarity: data ? rarity(it.itemType, it.id, mods) : "", amount,
+    // U57: the number keeps the colour (rar-N) and sorts; the CSV also gets the name the pages show ("Epic")
+    rarity: rar, rarity_name: rar === "" ? "" : rarityName(rar), amount,
     unit_sell: unit, total_sell: unit === null ? null : unit * amount,
   };
 }
@@ -190,8 +192,8 @@ export function gradeCounts(it: Any): Record<string, number> {
  * grade and amount, in the order the table and its CSV show them.
  */
 function inventoryRow(where: string, slot: number, it: Any): Row {
-  const { grade: _grade, amount, prefix, suffix, mods, rarity, unit_sell, total_sell, ...head } = itemRow(it);
-  return withMods({ where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity }, it);
+  const { grade: _grade, amount, prefix, suffix, mods, rarity, rarity_name, unit_sell, total_sell, ...head } = itemRow(it);
+  return withMods({ where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity, rarity_name }, it);
 }
 
 /** Inventory stacks in save order, then items on the sale counter (inventory_rows). */

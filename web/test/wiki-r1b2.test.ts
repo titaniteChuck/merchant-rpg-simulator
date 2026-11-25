@@ -54,7 +54,7 @@ test("F39: rarity 10 and 11 say they use the colour of rarity 3 and 4", () => {
   for (const [r, same] of Object.entries(RARITY_SAME_COLOUR)) assert.equal(RARITY_COLOURS[Number(r)], RARITY_COLOURS[same]);
   const essence = G.itemData.material[idOf("material", "Forest Essence")];
   assert.equal(essence.rarity, 10);
-  assert.match(rarityTip(10), /Rarity 10: the game draws it in the colour of rarity 3/);
+  assert.match(rarityTip(10), /Rarity 10: the game draws it in the colour of Rare \(rarity 3\)/);
   assert.doesNotMatch(rarityTip(3), /colour of rarity/);
 });
 

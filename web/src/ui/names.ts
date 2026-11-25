@@ -22,6 +22,20 @@ const isItemType = (t: string): t is "equipment" | "material" | "consumable" | "
 /** True while the site shows the game's English (the default). */
 export const isEnglish = (): boolean => currentLanguage() === "en";
 
+/**
+ * U57: rarity names. The game's text data has none (TextData only has the word "Rarity"), so these are the site's own
+ * names for rarity 1–7, shown wherever a rarity is; the colour classes (`rar-N`) and every sort stay keyed by the
+ * number. A rarity without a name (0; 8, a rarity-7 item with a modifier; 10 and 11, essences and the like) is "Rarity N".
+ */
+export const RARITY_NAMES: Readonly<Record<number, string>> = {
+  1: "Common", 2: "Uncommon", 3: "Rare", 4: "Epic", 5: "Legendary", 6: "Legendary+1", 7: "Mythical",
+};
+/** The name of a rarity ("Epic"); "Rarity N" when it has none, "Rarity ?" when it isn't a number. */
+export const rarityName = (r: unknown): string => {
+  const n = typeof r === "number" ? r : typeof r === "string" && r.trim() !== "" ? Number(r) : NaN;
+  return RARITY_NAMES[n] ?? `Rarity ${Number.isFinite(n) ? n : "?"}`;
+};
+
 /** BCP 47 tag of a language code of inventory/i18n/index.json (the game's "br" is Brazilian Portuguese). */
 export const langTag = (code = currentLanguage()): string => (code === "br" ? "pt-BR" : code);
 

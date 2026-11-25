@@ -32,7 +32,7 @@ const DETAILS: Record<Group, string[]> = {
     "Crafter 8, the Scribe, who makes the maps (1–32) and the map scrolls (60–69).",
     "Maps & dungeons: rooms of enemies, a boss (the map bosses 91–94) and a Treasure Bush, and the essences that only maps give (tier 1, and tier 2 from ascended maps).",
     "Crafter and item ascension: ascending an item costs its region's essence; every ascended item needs Scribe.",
-    "17 rarity-7 recipes (equipment 764–780) stay locked without it.",
+    "17 Mythical recipes (equipment 764–780) stay locked without it.",
     "+3 hero slots and +16 inventory slots; the map-run daily orders.",
   ],
   both: [

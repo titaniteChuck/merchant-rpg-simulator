@@ -4,7 +4,7 @@
  * test/wiki-ref.test.ts `SOURCES`, not shown on the page) and matches the port in web/src/sim. Worked examples that use game data read it from G.
  */
 import { G } from "../sim/data.ts";
-import { className } from "./names.ts";
+import { className, RARITY_NAMES } from "./names.ts";
 import {
   bl, example, formula, frac, note, refPage, type RefSection, sl, STAT_TOPICS, type StatTopic, tbl, unsure, v, vars,
 } from "./wiki-ref.ts";
@@ -277,7 +277,7 @@ ${tbl(gradeHead, [["gMin", ...GRADE_MIN], ["gMax", ...GRADE_MAX]])}
 <li>× the ascension multiplier: Str, Int, Dex, atk, matk, HP ×1.75 / ×2.5; acc, def, mdef ×1.5 / ×2; crit ×1.1 / ×1.2; luck, XP, % stats, crit damage ×1.25 / ×1.5; AP and speed ×1.</li>
 <li>A crafter above the item's level raises the low end by 4 % of the range per level, up to 92 % of the top. Both ends rounded up, then a random whole number (hundredths for %).</li>
 </ul>
-<p><b>Modifiers</b>: a prefix adds its stats; a suffix multiplies the stats it names by (1 + value), rounded up. Each modifier raises the rarity one step (up to 6, or up to 8 from 7) and its cost and craft time by (1 + its sell value). Odds: ${sl("craft")}, ${sl("enchant")}.</p>
+<p><b>Modifiers</b>: a prefix adds its stats; a suffix multiplies the stats it names by (1 + value), rounded up. Each modifier raises the rarity one step (up to Legendary+1, or up to rarity 8 from Mythical) and its cost and craft time by (1 + its sell value). Odds: ${sl("craft")}, ${sl("enchant")}.</p>
 ${example(`A Sword (18 + 1 per level) of level 20 at grade B: ${v("f")} = 38 → atk <b>${baseStatRange(18, 1, 20, 3).join("–")}</b>; at grade S <b>${baseStatRange(18, 1, 20, 5).join("–")}</b>; ascended once (level 60 for stats), grade B: <b>${baseStatRange(18, 1, 20, 3, 1).join("–")}</b>.`)}`,
   },
   {
@@ -287,12 +287,12 @@ ${vars([
   [v("value"), "the item's value (its cost when it has none)"], [`2${v("asc")}`, "× 2 at ascension 1, × 4 at ascension 2 (× 1 when not ascended)"],
   [`rarityMod<sub>rarity</sub>`, "by the item's rarity after modifiers:"],
 ])}
-${tbl(["rarity", "1", "2", "3", "4", "5", "6", "7", "8"], [["× value", ...RARITY]])}
+${tbl(["rarity", ...RARITY.map((_, i) => RARITY_NAMES[i + 1] ?? String(i + 1))], [["× value", ...RARITY]])}
 <ul>
-<li>Only the <b>number</b> of modifiers changes the price (one rarity step each, capped at 6, or 8 from 7), not which ones; the grade doesn't change it either.</li>
+<li>Only the <b>number</b> of modifiers changes the price (one rarity step each, capped at Legendary+1, or rarity 8 from Mythical), not which ones; the grade doesn't change it either.</li>
 <li>A customer pays base × (1 + 2 × preference / 100) × (1 + (haggle position − 3) / 10), position 1–5.</li>
 </ul>
-${example(`Value 1,000, rarity 4, ascended once, with one modifier (rarity 5): 1,000 × 2 × 2 = <b>4,000</b>.`)}`,
+${example(`Value 1,000, Epic, ascended once, with one modifier (Legendary): 1,000 × 2 × 2 = <b>4,000</b>.`)}`,
   },
   {
     id: "craft",
@@ -318,7 +318,7 @@ ${vars([
   [`(4 + ${v("mods")})`, "only to upgrade an existing item: × 4, +1 with a prefix, +1 with a suffix"],
 ])}
 <p>Which essence: region = min(⌊(${v("L")} − 1) / 10⌋ + 1, 6): Forest, Water, Earth, Necro, Fire, Glacial essence for ascension 1; Nature, Tidal, Mountain, Death, Inferno, Arctic for ascension 2. The essence count doesn't depend on the item's value. Ascended items also pay round(rarityMod × (2 + 10${v("φ")})) essence per ${sl("enchant", "Enchanter attempt")}.</p>
-${example(`A level-25 rarity-3 equipment: ${v("φ")} = 0.4 → round(1.5 × 40) = <b>${ascendEssence(25, 3, "equipment")}</b> to craft it ascended; <b>${ascendEssence(25, 3, "equipment", true)}</b> to upgrade a plain one, <b>${ascendEssence(25, 3, "equipment", true, 1)}</b> with a prefix (its rarity is then 4: <b>${ascendEssence(25, 4, "equipment", true, 1)}</b>).`)}`,
+${example(`A level-25 Rare equipment: ${v("φ")} = 0.4 → round(1.5 × 40) = <b>${ascendEssence(25, 3, "equipment")}</b> to craft it ascended; <b>${ascendEssence(25, 3, "equipment", true)}</b> to upgrade a plain one, <b>${ascendEssence(25, 3, "equipment", true, 1)}</b> with a prefix (it is then Epic: <b>${ascendEssence(25, 4, "equipment", true, 1)}</b>).`)}`,
   },
   {
     id: "enchant",

@@ -44,7 +44,7 @@ import { type ContentKind, type Expansion, isVisible, needsOf, partitionVisible,
 import { hiddenBody, hiddenNote, mountExpansionChip } from "./expansion-menu.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import {
-  className, crafterName as crafterOf, enemyName, ITEM_TYPE_LABELS, ITEM_TYPE_PLURALS, itemName, itemTypeText, modItemName, passiveName, prefixTag, searchText,
+  className, crafterName as crafterOf, enemyName, ITEM_TYPE_LABELS, ITEM_TYPE_PLURALS, itemName, itemTypeText, modItemName, passiveName, prefixTag, rarityName, searchText,
   skillName, subtypeLabel, suffixName,
 } from "./names.ts";
 import {
@@ -131,7 +131,7 @@ const facts = (pairs: FactPair[], compact = false) =>
 const compactFacts = (pairs: FactPair[]) => facts(pairs, true);
 
 /**
- * R2-D F42: an item's facts as one line, "Weapon · Dagger · lvl 0 · Tuvale · Rarity 1 · Sell 10 / 20 / 40 g", empty
+ * R2-D F42: an item's facts as one line, "Weapon · Dagger · lvl 0 · Tuvale · Common · Sell 10 / 20 / 40 g", empty
  * parts left out.
  */
 const factStrip = (parts: (Node | string | null | undefined | false)[]) =>
@@ -416,7 +416,7 @@ function itemsPage(type: string): HTMLElement {
     ...priceColumns(type, shown.map(([id]) => id)),
   ];
   return listPage(ITEM_TYPE_PLURALS[type], rows, cols,
-    (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName}`, regionRowClass, all.length - shown.length,
+    (r) => `${searchText(String(r.name), String(r.en))} ${r.kind} ${r.sub} ${r.summary} ${r.bonus} ${r.made} ${r.regionName} ${rarityName(r.rarity)}`, regionRowClass, all.length - shown.length,
     { href: `#/items/${type}`, heads: priceHeads(priceLevels(type, shown.map(([id]) => id))) });
 }
 
