@@ -139,7 +139,7 @@ test("map run flow: the room bar lists the battles in map order, the boss last, 
 });
 
 test("shared state: an edit in the flow is the Party tab's edit (hero swap, rotation slot), and the rules hold", () => {
-  const s: PartyState = { slots: { front0: 3, front1: 5, back0: 7 }, skills: {}, locked: {}, excluded: { front0: true } };
+  const s: PartyState = { slots: { front0: 3, front1: 5, back0: 7 }, skills: {}, excluded: { front0: true } };
   // the flow's column at Front 2 (location 4) takes hero 9: the Party tab's slot front1 changes
   assert.equal(slotKeyOfLoc(4), "front1");
   assert.equal(slotKeyOfLoc(1), "back0");
@@ -151,11 +151,6 @@ test("shared state: an edit in the flow is the Party tab's edit (hero swap, rota
   assert.equal(s.slots.front0, 7);
   assert.equal(s.slots.back0, null);
   assert.equal(s.excluded.front0, undefined, "the new hero fights");
-  // in a search mode, a hero picked by hand is locked; emptying unlocks
-  assignHero(s, "back1", 2, true);
-  assert.equal(s.locked.back1, true);
-  assignHero(s, "back1", null, true);
-  assert.equal(s.locked.back1, undefined);
   // rotation slot 3 of hero 9 from the flow: the Party tab's rotation of hero 9 changes, the rest kept
   setRotationSkill(s, 9, 2, "Sunder", { attackList: ["Basic", "Taunt", "Basic", "Basic", "Basic"], passive: "Tough" });
   assert.deepEqual(s.skills[9], { attackList: ["Basic", "Taunt", "Sunder", "Basic", "Basic"], passive: "Tough" });
@@ -166,7 +161,7 @@ test("shared state: an edit in the flow is the Party tab's edit (hero swap, rota
 
 test("shared state round trip: the flow's rotation edit changes the simulated fight", () => {
   // Hero 0 (Warrior) alone at Front 1 against Desolation Wolf … with a rotation of Basic only, then Shield Slam II in slot 1
-  const s: PartyState = { slots: {}, skills: {}, locked: {}, excluded: {} };
+  const s: PartyState = { slots: {}, skills: {}, excluded: {} };
   assignHero(s, slotKeyOfLoc(4), 8);
   assignHero(s, slotKeyOfLoc(2), 0);
   const fightOf = () => {

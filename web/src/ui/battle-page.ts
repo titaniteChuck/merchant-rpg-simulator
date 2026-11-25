@@ -35,6 +35,7 @@ import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty } from "./battle-links.ts";
+import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, partyPlan, type PlanEdit, planNote, type PlanMember, timelineOf } from "./timeline.ts";
 import { mapRoomTabs } from "./battle-plan.ts";
@@ -80,13 +81,11 @@ interface State {
   saveName: string;
   slots: Record<string, number | null>; // "front0" -> hero index in sv.raw.hero
   skills: Record<number, SkillChoice>; // hero index -> edited rotation
-  /** Slots whose hero the solver must keep (slot key -> true). */
-  locked: Record<string, boolean>;
   /** U36: slots whose hero is ticked out on its card: it stays in the slot but doesn't fight (slot key -> true). */
   excluded: Record<string, boolean>;
   worker: Worker | null;
 }
-const state: State = { mode: MODES.simulate, sv: null, saveName: "", slots: {}, skills: {}, locked: {}, excluded: {}, worker: null };
+const state: State = { mode: MODES.simulate, sv: null, saveName: "", slots: {}, skills: {}, excluded: {}, worker: null };
 
 // The Simulator's party and edited rotations, remembered per save in this browser (convenience only). The Solver's
 // party lives in memory only (U41): a result's Show sets it; "Open in Simulator" hands it over.
@@ -94,7 +93,7 @@ const partyKey = () => `battle-party:${state.saveName}`;
 function persistParty(): void {
   if (solving()) return;
   try {
-    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, locked: state.locked, excluded: state.excluded }));
+    localStorage.setItem(partyKey(), JSON.stringify({ slots: state.slots, skills: state.skills, excluded: state.excluded }));
   } catch { /* storage blocked: the party just isn't remembered */ }
 }
 /** Put back this save's remembered party; false when none was remembered (a fresh save, R1 F02). */
@@ -106,7 +105,6 @@ function restoreParty(heroes: number): boolean {
     const ok = (i: unknown) => i === null || (typeof i === "number" && i >= 0 && i < heroes);
     state.slots = Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as State["slots"];
     state.skills = Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as State["skills"];
-    state.locked = Object.fromEntries(Object.entries(p.locked ?? {}).filter(([, v]) => v === true)) as State["locked"];
     state.excluded = Object.fromEntries(Object.entries(p.excluded ?? {}).filter(([, v]) => v === true)) as State["excluded"];
     return true;
   } catch {
@@ -364,7 +362,7 @@ function fighting(): { included: Set<string>; capped: SlotRef[] } {
 }
 
 /** The six slots, back row (left) and front row (right), every slot the same size, filled or not. On the Solver,
- * which chooses the party, empty slots are "to be found" and a filled slot can be locked: the next solve keeps its hero. */
+ * which chooses the party, empty slots are "to be found" (U50: no 🔒 locks, the Solve panel's hero table instead). */
 function renderParty(refreshSearch = true): void {
   const sv = state.sv!;
   const picks = !state.mode.party;
@@ -386,28 +384,15 @@ function renderParty(refreshSearch = true): void {
     const idx = state.slots[key] ?? null;
     const raw = heroRaw(idx);
     s.addEventListener("change", () => {
-      // U39: the same edit as the Flow tab's (battle-edit.ts): one slot per hero, the new hero fights, and in a search
-      // mode a hero picked by hand is locked. U40: not a hero whose rotation is over its AP limit.
+      // U39: the same edit as the Flow tab's (battle-edit.ts): one slot per hero, the new hero fights. U40: not a hero
+      // whose rotation is over its AP limit.
       const pick = s.value === "" ? null : Number(s.value);
-      const r = assignHeroChecked(state, key, pick, picks, pick === null ? null : apOver(pick));
+      const r = assignHeroChecked(state, key, pick, pick === null ? null : apOver(pick));
       if (!r.ok) return refuseAp(pick!, r);
       clearUndo = null;
       persistParty();
       renderParty();
     });
-    const lock = ctl.lock && raw ? (() => {
-      const on = Boolean(state.locked[key]);
-      const b = el("button", { type: "button", class: `lock${on ? " on" : ""}`, "aria-pressed": String(on),
-        title: on ? "Locked: the next solve keeps this hero (click to let it change)" : "Not locked: the next solve may replace this hero (click to keep it)" }, on ? "🔒" : "🔓");
-      b.setAttribute("aria-label", `Keep ${raw.name} in the party`);
-      b.addEventListener("click", () => {
-        if (on) delete state.locked[key];
-        else state.locked[key] = true;
-        persistParty();
-        renderParty();
-      });
-      return b;
-    })() : null;
     // U36: the include box, top right: unticked, the hero stays in the slot but doesn't fight. Over the size cap the
     // last ones (game slot order) are left out automatically: their box is unticked and disabled.
     const capped = raw ? fight.capped.some((c) => c.key === key) : false;
@@ -441,9 +426,9 @@ function renderParty(refreshSearch = true): void {
       raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(off ? offText : picks ? "to be found" : "empty", "plain"),
       ...(out ? [el("span", { class: "pill plain out-badge" }, capped ? "over the limit" : "left out")] : []),
       ...(required ? [el("span", { class: "pill t-orange req-badge", title: rules.kind === "solo" ? "A solo quest takes one hero, here" : "A party quest always fills this slot (it can be swapped, never emptied)" }, "required")] : [])),
-    el("span", { class: "slot-tools" }, ...(lock ? [lock] : []), ...(include ? [include] : [])));
+    el("span", { class: "slot-tools" }, ...(include ? [include] : [])));
     // U48: every slot is a drop target (data-slot); a filled one on the Simulator is picked up by dragging (data-drag).
-    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}${state.locked[key] && picks ? " locked" : ""}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}`,
+    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}`,
       "data-slot": key, ...(ctl.drag && raw ? { "data-drag": "" } : {}) },
     head, ...(ctl.edit ? [s] : []), statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key, ctl.edit));
   };
@@ -509,7 +494,7 @@ const emptyCount = (row: "front" | "back", n: number) => `${n} empty ${row} slot
  */
 function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean, drag: boolean): HTMLElement[] {
   const paras = [
-    ...(picks ? ["The setup you showed: 🔒 keeps a hero in the next solve. To change the party, open it in the Simulator."] : []),
+    ...(picks ? ["Read-only: to change the party, open it in the Simulator."] : []),
     ...(drag ? ["Drag a hero card onto another slot to move it there, or onto a hero to swap them."] : []),
     ...(rulesText(rules) ? [rulesText(rules)] : []),
   ];
@@ -555,14 +540,12 @@ function dropHero(from: string, to: string): void {
 /** The "Put back the previous party" button after Clear all (until it is used or the slots change by hand). */
 let clearUndo: HTMLElement | null = null;
 function clearAll(): void {
-  const prev = { slots: { ...state.slots }, locked: { ...state.locked }, excluded: { ...state.excluded } };
+  const prev = { slots: { ...state.slots }, excluded: { ...state.excluded } };
   state.slots = {};
-  state.locked = {};
   state.excluded = {};
   const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
   b.addEventListener("click", () => {
     state.slots = prev.slots;
-    state.locked = prev.locked;
     state.excluded = prev.excluded;
     clearUndo = null;
     persistParty();
@@ -906,7 +889,7 @@ function planEdit(): PlanEdit {
     },
     setHero: (loc, v) => {
       const pick = v === "" ? null : Number(v);
-      const r = assignHeroChecked(state, slotKeyOfLoc(loc), pick, !state.mode.party, pick === null ? null : apOver(pick));
+      const r = assignHeroChecked(state, slotKeyOfLoc(loc), pick, pick === null ? null : apOver(pick));
       if (!r.ok) return refuseAp(pick!, r, () => refocus(`hero-${loc}`));
       clearUndo = null;
       persistParty();
@@ -1086,7 +1069,7 @@ function setRuns(v: string): void {
 function buildPage(): void {
   syncOppKinds();
   if (!state.sv) return;
-  renderParty(false); // locks and "to be found" slots on the Solver
+  renderParty(false); // "to be found" slots on the Solver
   // The opponent card: the remembered one, else a useful one (onExpansions).
   onExpansions();
   if (solving()) search?.show("party");
@@ -1094,7 +1077,7 @@ function buildPage(): void {
 
 /**
  * U41, the Solver's step 3: the Party and Flow tabs show only once a result's Show has filled the party; before, no
- * party panel at all. It stays shown for later solves (its locks feed them) until the save is forgotten.
+ * party panel at all. It stays shown for later solves until the save is forgotten.
  */
 function revealParty(): void {
   const box = document.querySelector<HTMLElement>("#party-box");
@@ -1123,7 +1106,7 @@ function openInSimulator(): void {
     try {
       was = JSON.parse(localStorage.getItem(partyKey()) ?? "null");
     } catch { /* broken: replaced */ }
-    const party = simulatorPartyFrom({ slots: state.slots, skills: state.skills, locked: state.locked, excluded: state.excluded }, was);
+    const party = simulatorPartyFrom({ slots: state.slots, skills: state.skills, excluded: state.excluded }, was);
     localStorage.setItem(partyKey(), JSON.stringify(party));
     localStorage.setItem(OPP_KEY, JSON.stringify(currentOpponent()));
   } catch {
@@ -1454,8 +1437,11 @@ async function loadSave(text: string, name: string): Promise<void> {
   state.saveName = name;
   state.slots = {};
   state.skills = {};
-  state.locked = {};
   state.excluded = {};
+  // U50: a stored party's old 🔒 locks become the Solver's Must include (before the Simulator stores its party again).
+  try {
+    migrateOldLocks(localStorage, name, sv.raw.hero.map((h: Any) => Number(h.id)));
+  } catch { /* storage blocked */ }
   const remembered = restoreParty(sv.raw.hero.length);
   $("#setup").hidden = false;
   lastResult = null;
@@ -1482,7 +1468,6 @@ function fillParty(): void {
     return { idx, level: Number(h.level) || 0, prestige: Number(h.prestigeLevel) || 0, maxHP };
   });
   state.slots = defaultSlots(heroes, rulesOf(pageTarget()));
-  state.locked = {};
   state.excluded = {};
   persistParty();
   renderParty();
@@ -1589,19 +1574,15 @@ function initSolver(): void {
     },
     applyParty: (front, back) => {
       const index = (id: number | null) => (id === null ? null : state.sv!.raw.hero.findIndex((h: Any) => h.id === id));
-      // Locks follow their hero to wherever the search put it.
-      const lockedIdx = new Set(Object.keys(state.locked).map((k) => state.slots[k]).filter((x): x is number => x !== null && x !== undefined));
       state.slots = {};
-      state.locked = {};
       state.excluded = {};
       front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
       back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
-      for (const [k, v] of Object.entries(state.slots)) if (v !== null && lockedIdx.has(v)) state.locked[k] = true;
       clearUndo = null;
       persistParty();
       renderParty(false);
     },
-    locks: () => Object.keys(state.locked).filter((k) => !state.excluded[k]).map((k) => heroRaw(state.slots[k] ?? null)?.id).filter((x): x is number => typeof x === "number"),
+    saveName: () => state.saveName,
     poolSkills: () => Object.fromEntries(Object.entries(state.skills).map(([i, s]) => [state.sv!.raw.hero[Number(i)].id, s])),
     applyScrolls: (ids) => {
       document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));

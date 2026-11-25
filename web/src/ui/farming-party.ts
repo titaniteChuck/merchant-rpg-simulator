@@ -5,7 +5,7 @@
  *   out on the Simulator, the required slot first, then the game's slot order, capped at the quest's size
  *   (includedSlots); or the reason the game wouldn't start it (problemOf).
  * - readStoredParty() / storedPartyWith(): the party shared with the Battle pages (`battle-party:<save>`), read and
- *   written whole, so the Simulator's locks and ticked-out heroes survive an edit here (F02).
+ *   written whole, so the Simulator's ticked-out heroes survive an edit here (F02).
  */
 import { G } from "../sim/data.ts";
 import type { FarmSource } from "../tools/farming.ts";
@@ -53,14 +53,13 @@ export function readStoredParty(text: string | null, heroes: number): StoredPart
   return {
     slots: Object.fromEntries(Object.entries(p.slots ?? {}).filter(([, i]) => ok(i))) as StoredParty["slots"],
     skills: Object.fromEntries(Object.entries(p.skills ?? {}).filter(([i]) => ok(Number(i)))) as StoredParty["skills"],
-    locked: flags(p.locked),
     excluded: flags(p.excluded),
   };
 }
 
 /** What to store after an edit here: the new slots and rotations, every other field of the stored party kept. */
 export function storedPartyWith(prev: Record<string, unknown> | null, slots: StoredParty["slots"], skills: StoredParty["skills"]): StoredParty {
-  return { locked: {}, excluded: {}, ...(prev ?? {}), slots: { ...slots }, skills: { ...skills } } as StoredParty;
+  return { excluded: {}, ...(prev ?? {}), slots: { ...slots }, skills: { ...skills } } as StoredParty;
 }
 
 /** questType of the event bosses (the game's "Epic Boss": Galam, Cragus, Odin, Faust), only fought during an event. */

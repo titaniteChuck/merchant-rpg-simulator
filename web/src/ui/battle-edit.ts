@@ -9,11 +9,13 @@ export interface SkillChoice {
   passive?: string;
 }
 
-/** The page's party: hero (save index) per slot key ("front0" … "back2"), edited rotations by save index, locks, left-outs. */
+/**
+ * The page's party: hero (save index) per slot key ("front0" … "back2"), edited rotations by save index, left-outs.
+ * U50: no locks (the Solver's hero table, solver-heroes.ts, says which heroes a solve must include).
+ */
 export interface PartyState {
   slots: Record<string, number | null>;
   skills: Record<number, SkillChoice>;
-  locked: Record<string, boolean>;
   excluded: Record<string, boolean>;
 }
 
@@ -22,23 +24,19 @@ export const slotKeyOfLoc = (loc: number): string => (loc % 2 ? `back${(loc - 1)
 
 /**
  * Put a hero (save index, null = empty the slot) in a slot. A hero stands in one slot only: it leaves any other.
- * The slot's hero fights (its left-out tick is cleared). `picks` (the modes that choose the party): picking a hero by
- * hand locks it; emptying a slot unlocks it.
+ * The slot's hero fights (its left-out tick is cleared).
  */
-export function assignHero(s: PartyState, key: string, idx: number | null, picks = false): void {
+export function assignHero(s: PartyState, key: string, idx: number | null): void {
   if (idx !== null) {
     for (const k of Object.keys(s.slots)) {
       if (s.slots[k] === idx && k !== key) {
         s.slots[k] = null;
-        delete s.locked[k];
         delete s.excluded[k];
       }
     }
   }
   s.slots[key] = idx;
   delete s.excluded[key];
-  if (idx === null) delete s.locked[key];
-  else if (picks) s.locked[key] = true;
 }
 
 /**
@@ -81,10 +79,10 @@ export function editRotationSkill(s: PartyState, idx: number, k: number, skill: 
  * U40: put a hero in a slot unless its rotation (its edited one) is over its AP limit: refused, the state unchanged.
  * `over`: the hero's AP use and limit when over, else null.
  */
-export function assignHeroChecked(s: PartyState, key: string, idx: number | null, picks: boolean, over: { used: number; max: number } | null):
+export function assignHeroChecked(s: PartyState, key: string, idx: number | null, over: { used: number; max: number } | null):
   { ok: boolean; used?: number; max?: number } {
   if (idx !== null && over) return { ok: false, ...over };
-  assignHero(s, key, idx, picks);
+  assignHero(s, key, idx);
   return { ok: true };
 }
 
@@ -101,7 +99,7 @@ export type MoveResult = { ok: true; swapped: boolean } | { ok: false; reason: "
 
 /**
  * U48: a hero card dropped on another slot. On a filled slot the two heroes swap; on an empty one the hero moves there.
- * Each hero keeps its own lock and left-out tick (they follow it). Refused, the state unchanged: an empty slot as the
+ * Each hero keeps its own left-out tick (it follows it). Refused, the state unchanged: an empty slot as the
  * source, the slot itself as the target, a move that would empty a required slot, or a move out of Front 1 on a solo
  * quest. The party's size never changes, so its cap holds; which heroes the cap leaves out follows the slot order.
  */
@@ -115,13 +113,11 @@ export function moveHero(s: PartyState, from: string, to: string, r: MoveRules):
   if (!swapped && r.solo && !r.required.includes(to)) return { ok: false, reason: "solo" };
   s.slots[to] = a;
   s.slots[from] = b;
-  for (const flags of [s.locked, s.excluded]) {
-    const fa = flags[from], fb = flags[to];
-    delete flags[from];
-    delete flags[to];
-    if (fa) flags[to] = true;
-    if (fb && swapped) flags[from] = true;
-  }
+  const flags = s.excluded, fa = flags[from], fb = flags[to];
+  delete flags[from];
+  delete flags[to];
+  if (fa) flags[to] = true;
+  if (fb && swapped) flags[from] = true;
   return { ok: true, swapped };
 }
 
@@ -132,12 +128,11 @@ export const moveRefusal = (reason: "required" | "solo", slot: string): string =
 /**
  * U48: what each page lets the visitor change. The Simulator edits its party (pickers, ⇄, include ticks, Clear all,
  * the flow's ▾ and its enemy picker) and moves cards by drag and drop. The Solver's party and flow are read-only (its
- * "Open in Simulator" hands the party over for editing); only its 🔒, an input of the next solve, stays.
+ * "Open in Simulator" hands the party over for editing). U50: no 🔒 on the Solver's cards either.
  */
 export interface PageControls {
   edit: boolean;
   drag: boolean;
-  lock: boolean;
 }
 export const pageControls = (kind: "simulate" | "solve"): PageControls =>
-  kind === "simulate" ? { edit: true, drag: true, lock: false } : { edit: false, drag: false, lock: true };
+  kind === "simulate" ? { edit: true, drag: true } : { edit: false, drag: false };

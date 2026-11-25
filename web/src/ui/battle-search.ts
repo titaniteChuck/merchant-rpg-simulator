@@ -28,7 +28,12 @@
  * solveStatus: a spent time budget is an ordinary end, only Cancel reads as stopped, F34); the row icon inline with its
  * first chip and a "?" on "rough" (F35).
  *
- * Expansions (U28): heroes of a hidden class start ticked in "Leave heroes out".
+ * Expansions (U28): heroes of a hidden class start as Exclude.
+ *
+ * U50: no 🔒 locks on the party cards and no "Leave heroes out" chips: a table of the save's heroes, each Must include
+ * (✓), Neutral (/) or Exclude (✗), a radio group per hero, stored per save (solver-heroes.ts). Must include heroes are
+ * the search's `lock` (in every result party, the party rules kept); too many of them for the opponent or the largest
+ * size is one error and no solve.
  */
 import * as api from "../sim/api.ts";
 import type { FightEval, MapEval } from "../tools/combat.ts";
@@ -39,7 +44,11 @@ import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker
 import { dataWorker } from "./data-files.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { ROUGH_HELP, scrollCount, sizeHelp, solveShortlist, solveStatus } from "./battle-setup.ts";
-import { bar, el, fmt, fmt1, pct, rateTone } from "./dom.ts";
+import { bar, el, fmt, fmt1, lv, pct, rateTone, segmented } from "./dom.ts";
+import { heroNames } from "./levelling-view.ts";
+import { className } from "./names.ts";
+import { HERO_PICKS, type HeroPick, heroPick, type HeroPicks, picksSummary, readHeroPicks, type SolverHero,
+  solverHeroesKey, solverPick } from "./solver-heroes.ts";
 import { itemLink } from "./wiki-data.ts";
 import { isVisible } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
@@ -70,8 +79,8 @@ export interface SearchContext {
   poolSkills(): Record<number, SkillChoice>;
   /** Set the map run's scrolls in step 3. */
   applyScrolls(ids: number[]): void;
-  /** Save hero ids of the locked slots (Best party / Optimise everything keep them). */
-  locks(): number[];
+  /** U50: the save's file name (the hero table's states are stored per save). */
+  saveName(): string;
   /** A search started (its progress is in the results): the page may bring the results into view. */
   onStart?(): void;
   /** A result's Show put its setup in the party: the page shows its Party and Flow tabs (U41). */
@@ -110,6 +119,32 @@ function setSolverShown(on: boolean): void {
 }
 
 const GRADES = ["D", "C", "B", "A", "S"];
+
+/** U50: the hero table's three states: the mark shown and its name (tooltip, screen readers). */
+const PICK_LABELS: Record<HeroPick, [string, string]> = { must: ["✓", "Must include"], neutral: ["/", "Neutral"], exclude: ["✗", "Exclude"] };
+/** U50: the hero table's fold, open or not, for this page view (the form is rebuilt when the opponent changes). */
+let heroesOpen = false;
+
+/**
+ * U50: the hero table's states of a save, kept for this page view (storage blocked: all Neutral, the hidden classes
+ * Exclude). The old 🔒 locks were already migrated when the save was loaded (migrateOldLocks).
+ */
+const memPicks = new Map<string, HeroPicks>();
+function loadPicks(saveName: string, ids: number[]): HeroPicks {
+  const mem = memPicks.get(saveName);
+  if (mem) return mem;
+  let picks: HeroPicks = {};
+  try {
+    picks = readHeroPicks(localStorage.getItem(solverHeroesKey(saveName)), ids) ?? {};
+  } catch { /* storage blocked */ }
+  memPicks.set(saveName, picks);
+  return picks;
+}
+function savePicks(saveName: string, picks: HeroPicks): void {
+  try {
+    localStorage.setItem(solverHeroesKey(saveName), JSON.stringify(picks));
+  } catch { /* storage blocked: kept for this page view */ }
+}
 
 /** U42: the solve time budget's range, in seconds. */
 const TIME_MIN = 5, TIME_MAX = 600;
@@ -320,22 +355,24 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     maxN.addEventListener("change", () => (prefs.max = intOf(maxN, 1, cap)));
     sc.addEventListener("change", () => (prefs.scrolls = sc.checked));
     budget.addEventListener("change", () => (prefs.time = intOf(budget, TIME_MIN, TIME_MAX)));
-    const excl = excludePicker(sv);
+    const excl = heroTable(sv, ctx.saveName());
     const go = el("button", { type: "button", class: "primary" }, "🔎 Solve");
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
       + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
-      + "After a Show, the heroes you lock (🔒) stay in. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
+      + "Heroes marked ✓ are in every party, ✗ never. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
       + `${isMap ? "then the fewest scrolls (none first), " : ""}the fewest heroes first.`;
     go.addEventListener("click", () => {
       let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
       minN.value = String(lo);
       maxN.value = String(hi);
       if (lo > hi) [lo, hi] = [hi, lo];
-      const locks = ctx.locks();
-      if (locks.length > hi) {
-        status.replaceChildren(el("p", { class: "error", role: "alert" }, `${locks.length} heroes are locked: raise the largest party size to ${locks.length} or unlock some.`));
+      // U50: the hero table's Must include and Exclude; too many must-include heroes: one error, no solve.
+      const pick = solverPick(excl.heroes, excl.picks(), hi, cap);
+      if ("error" in pick) {
+        status.replaceChildren(el("p", { class: "error", role: "alert" }, pick.error));
         return;
       }
+      const inPool = new Set(pick.pool);
       const scrolls = isMap && sc.checked;
       prefs.time = intOf(budget, TIME_MIN, TIME_MAX);
       budget.value = String(prefs.time);
@@ -345,7 +382,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       if (target.map && !scrolls) target.map = { ...target.map, scrolls: [] };
       // Show state of this result (kept when it is drawn again in another language).
       const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
-      runSearch({ ...base(), search: "parties", pool: excl.pool(locks), lock: locks, poolSkills: ctx.poolSkills(), ...target,
+      runSearch({ ...base(), search: "parties", pool: sv.raw.hero.filter((h: Any) => inPool.has(Number(h.id))), lock: pick.must, poolSkills: ctx.poolSkills(), ...target,
         minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
       (r, _again, cancelled) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st, { ms: r.ms, cancelled, budgetMs }) : []),
       budgetMs, true);
@@ -461,22 +498,37 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     return [el("p", { class: "small solve-summary", role: "status" }, s.line, " ", helpTip(s.help, "these results")), box];
   }
 
-  /** "Leave heroes out" chips: ticked heroes are not candidates, unless kept (`keep`: locked or starting heroes). */
-  function excludePicker(sv: Save): { node: HTMLElement; pool(keep?: number[]): Any[] } {
-    const out = sv.raw.hero.map((h: Any) => {
-      const c = el("input", { type: "checkbox", value: String(h.id) }) as HTMLInputElement;
-      c.checked = !isVisible("class", Number(h.class)); // a class the visitor hides (the Bard without the Frozen Tome)
-      return { h, c, node: el("label", { class: "chip-check out" }, c, ` ${h.name}`) };
+  /**
+   * U50: the save's heroes, one row each: name and level, class, and Must include / Neutral / Exclude (a radio group
+   * named after the hero). Every change is stored at once; the fold's summary counts the ✓ and ✗.
+   */
+  function heroTable(sv: Save, saveName: string): { node: HTMLElement; heroes: SolverHero[]; picks(): HeroPicks } {
+    const names = heroNames(sv.raw.hero);
+    const heroes: SolverHero[] = sv.raw.hero.map((h: Any, i: number) => ({ id: Number(h.id), name: names[i], hidden: !isVisible("class", Number(h.class)) }));
+    const picks = loadPicks(saveName, heroes.map((h) => h.id));
+    const summary = el("summary", { class: "small" }, picksSummary(heroes, picks));
+    const rows = sv.raw.hero.map((h: Any, i: number) => {
+      const me = heroes[i];
+      const seg = segmented(`solver-hero-${me.id}`, `${me.name}: in the solve`, HERO_PICKS.map((p) => ({
+        value: p, title: PICK_LABELS[p][1], cls: `pick-${p}`,
+        label: el("span", {}, el("span", { "aria-hidden": "true" }, PICK_LABELS[p][0]), el("span", { class: "visually-hidden" }, PICK_LABELS[p][1])),
+      })), heroPick(picks, me.id, me.hidden), (v) => {
+        picks[me.id] = v as HeroPick;
+        savePicks(saveName, picks);
+        summary.textContent = picksSummary(heroes, picks);
+      });
+      seg.classList.add("hero-pick");
+      return el("tr", {}, el("th", { scope: "row" }, me.name, " ", el("span", { class: "muted small" }, lv(h.level))),
+        el("td", {}, className(h.class) ?? `class ${h.class}`), el("td", {}, seg));
     });
-    const node = el("details", { class: "exclude" }, el("summary", { class: "small" }, "Leave heroes out"),
-      el("div", { class: "chip-checks" }, ...out.map((b: Any) => b.node)));
-    return {
-      node,
-      pool: (keep = []) => {
-        const must = new Set(keep);
-        return out.filter((b: Any) => !b.c.checked || must.has(Number(b.h.id))).map((b: Any) => b.h);
-      },
-    };
+    const node = el("details", { class: "solver-heroes" }, summary,
+      el("table", { class: "solver-heroes-table" },
+        el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Hero"), el("th", { scope: "col" }, "Class"),
+          el("th", { scope: "col", title: "✓ Must include · / Neutral · ✗ Exclude" }, "Solve"))),
+        el("tbody", {}, ...rows)));
+    if (heroesOpen) node.setAttribute("open", "");
+    node.addEventListener("toggle", () => (heroesOpen = (node as HTMLDetailsElement).open));
+    return { node, heroes, picks: () => picks };
   }
 
   /** A "Put back the previous party" button for the slots and rotations as they are now (before a search fills them). */

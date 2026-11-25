@@ -22,8 +22,8 @@ const page = read("web/src/ui/battle-page.ts"), drag = read("web/src/ui/party-dr
 const u48 = css.slice(css.indexOf("/* U48 */"), css.indexOf("/* end U48 */"));
 const fn = (src: string, name: string) => src.slice(src.indexOf(`function ${name}`), src.indexOf("\n}\n", src.indexOf(`function ${name}`)));
 
-const party = (slots: PartyState["slots"], locked: PartyState["locked"] = {}, excluded: PartyState["excluded"] = {}): PartyState =>
-  ({ slots: { ...slots }, skills: {}, locked: { ...locked }, excluded: { ...excluded } });
+const party = (slots: PartyState["slots"], excluded: PartyState["excluded"] = {}): PartyState =>
+  ({ slots: { ...slots }, skills: {}, excluded: { ...excluded } });
 const FREE = { required: [] };
 const QUEST = { required: ["front1"] }; // a party quest: Front 2 always filled
 const SOLO = { required: ["front0"], solo: true };
@@ -42,15 +42,13 @@ test("moveHero: a drop on a filled slot swaps the two heroes, on an empty slot m
   assert.deepEqual([s.slots.front0, s.slots.back2], [3, 5]);
 });
 
-test("moveHero: each hero keeps its lock and its left-out tick", () => {
-  const s = party({ front0: 1, back1: 2 }, { front0: true }, { back1: true });
+test("moveHero: each hero keeps its left-out tick", () => {
+  const s = party({ front0: 1, back1: 2 }, { back1: true });
   moveHero(s, "front0", "back1", FREE);
   assert.deepEqual({ ...s.slots }, { front0: 2, back1: 1 });
-  assert.deepEqual({ ...s.locked }, { back1: true });
   assert.deepEqual({ ...s.excluded }, { front0: true });
-  moveHero(s, "back1", "back2", FREE);
-  assert.deepEqual({ ...s.locked }, { back2: true });
-  assert.deepEqual({ ...s.excluded }, { front0: true });
+  moveHero(s, "front0", "back2", FREE);
+  assert.deepEqual({ ...s.excluded }, { back2: true });
 });
 
 test("moveHero: refused moves leave the party as it was", () => {
@@ -125,9 +123,9 @@ test("the Flow: no \"vs <enemy> change\" line; the enemy column's head changes t
   assert.match(page, /enemies: \(\) => \{/);
 });
 
-test("pageControls: the Simulator edits and drags; the Solver is read-only but its 🔒", () => {
-  assert.deepEqual(pageControls("simulate"), { edit: true, drag: true, lock: false });
-  assert.deepEqual(pageControls("solve"), { edit: false, drag: false, lock: true });
+test("pageControls: the Simulator edits and drags; the Solver is read-only (U50: no 🔒 either)", () => {
+  assert.deepEqual(pageControls("simulate"), { edit: true, drag: true });
+  assert.deepEqual(pageControls("solve"), { edit: false, drag: false });
   const party = fn(page, "renderParty");
   assert.match(party, /const ctl = pageControls\(state\.mode\.key\);/);
   assert.match(party, /const include = raw && ctl\.edit \?/);

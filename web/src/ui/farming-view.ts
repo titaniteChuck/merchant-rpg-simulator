@@ -72,7 +72,7 @@ export function sourceSub(s: { kind: "quest"; level: number | undefined } | { ki
 }
 
 /** Help shown by tip() (F33, F38). */
-export const PARTY_TIP = "Shared with the Battle Simulator: rotations, locks and ticked-out heroes too";
+export const PARTY_TIP = "Shared with the Battle Simulator: rotations and ticked-out heroes too";
 export const LEFT_OUT_TIP = "Ticked out on the Simulator: doesn't fight";
 export const SCROLLS_TIP = "Bought for every map run";
 export const ERRORS_TIP = "Runs the game's own code fails on are left out";

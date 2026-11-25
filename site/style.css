@@ -596,10 +596,6 @@ a.secondary-link:hover { text-decoration: underline; }
 .opp-card .facts dt { color: var(--muted); }
 .opp-card .facts dd { margin: 0; }
 .opp-scrolls { display: flex; flex-direction: column; gap: 6px; }
-.exclude summary { cursor: pointer; color: var(--accent); font-weight: 600; }
-.chip-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-width: 760px; }
-.chip-check { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; cursor: pointer; }
-.chip-check:has(input:checked) { text-decoration: line-through; color: var(--muted); }
 h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 
 /* save overview */
@@ -661,7 +657,6 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .tl-note { margin: 2px 0 0; }
 .opp-card .tl { margin-top: 2px; }
 .pickers { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-.chip-check.lock:has(input:checked) { text-decoration: none; color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
 /* ------------------------------------------------------------------ class balance page (U4) */
 :root, :root[data-theme="dark"] { --heat: #0f766e; }
@@ -705,9 +700,6 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 
 /* ------------------------------------------------------------------ battle hero cards (U15) */
 .slot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.slot .lock { border: 1px solid var(--border); background: var(--card-2); border-radius: 8px; padding: 2px 7px; font-size: 0.85rem; line-height: 1.4; cursor: pointer; }
-.slot .lock.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--card-2)); }
-.slot.locked { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow); }
 /* Hero card stats: each column as wide as its value (auto layout, no wrap), the spare width shared out, at least 6px
    between two values, so "1,183" and "1,159" never run together; battle.ts shortens five-digit values. */
 .stat-strip { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; table-layout: auto; }
@@ -1792,7 +1784,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .seg.compact .seg-opt { padding: 4px 12px; font-size: 0.85rem; }
 .solve-box .search-form { margin: 0; align-items: center; }
 .solve-box .solve-time { width: 5.5em; }
-.solve-box .exclude { margin-top: 6px; }
 .solve-status:empty { display: none; }
 .solve-status p { margin: 0; }
 .solve-results { margin-top: 14px; }
@@ -2416,3 +2407,25 @@ p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); 
 body:has(> .to-top) { padding-bottom: 76px; }
 body:has(> .to-top:not([hidden])) .toast { bottom: 72px; }
 /* end U48 */
+/* U50 */
+/* The Solver's hero table (battle-search.ts heroTable): name and level, class, and a three-state radio group per hero,
+   ✓ Must include (green) / Neutral / ✗ Exclude (red), like a permission toggle. Fits a 375 px phone. */
+.solver-heroes { margin-top: 6px; }
+.solver-heroes > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.solver-heroes-table { width: auto; max-width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 0.88rem; }
+.solver-heroes-table :is(th, td) { padding: 3px 8px 3px 0; text-align: left; vertical-align: middle; }
+.solver-heroes-table thead th { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.solver-heroes-table tbody th { font-weight: 650; overflow-wrap: anywhere; }
+.solver-heroes-table tbody th .muted { font-weight: 500; white-space: nowrap; }
+.solver-heroes-table td:last-child { padding-right: 0; }
+.hero-pick { flex-wrap: nowrap; }
+.hero-pick .seg-opt { min-width: 32px; min-height: 30px; padding: 2px 8px; font-size: 0.95rem; font-weight: 800; }
+.hero-pick .pick-must:has(input:checked) { color: #fff; border-color: #16a34a; background: #16a34a; }
+.hero-pick .pick-exclude:has(input:checked) { color: #fff; border-color: #dc2626; background: #dc2626; }
+.hero-pick .pick-neutral:has(input:checked) { color: var(--fg); border-color: var(--muted); background: var(--card); }
+@media (max-width: 420px) {
+  .solver-heroes-table { font-size: 0.8rem; }
+  .solver-heroes-table :is(th, td) { padding-right: 5px; }
+  .hero-pick .seg-opt { min-width: 30px; padding: 2px 6px; }
+}
+/* end U50 */

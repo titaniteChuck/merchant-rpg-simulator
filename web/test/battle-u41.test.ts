@@ -88,13 +88,13 @@ test("Solver: its party is its own; Open in Simulator copies the shown party ove
   assert.match(page, /function persistParty\(\): void \{\n {2}if \(solving\(\)\) return;/);
   assert.match(page, /function restoreParty\(heroes: number\): boolean \{\n {2}if \(solving\(\)\) return false;/);
   const solver = { slots: { front0: 2, front1: null, back0: 5 }, skills: { 2: { attackList: ["Basic", "Basic", "Basic", "Basic", "Basic"], passive: "None" } },
-    locked: { front0: true }, excluded: { back0: true } };
+    excluded: { back0: true } };
   const before = { slots: { front0: 1 }, skills: { 1: { attackList: ["A", "B", "C", "D", "E"], passive: "P" }, 2: { attackList: ["X", "X", "X", "X", "X"], passive: "Q" } },
-    locked: {}, excluded: {} };
+    excluded: {} };
   const out = simulatorPartyFrom(solver, before);
   assert.deepEqual(out.slots, solver.slots);
   assert.deepEqual(out.excluded, { back0: true });
-  assert.deepEqual(out.locked, {}, "locks only mean something to the solver");
+  assert.equal("locked" in out, false, "U50: no locks");
   assert.deepEqual(out.skills[1], before.skills[1], "the Simulator's other edited rotations stay");
   assert.deepEqual(out.skills[2], solver.skills[2], "the shown heroes' rotations win");
   assert.deepEqual(simulatorPartyFrom(solver, null).skills, solver.skills);

@@ -66,7 +66,7 @@ test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are 
   assert.doesNotMatch(page, /party-note|party-rules/);
   const help = fn(page, "partyHelp");
   // U48: the Solver's party is read-only (its edits are the Simulator's, through Open in Simulator).
-  assert.match(help, /The setup you showed: 🔒 keeps a hero in the next solve\. To change the party, open it in the Simulator\./);
+  assert.match(help, /Read-only: to change the party, open it in the Simulator\./);
   assert.match(help, /rulesText\(rules\)/);
   // Front 2 stays required on a party quest: the rule is still said, in the "?".
   assert.match(rulesText({ kind: "party", maxSize: 5, required: [{ row: "front", i: 1 }] }), /Front 2 always filled, at most 5 heroes/);

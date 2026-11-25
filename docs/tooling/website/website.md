@@ -193,7 +193,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
     then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
     enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map), then smallest and
-    largest party, Include scrolls, the time budget in seconds and 🔎 Solve, "Leave heroes out" under them; a running
+    largest party, Include scrolls, the time budget in seconds and 🔎 Solve, the hero table under them (U50); a running
     solve's progress bar, clock and Cancel show inside the panel. No enemy card and no tabs during setup: the
     opponent card (radar, map facts, scroll pickers) is drawn into `#target-card`, the Party tab's right column, so it
     shows with the party a result's Show brings (`placeTarget` in `battle-page.ts`; the Simulator has no
@@ -204,7 +204,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     party (`SearchContext.onShow` → `revealParty`). U48: read-only there, since "▶ Open in Simulator" is where it gets
     edited (`pageControls("solve")` in `battle-edit.ts`): the same cards and Flow without hero pickers, ⇄ controls,
     include boxes, Clear all, drag and drop, the Flow's ▾ or its enemy picker; a row's empty slots are a plain count.
-    Only the 🔒 locks stay (an input of the next solve, not an edit of the party); the map room bar, the calculations
+    U50: no 🔒 locks either (the Solve panel's hero table says which heroes a solve keeps); the map room bar, the calculations
     and the remembered tab work as on the Simulator. Once shown it stays for later solves; a new save or Forget hides
     it again.
   - Scribe hidden (U42, both pages): when Scribe is not owned and "Show expansion content" is off (`isHidden("Scribe")`
@@ -217,7 +217,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     nothing there), so Solver edits never change the Simulator's remembered party (`battle-party:<file>`). The
     Solver's opponent is remembered apart (`solver-opponent`, starting from the Simulator's `battle-opponent` on a
     first visit). "▶ Open in Simulator" beside the step 3 heading copies the shown party (slots, rotations, heroes left
-    out; the Simulator's edited rotations of other heroes kept, no locks: `simulatorPartyFrom` in
+    out; the Simulator's edited rotations of other heroes kept: `simulatorPartyFrom` in
     `ui/battle-links.ts`) and the opponent to the Simulator's keys, then opens the Simulator. Why: a solver result is
     an answer to look at; it shouldn't silently overwrite the party the visitor is building by hand.
   - Old links: `battle.html` with `?mode=solve` (or `party`, `solver`), `?solve`, `#solve`, `#solver`, `#mode=solve`
@@ -232,8 +232,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     `touch-action` change); once on, a non-passive `touchmove` on `#party` stops the page scrolling under the finger
     and the page scrolls by itself near the window's top or bottom edge. The card follows the pointer, the slot under
     it is outlined, Escape or a release elsewhere puts it back, the click that ends a drag is swallowed. On a filled
-    slot the heroes swap, on an empty one the hero moves (`moveHero` in `battle-edit.ts`, pure: locks and include
-    ticks follow their hero); refused with a toast when it would empty the required slot (Front 2 of a party quest)
+    slot the heroes swap, on an empty one the hero moves (`moveHero` in `battle-edit.ts`, pure: include ticks follow
+    their hero); refused with a toast when it would empty the required slot (Front 2 of a party quest)
     or leave Front 1 on a solo quest. The card's hero picker stays (click to pick, keyboard).
   - The size cap: "ℹ️ At most N heroes" under the opponent's picker (`#party-cap`, filled by `renderParty`) when it
     leaves heroes out; no names (their cards say "over the limit").
@@ -247,6 +247,24 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - "↑" (both pages, `initToTop`): fixed bottom right, `aria-label` "Back to top", shown once the page is scrolled
     down more than a screen (`toTopVisible`); back to the top smoothly, at once under reduced motion, the focus on
     `main`. The page keeps 76 px under its end so the button never covers the last content; a toast moves above it.
+
+- U50, the Solver's hero table (tests `web/test/solver-u50.test.ts`, CSS in the `U50` block):
+  - No 🔒 locks anywhere: not on the Solver's cards (`pageControls` has no `lock`), not in the party state
+    (`PartyState` / `StoredParty` have no `locked`, `assignHero` locks nothing). The Simulator never showed them and
+    they fed only the solve, so they are gone from both pages; Farming keeps an old stored `locked` untouched.
+  - "Leave heroes out" is replaced by a fold under the Solve options, its summary "Heroes · 2 must · 3 out": a table of
+    every hero of the save (name, numbered when several share it, `heroNames` in `levelling-view.ts`, and `lv()`;
+    class; then a segmented radio group per hero named "<hero>: in the solve", `segmented()` in `dom.ts`, so arrow keys
+    and screen readers work): ✓ Must include (green when picked), / Neutral (the default), ✗ Exclude (red). A hero of
+    a hidden class starts as Exclude (as the old chips did).
+  - Stored per save in localStorage `solver-heroes:<file>` (save hero id → `must` / `neutral` / `exclude`, every change
+    at once; storage blocked: kept for the page view). Migration (`migrateOldLocks` in `ui/solver-heroes.ts`, run by
+    both pages when a save loads): with nothing stored yet, the heroes locked in the old `battle-party:<file>`
+    become Must include. The old left-out chips were never stored, so there is nothing to migrate from them.
+  - The solve (`solverPick`): Exclude leaves the pool; Must include is the search's `lock` (`searchParties`: in
+    every result party, any position, the party rules, the required Front 2 and the sizes kept). More Must include
+    heroes than the opponent takes, or than the largest size asked, is one error line and no solve. Warm start and
+    the time budget are unchanged.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
@@ -308,7 +326,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - Step 3, party, opponent and plan (U15, reworked in U23, U36 and U39; step 2 until U26), the same arrangement in every
   mode: two tabs (U39; U40: Party first), Party and Flow (the fight turn by turn, see "Flow tab" below). Party: the six hero slots (back row 1-3
   | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
-  (avatar, Back / Front N, class and level pill, 🔒 in the search modes), hero picker, stat strip (HP, Atk, Matk, Def,
+  (avatar, Back / Front N, class and level pill; 🔒 in the search modes until U50), hero picker, stat strip (HP, Atk, Matk, Def,
   Mdef, Acc, Crit; columns as wide as their values, five-digit values shortened to "12.3K" with the full value in a
   tooltip), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,
   whole row opens the wiki page via `clickableRow`, AP via `apBadge`): passive row (name, bonus), rotation rows (turn,
@@ -316,16 +334,15 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   Editing in place, no fold-out: each row ends with a ⇄ control (a transparent `<select>` over the icon), which swaps
   the skill (Basic and the unlocked skills, with AP) or the passive without changing the slot's size; focus returns to
   the same control. Gear is not shown in the slots. In Best party and Optimise everything the slots are the search's:
-  empty ones read "to be found", and a filled slot has a 🔒 toggle (a hero picked by hand is locked; locked heroes stay
-  in the party and follow their hero when the search moves it).
+  empty ones read "to be found" (until U50 a filled slot also had a 🔒 toggle; the Solver's hero table replaced it).
   - Include box (U36): a checkbox at the top right of each filled card. Unticked, the hero stays in its slot but doesn't
     fight (dimmed card, "left out"; `state.excluded`, remembered with the party). When more heroes are ticked in than
     the opponent takes (`partyRules` maxSize, e.g. after switching to Desolation Wolf, 3), the first ones in the game's
     slot order are kept (the required slot first, then back 1, front 1, back 2, front 2, back 3, front 3) and the rest are
     left out automatically: their box is unticked and disabled ("over the limit"), and a note names them
     (`includedSlots` in `ui/battle-setup.ts`). Simulate, the plan, the quest-size cap and the party check
-    (`partyProblem`, so the required Front 2 rule) use the included heroes only; the solver's locks skip the others.
-  - Clear all (U32): a button above the slots empties every slot (and its lock; edited rotations are kept), then shows
+    (`partyProblem`, so the required Front 2 rule) use the included heroes only.
+  - Clear all (U32): a button above the slots empties every slot (edited rotations are kept), then shows
     "↩ Put back the previous party" until it is used or a slot is changed by hand.
   - Party setup rules (game 3.18, the engine's E21 `partyRules` / `partyProblem` in `combat.ts`, wrapped for the page by
     `web/src/ui/battle-rules.ts`): a party quest (`questData.party`) always fills Front 2
@@ -430,7 +447,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     marked with a "change" pill, the others "keep"), the source of each change listed under it.
   - Best party, the solver (quest or map, U27): `searchParties` (`web/src/tools/parties.ts`, see
     [Party search](../combat-simulator/party-search.md)) over all the save's heroes (with their edited rotations)
-    except the ones ticked in "Leave heroes out", the locked slots' heroes in every party (`lock`). It replaces the
+    except the ones set to Exclude in the hero table, the Must include heroes in every party (`lock`; U50, until then
+    "Leave heroes out" chips and the 🔒 locks). It replaces the
     former Best party (`searchParty`), Best rotation (`searchSkills`) and Best scrolls (`searchScrolls`) modes: one
     search gives the heroes, their rows and order, every hero's rotation and passive and, for a map, the scrolls.
     - Spoiler guard: the mode starts hidden behind a card ("This tool runs simulations and finds the best fit … do it
@@ -443,7 +461,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     - Options: smallest and largest party (1 and 6, clamped to the quest's size cap, both 1 on a solo quest),
       "Include scrolls" (map runs only; R2 F31: not shown at all on a quest, was disabled with "(map runs only)"; U42: off, a map run is solved with
       no scrolls, since the card's scroll pickers are out of sight during setup), the time budget (U42: a number input
-      in seconds, 30 by default, 5 to 600; the search stops then and shows what it found), "Leave heroes out". The
+      in seconds, 30 by default, 5 to 600; the search stops then and shows what it found), the hero table (U50). The
       options as last set survive the panel's rebuild when the opponent changes (for the page view).
     - Progress by stage ("solo", "size N": done / total) with the time used on the bar. Cancel stops softly: the page
       revokes a blob: URL that the worker's `shouldStop` reads with a synchronous request (at most every 250 ms;
@@ -550,8 +568,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Flow tab (U39, replaces the plan column of U36; reshaped in U40): step 3 has two tabs over ONE party state,
     👥 Party first (the hero cards and the opponent card, as before; the default) and 🗓️ Flow second (U40 swapped
     them). The active tab is remembered for the browser tab (sessionStorage `battle-tab`, try/catch). Both tabs edit
-    through `ui/battle-edit.ts` (`assignHero`: one slot per hero, the new hero fights, a hand-picked hero locked in
-    Solve; `setRotationSkill`), then the page saves the party, redraws both tabs and traces the fight again.
+    through `ui/battle-edit.ts` (`assignHero`: one slot per hero, the new hero fights; `setRotationSkill`), then the page saves the party, redraws both tabs and traces the fight again.
     - AP limit (U40): an edit that would put a hero over its action-point limit is refused in both tabs, the state
       unchanged, with an error toast "Paladin: 23 / 20 AP. Change refused." (`toast()` in `dom.ts`, one aria-live
       region per page). `editRotationSkill` (a rotation slot; an edit that lowers a rotation already over is allowed,
@@ -1130,7 +1147,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 
 - Party: the one picked on the battle page (`battle-party:<save>`, edited rotations included), editable here; without
   one, the six highest-level heroes. The stored party is read and written whole (`readStoredParty`,
-  `storedPartyWith` in `web/src/ui/farming-party.ts`): the Simulator's locks and ticked-out heroes are kept, and a
+  `storedPartyWith` in `web/src/ui/farming-party.ts`): the Simulator's ticked-out heroes are kept, and a
   ticked-out hero shows "left out" and doesn't fight.
 - Legal party per source (game 3.18 rules, as the Battle page): `fightingSlots` takes the filled slots not ticked out,
   the required slot first (Front 2 on a party quest, Front 1 on a solo quest), then the game's slot order (Back 1,
@@ -1322,7 +1339,7 @@ U28: the site knows the two paid expansions (the Frozen Tome and Scribe; rules i
     maps stay; "Map run" disappears when no map can be picked. Best gear: catalog ascension options 1–2 need Scribe and
     the worker drops catalog items of hidden expansions (`expansions` in the gear request, `battle-worker.ts`). Best
     scrolls and the potion / enchant search: hidden scrolls, ascension options and consumables left out. Best party /
-    Optimise: heroes of a hidden class start ticked in "Leave heroes out". A change keeps the chosen opponent when it is
+    Optimise: heroes of a hidden class start as Exclude in the hero table (U50). A change keeps the chosen opponent when it is
     still offered.
   - Save viewer: never hides the player's things; badges on items and the Bard.
   - Profit / Farming / Levelling (frozen pages, minimal): profit rows, orbs and map sources filtered; farming quests,

@@ -29,23 +29,24 @@ export function solverRedirect(search: string, hash: string): string | null {
   return null;
 }
 
-/** A party as the battle pages remember it (localStorage `battle-party:<save>`). */
+/**
+ * A party as the battle pages remember it (localStorage `battle-party:<save>`). U50: no `locked` any more (an old one
+ * becomes the Solver's Must include, solver-heroes.ts).
+ */
 export interface StoredParty {
   slots: Record<string, number | null>;
   skills: Record<number, SkillChoice>;
-  locked: Record<string, boolean>;
   excluded: Record<string, boolean>;
 }
 
 /**
  * The Simulator's party after "Open in Simulator": the Solver's slots, its heroes left out and its rotations; the
- * Simulator's own edited rotations of the other heroes kept; no locks (they only mean something to the solver).
+ * Simulator's own edited rotations of the other heroes kept.
  */
 export function simulatorPartyFrom(solver: StoredParty, simulator: Partial<StoredParty> | null): StoredParty {
   return {
     slots: { ...solver.slots },
     skills: { ...(simulator?.skills ?? {}), ...solver.skills },
-    locked: {},
     excluded: { ...solver.excluded },
   };
 }

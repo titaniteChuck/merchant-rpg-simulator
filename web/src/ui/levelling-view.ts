@@ -17,6 +17,12 @@ type Any = any;
  * counted in save order, so the pickers tell them apart.
  */
 export function heroLabels(heroes: Any[], className: (cls: number) => string): string[] {
+  const names = heroNames(heroes);
+  return heroes.map((h, i) => `${names[i]} · ${className(h.class)} · ${lv(h.level ?? 1)} · Asc ${heroAsc(h.prestigeLevel ?? 1)}`);
+}
+
+/** The heroes' names in save order, a number added to names several heroes share ("Paladin (2)"). U50: the Solver too. */
+export function heroNames(heroes: Any[]): string[] {
   const total = new Map<string, number>();
   for (const h of heroes) total.set(String(h.name), (total.get(String(h.name)) ?? 0) + 1);
   const seen = new Map<string, number>();
@@ -24,8 +30,7 @@ export function heroLabels(heroes: Any[], className: (cls: number) => string): s
     const name = String(h.name);
     const k = (seen.get(name) ?? 0) + 1;
     seen.set(name, k);
-    const shown = (total.get(name) ?? 1) > 1 ? `${name} (${k})` : name;
-    return `${shown} · ${className(h.class)} · ${lv(h.level ?? 1)} · Asc ${heroAsc(h.prestigeLevel ?? 1)}`;
+    return (total.get(name) ?? 1) > 1 ? `${name} (${k})` : name;
   });
 }
 

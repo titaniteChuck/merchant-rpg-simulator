@@ -107,19 +107,19 @@ test("F04, F05: no placeholder, no map boss or Treasure Bush, nothing over level
   assert.ok(!farmQuestIds((id) => id !== GOLIATH).includes(GOLIATH), "the visibility filter applies");
 });
 
-test("F02: an edit here keeps the Battle page's locks and ticked-out heroes", () => {
+test("F02: an edit here keeps the Battle page's ticked-out heroes (and an old `locked`, U50 migrates it)", () => {
   const stored = JSON.stringify({ slots: { front0: 0, front1: 1, back0: 9 }, skills: { 1: { attackList: ["Basic"] }, 40: { attackList: [] } },
     locked: { front0: true, back0: false }, excluded: { front1: true } });
   const p = readStoredParty(stored, 6)!;
   assert.deepEqual(p.slots, { front0: 0, front1: 1 }, "a hero index this save doesn't have is dropped");
   assert.deepEqual(Object.keys(p.skills), ["1"]);
-  assert.deepEqual(p.locked, { front0: true });
+  assert.equal("locked" in p, false);
   assert.deepEqual(p.excluded, { front1: true });
   const next = storedPartyWith(JSON.parse(stored), { ...p.slots, front2: 4 }, p.skills);
   assert.deepEqual(next.slots, { front0: 0, front1: 1, front2: 4 });
-  assert.deepEqual(next.locked, { front0: true, back0: false });
+  assert.deepEqual((next as unknown as { locked: unknown }).locked, { front0: true, back0: false }, "other stored fields kept");
   assert.deepEqual(next.excluded, { front1: true });
-  assert.deepEqual(storedPartyWith(null, {}, {}), { locked: {}, excluded: {}, slots: {}, skills: {} });
+  assert.deepEqual(storedPartyWith(null, {}, {}), { excluded: {}, slots: {}, skills: {} });
   assert.equal(readStoredParty(null, 6), null);
   // the ticked-out hero doesn't fight
   assert.deepEqual(fightingSlots({ kind: "map", map: { id: 1, prestigeLevel: 0, grade: 3 } }, next.slots, next.excluded), ["front0", "front2"]);

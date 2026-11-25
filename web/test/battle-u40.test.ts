@@ -152,7 +152,7 @@ test("effects as text from their live values: Enraged grows as the Berserker is 
 
 test("AP limit: an edit that takes a hero over is refused and the state stays the same", () => {
   const b: ApBudget = { cost: (s) => ({ Slash: 6, Enrage: 8, "Slash II": 10 } as Record<string, number>)[s] ?? 0, max: 20 };
-  const s: PartyState = { slots: { front0: 4 }, skills: { 4: { attackList: ["Slash", "Enrage", "Basic", "Basic", "Basic"] } }, locked: {}, excluded: {} };
+  const s: PartyState = { slots: { front0: 4 }, skills: { 4: { attackList: ["Slash", "Enrage", "Basic", "Basic", "Basic"] } }, excluded: {} };
   const before = structuredClone(s);
   const r = editRotationSkill(s, 4, 2, "Slash II", s.skills[4], b); // 6 + 8 + 10 = 24 > 20
   assert.deepEqual(r, { ok: false, used: 24, max: 20 });
@@ -163,15 +163,15 @@ test("AP limit: an edit that takes a hero over is refused and the state stays th
   assert.deepEqual(s.skills[4].attackList, ["Slash", "Enrage", "Slash", "Basic", "Basic"]);
   assert.equal(apUsed(s.skills[4].attackList, b), 20);
   // a rotation already over (an old saved party) can still be lowered, not raised
-  const over: PartyState = { slots: {}, skills: { 1: { attackList: ["Slash II", "Slash II", "Slash II", "Basic", "Basic"] } }, locked: {}, excluded: {} };
+  const over: PartyState = { slots: {}, skills: { 1: { attackList: ["Slash II", "Slash II", "Slash II", "Basic", "Basic"] } }, excluded: {} };
   assert.equal(editRotationSkill(over, 1, 3, "Slash", over.skills[1], b).ok, false);
   assert.equal(editRotationSkill(over, 1, 0, "Basic", over.skills[1], b).ok, true);
   // a hero whose rotation is over can't be put in a slot
-  const p: PartyState = { slots: { front1: 2 }, skills: {}, locked: {}, excluded: {} };
+  const p: PartyState = { slots: { front1: 2 }, skills: {}, excluded: {} };
   const pb = structuredClone(p);
-  assert.equal(assignHeroChecked(p, "front1", 3, false, { used: 30, max: 20 }).ok, false);
+  assert.equal(assignHeroChecked(p, "front1", 3, { used: 30, max: 20 }).ok, false);
   assert.deepEqual(p, pb);
-  assert.equal(assignHeroChecked(p, "front1", 3, false, null).ok, true);
+  assert.equal(assignHeroChecked(p, "front1", 3, null).ok, true);
   assert.equal(p.slots.front1, 3);
 });
 
