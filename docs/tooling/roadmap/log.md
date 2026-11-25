@@ -95,3 +95,4 @@
 - **Update**: U53 done (491b2d7): speed prefixes shorten a map's base time on its wiki page; "Fight in simulator" on map and enemy details opens the Simulator on that opponent.
 - **Update**: U51 done (bfcfe09): Solver rows show grade, life left % and heroes dead; one "?" by the Party / Flow switch; Flow without the Turn column; calculation panels exactly their column's width. The U51–U54 batch is complete.
 - **Update**: U55–U59 added from the user's third 2026-11-25 batch (map table, item cards, rarity names, Flow 2 and Flow 3 to compare).
+- **Update**: U57 done (e78740e): rarity names (Common to Mythical) instead of numbers site-wide, colours kept; the wiki filter matches names; CSV exports add a rarity_name column.
