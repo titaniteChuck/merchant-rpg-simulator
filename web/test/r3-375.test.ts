@@ -34,7 +34,7 @@ test("Farming: the podium figure splits into number and unit, kept on one line",
 });
 
 test("Farming: the podium subline colours a gold loss like the table", () => {
-  assert.deepEqual(valueSplitParts(-1283, 79.2), ["-1,283 g", " + 79.2 essence /h"]);
+  assert.deepEqual(valueSplitParts(-1283, 79.2), ["-1,283 g", " + 79.2\u00a0essence\u00a0/h"]);
   assert.deepEqual(valueSplitParts(1250, 0), ["1,250 g", "/h"]);
   assert.equal(valueSplit(-1283, 79.2), valueSplitParts(-1283, 79.2).join(""));
   assert.equal(toneOf(-1283), "pf-loss");

@@ -14,7 +14,7 @@ const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta
 
 test("F27: the ranking figure says value/h, its parts say gold and essence", () => {
   assert.equal(valueText(3544.2), "3,544 value/h");
-  assert.equal(valueSplit(-1283, 79.2), "-1,283 g + 79.2 essence /h");
+  assert.equal(valueSplit(-1283, 79.2), "-1,283 g + 79.2\u00a0essence\u00a0/h");
   assert.equal(valueSplit(1250, 0), "1,250 g/h");
   assert.equal(valueSplit(1250, 0.01), "1,250 g/h");
   assert.match(valueHelp(), /Gold \/ h plus the essence/);

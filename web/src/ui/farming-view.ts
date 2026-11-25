@@ -41,8 +41,9 @@ export const hasEssence = (x: number): boolean => x >= 0.05;
  * Value / h as its gold amount and the rest (R3 375 px fixes), so the podium tile colours a gold loss as the table
  * does: ["-1,283 g", " + 79.2 essence /h"], ["1,250 g", "/h"].
  */
+// No-break spaces keep "essence /h" together, so "/h" never wraps alone on a 375 px tile.
 export function valueSplitParts(goldPerHour: number, essencePerHour: number): [gold: string, rest: string] {
-  return [gold(goldPerHour), hasEssence(essencePerHour) ? ` + ${fmt1.format(essencePerHour)} essence /h` : "/h"];
+  return [gold(goldPerHour), hasEssence(essencePerHour) ? ` + ${fmt1.format(essencePerHour)}\u00a0essence\u00a0/h` : "/h"];
 }
 
 /** Value / h in its parts (F27): "-1,283 g + 79.2 essence /h"; "1,250 g/h" when the source gives no essence. */
