@@ -82,3 +82,4 @@
 - **Update**: R3-F done (ecbd48c): Farming on phones (review-r3).
 - **Update**: U46–U49 added from the user's 2026-11-25 batch (save wizard, save heroes, lvl label, radar rims, Simulator/Flow/Solver, wiki modifiers); browser checks paused.
 - **Update**: U47 done (a49f9f7): level shown as "lvl 49" ("Lvl" at the start of a label), spider charts on fixed rims Crit 100 and Accuracy 250.
+- **Update**: U46 done (e071a7a): "Open your own save" wizard (PC or mobile steps, phones via the game's Bug Report mail), hero page quests and deaths chips, full 5-turn rotation, gear cards framed by ascension, asc number centred.
