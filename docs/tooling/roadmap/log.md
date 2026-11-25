@@ -86,3 +86,4 @@
 - **Update**: U49 done (4065047): wiki details pages get Ascension, Prefix and Suffix selectors kept in the URL; save links open them with the save's modifiers; map enemy stats scaled as the game does.
 - **Update**: U48 done (8813366): Simulator results in the Simulate panel, drag-and-drop hero cards, "At most N heroes" under the opponent picker, Flow without "vs … change", page-long on phones with back-to-top; Solver party and Flow read-only.
 - **Update**: U50 added (Solver hero table with Must include / Neutral / Exclude, locks removed); U48's calculation alignment confirmed by the user.
+- **Fix**: Save viewer's Essence / run counts the Skilled and Expert's prefixes (8c12ed9), through one map-essence function shared with the wiki.
