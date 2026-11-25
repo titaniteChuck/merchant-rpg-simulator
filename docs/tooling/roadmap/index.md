@@ -11,3 +11,4 @@
 - [review-farming](./review-farming.md) - Farming page review: findings, feature ideas, first batch and design choices.
 - [review-levelling](./review-levelling.md) - Levelling page review: findings with verified numbers, feature ideas, first batch and design choices.
 - [review-r3](./review-r3.md) - Mobile presentation review (R3) of Levelling, Profit and Farming: 38 findings, quick fixes and design-choice evidence.
+- [review-a11y-perf](./review-a11y-perf.md) - Accessibility (axe, 84 runs) and performance review of every page but Balance: 21 findings by shared component, quick fixes and design choices.

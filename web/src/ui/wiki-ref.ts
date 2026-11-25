@@ -97,6 +97,19 @@ export const unsure = (html: string): string => `<p class="ref-note unsure"><spa
 export const tbl = (head: string[], rows: (string | number)[][]): string =>
   `<div class="table-wrap"><table class="ref-table"><thead><tr>${head.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${
     rows.map((r) => `<tr>${r.map((c, i) => (i ? `<td>${c}</td>` : `<th scope="row">${c}</th>`)).join("")}</tr>`).join("")}</tbody></table></div>`;
+/**
+ * A11y review F07: a reference table scrolls sideways in its `.table-wrap` (phones, wide tables) but holds no link or
+ * button, so the keyboard could not reach it to scroll. Each wrap becomes a focusable named region: the section's
+ * title, numbered when the section has more than one table ("Defence, table 2").
+ */
+export function labelTableRegions(body: ParentNode, title: string): void {
+  const wraps = [...body.querySelectorAll<HTMLElement>(".table-wrap")];
+  wraps.forEach((w, i) => {
+    w.setAttribute("tabindex", "0");
+    w.setAttribute("role", "region");
+    w.setAttribute("aria-label", wraps.length > 1 ? `${title}, table ${i + 1}` : title);
+  });
+}
 /** A variable name. */
 export const v = (name: string): string => `<var>${name}</var>`;
 /**
@@ -156,6 +169,7 @@ export function refPage(page: "stats" | "battle", title: string,
     for (const p of content.querySelectorAll<HTMLElement>("[data-xp-badge]")) {
       p.replaceWith(expansionBadge((p.dataset.xpBadge ?? "").split(" ").filter(Boolean) as ExpansionId[], { link: true }));
     }
+    labelTableRegions(content, topics[s.id][0]);
     sec.append(h2, content);
     return sec;
   });

@@ -127,7 +127,9 @@ test("F29: the room bar is a scroll row with edge fades", () => {
 test("F30: light-mode class badges reach AA (4.5:1) on the card", () => {
   const light = css.slice(css.indexOf(':root[data-theme="light"] {'), css.indexOf("}", css.indexOf(':root[data-theme="light"] {')));
   const token = (name: string) => light.match(new RegExp(`--${name}: ([^;]+);`))![1].trim();
-  const ink = Number(r2c.match(/:root\[data-theme="light"\] \.slot-head \.pill, :root\[data-theme="light"\] \.solver-party \.pill \{ --ink: (\d+)%; \}/)![1]) / 100;
+  // a11y review F04: the light ink moved from the hero card and solver pills to every pill (`a11y` block, --pill-ink)
+  const a11y = css.slice(css.indexOf("/* a11y */"), css.indexOf("/* end a11y */"));
+  const ink = Number(a11y.match(/:root\[data-theme="light"\] \{ --pill-ink: (\d+)%; --pill-base: var\(--card\); \}/)![1]) / 100;
   const tint = parseFloat(token("tint")) / 100;
   const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const mix = (a: number[], b: number[], p: number) => a.map((x, i) => x * p + b[i] * (1 - p));

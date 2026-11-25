@@ -200,7 +200,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - F29: the map room bar is a `.scroll-row`; `edgeFades` sets `fade-start` / `fade-end` while there are rooms off
     that side, and a mask fades that edge.
   - F30: in light mode the pills of a hero card (class · level, required, left out) and the Solver's hero chips use
-    `--ink: 38%`: every class colour reaches 4.5:1 on the card (Paladin was 2.7:1).
+    `--ink: 38%`: every class colour reaches 4.5:1 on the card (Paladin was 2.7:1). Since the accessibility review
+    (F04) every pill in both themes uses `--pill-ink` (dark 55 %, light 38 %) over a fixed `--pill-base` (CSS `a11y`).
   - F31: the Solver's sizes on one row, "Party [1] – [5]", with a "?" (what they are, the quest's limit: `sizeHelp`);
     "Include scrolls" only for a map run; labels in sentence case ("Time budget (s)").
   - F32: the results table is Show · Party · (Scrolls) · Win · Turns / Grade · (Progress): Show first, and a tap
@@ -623,7 +624,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 - Item and map prices (U37): the Equipment, Consumables, Materials and Maps lists end with Cost, Total cost and Sell
   value. Each cell holds one value per ascension variant (`ascValues` in `dom.ts`): plain numbers (`goldNumber`, the
   number part of `gold()`, no "g"), each in a small box outlined in its tier colour (`--v3-asc0/1/2`, the class page's
-  accent / silver / gold; `.asc-vals`, `.av` in `site/style.css`), the full values in the cell's tooltip. Equipment and
+  accent / silver / gold; `.asc-vals`, `.av` in `site/style.css`), the full values in the cell's tooltip; screen
+  readers get them from a visually-hidden line, the boxes are `aria-hidden` (accessibility review F03). Equipment and
   consumables have three slots (asc 0/1/2), maps two (asc 0/1), materials one; a variant the item doesn't have
   (`lockPrestige`, or asc 1–2 the visitor hides without Scribe) is a dashed "–" slot, an item that isn't crafted a
   single "–". The columns sort by the asc-0 value; a legend above the table names the boxes. Helpers in
@@ -1368,7 +1370,9 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     visible "Tools" heading (visually hidden). The lead names the current tools ("save viewer, battle simulator and
     solver, wiki") and is one line at 600 px and less. "Older tools (4)" is a `<details>` (`site/index.html`), closed
     on phones (760 px and less) and opened on wider screens by `web/src/ui/home.ts` (`mountHome`, run by `nav.ts`; the
-    home page has no script of its own); its former sentence is the "?" of its title (`helpTip`). With a save kept in
+    home page has no script of its own); its former sentence is a "?" (`helpTip`) on the first line inside the section
+    ("About these tools ?"), out of the `<summary>` (accessibility review F09). The top bar is the page's `<header>`
+    and the intro (`div.home-head`: h1, lead, quick links) is inside `<main>` (F10). With a save kept in
     the browser (`html.has-save`), one line of quick links under the lead: "📜 <file name>" then Heroes, Inventory,
     Simulator, Solver (static links, shown by CSS; `home.ts` puts the name).
   - Footer (F57): every page's footer is one line, "Fan project · not affiliated · Source ?" (`mountFooter` in

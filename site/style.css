@@ -1827,8 +1827,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
   -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
   mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
 }
-/* F30: class badges (and the other pills of a hero card, the solver's hero chips) at AA contrast in light mode. */
-:root[data-theme="light"] .slot-head .pill, :root[data-theme="light"] .solver-party .pill { --ink: 38%; }
+/* F30: class badges at AA contrast in light mode: now every pill, both themes (the `a11y` block, --pill-ink). */
 /* F31: "Party 1 – 5" on one row. */
 .solve-sizes { gap: 6px; }
 .solve-sizes input { width: 3.4em; }
@@ -2275,3 +2274,28 @@ footer .footer-line a { color: inherit; }
   }
 }
 /* end r3-farming */
+/* a11y */
+/* Accessibility review (docs/tooling/roadmap/review-a11y-perf.md), the quick fixes; text contrast checked by
+   test/a11y-review.test.ts (WCAG AA, 4.5:1). */
+/* F04, F06: pills (class badges, "on a map", the solver's hero chips, "level 49") at AA in both themes. The text mixes
+   less of its colour into --fg (--pill-ink), and the fill is the tint over a fixed base (--pill-base), not over
+   whatever is under the pill (a loaded row's gold, a card-2 panel), so one check holds everywhere. */
+:root, :root[data-theme="dark"] { --pill-ink: 55%; --pill-base: var(--bg); }
+:root[data-theme="light"] { --pill-ink: 38%; --pill-base: var(--card); }
+.pill {
+  color: color-mix(in srgb, var(--c, var(--accent)) var(--pill-ink), var(--fg));
+  background: color-mix(in srgb, var(--c, var(--accent)) var(--tint), var(--pill-base));
+}
+/* F06: "Unconfirmed": a lighter red fill under the light text of the dark theme (28% made it 4.2:1). */
+.ref-note.unsure .ref-tag { background: color-mix(in srgb, var(--bad) 16%, transparent); }
+/* F05 (colour): the Flow's chips. The actor's cell is a lighter tint over the card (not card-2), and the effect, damage,
+   heal and muted texts mix 30% of --fg in; the debuff uses the theme's --bad (a fixed red was too dark in dark mode). */
+.tc-cell.actor { background: color-mix(in srgb, var(--c, #ec4899) 16%, var(--card)); }
+.tc-fx.buff, .tc-heal { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
+.tc-fx.debuff, .tc-dmg { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
+.tc-miss, .tc-down, .tc-void, .tc-calc-btn, .tc-fx .tc-left { color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
+/* F07: a wiki reference table's scroll box takes the focus (wiki-ref.ts labelTableRegions): show where it is. */
+.ref-body .table-wrap[role="region"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* F09: the older tools' "?" on the first line inside the section, out of the <summary>. */
+details.tools-other > .tools-other-help { margin: -4px 0 12px; }
+/* end a11y */

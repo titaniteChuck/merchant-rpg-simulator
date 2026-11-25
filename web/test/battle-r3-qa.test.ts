@@ -95,7 +95,7 @@ test("flow: a fight over on turn 1 lists turns 2-5 as planned, not reached, each
   // after the result
   const body = plan.querySelector("div.tc-body")!;
   const kids = body.children;
-  assert.ok(kids.findIndex((k) => k.classList.contains("tc-result")) < kids.findIndex((k) => k.classList.contains("tc-unreached")));
+  assert.ok(kids.findIndex((k) => k.classList.contains("tc-result-row")) < kids.findIndex((k) => k.classList.contains("tc-unreached")));
   for (const [k, row] of rows.entries()) {
     const turn = k + 2;
     const cells = row.querySelectorAll("div.tc-planned");

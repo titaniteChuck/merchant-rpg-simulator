@@ -1,6 +1,7 @@
 // A very small DOM for tests that build page parts with dom.ts el() (no browser, no dependency): elements with
 // attributes, children, text, classList, dataset, style, listeners, and querySelectorAll on simple selectors
-// (tag, .class, [attr], [attr="v"], [attr^="v"], and combinations of these without spaces). Import it before the page modules.
+// (tag, .class, [attr], [attr="v"], [attr^="v"], and combinations of these without spaces), after / replaceWith, and
+// createElementNS (SVG elements are plain fake elements). Import it before the page modules.
 
 type Listener = (e: { type: string; target: FakeElement }) => void;
 
@@ -97,6 +98,23 @@ export class FakeElement {
     this.childNodes = [];
     this.append(...kids);
   }
+  /** Puts `kids` right after this element in its parent. */
+  after(...kids: (FakeElement | FakeText | string)[]): void {
+    const p = this.parentNode;
+    if (!p) return;
+    const at = p.childNodes.indexOf(this) + 1;
+    const nodes = kids.map((k) => (typeof k === "string" ? new FakeText(k) : k));
+    for (const n of nodes) {
+      if (n instanceof FakeElement) n.remove();
+      n.parentNode = p;
+    }
+    p.childNodes.splice(at, 0, ...nodes);
+  }
+  /** Takes this element's place in its parent with `kids`. */
+  replaceWith(...kids: (FakeElement | FakeText | string)[]): void {
+    this.after(...kids);
+    this.remove();
+  }
   remove(): void {
     if (this.parentNode) this.parentNode.childNodes = this.parentNode.childNodes.filter((n) => n !== this);
     this.parentNode = null;
@@ -174,6 +192,7 @@ if (g.document === undefined) {
     body,
     documentElement: { clientWidth: 375 },
     createElement: (tag: string) => new FakeElement(tag.toLowerCase()),
+    createElementNS: (_ns: string, tag: string) => new FakeElement(tag),
     addEventListener: () => {},
     querySelector: (s: string) => body.querySelector(s),
     querySelectorAll: (s: string) => body.querySelectorAll(s),

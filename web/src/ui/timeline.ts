@@ -351,7 +351,8 @@ function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) 
   const sum = counted.length > 1
     ? [el("div", { class: "cf-sum" }, `${kind === "dmg" ? "Damage" : "Healing"} this action: ${counted.map((v) => fmtInt.format(v.shown)).join(" + ")} = ${fmtInt.format(shown)}`)]
     : [];
-  return el("div", { class: `tc-calc ${kind}`, role: "note" }, ...blocks, ...sum);
+  // a cell of the action's calculation row (`tc-calcs`, role row; a11y review F01: a table row holds cells only)
+  return el("div", { class: `tc-calc ${kind}`, role: "cell" }, ...blocks, ...sum);
 }
 
 /**
@@ -433,7 +434,7 @@ function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit
   if (!turns.length) return [];
   return [el("div", { class: "pg-cycle tc-unreached-head", role: "row" }, el("span", { role: "cell" }, "Planned, not reached")),
     ...turns.map((t) => el("div", { class: "tc-turn tc-unreached", role: "rowgroup", "aria-label": `Turn ${t}: planned, not reached` },
-      el("div", { class: "tc-turnlab", role: "rowheader" }, `T${t}`),
+      el("div", { class: "tc-turnlab", "aria-hidden": "true" }, `T${t}`),
       el("div", { class: "tc-lines" }, el("div", { class: "tc-line", role: "row" }, ...cols.map((c) => {
         if (c.kind !== "hero") return el("div", { class: "tc-cell", role: "cell" });
         const planned = (c.cells[t - 1] as HeroCell).planned;
@@ -456,7 +457,7 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
   const data = planTimeline(trace, occupied, nameOf);
   const turnEl = (t: TimelineTurn): HTMLElement[] => {
     const rows: HTMLElement[] = t.lines.flatMap((l) => {
-      const box = el("div", { class: "tc-calcs" });
+      const box = el("div", { class: "tc-calcs", role: "row", "aria-label": `${nameOf(l.who)}: calculations` });
       box.hidden = true;
       const line = el("div", { class: "tc-line", role: "row", "aria-label": `${nameOf(l.who)} acts` }, ...cols.map((c, k) => {
         const w = whoOf(c), actor = w === l.who;
@@ -470,24 +471,28 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
       el("div", { class: "tc-cell", role: "cell" }, ...hpEl(t.hp[whoOf(c)], nameOf(whoOf(c)), t.turn),
         ...((t.status[whoOf(c)] ?? []).length ? [el("span", { class: "tc-fxs" }, ...(t.status[whoOf(c)] ?? []).map(fxEl))] : [])))));
     return [...(t.round > 0 && (t.turn - 1) % 5 === 0 ? [roundDivider(t.round)] : []),
-      el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup" },
-        el("div", { class: "tc-turnlab", role: "rowheader" }, `T${t.turn}`), el("div", { class: "tc-lines" }, ...rows))];
+      el("div", { class: `tc-turn${t.rotation ? " rotation" : ""}`, role: "rowgroup", "aria-label": `Turn ${t.turn}` },
+        el("div", { class: "tc-turnlab", "aria-hidden": "true" }, `T${t.turn}`), el("div", { class: "tc-lines" }, ...rows))];
   };
-  const result = el("p", { class: `tc-result ${data.won ? "won" : "lost"}`, role: "status" },
+  // The result, and the "Show turns" button, each in a row of one cell: inside role=table, only rows (a11y F01).
+  const oneCell = (cls: string, ...kids: HTMLElement[]) => el("div", { class: cls, role: "row" }, el("div", { role: "cell" }, ...kids));
+  const result = oneCell("tc-result-row", el("p", { class: `tc-result ${data.won ? "won" : "lost"}`, role: "status" },
     data.won ? `🏆 Won on turn ${data.lastTurn}` : data.capped ? `⏱ Stopped at the game's turn cap (${data.lastTurn} turns): lost`
-      : `💀 Lost on turn ${data.lastTurn}`);
+      : `💀 Lost on turn ${data.lastTurn}`));
   const body = el("div", { class: "tc-body" }, ...data.turns.slice(0, FLOW_PAGE).flatMap(turnEl));
   if (data.turns.length > FLOW_PAGE) {
     const more = el("button", { type: "button", class: "secondary tc-more" }, `Show turns ${FLOW_PAGE + 1}–${data.lastTurn}`);
+    const moreRow = oneCell("tc-more-row", more);
     more.addEventListener("click", () => {
-      more.replaceWith(...data.turns.slice(FLOW_PAGE).flatMap(turnEl));
+      moreRow.replaceWith(...data.turns.slice(FLOW_PAGE).flatMap(turnEl));
     });
-    body.append(more);
+    body.append(moreRow);
   }
   body.append(result, ...unreachedRows(cols, new Set(data.turns.map((t) => t.turn)), edit));
   return el("div", { class: "tl pg tc", role: "group", "aria-label": "The fight, turn by turn and action by action" },
     el("div", { class: "pg-scroll tc-scroll" }, el("div", { class: "pg-grid tc-grid", role: "table", style: `--pg-cols: ${cols.length}` },
-      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...planHeads(tl, cols, edit)),
+      // the turn is each rowgroup's name ("Turn 3"), not a column: the "Turn" head is hidden so the heads match the cells
+      el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", "aria-hidden": "true" }, "Turn"), ...planHeads(tl, cols, edit)),
       body)));
 }
 

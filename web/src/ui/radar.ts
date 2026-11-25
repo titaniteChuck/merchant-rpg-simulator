@@ -88,8 +88,9 @@ export function radar(axes: RadarAxis[], opts: { title: string; size?: number; l
     const value = svg("text", { class: "radar-value", x: tx, y: ty + base + 14, "text-anchor": anchor });
     value.textContent = a.display ?? fmt.format(a.value);
     root.append(label, value);
-    // Hit target larger than the dot (24px), focusable, with the comparison in the tooltip.
-    const hit = svg("circle", { class: "radar-hit", cx: x, cy: y, r: 12, tabindex: 0 });
+    // Hit target larger than the dot (24px), focusable, with the comparison in the tooltip. role="img" (a11y review
+    // F02): a name on a plain <circle> is prohibited and readers dropped it, so each Tab stop read nothing.
+    const hit = svg("circle", { class: "radar-hit", cx: x, cy: y, r: 12, tabindex: 0, role: "img" });
     hit.setAttribute("aria-label", `${a.label} ${a.display ?? fmt.format(a.value)}`);
     tip(hit, () => {
       const box = document.createElement("span");

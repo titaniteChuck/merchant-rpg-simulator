@@ -58,7 +58,8 @@ const GRADE_PARCEL = [1.25, 1.1, 1, 0.9, 0.75];
 const GRADE_TIME = [1.25, 1.1, 1, 0.9, 0.75];
 const CRAFT_SPEED = [1.1, 1, 0.9, 0.8, 0.75];
 const LETTERS = ["D", "C", "B", "A", "S"];
-const gradeHead = ["", ...LETTERS.map((l, i) => `${i + 1} <span class="grade grade-${l}">${l}</span>`)];
+// the corner names the row headers' column (a11y review F08: an empty <th> is read as nothing)
+const gradeHead = ['<span class="visually-hidden">Multiplier</span>', ...LETTERS.map((l, i) => `${i + 1} <span class="grade grade-${l}">${l}</span>`)];
 
 // ---------------------------------------------------------------- sections
 const heroExample = (): string => {

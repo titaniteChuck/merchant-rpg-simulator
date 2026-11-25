@@ -164,17 +164,20 @@ export function ascSwatch(v: unknown): HTMLElement {
   const n = ascLevel(v);
   return n
     ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) }, String(n))
-    : el("span", { class: "muted", "aria-label": ascText(0) }, "–");
+    : el("span", { class: "muted" }, el("span", { "aria-hidden": "true" }, "–"), el("span", { class: "visually-hidden" }, ascText(0)));
 }
 
 /**
  * U37: one table cell holding a value per ascension variant (asc 0/1/2; maps 0/1), each a small box outlined in its
  * ascension's tier colour (the class page's asc 0 / silver / gold), as plain numbers (goldNumber, no "g"). A slot
  * with no value is a dash, so the boxes line up down a column.
+ * A11y review F03: the boxes are aria-hidden and the cell reads a visually-hidden line ("Gold, ascension 0: 10 g, …"),
+ * not an aria-label on the plain span (a name a generic span may not have: readers skipped it, the cell was silent).
  */
 export function ascValues(values: [asc: number, value: number | null][], what = "Gold"): HTMLElement {
   const label = values.map(([a, v]) => `${ascText(a)}: ${v === null ? "none" : gold(v)}`).join(", ");
-  return el("span", { class: "asc-vals", title: `${what} by ascension · ${label}`, "aria-label": `${what}, ${label}` },
+  return el("span", { class: "asc-vals", title: `${what} by ascension · ${label}` },
+    el("span", { class: "visually-hidden" }, `${what}, ${label}`),
     ...values.map(([a, v]) => v === null
       ? el("span", { class: `av av-none tier-${ascLevel(a)}`, "aria-hidden": "true" }, "–")
       : el("span", { class: `av tier-${ascLevel(a)}`, "aria-hidden": "true" }, goldNumber(v))));
