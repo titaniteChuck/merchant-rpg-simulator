@@ -84,3 +84,4 @@
 - **Update**: U47 done (a49f9f7): level shown as "lvl 49" ("Lvl" at the start of a label), spider charts on fixed rims Crit 100 and Accuracy 250.
 - **Update**: U46 done (e071a7a): "Open your own save" wizard (PC or mobile steps, phones via the game's Bug Report mail), hero page quests and deaths chips, full 5-turn rotation, gear cards framed by ascension, asc number centred.
 - **Update**: U49 done (4065047): wiki details pages get Ascension, Prefix and Suffix selectors kept in the URL; save links open them with the save's modifiers; map enemy stats scaled as the game does.
+- **Update**: U48 done (8813366): Simulator results in the Simulate panel, drag-and-drop hero cards, "At most N heroes" under the opponent picker, Flow without "vs … change", page-long on phones with back-to-top; Solver party and Flow read-only.
