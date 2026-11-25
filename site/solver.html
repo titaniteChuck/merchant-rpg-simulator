@@ -30,7 +30,7 @@
       <section id="search-panel"></section>
 
       <section id="solve-box" class="run-box solve-box" aria-label="Solve">
-        <div class="solve-opp-row">
+        <div class="opp-row">
           <div class="seg compact" id="opp-switch" role="radiogroup" aria-label="Opponent">
             <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest</span></label>
             <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map</span></label>
@@ -65,16 +65,16 @@
           <div id="plan"></div>
         </div>
         <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
+          <!-- U65: the chart on top, full width (battle-page.ts hpBox); its selected turn is what the cards show. -->
+          <div id="hp-col" class="hp-col"></div>
           <div id="party-col" class="party-col">
             <div id="party"></div>
           </div>
-          <!-- U42: the opponent card (its pickers are in the Solve panel). -->
+          <!-- U42: the opponent card (its pickers are in the Solve panel). U65: one enemy. -->
           <div id="opp-col" class="opp-col">
             <h3 class="col-title">👹 Opponent</h3>
             <div id="target-card"></div>
           </div>
-          <!-- U62: the third column, the HP chart (battle-page.ts hpBox). -->
-          <div id="hp-col" class="hp-col"></div>
         </div>
       </section>
     </div>

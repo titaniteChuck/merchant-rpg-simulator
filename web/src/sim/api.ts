@@ -58,9 +58,26 @@ export interface TraceEntry {
   misses?: number;
   /** Which battle of the traced run (0 = the first since traceStart): a map run fights one battle per room. */
   battle?: number;
-  /** Every fighter's HP and max HP after this action, by location (0 = the enemy). */
-  life?: { who: number; hp: number; maxHP: number }[];
+  /**
+   * Every fighter's HP and max HP after this action, by location (0 = the enemy). U65: and its stats then, as the
+   * engine computes them (its effects applied): Atk, Matk, Def, Mdef, Acc, Eva, Crit.
+   */
+  life?: TraceLife[];
+  /**
+   * U65: on a battle's first action only, every fighter as the battle began, before any action (the Party view's
+   * turn 0): HP, max HP, stats and effects.
+   */
+  start?: { life: TraceLife[]; fx: TraceEffect[] };
 }
+/** U65: a fighter's HP, max HP and live stats at one moment of a traced fight. */
+export interface TraceLife {
+  who: number;
+  hp: number;
+  maxHP: number;
+  stats?: Record<string, number>;
+}
+/** U65: the stats the trace records per fighter (the Party view cards' eight, max HP apart). */
+export const TRACE_STATS = ["atk", "matk", "def", "mdef", "acc", "eva", "crit"] as const;
 export interface TraceHit {
   who: number;
   /** Damage taken while standing, and HP really healed (no overheal). */
@@ -247,6 +264,14 @@ function traceEffect(who: number, f: Any, e: Effect): TraceEffect {
   };
 }
 
+/** U65: every fighter's HP, max HP and live stats now (read only). */
+function lifeOf(b: Battle): TraceLife[] {
+  return fighters(b).map(([who, f]) => ({ who, hp: f.questHP, maxHP: f.maxHP,
+    stats: Object.fromEntries(TRACE_STATS.map((k) => [k, num(f[k])])) }));
+}
+/** U65: the battle as it begins, taken before its first action (read only), handed to that action's entry. */
+let startSnap: TraceEntry["start"];
+
 /** What the trace adds for display (U39, U40): reads the fighters and the action's records, changes nothing. */
 function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" | "fx" | "misses" | "battle" | "life"> {
   const hits: TraceHit[] = [], fx: TraceEffect[] = [];
@@ -274,7 +299,7 @@ function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" |
     for (const e of f.effectList) fx.push(traceEffect(who, f, e));
   }
   if (b !== traceBattle.b) traceBattle = { b, no: traceBattle.no + 1 };
-  const life = fighters(b).map(([who, f]) => ({ who, hp: f.questHP, maxHP: f.maxHP }));
+  const life = lifeOf(b);
   return { did: c._did ?? null, hits, fx, misses: snap ? num(c.combatStatistics.misses) - snap.misses : 0, battle: traceBattle.no, life };
 }
 
@@ -283,6 +308,11 @@ hooks.beforeAction = (c) => {
     snap = { misses: num(c.combatStatistics.misses) };
     calcs = [];
     actor = c;
+    // U65: a battle's first action (traceDetail moves traceBattle on after it): the state before anything happened.
+    if (current.battle !== traceBattle.b) {
+      const b = current.battle;
+      startSnap = { life: lifeOf(b), fx: fighters(b).flatMap(([who, f]) => f.effectList.map((e: Effect) => traceEffect(who, f, e))) };
+    }
   }
   return dealt(c);
 };
@@ -304,7 +334,9 @@ hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
       turn: b.turns, who: c.partyLocation ?? 0, act: name, rng: rng.calls, enemyHP: b.enemy.questHP, hp,
       effects: c.effectList.map((e) => e.name ?? "?"),
       ...traceDetail(b, c),
+      ...(startSnap ? { start: startSnap } : {}),
     });
+    startSnap = undefined;
     snap = undefined;
     calcs = [];
     actor = undefined;
@@ -318,6 +350,7 @@ hooks.afterAction = (c: Combatant, name: Any, before: Any) => {
 export function traceStart(): void {
   trace = [];
   traceBattle = { no: -1 };
+  startSnap = undefined;
   calcs = [];
   actor = undefined;
   fxSource = new WeakMap();

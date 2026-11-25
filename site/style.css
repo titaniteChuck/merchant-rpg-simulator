@@ -30,7 +30,7 @@
   --banner: #b8322a;        /* top bar */
   --banner-fg: #ffffff;
   --trim: #c8961e;          /* gold trim */
-  --boss: #c99bff;          /* U62: the boss / enemy line, purple: 4.6:1 on --card, 7.1:1 on --bg */
+  --enemy-line: #ffffff;    /* U65: the enemy (chart line, card stripe): white; was U62's purple */
   --inset: #c8b898;         /* sand / parchment cells */
   --inset-fg: #2a2018;
   --skill: #9fc8ff;         /* skill links */
@@ -68,7 +68,7 @@
   --banner: #b8322a;
   --banner-fg: #ffffff;
   --trim: #c8961e;
-  --boss: #6b21a8;          /* U62: 7.7:1 on --card, 6.4:1 on --bg */
+  --enemy-line: #2a2018;    /* U65: white is invisible on parchment: the theme's strongest neutral (its --fg), near-black */
   --inset: #e2d2ae;
   --inset-fg: #2a2018;
   --skill: #2350a8;
@@ -530,21 +530,9 @@ a.secondary-link:hover { text-decoration: underline; }
 .party-cols .party-row h3 { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
 .col-title { margin: 0 0 10px; font-size: 1rem; }
 .opp-col { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
-.opp-col .seg { align-self: flex-start; }
 .opp-controls { display: flex; flex-direction: column; gap: 8px; }
 .opp-controls > select { width: 100%; }
 .opp-controls .toolbar, .opp-controls p { margin: 0; }
-.opp-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.opp-card header { display: flex; gap: 12px; align-items: center; }
-.opp-card h3 { margin: 0 0 4px; font-size: 1.1rem; }
-.opp-card h4 { margin: 6px 0 0; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.opp-card .pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.opp-card p { margin: 0; }
-.opp-ico { font-size: 1.8rem; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 12px; background: var(--card-2); border: 1px solid var(--border); }
-.opp-card .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 0.9rem; }
-.opp-card .facts dt { color: var(--muted); }
-.opp-card .facts dd { margin: 0; }
-.opp-scrolls { display: flex; flex-direction: column; gap: 6px; }
 h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 
 /* save overview */
@@ -1339,7 +1327,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 }
 /* F20: the "?" helps beside titles, controls and pills. */
 #amount-note { display: inline-flex; align-items: center; }
-.opp-card .pills .help-tip { margin-left: 2px; }
 .spoiler-warn .help-tip { vertical-align: middle; }
 .run-line { margin-top: 6px; }
 /* F11: the rare pill in the plan's enemy column. */
@@ -1603,10 +1590,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* U42: the Solver's one full-width Solve panel: the quest / map toggle and its pickers on one wrapping row, then the
    options, the time budget and Solve, then a running solve's progress; the results (full width) under it once done. */
 .solve-box { margin-top: 10px; }
-.solve-opp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-.solve-opp-row #target { flex: 1 1 420px; min-width: 0; }
-.solve-box .opp-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-.solve-box .opp-controls > select { width: auto; max-width: 100%; flex: 1 1 240px; }
 .seg.compact .seg-opt { padding: 4px 12px; font-size: 0.85rem; }
 .solve-box .search-form { margin: 0; align-items: center; }
 .solve-box .solve-time { width: 5.5em; }
@@ -2484,13 +2467,11 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 }
 /* end Flow 3 */
 /* U61 */
-/* The Party view's HP chart (web/src/ui/hp-chart.ts): U62 the Party view's third column, the full width of it (the
-   page's width on a phone), one line per hero in its class colour (--c), the enemy dashed in purple (--boss, U62; was the gold trim). */
+/* The Party view's HP chart (web/src/ui/hp-chart.ts): U65 the Party view's first row, full width (the page's width on
+   a phone), one line per hero in its class colour (--c), the enemy dashed (U65: --enemy-line, in the U65 block). */
 .hp-chart-box { min-width: 0; }
 .hp-chart { margin: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px;
   box-shadow: var(--shadow); min-width: 0; }
-.hp-chart figcaption { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 4px; }
-.hp-chart figcaption h4 { margin: 0; }
 .hp-plot { position: relative; }
 .hp-svg { display: block; width: 100%; height: auto; touch-action: pan-y; overflow: visible; }
 .hp-grid { stroke: var(--border); stroke-width: 1; opacity: .55; }
@@ -2498,7 +2479,6 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-axis-title { font-style: italic; }
 .hp-room { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .hp-line { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.hp-enemy { --c: var(--boss); }
 .hp-line.hp-enemy { stroke-width: 2.5; stroke-dasharray: 6 3; }
 .hp-death { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2.4; stroke-linecap: round; }
 .hp-guide { stroke: var(--fg); stroke-width: 1; opacity: .5; }
@@ -2555,25 +2535,11 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 @media (hover: none) { .room-scroll { display: none; } }
 /* end U63 */
 /* U62 */
-/* The Party view in three columns, heroes | opponent | HP chart (battle-page.ts, #hp-col). 961-1199 px: the heroes on
-   the left over two rows, the opponent then the chart on the right. 641-960 px: the heroes full width, opponent | chart
-   under them. 640 px and less (a 375 px phone): one column, heroes, opponent, chart. */
-.setup-grid { display: grid; gap: 14px; align-items: start; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr) minmax(270px, 1fr);
-  grid-template-areas: "party opp hp"; }
-.setup-grid > .party-col { grid-area: party; min-width: 0; }
-.setup-grid > .opp-col { grid-area: opp; min-width: 0; }
-.setup-grid > .hp-col { grid-area: hp; min-width: 0; }
-@media (max-width: 1199px) { .setup-grid { grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); grid-template-areas: "party opp" "party hp"; } }
-@media (max-width: 960px) {
-  .setup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "party party" "opp hp"; }
-  .opp-col { position: static; }
-}
-@media (max-width: 640px) { .setup-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "party" "opp" "hp"; } }
+/* U65: the Party view's grid (chart on top, heroes | opponent) is in the U65 block. */
 /* One card family for the heroes and the enemy (fighter-card.ts): the picker as the head, the stats on two lines, the
-   passive and the rotation as compact rows. The class colour (the enemy: purple, --boss) as a stripe on the left. */
+   passive and the rotation as compact rows. The class colour (the enemy: U65 --enemy-line) as a stripe on the left. */
 .fc { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 8px 10px 8px 13px; font-size: 0.82rem;
   background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); transition: border-color .2s; }
-.fc-enemy { --c: var(--boss); }
 .fc.filled, .fc-enemy { border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
 .fc.filled::before, .fc-enemy::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--c); border-radius: 12px 0 0 12px; }
 .fc-enemy.rare { border-top: 3px solid #ec4899; }
@@ -2593,13 +2559,12 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   background: linear-gradient(var(--card), var(--card)) padding-box, var(--asc-grad) border-box; }
 .fc-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-tools { display: inline-flex; align-items: center; gap: 4px; flex: none; }
-.fc-tools .fc-size { padding: 3px 6px; border-radius: 8px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .fc .include { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px;
   background: var(--card-2); cursor: pointer; }
 .fc .include input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .fc .include.capped, .fc .include.capped input { cursor: not-allowed; }
 .fc .include:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.fc-line, .fc #party-cap { margin: 0; }
+.fc-line { margin: 0; }
 /* The stats: four "label value" pairs per line, two lines (HP Atk Matk Def / Mdef Acc Eva Crit). */
 .fc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px 8px; margin: 0; font-variant-numeric: tabular-nums; }
 .fc-stats > div { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; min-width: 0; white-space: nowrap; }
@@ -2634,3 +2599,51 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 :is(.tc-cell, .pg-cell) .pk-btn { margin-left: 0; padding: 0 3px; font-weight: inherit; text-align: left; overflow-wrap: anywhere; }
 :is(.tc-cell, .pg-cell) > .pk-list { flex: none; width: 100%; min-width: 0; font-size: 0.74rem; }
 /* end U64 */
+/* U65 */
+/* The Party view (battle-page.ts): the chart's row on top, full width; then heroes | opponent. 960 px and less (a
+   375 px phone): one column, the chart, the heroes, the opponent. */
+.setup-grid { display: grid; gap: 14px; align-items: start; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  grid-template-areas: "hp hp" "party opp"; }
+.setup-grid > .hp-col { grid-area: hp; min-width: 0; }
+.setup-grid > .party-col { grid-area: party; min-width: 0; }
+.setup-grid > .opp-col { grid-area: opp; min-width: 0; }
+@media (max-width: 960px) {
+  .setup-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hp" "party" "opp"; }
+  .opp-col { position: static; max-width: 560px; }
+}
+/* The enemy, on the chart and on its card: white in the dark theme, the theme's near-black in the light one; its line
+   stays dashed (a class colour may come near it). */
+.hp-enemy, .fc-enemy { --c: var(--enemy-line); }
+/* The opponent's controls in the Simulate and Solve panels: the quest / map toggle and the pickers on one wrapping
+   row; a map's scrolls and facts under them. */
+.opp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.run-box > .opp-row { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.opp-row #target { flex: 1 1 420px; min-width: 0; }
+.opp-row .opp-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.opp-row .opp-controls > select { width: auto; max-width: 100%; flex: 1 1 240px; }
+.opp-row .opp-scrolls { flex: 1 1 100%; }
+.opp-row #party-cap { flex: 1 1 100%; margin: 0; }
+.map-facts { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+.map-facts .map-name { font-weight: 700; }
+.map-facts dl { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0; }
+.map-facts dl > div { display: flex; gap: 4px; }
+.map-facts dt { color: var(--muted); }
+.map-facts dd { margin: 0; }
+/* The chart's tabs (HP · Damage dealt · Heals) and its selected turn: a marker line with the turn's number. */
+.hp-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: -2px 0 6px; border-bottom: 1px solid var(--border); }
+.hp-tab { padding: 4px 10px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none;
+  color: var(--muted); font: inherit; font-size: 0.85rem; font-weight: 650; cursor: pointer; }
+.hp-tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.hp-tab:focus-visible, .hp-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hp-svg { cursor: pointer; border-radius: 6px; }
+.hp-sel { stroke: var(--accent); stroke-width: 1.5; }
+.hp-sel-label { fill: var(--accent); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* The cards at the chart's turn: the HP bar over the stats, the effects inline under them, the row played marked. */
+.fc-hp { min-width: 0; }
+.fc-fx { display: flex; flex-wrap: wrap; gap: 1px 10px; list-style: none; margin: 0; padding: 0; font-size: 0.74rem; font-weight: 650; }
+.fc-fx > .buff { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
+.fc-fx > .debuff { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
+.fc-fx-t { margin-left: 2px; color: var(--muted); font-weight: 500; }
+.fc-row.active { margin: 0 -4px; padding: 0 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent); }
+/* end U65 */

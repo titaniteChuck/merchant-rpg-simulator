@@ -399,8 +399,12 @@ export interface TracedFight {
   turns: number;
   actions: { turn: number; who: number; planned: string; did: string | false | null; misses: number;
     hits: { who: number; dmg: number; heal: number; hp: number; ko?: boolean; deadHits?: number; deadDmg?: number; calc?: TraceCalc[] }[];
-    fx: TracedFx[]; life?: { who: number; hp: number; maxHP: number }[] }[];
+    fx: TracedFx[]; life?: TracedLife[] }[];
+  /** U65: every fighter before the first action (turn 0), when the trace recorded it. */
+  start?: { life: TracedLife[]; fx: TracedFx[] };
 }
+/** U65: a fighter's HP, max HP and live stats (Atk … Crit, its effects applied) at one moment. */
+export type TracedLife = { who: number; hp: number; maxHP: number; stats?: Record<string, number> };
 
 export { effectName };
 
@@ -422,6 +426,13 @@ function chipOf(f: TracedFx, who: (w: number) => string): TimelineChip {
 const liveFx = (fx: TracedFx[]) => fx.filter((f) => !f.gone);
 /** What an effect gives now, to see it grow (a stack, an amplify); a shield wearing down is no new landing. */
 const strength = (f: TracedFx) => JSON.stringify([f.stats ?? null, f.heal ?? null]);
+
+/** Each fighter's live effects as text (U65: also the Party view's turn 0, from the trace's start). */
+export function statusOf(fx: TracedFx[], who: (w: number) => string = (w) => (w ? locationLabel(w) : "the enemy")): Record<number, TimelineChip[]> {
+  const status: Record<number, TimelineChip[]> = {};
+  for (const f of liveFx(fx)) (status[f.who] ??= []).push(chipOf(f, who));
+  return status;
+}
 
 /**
  * The flow of a traced fight, every turn from 1 to its end. `occupied`: the party locations in the fight; `who`: a
@@ -460,8 +471,7 @@ export function planTimeline(trace: TracedFight, occupied: number[],
       prev = a.fx;
       return { who: a.who, planned: a.planned, did: a.did, misses: a.misses, cells };
     });
-    const status: Record<number, TimelineChip[]> = {};
-    for (const f of liveFx(prev)) (status[f.who] ??= []).push(chipOf(f, who));
+    const status = statusOf(prev, who);
     turns.push({ turn: t, rotation: t <= 5, round: Math.floor((t - 1) / 5), lines, hp: structuredClone(hp), status });
   }
   return { turns, won: trace.won, capped: !trace.won && trace.turns >= TURN_CAP, lastTurn: trace.turns };

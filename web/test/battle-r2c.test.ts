@@ -75,16 +75,17 @@ test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are 
 test("F24: compact tiles: no sublines, no \"How these are counted\" line, no time in the run line", () => {
   assert.doesNotMatch(page, /How these are counted|qxp-refs|xpRow/);
   // Every results tile is a resultTile (its explanation in the "?") or a plain tile with no hint (the win rate).
-  const results = page.slice(page.indexOf("function questXpTiles"), page.indexOf("// ---------------------------------------------------------------- page"));
+  const results = page.slice(page.indexOf("function questResults"), page.indexOf("// ---------------------------------------------------------------- page"));
   for (const m of results.matchAll(/\btile\("([^"]+)", [^,]+, ([^,]+),/g)) assert.equal(m[2].trim(), "undefined", m[1]);
-  assert.match(results, /resultTile\("XP per hero"[\s\S]*?\[statLink\("xp", "XP"\)\]\)/, "the Stats link in the \"?\"");
+  // U65: no XP tiles; the map's Time tile keeps its Stats link in the "?"
+  assert.match(results, /resultTile\("Time"[\s\S]*?\[statLink\("time", "time"\)\]\)/, "the Stats link in the \"?\"");
   // The run line: "200 fights", the milliseconds in its tooltip.
   assert.match(page, /title: `Simulated in \$\{fmt\.format\(ms\)\} ms\./);
   assert.doesNotMatch(page, /fights · \$\{fmt\.format\(ms\)\} ms/);
 });
 
 test("F24: the details grids leave no tile alone on a row (phone and wide)", () => {
-  // The grids: the summary (2), quest details (3 without XP, 6), map details (6 without XP, 9).
+  // The grids: the summary (2), quest details (3), map details (6) (U65: no XP tiles; 9 kept for the rule).
   for (const n of [2, 3, 6, 9]) {
     const c = tileColumns(n);
     assert.ok(!hasOrphan(n, c.phone), `${n} on a phone`);
@@ -97,9 +98,9 @@ test("F24: the details grids leave no tile alone on a row (phone and wide)", () 
   assert.equal(hasOrphan(3, 3), false);
   assert.match(r2c, /#results \.tiles\.result-tiles \{ grid-template-columns: repeat\(var\(--cols-wide, 3\)/);
   assert.match(r2c, /@media \(max-width: 600px\) \{\s*#results \.tiles\.result-tiles \{ grid-template-columns: repeat\(var\(--cols-phone, 3\)/);
-  // One grid per result: the quest's XP tiles and the map's essence join the outcome tiles.
+  // One grid per result: the map's essence joins the outcome tiles. U65: no XP tiles.
   assert.equal(page.match(/tiles\(\{ class: "result-tiles" \}/g)?.length, 2);
-  assert.match(page, /\.\.\.questXpTiles\(ev, ctx\),\s*\),/);
+  assert.doesNotMatch(page, /questXpTiles|mapXpTiles/);
 });
 
 test("F25 / F26: the per-hero table: no Slot column, a plain name with its slot under it and a class bar", () => {

@@ -29,12 +29,13 @@ test("Solver: the Solve panel holds the quest / map toggle, its pickers and the 
   // No "Quest enemy / Map run" tabs anywhere, and no opponent column during setup: the card waits beside the party.
   assert.doesNotMatch(html, /Quest enemy|Map run|solve-what|solve-opp"/);
   assert.ok(at('id="target-card"') > at('id="party-box"'), "the opponent card is in the panel a result's Show brings");
-  // The page puts the card apart when there is a #target-card (the Simulator has none: its card stays under its pickers).
+  // U65: both pages put the pickers in their panel (#target) and the card in #target-card (placeTarget is gone; the
+  // Simulator's card no longer sits under its pickers).
   const page = read("web/src/ui/battle-page.ts");
-  assert.match(page, /function placeTarget\(box: HTMLElement, controls: HTMLElement, card: HTMLElement\): void \{/);
-  assert.equal(page.match(/placeTarget\(box, /g)?.length, 2, "quest and map");
-  assert.doesNotMatch(page, /box\.replaceChildren\(el\("div", \{ class: "opp-controls" \}/);
-  assert.doesNotMatch(read("site/battle.html"), /id="target-card"/);
+  assert.doesNotMatch(page, /placeTarget/);
+  assert.equal(page.match(/box\.replaceChildren\(el\("div", \{ class: "opp-controls" \}/g)?.length, 2, "quest and map");
+  assert.match(page, /const host = document\.querySelector<HTMLElement>\("#target-card"\);/);
+  assert.match(read("site/battle.html"), /id="target-card"/);
 });
 
 test("Solver: no step headings for what to solve and the results", () => {

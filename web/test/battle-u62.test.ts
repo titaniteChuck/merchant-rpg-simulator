@@ -1,8 +1,8 @@
 // Battle Simulator and Solver U62: smaller Party view cards. One builder for the hero and enemy cards
 // (web/src/ui/fighter-card.ts) with the picker as the head, the stats on two lines, the rotation without turn numbers or
 // titles; a skill or passive opens its picker in place with each choice's effect (pick-list.ts); the enemy list holds
-// each rare variant as its own entry; the enemy's rotation from its timeline; heroes | opponent | HP chart in three
-// columns; the boss line purple. No browser: the cards and the picker in the fake DOM, the page code, HTML and CSS as text.
+// each rare variant as its own entry; the enemy's rotation from its timeline. (U65: the three columns and the purple
+// boss line are gone: the chart on top, the enemy line white; battle-u65.test.ts.) No browser: the cards and the picker in the fake DOM, the page code, HTML and CSS as text.
 import "./helpers/fake-dom.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -46,7 +46,7 @@ test("one builder for both cards: the same .fc family, head, stats and rotation;
   assert.ok(hero.querySelector("ul.fc-passive") && !enemy.querySelector("ul.fc-passive"), "the enemy has no passive");
   // the page: both cards from fighterCard, the old builders and the spider chart gone
   assert.match(fn(page, "renderParty"), /return fighterCard\(\{\s*kind: "hero"/);
-  assert.match(fn(page, "renderTarget"), /holder\.replaceChildren\(fighterCard\(\{\s*kind: "enemy"/);
+  assert.match(fn(page, "drawEnemyCard"), /host\.replaceChildren\(fighterCard\(\{\s*kind: "enemy"/);
   assert.doesNotMatch(page, /function (abilityBlock|statStrip|swapControl)|radar\(|enemyRadar|" Rare variant"|id: "rare"/);
   // one CSS family, the old one deleted (not overridden)
   assert.match(block, /^\.fc \{/m);
@@ -54,18 +54,19 @@ test("one builder for both cards: the same .fc family, head, stats and rotation;
 });
 
 // ---------------------------------------------------------------- 2. the picker as the head
-test("the picker is the card's head: no chips beside the hero's; the enemy's quest size a compact control in the card", () => {
+test("the picker is the card's head: no chips beside the hero's; U65: the enemy's card has no picker", () => {
   const party = fn(page, "renderParty");
   assert.match(party, /const head = ctl\.edit \? s/);
   assert.match(party, /s\.classList\.add\("fc-pick"\)/);
   assert.doesNotMatch(party, /pill\(|class: "avatar|slot-name|out-badge|req-badge/, "no class, level or state chips");
   assert.match(party, /tools: include \? \[include\] : \[\]/);
+  // U65: the enemy and the quest size are the Simulate (Solve) panel's controls; the card's head is the plain name
   const target = fn(page, "renderTarget");
-  assert.match(target, /select\(\{ id: "quest", class: "fc-pick", "aria-label": "Enemy" \}/);
-  assert.match(target, /select\(\{ id: "amount", class: "fc-size", "aria-label": "Quest size" \}/);
-  assert.match(target, /head: apart \? [^\n]* : q,/);
-  assert.match(target, /tools: apart \? \[\] : \[amount, sizeNote\]/);
+  assert.match(target, /select\(\{ id: "quest", "aria-label": "Enemy" \}/);
+  assert.match(target, /select\(\{ id: "amount", "aria-label": "Quest size" \}/);
   assert.doesNotMatch(target, /"Quest size"\),|el\("span", \{ class: "muted small" \}, "Quest size"\)/, "no visible \"Quest size\" label");
+  assert.match(fn(page, "drawEnemyCard"), /head: el\("span", \{ class: "fc-name" \}/);
+  assert.doesNotMatch(fn(page, "drawEnemyCard"), /tools:/);
   // the built head: the node handed in, then the tools
   const sel = document.createElement("select") as unknown as F;
   const tick = document.createElement("label") as unknown as F;
@@ -181,7 +182,7 @@ test("the stats fit two lines: HP Atk Matk Def / Mdef Acc Eva Crit, the same on 
   assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
   // the enemy's are the engine's, the same eight keys
   assert.deepEqual(Object.keys(enemyStats(72)), CARD_STATS.map(([k]) => k));
-  assert.match(fn(page, "renderTarget"), /stats: enemyStats\(id, rare, n\)/);
+  assert.match(fn(page, "drawEnemyCard"), /: enemyStats\(foe\.id, foe\.rare, foe\.n\)/);
 });
 
 // ---------------------------------------------------------------- 7. the enemy's rotation
@@ -197,41 +198,19 @@ test("the enemy's rotation: its skill per turn from its timeline, read-only, the
   const rot = fn(page, "enemyRotation");
   assert.match(rot, /enemyTurns\(id, rare, timelineOf\(id, rare\)\)/);
   assert.doesNotMatch(rot, /pick:|ap:/, "read-only, no AP");
-  assert.match(fn(page, "renderTarget"), /rotation: enemyRotation\(id, rare\)/);
+  assert.match(fn(page, "drawEnemyCard"), /rotation: enemyRotation\(foe\.id, foe\.rare\)/);
 });
 
-// ---------------------------------------------------------------- 8. three columns
-test("the Party view in three columns: heroes | opponent | HP chart, collapsing on tablets, stacked on a phone", () => {
+// ---------------------------------------------------------------- 8. the columns (U65: chart on top, heroes | opponent)
+test("the Party view: the chart's row on top, then heroes | opponent; stacked on a phone", () => {
   for (const html of [read("site/battle.html"), read("site/solver.html")]) {
     const grid = html.slice(html.indexOf('id="setup-grid"'));
-    assert.ok(grid.indexOf('id="party-col"') < grid.indexOf('id="opp-col"') && grid.indexOf('id="opp-col"') < grid.indexOf('id="hp-col"'));
+    assert.ok(grid.indexOf('id="hp-col"') < grid.indexOf('id="party-col"') && grid.indexOf('id="party-col"') < grid.indexOf('id="opp-col"'));
   }
   assert.match(fn(page, "hpBox"), /document\.querySelector<HTMLElement>\("#hp-col"\)/);
-  assert.match(block, /\.setup-grid \{[^}]*grid-template-columns: minmax\(0, 2fr\) minmax\(250px, 1fr\) minmax\(270px, 1fr\);\s*grid-template-areas: "party opp hp"; \}/);
-  assert.match(block, /@media \(max-width: 1199px\) \{ \.setup-grid \{[^}]*grid-template-areas: "party opp" "party hp"; \} \}/);
-  assert.match(block, /@media \(max-width: 960px\) \{\s*\.setup-grid \{[^}]*grid-template-areas: "party party" "opp hp"; \}/);
-  assert.match(block, /@media \(max-width: 640px\) \{ \.setup-grid \{ grid-template-columns: minmax\(0, 1fr\); grid-template-areas: "party" "opp" "hp"; \} \}/);
-  // the old two-column rules are deleted, not overridden
-  assert.doesNotMatch(css, /\.setup-grid\.b3-grid|minmax\(300px, 1fr\) minmax\(0, 2fr\)/);
+  // the U62 three-column rules are deleted, not overridden (the U65 block has the grid)
+  assert.doesNotMatch(block, /grid-template-areas/);
+  assert.doesNotMatch(css, /"party opp hp"|"party party" "opp hp"|\.setup-grid\.b3-grid|minmax\(300px, 1fr\) minmax\(0, 2fr\)/);
 });
 
-// ---------------------------------------------------------------- 9. the purple boss line
-test("the boss line is purple (--boss, both themes, contrast checked) and still dashed", () => {
-  const token = (theme: RegExp) => css.match(theme)![1].match(/--boss: (#[0-9a-f]{6})/)![1];
-  const card = (theme: RegExp) => css.match(theme)![1].match(/--card: (#[0-9a-f]{6})/)![1];
-  const dark = /:root, :root\[data-theme="dark"\] \{([\s\S]*?)\n\}/, light = /:root\[data-theme="light"\] \{([\s\S]*?)\n\}/;
-  const lum = (h: string) => {
-    const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-  };
-  const ratio = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
-  for (const t of [dark, light]) {
-    const boss = token(t);
-    const [r, g, b] = [1, 3, 5].map((i) => parseInt(boss.slice(i, i + 2), 16));
-    assert.ok(b > g && r > g, `${boss} is purple`);
-    assert.ok(ratio(boss, card(t)) >= 4.5, `${boss} on ${card(t)}: ${ratio(boss, card(t)).toFixed(2)}`);
-  }
-  assert.match(css, /\.hp-enemy \{ --c: var\(--boss\); \}/);
-  assert.match(css, /\.hp-line\.hp-enemy \{ stroke-width: 2\.5; stroke-dasharray: 6 3; \}/, "dashed: the Assassin's line is purple too");
-  assert.match(block, /\.fc-enemy \{ --c: var\(--boss\); \}/, "the enemy card's stripe matches its line");
-});
+// 9. the purple boss line: replaced in U65 by the white / near-black enemy line (battle-u65.test.ts).

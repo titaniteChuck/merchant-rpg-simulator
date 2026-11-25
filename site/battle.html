@@ -31,6 +31,15 @@
       <section>
         <h2 class="visually-hidden">Simulate</h2>
         <div class="run-box" role="group" aria-label="Simulate">
+          <!-- U65: the opponent is chosen here (quest enemy or map run, size, map, grade, scrolls); its card shows one
+               enemy beside the party. -->
+          <div class="opp-row">
+            <div class="seg compact" id="opp-switch" role="radiogroup" aria-label="Opponent">
+              <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest enemy</span></label>
+              <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map run</span></label>
+            </div>
+            <div id="target"></div>
+          </div>
           <div class="simulate">
             <div class="toolbar sim-bar">
               <label class="check" title="Same seeds every time, so the changes you make are compared fairly.">Runs <input id="runs" type="number" min="1" max="5000" value="200" inputmode="numeric"></label>
@@ -63,19 +72,16 @@
           <div id="plan"></div>
         </div>
         <div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party">
+          <!-- U65: the chart on top, full width (battle-page.ts hpBox); its selected turn is what the cards show. -->
+          <div id="hp-col" class="hp-col"></div>
           <div id="party-col" class="party-col">
             <div id="party"></div>
           </div>
+          <!-- U65: one enemy, no picker (the opponent is chosen in the Simulate panel). -->
           <div id="opp-col" class="opp-col">
             <h3 class="col-title">👹 Opponent</h3>
-            <div class="seg" id="opp-switch" role="radiogroup" aria-label="Opponent">
-              <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest enemy</span></label>
-              <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map run</span></label>
-            </div>
-            <div id="target"></div>
+            <div id="target-card"></div>
           </div>
-          <!-- U62: the third column, the HP chart (battle-page.ts hpBox). -->
-          <div id="hp-col" class="hp-col"></div>
         </div>
       </section>
     </div>

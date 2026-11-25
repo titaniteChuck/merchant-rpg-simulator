@@ -3,13 +3,21 @@
  * Top to bottom:
  * - the head: the picker (the hero's or the enemy's <select>; read-only, the plain name), then the card's tools at
  *   the right (a hero's include box, the enemy's quest size);
- * - optional lines under it (the size cap, "attacks first");
- * - the stats on two lines, the same eight for both: HP Atk Matk Def / Mdef Acc Eva Crit (statGrid);
+ * - optional lines under it ("attacks first", a map room's name);
+ * - U65: at the chart's selected turn, the HP bar (flow-hp.ts);
+ * - the stats on two lines, the same eight for both: HP Atk Matk Def / Mdef Acc Eva Crit (statGrid); U65: at the
+ *   selected turn, the engine's live stats then (its buffs and debuffs applied);
+ * - U65: the buffs and debuffs at that turn, inline (fxList);
  * - a hero's passive (with the rotation's AP total at its right), then the rotation: one row per turn 1-5, the skill
  *   and its AP. No turn numbers (the list is ordered) and no titles. A row with a picker is a button opening the
- *   choices with their effects in place (pick-list.ts); otherwise plain text. Both carry the effect on hover.
+ *   choices with their effects in place (pick-list.ts); otherwise plain text. Both carry the effect on hover. U65: the
+ *   row of the skill played at the selected turn is highlighted (`active`, aria-current).
+ *
+ * U65: paintCard puts another turn's state on a card in place (the pickers, an open list and the focus stay).
  */
+import type { TimelineChip } from "./battle-plan.ts";
 import { apBadge, el, fmt, fmtCompact } from "./dom.ts";
+import { hpBar } from "./flow-hp.ts";
 import { pickButton, type PickOption } from "./pick-list.ts";
 
 /** The card stats in the game's order, four per line. */
@@ -56,6 +64,27 @@ function rowEl(r: CardRow, cls: string): HTMLElement {
   return li;
 }
 
+/**
+ * U65: a fighter's buffs and debuffs at one turn, inline (green, red), each with its turns left ("·2") and its source
+ * on hover (Flow 2's text, battle-plan.ts TimelineChip); null when it has none.
+ */
+export function fxList(fx: TimelineChip[]): HTMLElement | null {
+  if (!fx.length) return null;
+  return el("ul", { class: "fc-fx", "aria-label": "Effects" }, ...fx.map((c) => el("li", { class: c.debuff ? "debuff" : "buff", title: c.title },
+    el("span", { class: "visually-hidden" }, c.debuff ? "Debuff: " : "Buff: "), c.label,
+    ...(c.turns !== undefined && c.turns > 0 ? [el("span", { class: "fc-fx-t", "aria-label": `, ${c.turns} turn${c.turns === 1 ? "" : "s"} left` }, `·${c.turns}`)] : []))));
+}
+
+/** U65: a fighter at the chart's selected turn (none: no fight to show, the card's own stats). */
+export interface CardTurn {
+  /** HP now: the bar's numbers, and its screen-reader label. */
+  life?: { hp: number; maxHP: number; label: string };
+  stats: Record<string, number> | null;
+  fx?: TimelineChip[];
+  /** The rotation row of the skill played this turn (0-4), or none. */
+  active?: number | null;
+}
+
 export interface FighterCardSpec {
   kind: "hero" | "enemy";
   /** More classes: the class colour (cls-N), the slot's state (filled, empty, required, excluded, off-limits), rare. */
@@ -68,6 +97,8 @@ export interface FighterCardSpec {
   /** Lines under the head. */
   lines?: Node[];
   stats: Record<string, number> | null;
+  /** U65: the selected turn's HP, effects and played row (paintCard does the same on a built card). */
+  turn?: Omit<CardTurn, "stats">;
   /** A hero's passive row (the enemy has none). */
   passive?: CardRow;
   rotation: CardRow[];
@@ -75,10 +106,32 @@ export interface FighterCardSpec {
 
 /** One card, a hero's or the enemy's. */
 export function fighterCard(s: FighterCardSpec): HTMLElement {
-  return el("article", { class: `fc fc-${s.kind}${s.classes ? ` ${s.classes}` : ""}`, ...(s.attrs ?? {}) },
+  const card = el("article", { class: `fc fc-${s.kind}${s.classes ? ` ${s.classes}` : ""}`, ...(s.attrs ?? {}) },
     el("div", { class: "fc-head" }, s.head, ...(s.tools?.length ? [el("span", { class: "fc-tools" }, ...s.tools)] : [])),
     ...(s.lines ?? []),
     statGrid(s.stats),
     ...(s.passive ? [el("ul", { class: "fc-rows fc-passive", "aria-label": "Passive" }, rowEl(s.passive, "fc-pas"))] : []),
     el("ol", { class: "fc-rows fc-rot", "aria-label": "Rotation, turns 1 to 5" }, ...s.rotation.map((r) => rowEl(r, "fc-turn"))));
+  if (s.turn) paintCard(card, { ...s.turn, stats: s.stats });
+  return card;
+}
+
+/**
+ * U65: put a turn's state on a built card, in place: the HP bar over the stats, the stats, the effects under them
+ * (above the passive), the played row highlighted. Without `life`, `fx` or `active` the card has none of them.
+ */
+export function paintCard(card: HTMLElement, t: CardTurn): void {
+  card.querySelector(".fc-hp")?.remove();
+  card.querySelector("ul.fc-fx")?.remove();
+  const grid = statGrid(t.stats);
+  card.querySelector("dl.fc-stats")?.replaceWith(grid);
+  if (t.life) grid.parentNode?.insertBefore(el("div", { class: "fc-hp" }, hpBar(t.life, t.life.label)), grid);
+  const fx = fxList(t.fx ?? []);
+  if (fx) grid.after(fx);
+  card.querySelectorAll<HTMLElement>("li.fc-turn").forEach((li, k) => {
+    const on = t.active === k;
+    li.classList.toggle("active", on);
+    if (on) li.setAttribute("aria-current", "true");
+    else li.removeAttribute("aria-current");
+  });
 }

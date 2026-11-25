@@ -195,10 +195,10 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Menu: Battle ▾ with Simulator and Solver, in the dropdown, the second row and the phone drawer (see
     [Menus](#menus)); the Battle link itself opens the Simulator.
   - Simulator (`battle.html`): no mode chooser. U48: no section titles on screen (the `h2`s are visually hidden) and
-    no Results section. The Simulate panel holds Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
+    no Results section. The Simulate panel holds (U65) the opponent's controls first (see U65), then Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
     and Cancel, its error, or its summary (win rate, grade when won, Show details and the run line); the details
     (`#results`, empty and not shown until a result) sit right under the panel; then the Party and Flow tabs with the
-    opponent in the Party tab, as below. Until U48 these were numbered steps (Simulate, Results hidden until the first
+    opponent's card in the Party tab, as below. Until U48 these were numbered steps (Simulate, Results hidden until the first
     run, Party and opponent).
   - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
     then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
@@ -206,8 +206,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     largest party, Include scrolls, the time budget in seconds and 🔎 Solve, the hero table under them (U50); a running
     solve's progress bar, clock and Cancel show inside the panel. No enemy card and no tabs during setup: the
     opponent card (radar, map facts, scroll pickers) is drawn into `#target-card`, the Party tab's right column, so it
-    shows with the party a result's Show brings (`placeTarget` in `battle-page.ts`; the Simulator has no
-    `#target-card` and keeps its card under its pickers). The results section (`#search-results`, full width, under
+    shows with the party a result's Show brings (U65: `drawEnemyCard` in `battle-page.ts`, on both pages; the map's
+    facts and scrolls are in the panel, and until U65 the Simulator had no `#target-card` and kept its card under its
+    pickers). The results section (`#search-results`, full width, under
     the panel) is hidden until a solve is done; a new solve hides the last results until it ends; a Cancel or an
     error is a line in the panel. Then "Party and flow", the Party and Flow tabs (`#party-box`), hidden in
     the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
@@ -399,7 +400,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     are `tabKeys`, unchanged.
 - U61, the Party view's HP chart (`web/src/ui/hp-chart.ts`; tests `web/test/battle-u61.test.ts`, CSS in the `U61`
   block), on both pages (the Solver's once a result's Show fills the party; nothing to edit in it):
-  - Place (U62: the third column, `#hp-col`, below): a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
+  - Place (U65: the Party view's first row, full width, see U65; U62: the third column, `#hp-col`): a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
     card and its spider chart (the Simulator's `#target`, the Solver's `#target-card`); redrawing the card leaves it.
   - Data: the very trace the Flow tabs show. `renderPlan` traces once (`planTrace`: Simulate's first fight, seed
     `fightSeed(1, 0)`; a map run: `mapTrace`, the Map run mode's first run) and hands that object to the open Flow
@@ -414,21 +415,21 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     each room after the first, the x ticks naming rooms (1, 2 … Boss); the enemy line restarts with each room's enemy.
   - Absolute HP: hovering or tapping the plot shows a readout (the nearest step: "Turn 7", each fighter's HP / max, ✝
     when down) with a guide line; the legend under it gives each fighter's HP at the end and "fell turn N".
-  - Accessible: the SVG is `role=img` named by `hpSummary` ("HP as a share of max HP over 14 turns, lost. Ana falls
+  - Accessible (U65: the SVG is the turn slider, described by the summary; see U65): the SVG is `role=img` named by `hpSummary` ("HP as a share of max HP over 14 turns, lost. Ana falls
     (turn 9)…"); a "Table" fold lists every step's HP (a row per turn, a column per fighter). The readout is
     `aria-hidden` (the table says the same).
   - Empty: no fighters, a party problem, an AP problem or a map run that can't run: one muted line ("HP by turn: shown
     once the party can fight."); no opponent built: the box is hidden.
-  - Size: viewBox 360 × 200, `width: 100%`, so about 1:1 on a 375 px phone (full width there, its column on a desktop);
+  - Size: viewBox 360 × 200 (U65: as wide as the box, 200 high), `width: 100%`, so about 1:1 on a 375 px phone (full width there, its column on a desktop);
     colours from the theme tokens only (light and dark).
 
 - U62, smaller Party view cards (both pages; `web/src/ui/fighter-card.ts`, `web/src/ui/pick-list.ts`; tests
   `web/test/battle-u62.test.ts`, CSS in the `U62` block):
-  - Three columns: heroes | opponent | HP chart (`#hp-col`, after `#opp-col` in both pages' `#setup-grid`; `hpBox`
+  - Three columns (U65: replaced, the chart on top and heroes | opponent; see U65): heroes | opponent | HP chart (`#hp-col`, after `#opp-col` in both pages' `#setup-grid`; `hpBox`
     makes the U61 box there, no longer under the opponent's card). 961-1199 px: heroes on the left over two rows, the
     opponent then the chart on the right; 641-960 px: heroes full width, opponent | chart under them; 640 px and less
     (a 375 px phone): one column, heroes, opponent, chart.
-  - The boss line: purple, a `--boss` token in both themes (dark `#c99bff`, 4.6:1 on `--card`; light `#6b21a8`,
+  - The boss line (U65: replaced by `--enemy-line`, white or near-black; `--boss` deleted): purple, a `--boss` token in both themes (dark `#c99bff`, 4.6:1 on `--card`; light `#6b21a8`,
     7.7:1), still dashed, since the Assassin's class colour is purple too. The enemy card's stripe uses it as well.
   - One builder, `fighterCard({ kind, classes, attrs, head, tools, lines, stats, passive, rotation })`, for the hero
     cards and the quest enemy's card; one CSS family, `.fc` (`.fc-hero`, `.fc-enemy`, `.fc-head`, `.fc-stats`,
@@ -440,7 +441,8 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     dimming and the card's title say it; an empty slot the opponent doesn't allow says why in its picker, "— solo:
     Front 1 only —"). The enemy: the enemy `<select>`, then the quest size as a compact `<select>` ("×1",
     `aria-label` "Quest size", no label text) and its "?"; the size cap note and "Attacks first" under the head.
-    Read-only (the Solver): the same words as plain text (the enemy's pickers stay in the Solve panel).
+    Read-only (the Solver): the same words as plain text (the enemy's pickers stay in the Solve panel). U65: the enemy
+    card has no picker on either page (the enemy and the quest size are in the Simulate panel).
   - Rare variants: no "Rare variant" box. The enemy list (`questOptions`, also the Flow's enemy head; was
     `flowEnemyOptions`) lists a quest with a rare variant twice, "Lvl 20 · Goblin" (`20`) and "Lvl 20 · Goblin
     Warlord (rare)" (`20:rare`; `questEntries`, `questValue`, `parseQuestValue` in `battle-setup.ts`). The stored
@@ -477,6 +479,60 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     (`#flow-panel [data-focus="skill-<loc>-<turn>"]`).
   - Hero and opponent names in the Flows were never wiki links: in an editable view they keep U40's `nameEdit`
     (the hero list, and the opponent's `questOptions` with its rare entries); read-only, plain text. Unchanged.
+
+- U65, the turn chart drives the cards (both pages; `web/src/ui/hp-chart.ts`, `fighter-card.ts`, `battle-page.ts`,
+  the trace in `web/src/sim/api.ts` and `web/src/tools/fight-trace.ts`; tests `web/test/battle-u65.test.ts`, CSS in
+  the `U65` block; the U61, U62, U42, U43, R2-C and quest-XP tests updated):
+  - Layout: the chart (`#hp-col`) is the Party view's first row, full width, then heroes | opponent
+    (`grid-template-areas: "hp hp" "party opp"`); 960 px and less (a 375 px phone): one column, the chart, the heroes,
+    the opponent (its column at most 560 px wide). U62's three-column rules are deleted. The SVG's viewBox is as wide
+    as its box (`chartWidth`, 300-1600) and 200 high, so the text keeps its size at every width; a resize or a hidden
+    tab shown draws it again (`ResizeObserver` in `drawHpChart`).
+  - The enemy line and the enemy card's stripe: `--enemy-line`, white (`#ffffff`) in the dark theme; in the light
+    theme white would vanish on the parchment, so the theme's strongest neutral, its text colour `--fg` (`#2a2018`,
+    near-black, about 14:1 on `--card`). Still dashed (6 3), so a class colour near it stays apart. U62's purple
+    `--boss` is deleted.
+  - Tabs HP · Damage dealt · Heals (`CHART_TABS`, a `role=tablist`, ← → Home End) on one x axis (turn 0, then each
+    turn's end). HP as before (a share of max HP). Damage dealt and heals are cumulative: lines that only go up read
+    better than per-turn spikes (the rotation repeats every 5 turns) and compare the fighters' totals at a glance; the
+    per-turn amount is in the readout and the table ("1,240 (+310)"). The y axis of those two is in round amounts
+    (`niceMax`, `fmtCompact`). Who did what comes from the trace's calculations (`addCredits`): damage that landed on a
+    standing fighter of the other side, overkill included, a damage over time its caster's; healing as the HP really
+    given back. A hero's sums run over a whole map run, the enemy's restart with each room. The legend shows the end
+    value (HP) or the total; the falls' crosses are on the HP tab only. The open tab is kept for the page view.
+  - Picking the turn: the plot is a `role=slider` ("Turn", `aria-valuetext` the step, described by the summary
+    `#hp-sum`); a click or a tap picks the nearest step (`nearestStep`), ← ↓ / → ↑ one step, Page Down / Up five, Home,
+    End (`stepAfterKey`). A marker line and "Turn N" show it. The hover readout stays. Default: turn 0. A new trace
+    (an edit) keeps the picked room and turn when the new fight still has it, else turn 0 (`pickStep`; `turnPick` in
+    `battle-page.ts`). A pick only repaints the cards (`selectTurn` → `paintTurn`), nothing is traced again.
+  - The cards at that turn (`paintTurn`, `paintCard` in place, so the pickers, an open list and the focus stay): the
+    state at the end of the turn, from the chart's data, which is the Flows' own trace (`hpData` builds it with the
+    series): an HP bar (`flow-hp.ts`) over the stats; the stats are the engine's live ones (Atk, Matk, Def, Mdef, Acc,
+    Eva, Crit with that moment's buffs and debuffs, max HP); the buffs and debuffs inline under the stats and above the
+    passive (`fxList`: Flow 2's text, green or red, "·2" turns left, the source on hover); the rotation row of the skill
+    it played that turn highlighted (`.fc-row.active`, `aria-current`; none when stunned or down). A hero that doesn't
+    fight, or no fight to show: the card's own stats, nothing else.
+  - Turn 0 is the start, before any action: full HP, the stats as the fight began, no effects, no row.
+  - The trace (read only): each `life` entry also has the fighter's live stats (`TRACE_STATS`), and a battle's first
+    action carries the state before it (`start`: life and effects), handed on as `FightTrace.start` (a map room's too).
+    Taken in the trace hooks that only read; no simulation result changes, the Lua-parity tests stay green.
+  - A map run: each room keeps its own turn 0 rather than reusing the last room's last turn as its start. The two are
+    not the same state: the new enemy at full HP, every effect cleared, the heroes' HP rounded between rooms or healed
+    by a post-battle scroll; so the room's first step is the state it really begins from, and the enemy line still
+    starts at its room's boundary.
+  - The enemy card (`drawEnemyCard`, `#target-card` on both pages): one enemy, no picker, the plain "Lvl N · name"
+    (`lvStart`), × the quest size, "(rare)", "Attacks first". A quest: the chosen enemy. A map run: the enemy of the
+    selected turn's room ("Room 3", "Boss room"), with its live stats from the trace; before the run can be traced, one
+    muted line.
+  - The opponent's controls are in the Simulate panel (`.opp-row`, first in the panel; the Solver's Solve panel as
+    before): Quest enemy / Map run, the enemy list (its rare entries), the quest size and its "?", the size cap; a map,
+    its ascension and grade, the three scrolls, and the map's facts in one compact line (`.map-facts`: name, Lvl,
+    rooms, time, enemy power, boss, modifiers; was the map card beside the party). U53's "Fight in simulator" links
+    still set the opponent (`takeLinkedOpponent`, `restoreOpponent`). `placeTarget`, the map card and its CSS
+    (`.opp-card`, `.opp-ico`, `.opp-scrolls` column, `.opp-col .seg`, `.fc-tools .fc-size`) are deleted.
+  - Details panel: no "XP per hero", "Quest time" or "XP / min" (`questXpTiles`, `mapXpTiles` deleted). A quest's
+    details: Turns, Enemy HP removed, Party HP left. A map's: Progress, Turns per room, Time (per run; the map's craft
+    time in its "?"), Loot value, Party HP left, Essence: six tiles, no lone tile on a row.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.

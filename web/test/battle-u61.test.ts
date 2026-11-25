@@ -82,9 +82,11 @@ test("series: the start, then every turn's end; HP from the trace's life, deaths
   for (const f of fighters) assert.equal(fig.querySelectorAll(`path.hp-line.cls-${f.cls}`).length >= 1, true, "class colours");
   assert.equal(fig.querySelectorAll("path.hp-death").length, deaths.length);
   assert.ok(fig.querySelectorAll("path.hp-death").every((p) => p.querySelector("title")!.textContent.includes(" falls: turn ")));
+  // U65: the plot is the turn slider, described by the summary (was a role=img named by it)
   const svg = fig.querySelector("svg")!;
-  assert.equal(svg.getAttribute("role"), "img");
-  assert.equal(svg.getAttribute("aria-label"), hpSummary(d));
+  assert.equal(svg.getAttribute("role"), "slider");
+  assert.equal(fig.querySelector('p[id="hp-sum"]')!.textContent, hpSummary(d));
+  assert.equal(svg.getAttribute("aria-describedby"), "hp-sum");
   assert.match(hpSummary(d), new RegExp(`over ${trace.turns} turns, lost\\.`));
   // legend: every fighter with its absolute HP at the end; the table: one row per step, one column per fighter
   const legend = fig.querySelector("ul.hp-legend")!.children;
@@ -127,8 +129,9 @@ test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's 
   assert.match(plan, /showHp\(rooms\.flatMap\(\(r, k\): HpRun\[\] => \(r\.trace \? \[\{ trace: r\.trace,/, "a map run: the room bar's rooms");
   const show = fn(page, "showHp");
   assert.doesNotMatch(show, /trace(Fight|MapRun)|planTrace|mapTrace|new Sim/, "the chart never simulates");
-  assert.match(show, /drawHpChart\(box, runs \? hpData\(runs, fighters\) : null, \{ hide \}\);/);
-  // the box: made once in its column (U62: the third column, #hp-col; until then #opp-col under the opponent's card)
+  assert.match(show, /chart = runs \? hpData\(runs, fighters\) : null;/);
+  assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn \}\);/);
+  // the box: made once in its column (U65: #hp-col, the first row; U62: the third column; until then #opp-col)
   assert.match(fn(page, "hpBox"), /col\.querySelector<HTMLElement>\("#hp-chart"\)/);
   assert.match(fn(page, "hpBox"), /col\.append\(box\);/);
 });
@@ -196,6 +199,7 @@ test("CSS: the U61 block, theme tokens only, full width", () => {
   assert.ok(block.length > 200);
   assert.match(block, /\.hp-svg \{ display: block; width: 100%; height: auto;/);
   assert.match(block, /\.hp-line \{[^}]*stroke: var\(--c/);
-  assert.match(block, /\.hp-enemy \{ --c: var\(--boss\); \}/);
+  // U65: the enemy's colour is the U65 block's (--enemy-line)
+  assert.doesNotMatch(block, /--boss/);
   assert.doesNotMatch(block.replace(/\/\*[\s\S]*?\*\//g, ""), /#[0-9a-f]{3,6}\b/i, "colours from the theme tokens");
 });

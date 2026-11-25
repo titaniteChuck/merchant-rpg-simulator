@@ -109,10 +109,9 @@ test("time and XP text", () => {
 
 test("the enemy page and battle results link XP and time to the Stats page, without formulas", () => {
   const src = (f: string) => readFileSync(new URL(`../src/ui/${f}`, import.meta.url), "utf8");
-  for (const f of ["wiki-enemies.ts", "battle-page.ts"]) {
-    assert.match(src(f), /statLink\("xp"/, f);
-    assert.match(src(f), /statLink\("time"/, f);
-  }
+  for (const f of ["wiki-enemies.ts", "battle-page.ts"]) assert.match(src(f), /statLink\("time"/, f);
+  // U65: the battle results have no XP tiles any more; the enemy page keeps its XP link
+  assert.match(src("wiki-enemies.ts"), /statLink\("xp"/);
   // U60: the XP block's help moved to the stats table's (STATS_HELP_QUEST / STATS_HELP_MAP)
   const help = src("wiki-enemies.ts").match(/const STATS_HELP_(QUEST|MAP) = \[[\s\S]*?\];/g)!.join("\n");
   assert.doesNotMatch(help, /round\(|×\s*\(|\/ heroes|gradeTime/, "the \"?\" texts say what, not the formula");

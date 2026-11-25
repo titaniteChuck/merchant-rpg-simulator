@@ -13,10 +13,14 @@
  * columns, heroes | opponent | HP chart (#hp-col); the hero and enemy cards are one builder (fighter-card.ts): the picker as the
  * head, the stats on two lines, the rotation (the enemy's from its timeline, read-only); a skill or passive opens its
  * picker in place, each choice with its effect (pick-list.ts). The enemy list holds each rare variant as its own entry
- * ("<id>:rare"), no "Rare variant" box.
+ * ("<id>:rare"), no "Rare variant" box. U65: the chart is the Party view's first row, full width, over heroes |
+ * opponent (no third column); a click, a tap or the arrow keys on it pick a turn and every card shows that turn's end
+ * (paintTurn: HP, the engine's live stats, the effects, the row played; turn 0 the start), from the same trace. The
+ * opponent is chosen in the Simulate panel (quest or map run, size, map, grade, scrolls; the Solver's Solve panel as
+ * before); its card shows one enemy, no picker (drawEnemyCard; a map run: the selected turn's room's).
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
- * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
+ * its pickers (the opponent card waits in #target-card, beside the party: drawEnemyCard), the options, the time budget,
  * Solve and its progress; the results under it only once a solve is done; the Party and Flow tabs stay hidden until a
  * result's "Show" fills them (revealParty). Its party is its own, in memory only: the Simulator's remembered
  * party changes only by "Open in Simulator" (battle-links.ts simulatorPartyFrom), which copies the shown party and
@@ -37,9 +41,10 @@ import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, lv, lvStart, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast } from "./dom.ts";
+import { $, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
-import { type CardRow, fighterCard } from "./fighter-card.ts";
+import { type CardRow, fighterCard, paintCard } from "./fighter-card.ts";
+import { hpTexts } from "./flow-hp.ts";
 import type { PickOption } from "./pick-list.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
@@ -49,7 +54,7 @@ import { loadTimelineData, timelineOf } from "./timeline.ts";
 import type { PlanEdit } from "./flow-parts.ts";
 import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
 import { locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
-import { drawHpChart, hpData, type HpRun } from "./hp-chart.ts";
+import { drawHpChart, type HpChartData, hpData, type HpRun, pickStep } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
@@ -58,7 +63,7 @@ import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill,
 import { enableSlotDrag } from "./party-drag.ts";
 import { roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
 import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
-import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
+import { type MapRunContext, mapResultXp } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
 import { cappedNote, compactResult, essenceLines, hpLeftCell, resultTile, tileColumns, turnCapNote } from "./battle-results.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
@@ -635,39 +640,22 @@ function renderTarget(): void {
   });
   const box = $("#target");
   if (oppKind() === "quest") {
-    // U62: one list with each rare variant as its own entry ("<id>:rare"); the quest size a compact control.
-    const q = select({ id: "quest", class: "fc-pick", "aria-label": "Enemy" }, questOptions());
-    const amount = select({ id: "amount", class: "fc-size", "aria-label": "Quest size" }, [["1", "×1"]]);
+    // U62: one list with each rare variant as its own entry ("<id>:rare"); the quest size a compact control. U65: both
+    // in the Simulate (Solve) panel, #target; the card (#target-card) shows the enemy, no picker (drawEnemyCard).
+    const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
+    const amount = select({ id: "amount", "aria-label": "Quest size" }, [["1", "×1"]]);
     // R1 F20: the quest size's explanation is in a "?" (syncAmount fills it), not a paragraph.
     const sizeNote = el("span", { id: "amount-note" });
-    const cap = capNote();
-    // U42: the Solver chooses the enemy in its Solve panel (#target); its card (#target-card) is read-only.
-    const apart = Boolean(document.querySelector("#target-card"));
-    const holder = el("div", { class: "opp-card-box" });
     const update = () => {
-      const { id, rare } = parseQuestValue(q.value);
-      const d = G.questData[id];
-      syncAmount(amount, sizeNote, rare);
-      const n = Number(amount.value) || 1;
-      const focused = document.activeElement;
-      holder.replaceChildren(fighterCard({
-        kind: "enemy", classes: rare ? "rare" : "",
-        head: apart ? el("span", { class: "fc-name" }, q.selectedOptions[0]?.textContent ?? "", ...(n > 1 ? [el("span", { class: "muted" }, ` ×${n}`)] : [])) : q,
-        tools: apart ? [] : [amount, sizeNote],
-        lines: [...(apart ? [] : [cap]), ...(d.questType === 6 ? [el("p", { class: "fc-line small muted" }, "Attacks first")] : [])],
-        stats: enemyStats(id, rare, n),
-        rotation: enemyRotation(id, rare),
-      }));
-      // The picker and the size move into the new card: give them their focus back.
-      if (focused instanceof HTMLElement && focused !== document.activeElement && holder.contains(focused)) focused.focus();
+      syncAmount(amount, sizeNote, parseQuestValue(q.value).rare);
       saveOpponent();
     };
-    // Another enemy may have other party rules (required slot, size cap): the slots are drawn again.
+    // Another enemy may have other party rules (required slot, size cap): the slots are drawn again (and the fight
+    // traced again, which draws the enemy's card).
     q.addEventListener("change", () => (update(), renderParty()));
     // The card's HP follows the quest size.
     amount.addEventListener("change", () => (update(), renderPlan()));
-    if (apart) placeTarget(box, el("div", { class: "opp-controls" }, q, el("div", { class: "toolbar" }, amount, sizeNote), cap), holder);
-    else box.replaceChildren(holder);
+    box.replaceChildren(el("div", { class: "opp-controls" }, q, el("div", { class: "toolbar" }, amount, sizeNote), capNote()));
     update();
     setRuns("200");
   } else {
@@ -678,7 +666,8 @@ function renderTarget(): void {
     const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
       .map((id): [string, string] => [String(id), `${itemName("consumable", id)}${expansionMark(needsOf("consumable", id))}`])];
     const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
-    const card = el("article", { class: "opp-card map" });
+    // U65: the map's facts, one compact line in the panel (was the map card beside the party, with the scrolls).
+    const facts = el("div", { class: "map-facts small" });
     const sync = () => {
       const own = m.value.startsWith("own:");
       asc.hidden = grade.hidden = own;
@@ -691,24 +680,21 @@ function renderTarget(): void {
       // modded map (U34 / U36): "[Prefix] Map +N" from its translated parts (modItemName).
       const name = pre || suf ? modItemName("map", id, it) : undefined;
       const bosses = seq<number>(d.bossList ?? {});
-      const fact = (k: string, v: Node | string) => [el("dt", {}, k), el("dd", {}, v)];
-      card.replaceChildren(
-        el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "🗺️"),
-          el("div", {}, el("h3", {}, itemLink("map", id, name, undefined, a, { always: own })),
-            el("div", { class: "pills" }, pill(`level ${d.itemLevel ?? "?"}`, "plain"), gradeBadge(GRADES[g - 1] ?? String(g)),
-              ...(own ? [pill("yours", "t-green")] : []),
-              // R1 F20: what a run is, in a "?" instead of a paragraph under the card.
-              helpTip("Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
-                + "Rooms and time are the map's own, before its prefix and suffix.", "map runs")))),
-        el("dl", { class: "facts" },
-          ...fact("Rooms", roomsFact(id, g)),
-          ...fact("Time", d.baseMapTime ? duration(d.baseMapTime) : "?"),
-          ...fact("Enemy power", `×${d.enemyMod ?? 1}`),
-          ...fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
+      const fact = (k: string, v: Node | string) => el("div", {}, el("dt", {}, k), el("dd", {}, v));
+      facts.replaceChildren(
+        el("span", { class: "map-name" }, itemLink("map", id, name, undefined, a, { always: own }), ...(own ? [" ", pill("yours", "t-green")] : []),
+          // R1 F20: what a run is, in a "?" instead of a paragraph.
+          helpTip("Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
+            + "Rooms and time are the map's own, before its prefix and suffix.", "map runs")),
+        el("dl", {},
+          fact(LV, String(d.itemLevel ?? "?")),
+          ...(own ? [fact("Grade", gradeBadge(GRADES[g - 1] ?? String(g)))] : []),
+          fact("Rooms", roomsFact(id, g)),
+          fact("Time", d.baseMapTime ? duration(d.baseMapTime) : "?"),
+          fact("Enemy power", `×${d.enemyMod ?? 1}`),
+          fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
             ? el("span", {}, ...bosses.flatMap((b, k) => [...(k ? [", "] : []), enemyLink({ id: b })])) : "none"),
-          ...(pre || suf ? fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · ")) : [])),
-        el("div", { class: "opp-scrolls" },
-          el("h4", {}, "Scrolls"), ...scrolls));
+          ...(pre || suf ? [fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · "))] : [])));
       saveOpponent();
     };
     // U39: the Flow tab follows the map, its ascension, grade and scrolls (one traced run).
@@ -716,7 +702,8 @@ function renderTarget(): void {
     asc.addEventListener("change", () => (sync(), renderPlan()));
     grade.addEventListener("change", () => (sync(), renderPlan()));
     for (const x of scrolls) x.addEventListener("change", () => (saveOpponent(), renderPlan()));
-    placeTarget(box, el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade), capNote()), card);
+    box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade),
+      el("div", { class: "toolbar opp-scrolls", role: "group", "aria-label": "Scrolls" }, ...scrolls), facts, capNote()));
     sync();
     setRuns("50");
   }
@@ -733,19 +720,43 @@ function enemyRotation(id: number, rare: boolean): CardRow[] {
   return enemyTurns(id, rare, timelineOf(id, rare)).map((sk): CardRow => ({ text: skillName(sk), tip: sk === "Basic" ? undefined : (e) => skillTip(e, sk) }));
 }
 
-/** U48: under the opponent's picker, the size cap when it leaves heroes out (renderParty fills it). U62: in its card. */
+/** U48: under the opponent's picker, the size cap when it leaves heroes out (renderParty fills it). U65: in the panel. */
 const capNote = () => el("p", { id: "party-cap", class: "small party-capped", role: "status", title: "The last heroes in slot order are left out.", hidden: "" });
 
 /**
- * U42: the opponent's pickers go in #target; its card too, unless the page has a #target-card apart (the Solver: the
- * pickers in its Solve panel, the card beside the party a result's Show brings).
+ * U65: the opponent card (#target-card, beside the party on both pages): always one enemy, no picker (the opponent
+ * is chosen in the Simulate or Solve panel). A quest: the chosen enemy. A map run: the enemy of the selected turn's
+ * room (none before the run can be traced). At the chart's selected turn it shows that turn's state, as the hero
+ * cards do (paintTurn): HP, the engine's live stats, the effects, the row it played.
  */
-function placeTarget(box: HTMLElement, controls: HTMLElement, card: HTMLElement): void {
-  const apart = document.querySelector<HTMLElement>("#target-card");
-  if (apart) {
-    box.replaceChildren(controls);
-    apart.replaceChildren(card);
-  } else box.replaceChildren(controls, card);
+function drawEnemyCard(): void {
+  const host = document.querySelector<HTMLElement>("#target-card");
+  if (!host || !state.sv) return;
+  const at = chart?.steps[turnAt];
+  let foe: { id: number; rare: boolean; n: number; room?: string } | null = null;
+  if (oppKind() === "quest") {
+    const q = questPick();
+    if (q) foe = { ...q, n: Number(document.querySelector<HTMLSelectElement>("#amount")?.value) || 1 };
+  } else if (chart && at) {
+    const run = chart.runs[at.run];
+    if (run.quest) foe = { ...run.quest, n: 1, room: run.room };
+  }
+  if (!foe) {
+    host.replaceChildren(...(oppKind() === "map" && document.querySelector("#map") ? [el("p", { class: "muted small" }, "The room's enemy: shown once the party can fight.")] : []));
+    return;
+  }
+  const d = G.questData[foe.id];
+  const now = at?.states[0];
+  const name = `${enemyName(String(foe.id), foe.rare) ?? d?.name ?? foe.id}${foe.rare ? " (rare)" : ""}`;
+  host.replaceChildren(fighterCard({
+    kind: "enemy", classes: foe.rare ? "rare" : "",
+    head: el("span", { class: "fc-name" }, `${lvStart(enemyLevelText(foe.id))} · ${name}`, ...(foe.n > 1 ? [el("span", { class: "muted" }, ` ×${foe.n}`)] : [])),
+    lines: [...(foe.room ? [el("p", { class: "fc-line small muted" }, foe.room.startsWith("Boss") ? "Boss room" : `Room ${foe.room.split(" ·")[0]}`)] : []),
+      ...(d?.questType === 6 ? [el("p", { class: "fc-line small muted" }, "Attacks first")] : [])],
+    stats: now?.stats ? { ...now.stats, maxHP: now.maxHP } : enemyStats(foe.id, foe.rare, foe.n),
+    ...(now ? { turn: { life: { hp: now.hp, maxHP: now.maxHP, label: `${name}: ${hpTexts(now.hp, now.maxHP).full} HP` }, fx: now.fx, active: now.active } } : {}),
+    rotation: enemyRotation(foe.id, foe.rare),
+  }));
 }
 
 /**
@@ -1056,7 +1067,7 @@ function renderPlan(): void {
     const t = targetOf().quest!;
     const trace = members.length ? planTrace(t) : null;
     // U61: the Party view's HP chart draws this very trace (the same object the Flow layout gets).
-    showHp(trace ? [{ trace, enemy: enemyName(String(t.id), t.rare) ?? "Enemy" }] : null, members);
+    showHp(trace ? [{ trace, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }] : null, members);
     const plan = layout.render(t, members, trace, edit);
     if (plan) {
       box.append(...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
@@ -1082,7 +1093,8 @@ function renderPlan(): void {
   }
   const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
   // U61: the HP chart draws the same traced run as the room bar: every fought room, in map order.
-  showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label }] : [])), members);
+  showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
+    quest: { id: r.questId, rare: r.isRare } }] : [])), members);
   let at = Math.min(storedRoom(), rooms.length - 1);
   const view = el("div", { class: "flow-room", id: "flow-room", role: "tabpanel" });
   const bar = el("div", { class: "room-bar scroll-row", role: "tablist", "aria-label": "The map's battles, in order" });
@@ -1127,8 +1139,8 @@ function renderPlan(): void {
 }
 
 /**
- * U61: the HP chart's box in the Party view, made once. U62: in the view's third column, #hp-col (heroes | opponent |
- * HP chart; was under the opponent's card in #opp-col).
+ * U61: the HP chart's box in the Party view, made once. U65: #hp-col is the view's first row, full width, above the
+ * heroes | opponent columns (U62 had it as the third column; until U62 it was under the opponent's card).
  */
 function hpBox(): HTMLElement | null {
   const col = document.querySelector<HTMLElement>("#hp-col");
@@ -1147,9 +1159,52 @@ function hpBox(): HTMLElement | null {
  */
 function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void {
   const box = hpBox();
-  if (!box) return;
   const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
-  drawHpChart(box, runs ? hpData(runs, fighters) : null, { hide });
+  chart = runs ? hpData(runs, fighters) : null;
+  // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0.
+  turnAt = chart ? pickStep(chart, turnPick) : 0;
+  if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
+  if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn });
+  paintTurn();
+}
+
+/**
+ * U65: the chart's data from the last trace, the step its marker is on (`turnAt`), and the turn picked (a room and a
+ * turn; it outlives a new trace, so an edit keeps the turn when the new fight still has it).
+ */
+let chart: HpChartData | null = null;
+let turnAt = 0;
+let turnPick: { run: number; turn: number } = { run: 0, turn: 0 };
+
+/** U65: a click, a tap or a key on the chart picked another turn: the cards show it (nothing is traced again). */
+function selectTurn(i: number): void {
+  if (!chart?.steps[i]) return;
+  turnAt = i;
+  turnPick = { run: chart.steps[i].run, turn: chart.steps[i].turn };
+  paintTurn();
+}
+
+/**
+ * U65: every card at the selected turn's end (turn 0: the start), from the chart's data, the Flows' own trace: a hero
+ * card's HP, live stats, effects and played row (paintCard, in place: its pickers and focus stay), and the enemy's
+ * card. A hero that doesn't fight (left out, no fight to show) gets its own stats back, nothing else.
+ */
+function paintTurn(): void {
+  const at = chart?.steps[turnAt];
+  const inc = fighting().included;
+  document.querySelectorAll<HTMLElement>("#party [data-slot]").forEach((card) => {
+    const key = card.dataset.slot ?? "";
+    const idx = state.slots[key] ?? null;
+    const raw = heroRaw(idx);
+    if (!raw) return;
+    const now = at?.states[locationOf(key.startsWith("front") ? "front" : "back", Number(key.slice(-1)))];
+    const inFight = now && inc.has(key);
+    paintCard(card, inFight
+      ? { stats: now.stats ? { ...now.stats, maxHP: now.maxHP } : heroCardStats(idx, raw), fx: now.fx, active: now.active,
+        life: { hp: now.hp, maxHP: now.maxHP, label: `${raw.name}: ${now.hp <= 0 ? "down, " : ""}${hpTexts(now.hp, now.maxHP).full} HP` } }
+      : { stats: heroCardStats(idx, raw) });
+  });
+  drawEnemyCard();
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)
@@ -1262,31 +1317,25 @@ function request(): BattleRequest {
 }
 
 /**
- * What XP and time a result is about (U33), taken when the run starts (the page may change before it ends): the quest
- * (size, rare, party size and speed) or the map (id, grade, ascension, party size).
+ * The map a map result is about (U33; U65: for its craft time only, the XP tiles are gone), taken when the run starts
+ * (the page may change before it ends): id, grade, ascension, party size. Null for a quest.
  */
-type RunContext = { quest: QuestRunContext } | { map: MapRunContext };
-function runContext(req: BattleRequest): RunContext {
-  const members = partyOf().members;
+function runContext(req: BattleRequest): MapRunContext | null {
+  if (req.quest) return null;
+  const heroes = partyOf().members.length;
   const mode = req.gameMode || "Standard";
-  if (req.quest) {
-    const speed = members.reduce((s, m) => s + (Number(api.heroStats(api.newHero(m.raw)).speed) || 0), 0);
-    return { quest: { quest: req.quest.id, rare: req.quest.rare, amount: req.quest.amount, heroes: members.length, speed, mode } };
-  }
   const v = $<HTMLSelectElement>("#map").value;
   const own: Any = v.startsWith("own:") ? state.sv?.mapInventory[Number(v.slice(4))] : null;
-  return { map: own ? { map: Number(own.id), grade: own.grade ?? 3, asc: own.prestigeLevel ?? 0, heroes: members.length, mode }
-    : { map: Number(v.slice(4)), grade: Number($<HTMLSelectElement>("#map-grade").value), asc: Number($<HTMLSelectElement>("#map-asc").value), heroes: members.length, mode } };
+  return own ? { map: Number(own.id), grade: own.grade ?? 3, asc: own.prestigeLevel ?? 0, heroes, mode }
+    : { map: Number(v.slice(4)), grade: Number($<HTMLSelectElement>("#map-grade").value), asc: Number($<HTMLSelectElement>("#map-asc").value), heroes, mode };
 }
 
 /** The last simulation shown (drawn again in another language, U29), with its run context. */
-let lastResult: (Extract<BattleResponse, { ok: true }> & { ctx: RunContext | null }) | null = null;
+let lastResult: (Extract<BattleResponse, { ok: true }> & { ctx: MapRunContext | null }) | null = null;
 function drawResult(): void {
   const r = lastResult;
   if (!r) return;
-  const shown = r.kind === "quest"
-    ? questResults(r.result, r.ms, r.ctx && "quest" in r.ctx ? r.ctx.quest : null)
-    : mapResults(r.result, r.ms, r.ctx && "map" in r.ctx ? r.ctx.map : null);
+  const shown = r.kind === "quest" ? questResults(r.result, r.ms) : mapResults(r.result, r.ms, r.ctx);
   // U48: the summary and its toggle in the Simulate panel, the details right under it.
   $("#sim-summary").replaceChildren(...shown.head);
   $("#results").replaceChildren(shown.details);
@@ -1298,7 +1347,7 @@ function run(): void {
   lastResult = null;
   document.querySelector("#results")?.replaceChildren();
   let req: BattleRequest;
-  let ctx: RunContext | null = null;
+  let ctx: MapRunContext | null = null;
   try {
     req = request();
     const problem = partyProblem();
@@ -1306,7 +1355,7 @@ function run(): void {
     try {
       ctx = runContext(req);
     } catch {
-      ctx = null; // the XP tiles are left out, the result still shows
+      ctx = null; // the craft time is left out, the result still shows
     }
   } catch (e) {
     out.replaceChildren(el("p", { class: "error", role: "alert" }, (e as Error).message));
@@ -1390,48 +1439,14 @@ function heroTable(heroes: Record<string, HeroEval>, unit: string, quest?: Fight
 }
 
 /**
- * U33: XP per hero, quest time (simulated fight + the quest's own time) and XP / min of a quest result. R2 F24: what
- * each counts is in its "?", with the link to the Stats page (no separate line of links).
- */
-function questXpTiles(ev: FightEval, c: QuestRunContext | null): HTMLElement[] {
-  if (!c) return [];
-  const x = questResultXp(ev, c);
-  const at = `at grade ${GRADES[x.grade - 1]}${ev.win ? "" : " (never won)"}`;
-  // R1 F06: XP comes only with a win; a quest never won shows none.
-  const won = ev.win > 0;
-  return [
-    resultTile("XP per hero", won ? xpText(x.xpPerHero) : "—", won ? `Each hero alive after a win, ${c.heroes} in the party.` : "No fight won.",
-      { icon: "🎓", tone: "t-violet" }, [statLink("xp", "XP")]),
-    resultTile("Quest time", duration(x.seconds), `Fight ${duration(x.battleSeconds)} + quest ${duration(x.questSeconds)}, ${at}.`,
-      { icon: "⌛", tone: "t-blue" }, [statLink("time", "time")]),
-    resultTile("XP / min", won ? xpText(x.xpPerMin) : "—", won ? "Per hero, over the quest time." : "No fight won.", { icon: "📈", tone: "t-green" }),
-  ];
-}
-
-/** U33: craft time, run time, XP per hero per run and XP / min (craft + run) of a map result (R2 F24: texts in the "?"). */
-function mapXpTiles(ev: MapEval, c: MapRunContext | null): HTMLElement[] {
-  if (!c) return [];
-  // R1 F06: only the rooms won give XP (the share of rooms cleared on average); "—" when none is ever won.
-  const x = mapResultXp(ev, c);
-  const all = x.cleared >= 0.9995;
-  const xpHint = x.xpPerHero === null ? "No room won."
-    : all ? `Per run, every room won, ${c.heroes} in the party.` : `Per run, the rooms won (${pct(x.cleared)}), ${c.heroes} in the party.`;
-  return [
-    resultTile("Craft time", duration(x.craftSeconds), "The map, and the lower maps its recipe uses.", { icon: "🔨", tone: "t-slate" }, [statLink("craft", "craft")]),
-    resultTile("Run time", duration(x.runSeconds), "Per run, simulated.", { icon: "⏱️", tone: "t-blue" }, [statLink("time", "time")]),
-    resultTile("XP per hero", x.xpPerHero === null ? "—" : xpText(x.xpPerHero), xpHint, { icon: "🎓", tone: "t-violet" }, [statLink("xp", "XP")]),
-    resultTile("XP / min", x.xpPerMin === null ? "—" : xpText(x.xpPerMin), x.xpPerMin === null ? "No room won." : "Per hero, over craft + run.", { icon: "📈", tone: "t-green" }),
-  ];
-}
-
-/**
  * U43: compact first. The win rate and the average grade; "Show details" opens the rest (compactResult). Turns: the
  * average, the longest fight and the game's cap (a fight still running at turn 200 is lost).
  */
-function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = null): ReturnType<typeof compactResult> {
+function questResults(ev: FightEval, ms: number): ReturnType<typeof compactResult> {
   const turnHint = [ev.turns_win !== null ? `${fmt1.format(ev.turns_win)} when won` : "never won", turnCapNote(ev.turns_max),
     cappedNote(ev.turns_capped, ev.n, "fights")].filter(Boolean).join(" · ");
-  // R2 F24: the details are one grid (outcome, then XP and time), label and value only, each explanation in its "?".
+  // R2 F24: the details are one grid, label and value only, each explanation in its "?". U65: no XP per hero, quest
+  // time or XP / min (U33's tiles): the outcome only.
   return compactResult(
     tiles({ class: "result-summary" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
@@ -1443,7 +1458,6 @@ function questResults(ev: FightEval, ms: number, ctx: QuestRunContext | null = n
         resultTile("Enemy HP removed", pct(ev.enemy_dmg), ev.enemy_dmg_peak !== undefined && ev.enemy_dmg_peak > ev.enemy_dmg + 5e-4
           ? `Lowest point ${pct(ev.enemy_dmg_peak)} (it heals back).` : undefined, { icon: "🗡️", tone: rateTone(ev.enemy_dmg), bar: ev.enemy_dmg }),
         resultTile("Party HP left", pct(ev.hp_left), undefined, { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
-        ...questXpTiles(ev, ctx),
       ),
       heroTable(ev.heroes, "fight", ev),
     ],
@@ -1473,8 +1487,8 @@ function tiles(attrs: Record<string, string>, ...items: HTMLElement[]): HTMLElem
 }
 
 /**
- * U43: as questResults. The essence per run is a tile of the map-run row (craft, run time, XP), or of the first row
- * when there are no XP figures. Turns per room: the average, per run in the hint, the longest room and the cap.
+ * U43: as questResults. Turns per room: the average, per run in the hint, the longest room and the cap. U65: no XP per
+ * hero or XP / min; one Time tile (per run, simulated), the map's craft time in its "?" (was a tile of its own).
  */
 function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): ReturnType<typeof compactResult> {
   const fails = Object.entries(ev.fail_room).map(([k, v]) => `${k} (${pct(v / ev.n)})`).join(", ");
@@ -1484,8 +1498,11 @@ function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): 
     ev.win < 1 ? "From the runs won." : undefined, { icon: "✨", tone: "t-violet" });
   const turnHint = [`${fmt1.format(ev.run_turns)} per run`, `longest room: ${turnCapNote(ev.room_turns_max)}`,
     cappedNote(ev.rooms_capped, ev.n, "runs")].filter(Boolean).join(" · ");
-  // R2 F24: one grid of 9 tiles (6 without the XP figures): the outcome, then craft, run time, XP and the essence last.
-  const xp = mapXpTiles(ev, ctx);
+  // R2 F24: one grid of 6 tiles: the outcome, the time, the loot and the essence last.
+  let craft: string | null = null;
+  try {
+    craft = ctx ? duration(mapResultXp(ev, ctx).craftSeconds) : null;
+  } catch { /* no craft time: the tile says the run's only */ }
   return compactResult(
     tiles({ class: "result-summary" },
       tile("Win rate", pct(ev.win), undefined, { icon: "🏆", tone: rateTone(ev.win), bar: ev.win }),
@@ -1498,10 +1515,10 @@ function mapResults(ev: MapEval, ms: number, ctx: MapRunContext | null = null): 
           "Rooms cleared per run, of the rooms a run met on average: treasure rooms and the boss included, as on the map card."],
         { icon: "🧭", tone: rateTone(ev.cleared), bar: ev.cleared }),
         resultTile("Turns per room", fmt1.format(ev.room_turns), sentence(turnHint), { icon: "⏱️", tone: ev.rooms_capped ? "bad" : "t-blue" }),
-        ...(ctx ? [] : [resultTile("Time", `${fmt1.format(ev.time_h)} h`, "Per run.", { icon: "⌛", tone: "t-blue" })]),
+        resultTile("Time", duration(ev.time_h * 3600), ["Per run, simulated.", craft ? `Crafting the map: ${craft}.` : null], { icon: "⌛", tone: "t-blue" },
+          [statLink("time", "time")]),
         resultTile("Loot value", gold(ev.loot_value), "Base sell value per run.", { icon: "💰", tone: "t-orange" }),
         resultTile("Party HP left", pct(ev.hp_left), "At the end of the run.", { icon: "❤️", tone: rateTone(ev.hp_left * 1.6), bar: ev.hp_left }),
-        ...xp,
         essence,
       ),
       ...(fails ? [el("p", { class: "result-note" }, el("strong", {}, "💀 Lost at: "), fails)] : []),
