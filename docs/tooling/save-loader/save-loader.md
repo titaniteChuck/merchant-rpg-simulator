@@ -2,7 +2,7 @@
 type: Tool
 title: Save loader
 description: Finds the player's Merchant save on the current OS, copies it locally and parses the copy.
-timestamp: 2026-11-23
+timestamp: 2026-11-25
 ---
 
 # Save loader
@@ -14,6 +14,7 @@ timestamp: 2026-11-23
 - [Rule: never touch the game files](#rule-never-touch-the-game-files)
 - [Location](#location)
 - [Files](#files)
+- [Phones](#phones)
 - [Encoding](#encoding)
 - [Compact items](#compact-items)
 - [Usage](#usage)
@@ -48,6 +49,21 @@ Solar2D `system.DocumentsDirectory`, company `Retora`, app `Merchant`, Steam app
 - `<slot>Backup1..4.txt`: written at most once every 24 h, numbers rotate 1 to 4 (`GameObject:saveGame`).
 - `UserInfo.usr`: plain JSON (settings, achievements, `backupSave`, `sfn` = active slot); `purchaseList` and `moreInfo` are encoded inside.
 - `camp_*.clog2`, `quest_*.clog2`: combat logs in plain JSON (not parsed).
+
+## Phones
+
+- On Android and iOS the save sits in the app's private Documents folder: no file manager or browser can reach it.
+- The game's bug report mails it: Options, the button of the "Bug Report" row (`TEXT.omBugReport`; shown unless
+  `NO_INTERNET`), calls `SupportEmailer.sendSupportEmail` (`decompiled/scene.OptionsOverlay.lua`).
+- On a phone (`platformInfo.isPC` false) `sendEmailCommon` opens the mail app (`native.showPopup("mail")`) to
+  `support@retoragames.com` with `getGameFiles()` attached: the current slot's `<slot>.txt` (`Game.saveFileName`, else
+  slot 1), its `Backup1..4.txt` and `<user>.usr` (`decompiled/obj.SupportEmailer.lua`). On PC it only opens a
+  `mailto:` link, no attachment.
+- So the player changes the recipient to their own address, sends it (or saves the attachment), and picks
+  `PlayerData.txt` / `SlotNData.txt` from that email. Only the current slot is attached; another slot needs a slot
+  switch in the game first.
+- The website's "Open your save" wizard gives these steps (`web/src/ui/save-wizard.ts`, `save.html#open=mobile`; see
+  [Website](../website/website.md#save-viewer)). Not tried on every mail app.
 
 ## Encoding
 

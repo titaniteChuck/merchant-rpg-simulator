@@ -86,6 +86,22 @@ flowchart LR
   menus (U35, [Menus](#menus): the Save dropdown, the second row under the top bar once a save is loaded, the phone
   drawer); the in-page tabs are gone. A section link is a normal hash link (`hashchange` re-renders, Back works). No
   hash or an unknown one opens Overview.
+- "Open your save" wizard (U46, `web/src/ui/save-wizard.ts`): `save.html#open`, a view of the save viewer like
+  `#hero=<id>`, shown with or without a save (it takes the no-save picker's place: `html.save-wizard` hides the drop
+  zone, example row and help). The Save dropdown's "📂 Choose another file", "📂 Open your own save" (example loaded)
+  and "📂 Open your save" (no save) go there (`openWizard` in `save-source.ts`, `location.assign("save.html#open")`,
+  so from another page it opens the save viewer) instead of opening the file dialog; Reload still rereads or re-picks
+  the same file, and the drop zone button still opens the dialog. Step 1 (`#open`): two big choices, 💻 PC and
+  📱 Mobile (links to `#open=pc` / `#open=mobile`, side by side even on a phone), and "🧪 Example save". A platform:
+  "← PC or mobile" (back to `#open`), its numbered steps (`WIZARD` in `save-wizard.ts`), a "📂 Pick a file" primary
+  button (the shared chooser, `chooseSave`, returned by `initSaveSource` with the example loader) and short muted
+  notes. PC: copy the system's save folder (Windows, Steam Deck / Linux (Proton), macOS), paste it in the dialog's
+  address bar, choose `PlayerData.txt` or `Slot2Data.txt` … `Slot5Data.txt`. Mobile: the game's bug report mail
+  (see [Save loader: Phones](../save-loader/save-loader.md#phones)), "only the slot you are playing is attached",
+  "not tested on every mail app". A file loaded while the wizard shows (picked, dropped or the example: the
+  `afterPick` option of `initSaveSource`, not the stored save) moves the page to `#overview`. `#open` is none of the
+  Save pages (`currentNav` gives no sub-page; the chip row stays). The "Where is my save file?" help gains the Mac
+  folder, a Phone line and a "Step by step" link to the wizard. CSS block `u46`; tests `web/test/save-u46.test.ts`.
 - Overview: small cards (`.save-cards`, about 80px tall, at most four per row so the eight cards make two full rows,
   two per row on a phone; the cards of a short last row grow to fill it, R1 F35), each with a label,
   a big number and an optional one-line hint: gold, inventory value and stacks, gold earned (both as "171,946 g"),
@@ -107,7 +123,10 @@ flowchart LR
   `aria-label` and tooltip, since `table()` in `dom.ts` takes text labels.
 - Heroes: one sortable table (avatar, class, level, ascension, combat stats, passive, status, quests, deaths). A hero's
   name opens its page, `save.html#hero=<id>` (back with "All heroes" to `#heroes`, previous/next): stat grid and
-  radar, then passive, rotation and gear (U22, R2 F15).
+  radar, then passive, rotation and gear (U22, R2 F15). The head's chips: class, level (`lv()`), status, then
+  "⚔️ 1,204 quests" and "💀 3 deaths" (`heroCounts`, U46; the former footer line is gone).
+  The Asc column's swatch (`ascSwatch` in `dom.ts`, shared with the inventory, maps and Profit) holds its number in
+  its own box (`.asc-n`, `text-box: trim-both cap alphabetic`), so the digit sits in the swatch's centre both ways (U46).
 - Empty sections (R2 F54): no heroes, no maps, no crafters, no gear on a hero: one muted line each.
 - Hero page (U22): rule everywhere in the save viewer: the passive comes before the rotation (hero page; the heroes
   CSV row already has `passive` before `rotation`).
@@ -120,8 +139,8 @@ flowchart LR
     "none" muted), no table.
   - Rotation: the wiki class page's rows (`table.ability-rows`): the whole row opens the wiki page
     (hover highlight, `clickableRow` in `dom.ts`), the AP shown with the same badge (`apBadge` in `dom.ts`); Basic
-    rows (0 AP) have no page. Rows: turn, skill, AP, effect. Consecutive Basic turns are one row, "3–5 Basic"
-    (R2 F15, `rotationGroups` / `turnLabel` in `save-tables.ts`); a repeated real skill keeps its rows.
+    rows (0 AP) have no page. Rows: turn, skill, AP, effect. One row per turn, all five, Basic turns included (U46:
+    R2 F15's merged "3–5 Basic" row and `rotationGroups` / `turnLabel` are gone).
   - AP budget beside the "Rotation" label: "18 / 20 AP used · 2 left" and a bar, the page's only AP figure (R1 F37:
     the stats under the radar no longer list AP; crit damage reads "×2.00"); over budget it warns that
     the game plays the default rotation instead (`Hero.calculateAPRemainder`). `HeroView.ap` in `save-tables.ts`:
@@ -133,11 +152,15 @@ flowchart LR
     gives one column). `bySlot(items, slotOf)` keys items by slot name or itemSlot number 1-6; the battle page can
     adopt the same helper.
   - Gear cards on the hero page follow the theme (R2 F16): the card is `--card-2` with the rarity-coloured name, not
-    the light sand inset in dark mode (the Battle page's gear cards are unchanged). The "?" by "Gear" says the border
-    is the rarity and a silver or gold outline around the name is ascension 1 or 2; each card's tooltip ends with
-    "Ascension 1 (silver outline)" (`ascOutlineText`). No gear at all is one muted line.
+    the light sand inset in dark mode (the Battle page's gear cards are unchanged). U46: the card's frame is the
+    item's ascension, a plain `--border` for 0 and the U5 silver / gold gradient for 1 and 2 (`gearAsc`: classes
+    `gear-asc asc-N`, the gradient drawn as the border box under a `--card-2` padding box), no longer the rarity; the
+    name keeps its rarity colour without the outline (`itemLink(…, { noOutline: true })`, the tooltip still names the
+    ascension). The "?" by "Gear" says so; each card's tooltip ends with "Ascension 1 (silver outline)"
+    (`ascOutlineText`). No gear at all is one muted line.
   - Tests: `web/test/hero-page.test.ts` (AP budget against the formula for levels 10-60, rotation AP, slot order),
-    `web/test/save-r2b.test.ts` (R2-B: Basic merging, stat grid, picker, crafter headers, empty states).
+    `web/test/save-r2b.test.ts` (R2-B: one rotation row per turn, stat grid, picker, crafter headers, empty states),
+    `web/test/save-u46.test.ts` (U46: wizard, chips, gear frames, swatch).
 - Crafters: headers "Lvl" (ascension 0), "Asc 1" + a silver bar, "Asc 2" + a gold bar (R2 F18), the bar being the
   ascension outline's gradient (`.lvl-asc`), named "Level for ascension-1 items" / "…-2 items" for screen readers
   (`crafterLevelFor` in `save-tables.ts`). How the levels work is a "?" on the "Lvl" header, not a paragraph under
@@ -1381,8 +1404,8 @@ U29: the game's names and descriptions follow a language picked in the top bar; 
     a last card alone fills its row instead of sitting alone in a column.
   - Home: no "Available" badge on the cards; Save viewer, Battle simulator, Wiki (the menu's order), then "Other tools"
     (Profit, Farming, Levelling, Class balance: frozen) as smaller, quieter cards. R2-A reworked it (below).
-  - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows and Steam Deck
-    paths, slot file names) under the drop zone of every page that uses `initSaveSource`, hidden once a save is
+  - Save help: one "Where is my save file?" section (`saveHelp()` in `save-source.ts`, folded, Windows, Steam Deck
+    and Mac paths, slot file names, the phone route and a "Step by step" link to the U46 wizard) under the drop zone of every page that uses `initSaveSource`, hidden once a save is
     loaded. R1-D: the pages' own HTML helps and the `data-save-help` marker are gone.
   - Save menu: groups split by separators. U44 order: Save file (Reload, Choose another file, Try the example save,
     Forget), the page's entries folded under their title ("Export (CSV) ▸" in the save viewer), Save pages, then

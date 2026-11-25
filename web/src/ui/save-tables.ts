@@ -101,26 +101,6 @@ export function rotationAp(skills: string[]): number {
   return skills.reduce((s, n) => s + (Number(G.abilityData?.[n]?.apCost) || 0), 0);
 }
 
-/** A run of the rotation shown as one row: turns `from`..`to` (1-based) all use `skill`. */
-export interface RotationGroup { from: number; to: number; skill: string }
-
-/**
- * The rotation as display rows (R2 F15): consecutive Basic turns merge into one row ("3–5 Basic"); every other
- * skill keeps its own row, even when repeated (each costs its AP).
- */
-export function rotationGroups(skills: string[]): RotationGroup[] {
-  const out: RotationGroup[] = [];
-  skills.forEach((skill, i) => {
-    const last = out[out.length - 1];
-    if (skill === "Basic" && last?.skill === "Basic" && last.to === i) last.to = i + 1;
-    else out.push({ from: i + 1, to: i + 1, skill });
-  });
-  return out;
-}
-
-/** "3", or "3–5" for a merged run. */
-export const turnLabel = (g: RotationGroup): string => (g.from === g.to ? String(g.from) : `${g.from}–${g.to}`);
-
 /**
  * R2 F15: the hero page's stat grid, four per row: HP Atk Matk Acc / Def Mdef Crit Crit damage, then Eva and Speed
  * when not 0, and AP only when the rotation has no budget line (R1 F37).

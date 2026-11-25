@@ -571,6 +571,8 @@ export interface LinkOpts {
    * "expansion content" placeholder.
    */
   always?: boolean;
+  /** No ascension outline around the name (the caller frames it: the hero page's gear cards, U46); still told in the tooltip. */
+  noOutline?: boolean;
 }
 
 /** Put the expansion badge inside a name link (plain icons: a link can't hold another link). */
@@ -613,13 +615,14 @@ export function itemLink(type: string, id: number, label?: string, rarity?: unkn
   const extra = { ascension: ascLevel(asc) };
   const needs = it && kind ? needsOf(kind, id, extra) : [];
   if (needs.length && !opts.always && !isVisible(kind!, id, extra)) return placeholderFor(kind!, id, extra);
-  if (!it) return withAsc(el("span", { class: `item rar-${r}` }, name), asc);
+  if (!it) return opts.noOutline ? el("span", { class: `item rar-${r}` }, name) : withAsc(el("span", { class: `item rar-${r}` }, name), asc);
   const a = el("a", { class: `wl item rar-${r}`, href: href.item(type, id) }, name);
   if (plain && kind) markName(a, kind as ItemType, id);
   const ascNote = ascLevel(asc) ? ` · ${ascText(asc)}` : "";
   tip(a, () => tipBox(itemName(type, id) ?? it.name, itemSummary(type, id).split(" — ")[0] + ascNote, itemSummary(type, id).split(" — ")[1] ?? "",
     type === "equipment" ? itemText(type, id) : "", needs)); // materials and consumables already show their text as the body
   withAsc(a, asc, name);
+  if (opts.noOutline) a.classList.remove("asc", "asc-1", "asc-2");
   return withBadge(a, needs);
 }
 

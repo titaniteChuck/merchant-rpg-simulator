@@ -6,6 +6,11 @@
  * Reload (same file, no dialog when the browser kept its handle), Choose another file and Forget. Dropping a file
  * anywhere on the page still works.
  *
+ * U46: "Choose another file", "Open your own save" (example loaded) and "Open your save" (no save) open the "Open your
+ * save" wizard (save.html#open, save-wizard.ts: PC or Mobile, then that platform's steps and "Pick a file"), not the
+ * file dialog. initSaveSource returns the dialog and the example save for the wizard's buttons; afterPick tells the
+ * page a chosen file was loaded (the save viewer then leaves the wizard).
+ *
  * Example save (U20): "Try with an example save" (a button under the drop zone, and an entry in the save menu) fetches
  * data/example-save.txt (an anonymised real save, web/scripts/make-example-save.ts) and loads it exactly like a picked
  * file named "Example save": same parsing, kept in IndexedDB for the other pages, Forget and choosing a file as usual.
@@ -37,6 +42,12 @@ import { noteSave } from "./expansion-state.ts";
 import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
 import { helpTip } from "./wiki-help.ts";
+import { OPEN_HREF } from "./save-wizard.ts";
+
+/** U46: the Save dropdown's open entries lead to the "Open your save" wizard (save.html#open, save-wizard.ts). */
+export function openWizard(): void {
+  location.assign(OPEN_HREF);
+}
 
 /** The no-save picker's "?" (R2 F19): what happens to the file, what the example is. */
 export const PICKER_HELP = [
@@ -73,6 +84,8 @@ export interface SaveSourceOptions {
   load: (text: string, name: string) => Promise<void>;
   /** Called after "Forget" (the page clears what it showed). */
   onForget?: () => void;
+  /** After a file (or the example) the visitor chose was loaded; not for the save kept in this browser. */
+  afterPick?: () => void;
   /** More entries for the save menu (e.g. the save viewer's CSV exports), asked for each time the menu opens. */
   menuExtras?: () => { title: string; items: { label: string; hint: string; run: () => void }[] };
 }
@@ -91,7 +104,10 @@ export function saveHelp(): HTMLElement {
       el("li", {}, el("strong", {}, "Linux / Steam Deck (Proton): "),
         code("<Steam library>/steamapps/compatdata/346750/pfx/drive_c/users/steamuser/AppData/Roaming/Retora/Merchant/Documents")),
       el("li", {}, "Slot 1 is ", code("PlayerData.txt"), ", slots 2 to 5 are ", code("Slot2Data.txt"), " … ", code("Slot5Data.txt"),
-        ". Backups (", code("…Backup1.txt"), ") work too.")));
+        ". Backups (", code("…Backup1.txt"), ") work too."),
+      el("li", {}, el("strong", {}, "Mac: "), code("~/Library/Application Support/Merchant/Documents")),
+      el("li", {}, el("strong", {}, "Phone: "), "the game's Options › Bug Report mails the save; send it to yourself. ",
+        el("a", { href: OPEN_HREF }, "Step by step"))));
 }
 
 function age(ms: number): string {
@@ -99,7 +115,10 @@ function age(ms: number): string {
   return new Date().toDateString() === new Date(ms).toDateString() ? `today ${short}` : short;
 }
 
-export function initSaveSource(o: SaveSourceOptions): void {
+/** What a page can do with its save source: open the file dialog, load the example save (the wizard's buttons). */
+export interface SaveSource { choose: () => void; useExample: () => Promise<void> }
+
+export function initSaveSource(o: SaveSourceOptions): SaveSource {
   const showError = (msg: string) => o.status.replaceChildren(el("p", { class: "error", role: "alert" }, msg));
   // The drop zone, with the <details> that wraps it on some pages.
   const dropBlock = (o.drop.closest("details") as HTMLElement | null) ?? o.drop;
@@ -123,7 +142,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
 
   /** The file actions of the Save dropdown with no save loaded. */
   const noSaveActions = (): SaveAction[] => [
-    { label: "📂 Open your save", hint: "Choose your save file (PlayerData.txt, Slot2Data.txt …)", run: () => chooseSave(pickerOpts) },
+    { label: "📂 Open your save", hint: "Where your save is, on PC or mobile, and pick it", run: openWizard },
     { label: "🧪 Try the example save", hint: "Load an anonymised real save, to try the tools without your own file", run: () => useExample() },
   ];
 
@@ -165,7 +184,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
     const fileGroup = el("div", { class: "save-menu-group", role: "group", "aria-label": "Save file" },
       el("p", { class: "muted small save-menu-title" }, "Save file"),
       ...(isExample ? [] : [item("⟳ Reload", canReread ? "Read the same file again (after the game saved)" : "Choose the file again", reload)]),
-      item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Open a different save", () => chooseSave(pickerOpts)),
+      item(isExample ? "📂 Open your own save" : "📂 Choose another file", "Where your save is, on PC or mobile, and pick it", openWizard),
       ...(isExample ? [] : [item("🧪 Try the example save", "Replace it with an anonymised real save (your file stays on your disk)", useExample)]),
       item("🗑 Forget", "Remove the save from this browser", forget));
     const extras = el("div", { class: "save-menu-extras" });
@@ -217,6 +236,7 @@ export function initSaveSource(o: SaveSourceOptions): void {
       const savedAt = Date.now();
       await putSave({ name: file.name, text, savedAt }, handle);
       await loaded(file.name, savedAt);
+      o.afterPick?.();
     } catch (e) {
       showError(`Could not read ${file.name}: ${e instanceof Error ? e.message : e}`);
     }
@@ -284,4 +304,5 @@ export function initSaveSource(o: SaveSourceOptions): void {
       showError(`The stored save ${s.name} could not be read: ${e instanceof Error ? e.message : e}`);
     }
   });
+  return { choose: () => void chooseSave(pickerOpts), useExample };
 }

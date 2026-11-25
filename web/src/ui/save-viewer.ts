@@ -11,16 +11,17 @@ import { loadSaveText, type Save } from "../tools/save.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import { ITEM_TYPE_PLURALS, itemName as shownItemName } from "./names.ts";
 import {
-  $, apBadge, ascSwatch, bar, bySlot, clickableRow, type Column, duration, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gold, gradeBadge,
-  heroAsc, pill, type Row as Cells, segmented, table, withAsc,
+  $, apBadge, ascLevel, ascSwatch, bar, bySlot, clickableRow, type Column, duration, el, fmt, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, gearGrid, gold, gradeBadge,
+  heroAsc, lv, pill, type Row as Cells, segmented, table, withAsc,
 } from "./dom.ts";
 import { radar, type RadarAxis } from "./radar.ts";
-import { initSaveSource } from "./save-source.ts";
+import { initSaveSource, type SaveSource } from "./save-source.ts";
+import { saveWizard, wizardRoute } from "./save-wizard.ts";
 import { badgeFor } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, rotationGroups, summary, toCsv, turnLabel, withAllTables,
+  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, summary, toCsv, withAllTables,
 } from "./save-tables.ts";
 
 let dataReady: Promise<void> | null = null;
@@ -143,21 +144,20 @@ function statGrid(stats: Record<string, number>, best: Best, hasApBudget: boolea
   }));
 }
 
-/** The hero page's gear "?" (R2 F16): what the card's border and the outline around a name mean. */
-const GEAR_HELP = ["The card's border is the item's rarity colour.",
-  "A silver outline around the name marks an ascension-1 item, a gold one ascension 2."];
+/** The hero page's gear "?" (R2 F16, U46): the name's colour is the rarity, the card's frame the ascension. */
+const GEAR_HELP = ["The item's name has its rarity colour.",
+  "A silver frame around the card marks an ascension-1 item, a gold one ascension 2."];
 
 /**
  * The rotation as the wiki class page's skill rows (table.ability-rows): turn, skill, AP badge, effect; the whole row
- * opens the skill's wiki page (Basic has none). R2 F15: consecutive Basic turns are one row ("3–5").
+ * opens the skill's wiki page (Basic has none). U46: one row per turn, Basic turns included (no "3–5" row any more).
  */
 export function rotationRows(skills: string[]): HTMLElement {
   const head = el("tr", {}, el("th", { scope: "col", class: "n" }, "#"), el("th", { scope: "col" }, "Skill"),
     el("th", { scope: "col", class: "ap-col" }, el("abbr", { title: "Action points" }, "AP")), el("th", { scope: "col" }, "Effect"));
-  const rows = rotationGroups(skills).map((g) => {
-    const sk = g.skill;
+  const rows = skills.map((sk, i) => {
     const link = skillLink(sk);
-    const tr = el("tr", {}, el("td", { class: "n", ...(g.to > g.from ? { title: `Turns ${g.from} to ${g.to}` } : {}) }, turnLabel(g)),
+    const tr = el("tr", {}, el("td", { class: "n" }, String(i + 1)),
       el("td", { class: "name" }, link),
       el("td", { class: "ap-col" }, apBadge(sk === "Basic" ? 0 : skillAp(sk))),
       el("td", { class: "eff" }, sk === "Basic" ? "Basic attack" : skillDesc(sk) || "–"));
@@ -216,10 +216,11 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
   // Two columns: weapon, head, body | hands, feet, trinket (gearGrid in dom.ts).
   // R2 F54: no gear at all is one muted line, not six empty slots.
   const gear = !v.gear.length ? el("p", { class: "muted small" }, "No gear equipped.") : gearGrid(bySlot(v.gear, (g) => g.slot), (g, s) =>
-    el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}`,
+    // U46: the card's frame is the ascension (silver, gold; plain for 0), the name keeps its rarity colour, no outline.
+    el("div", { class: `gear-item rar-${typeof g.rarity === "number" ? g.rarity : 1}${gearAsc(g.asc)}`,
       title: `${GEAR_SLOT_NAMES[s]}${g.item_level ? ` · item level ${g.item_level}` : ""}${ascOutlineText(g.asc)}` },
       el("span", { class: "slot-ico", role: "img", "aria-label": GEAR_SLOT_NAMES[s] }, GEAR_SLOT_ICONS[s]),
-      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true }),
+      itemLink("equipment", Number(g.id), String(g.name), g.rarity, g.asc, { always: true, noOutline: true }),
       el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
@@ -229,8 +230,9 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
     el("article", { class: `card hero hero-detail cls-${v.cls}` },
       el("header", { class: "hero-head" }, avatar(v, "big"),
         el("div", {}, el("h2", {}, name),
+          // U46: quests and deaths are chips next to the level and status.
           el("div", { class: "sub" }, pill(String(r.class)), ...[badgeFor("class", v.cls)].filter((x): x is HTMLElement => x !== null), pill(`Lvl ${r.level}`, "plain"),
-            pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate")))),
+            pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate"), ...heroCounts(r)))),
       el("div", { class: "hero-detail-grid" },
         el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
         el("section", { class: "hero-detail-side" },
@@ -238,8 +240,20 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
           passiveLine(String(r.passive || "")),
           el("div", {}, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ...(v.ap ? [apBudget(v.ap)] : [])),
             rotationRows(v.rotation)),
-          el("div", {}, el("p", { class: "section-label" }, "Gear ", helpTip(GEAR_HELP, "the gear frames")), gear))),
-      el("div", { class: "hero-foot" }, el("span", {}, `⚔️ ${fmt.format(Number(r.quests))} quests`), el("span", {}, `💀 ${r.deaths} deaths`))));
+          el("div", {}, el("p", { class: "section-label" }, "Gear ", helpTip(GEAR_HELP, "the gear frames")), gear)))));
+}
+
+/** The gear card's ascension frame class (U46): " gear-asc asc-1" / " gear-asc asc-2" (style.css), "" for 0. */
+export const gearAsc = (asc: unknown): string => {
+  const n = ascLevel(asc);
+  return n ? ` gear-asc asc-${n}` : "";
+};
+
+/** U46: the hero's quests and deaths as chips ("⚔️ 1,204 quests", "💀 3 deaths"). */
+export function heroCounts(r: Cells): HTMLElement[] {
+  const n = (k: string) => Number(r[k]) || 0;
+  const plural = (x: number, one: string) => `${fmt.format(x)} ${one}${x === 1 ? "" : "s"}`;
+  return [pill(`⚔️ ${plural(n("quests"), "quest")}`, "plain hero-count"), pill(`💀 ${plural(n("deaths"), "death")}`, "plain hero-count")];
 }
 
 /** The heroes as a sortable table; each name opens the hero's page. */
@@ -386,6 +400,8 @@ const tabHash = (t: Tab) => `#${t.toLowerCase()}`;
 const tabOf = (hash: string): Tab => TABS.find((t) => tabHash(t) === hash.toLowerCase()) ?? TABS[0];
 
 let current: { sv: Save; views: HeroView[] } | null = null;
+/** The page's save source (initSaveSource): the wizard's "Pick a file" and "Example save". */
+let source: SaveSource | null = null;
 
 /** U35: the menus' save sections (second row) only show once a save is loaded (style.css "menus + drawer"). */
 const markLoaded = (on: boolean) => {
@@ -401,11 +417,20 @@ function render(sv: Save, fileName: string): void {
 }
 
 /**
- * save.html#hero=<id> shows one hero; #overview, #heroes, #inventory, #maps, #crafters a section;
- * anything else (no hash) the Overview.
+ * save.html#open (#open=pc, #open=mobile) shows the "Open your save" wizard, with or without a save (U46);
+ * #hero=<id> one hero; #overview, #heroes, #inventory, #maps, #crafters a section; anything else (no hash) the Overview.
  */
 function route(): void {
-  if (!current) return;
+  const wiz = wizardRoute(location.hash);
+  // The wizard takes the no-save picker's place (style.css html.save-wizard).
+  document.documentElement.classList.toggle("save-wizard", wiz !== undefined);
+  if (wiz !== undefined) {
+    $("#save-status").replaceChildren();
+    $("#result").replaceChildren(saveWizard(wiz, { pick: () => source?.choose(), example: () => void source?.useExample() }));
+    document.title = "Open your save · Save viewer · Merchant RPG Simulator";
+    return;
+  }
+  if (!current) return void $("#result").replaceChildren();
   const { sv, views } = current;
   const m = /^#hero=(\d+)$/.exec(location.hash);
   const v = m ? views.find((x) => String(heroId(x, sv)) === m[1]) : undefined;
@@ -443,14 +468,20 @@ async function loadSave(text: string, name: string): Promise<void> {
 }
 
 function init(): void {
-  initSaveSource({
+  source = initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: loadSave,
     onForget: () => {
-      $("#result").replaceChildren();
+      current = null;
       markLoaded(false);
+      route(); // the wizard stays when it is open
+    },
+    // A file picked in the wizard: the save's Overview.
+    afterPick: () => {
+      if (wizardRoute(location.hash) !== undefined) location.hash = "overview";
     },
     menuExtras: () => ({ title: "Export (CSV)", items: csvExports() }),
   });
+  route(); // the wizard (save.html#open) shows before any save is loaded
   loadWikiText();
   loadData().catch((e) => showError(String(e)));
   // U29: another language rebuilds the rows (names) and redraws the tab or hero in place, filters and sorting kept.

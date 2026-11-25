@@ -88,6 +88,7 @@ function currentItem(s: NavSection, page: string, hash: string): string | undefi
   if (s.id === "save") {
     const h = hash.toLowerCase();
     if (/^#hero=/.test(h)) return "save.html#heroes";
+    if (/^#open(=|$)/.test(h)) return undefined; // the "Open your save" wizard (U46) is none of the Save pages
     return items.includes(`save.html${h}`) ? `save.html${h}` : "save.html#overview"; // no hash or an unknown one: Overview
   }
   if (s.id === "wiki") {

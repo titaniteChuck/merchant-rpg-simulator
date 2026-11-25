@@ -277,7 +277,6 @@ div.cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, m
   border-radius: 9px; background: var(--card-2); border-left: 3px solid var(--r, var(--border)); }
 .gear .slot-ico { font-size: 0.95rem; text-align: center; }
 .gear .meta { display: inline-flex; gap: 4px; align-items: center; }
-.hero-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 10px; margin-top: auto; }
 
 /* ------------------------------------------------------------------ tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
@@ -441,6 +440,11 @@ a.wl.asc { border-bottom: 0; }
 .avatar.asc::before { inset: -4px; padding: 2px; border-radius: 17px; }
 .slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
 .asc-swatch { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; vertical-align: middle; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 1; }
+/* U46: the number centred both ways: its own box (dom.ts ascSwatch), its line trimmed to the digits (cap height to
+   baseline, where text-box is supported) so the font's ascent and descent don't push it off-centre; text-align and
+   letter-spacing reset against a header's or a cell's own. */
+.asc-swatch .asc-n { display: block; line-height: 1; text-align: center; letter-spacing: 0; text-indent: 0; font-variant-numeric: tabular-nums;
+  text-box: trim-both cap alphabetic; }
 
 /* ------------------------------------------------------------------ battle page: search tabs */
 .search-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
@@ -1908,6 +1912,11 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .hero-detail .gear-item { background: var(--card-2); color: var(--fg); }
 .hero-detail .gear-item .item, .hero-detail .gear-item a.wl { color: color-mix(in srgb, var(--r, var(--fg)) var(--ink), var(--fg)); }
 .section-label .help-tip { vertical-align: middle; }
+/* U46: the card's frame is the item's ascension (plain for 0, the U5 silver / gold gradient for 1 and 2), no longer
+   its rarity; the name keeps the rarity colour and loses its outline (itemLink noOutline). */
+.hero-detail .gear-item { border-color: var(--border); border-left-width: 2px; }
+.hero-detail .gear-item.gear-asc { border-color: transparent;
+  background: linear-gradient(var(--card-2), var(--card-2)) padding-box, var(--asc-grad) border-box; }
 /* end r2-b */
 /* farming f2 */
 /* Farming planner, second batch (review F07, F11, F23): rare quests' "random offer" tag, the source cell and the
@@ -2302,3 +2311,24 @@ details.tools-other > .tools-other-help { margin: -4px 0 12px; }
    the right can't stretch the page (Profit at 375 px was 385 px wide; JOB 52 sweep). */
 td .visually-hidden, th .visually-hidden { left: 0; top: 0; }
 /* end a11y */
+/* u46 */
+/* The "Open your save" wizard (save-wizard.ts, save.html#open): it takes the no-save picker's place; step 1 is two
+   big choices, then a platform's numbered steps and the Pick a file button. */
+html.save-wizard #drop, html.save-wizard details:has(> #drop), html.save-wizard .example-save, html.save-wizard .save-help { display: none !important; }
+.save-wizard { max-width: 640px; margin: 8px auto 0; }
+.save-wizard .wiz-title { margin: 0 0 12px; font-size: 1.15rem; }
+.wiz-nav { margin: 0 0 8px; }
+.wiz-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+a.wiz-choice { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 8px; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--fg); text-decoration: none; text-align: center;
+  transition: border-color .15s, box-shadow .15s, transform .15s; }
+a.wiz-choice:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+.wiz-icon { font-size: 2rem; line-height: 1; }
+.wiz-label { font-size: 1.1rem; font-weight: 700; }
+.wiz-sub { font-size: 0.78rem; color: var(--muted); }
+.wiz-example { margin-top: 12px; }
+.wiz-steps { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; padding-left: 22px; }
+.wiz-paths { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.85rem; }
+.wiz-pick { font-size: 1rem; }
+.wiz-note { margin: 8px 0 0; }
+/* end u46 */

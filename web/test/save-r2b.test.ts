@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ascOutlineText, gridStats, rotationGroups, turnLabel } from "../src/ui/save-tables.ts";
+import { ascOutlineText, gridStats } from "../src/ui/save-tables.ts";
 
 const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
@@ -11,14 +11,10 @@ const source = read("web/src/ui/save-source.ts");
 const css = read("site/style.css");
 const block = css.slice(css.indexOf("/* r2-b */"), css.indexOf("/* end r2-b */"));
 
-test("F15: consecutive Basic turns merge into one rotation row, other skills keep theirs", () => {
-  const g = rotationGroups(["Slash", "Bash", "Basic", "Basic", "Basic"]);
-  assert.deepEqual(g, [{ from: 1, to: 1, skill: "Slash" }, { from: 2, to: 2, skill: "Bash" }, { from: 3, to: 5, skill: "Basic" }]);
-  assert.deepEqual(g.map(turnLabel), ["1", "2", "3–5"]);
-  // Runs split by another skill stay apart; a repeated real skill is never merged (each costs its AP).
-  assert.deepEqual(rotationGroups(["Basic", "Slash", "Basic", "Basic", "Slash", "Slash"]).map((x) => `${turnLabel(x)} ${x.skill}`),
-    ["1 Basic", "2 Slash", "3–4 Basic", "5 Slash", "6 Slash"]);
-  assert.deepEqual(rotationGroups([]), []);
+test("F15 / U46: the rotation is one row per turn, consecutive Basic turns included (no merged \"3–5\" row)", () => {
+  assert.match(viewer, /const rows = skills\.map\(\(sk, i\) => \{/);
+  assert.match(viewer, /el\("td", \{ class: "n" \}, String\(i \+ 1\)\)/);
+  assert.doesNotMatch(viewer, /rotationGroups|turnLabel/);
 });
 
 test("F15: the stat grid is HP Atk Matk Acc / Def Mdef Crit Crit damage, extras only when they count", () => {

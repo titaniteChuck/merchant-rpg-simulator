@@ -162,11 +162,15 @@ export function withAsc<T extends Element>(e: T, v: unknown, name = e.textConten
   return e;
 }
 
-/** The sortable "Asc" table cell: an outlined swatch (none for 0), the number for screen readers. */
+/**
+ * The sortable "Asc" table cell: an outlined swatch (none for 0), the number for screen readers. U46: the number is its
+ * own box (.asc-n, trimmed to the digits' height in style.css) so it sits in the swatch's centre both ways.
+ */
 export function ascSwatch(v: unknown): HTMLElement {
   const n = ascLevel(v);
   return n
-    ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) }, String(n))
+    ? el("span", { class: `asc-swatch asc asc-${n}`, role: "img", "aria-label": ascText(n), title: ascText(n)[0].toUpperCase() + ascText(n).slice(1) },
+      el("span", { class: "asc-n" }, String(n)))
     : el("span", { class: "muted" }, el("span", { "aria-hidden": "true" }, "–"), el("span", { class: "visually-hidden" }, ascText(0)));
 }
 
