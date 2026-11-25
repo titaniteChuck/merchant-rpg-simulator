@@ -58,5 +58,10 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideTip();
   });
-  document.addEventListener("scroll", hideTip, { passive: true });
+  // A scroll hides a hover tooltip, but keeps one whose element has keyboard focus: Tab to an off-screen
+  // element scrolls the page to it, and hiding there would make the tooltip never show (QA, 2026-11-25).
+  document.addEventListener("scroll", () => {
+    if (owner && owner === document.activeElement) place(owner);
+    else hideTip();
+  }, { passive: true });
 }
