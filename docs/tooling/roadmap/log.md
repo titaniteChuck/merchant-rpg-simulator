@@ -89,3 +89,4 @@
 - **Fix**: Save viewer's Essence / run counts the Skilled and Expert's prefixes (8c12ed9), through one map-essence function shared with the wiki.
 - **Fix**: Profit and Farming count the Skilled and Expert's essence bonus on maps (0236a86): cost per essence down 0.3–0.8%, no cheapest source changed; Save and Profit agree (map 22, Expert's, grade C: 195 / 98).
 - **Update**: U50 done (49401a8): Solver hero table with Must include / Neutral / Exclude per hero (saved per save; old locks become Must include), locks removed; the solve honours the states and refuses impossible ones.
+- **Update**: U51–U54 added from the user's second 2026-11-25 batch (Solver rows, Flow turn rows, save width and overview, wiki map time and Fight button, class page).
