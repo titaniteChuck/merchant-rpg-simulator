@@ -103,3 +103,4 @@
 - **Update**: U59 follow-up (9e9ba54): Flow 3 on phones is one vertical list of cards in time order (no fighter columns), class-colour edge on each card.
 - **Update**: U56 follow-up (e53adb1): wiki details facts as cards on items, maps, enemies and skills, coloured at card level (rarity, region, ascension); equipment's sell price back in a Sell card like consumables and materials.
 - **Update**: U59 follow-up (e588b50): Flow 3 cards have one compact HP bar with "remaining / total" inside it; shorter cards.
+- **Update**: U60 (wiki enemy details) and U61 (party HP chart) added; Flow 3 HP bar and phone list, wiki fact cards shipped as U59/U56 follow-ups.
