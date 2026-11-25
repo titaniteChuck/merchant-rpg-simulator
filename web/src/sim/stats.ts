@@ -6,6 +6,9 @@ const pctStats = ["atkPct", "matkPct", "defPct", "mdefPct", "accPct", "hpPct", "
 const pctEffect = ["atk", "matk", "def", "mdef", "acc", "maxHP", "eva"];
 const pctMinValue = [-0.9, -0.9, -1, -1, -1, -0.9, -1];
 
+/** U67 (display only): each stat's floor for its % sum, by stat ("atk" → -0.9), as calculatePercentStats applies it. */
+export const pctFloor: Record<string, number> = Object.fromEntries(pctEffect.map((k, n) => [k, pctMinValue[n]]));
+
 export function calculatePercentStats(target: Any): void {
   for (let n = 0; n < pctStats.length; n++) {
     const key = pctStats[n];

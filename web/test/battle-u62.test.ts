@@ -12,7 +12,7 @@ import { G } from "../src/sim/data.ts";
 import { enemyTimeline, loadTimelines } from "../src/tools/schedule.ts";
 import { linkedOpponent } from "../src/ui/battle-links.ts";
 import { enemyStats, enemyTurns, isFightable, parseQuestValue, questEntries, questValue } from "../src/ui/battle-setup.ts";
-import { CARD_STATS, type CardRow, fighterCard, STAT_LINES, statGrid } from "../src/ui/fighter-card.ts";
+import { CARD_STATS, type CardRow, ENEMY_STATS, fighterCard, HERO_STATS, statGrid } from "../src/ui/fighter-card.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -169,17 +169,17 @@ test("the picker shows each choice's effect; the passive's effect is not on its 
   assert.match(block, /\.pk-opt \.pk-note \{ grid-column: 1 \/ -1;/);
 });
 
-// ---------------------------------------------------------------- 6. stats on two lines
-test("the stats fit two lines: HP Atk Matk Def / Mdef Acc Eva Crit, the same on hero and enemy cards", () => {
-  assert.deepEqual(STAT_LINES.map((l) => l.map(([, label]) => label)), [["HP", "Atk", "Matk", "Def"], ["Mdef", "Acc", "Eva", "Crit"]]);
+// ---------------------------------------------------------------- 6. the stats (U67: HP, then two per row)
+test("the stats: HP, then two per row; no Eva on a hero card, no Crit on the enemy's (U67)", () => {
+  assert.deepEqual(HERO_STATS.map(([, label]) => label), ["HP", "Atk", "Matk", "Def", "Mdef", "Acc", "Crit"]);
+  assert.deepEqual(ENEMY_STATS.map(([, label]) => label), ["HP", "Atk", "Matk", "Def", "Mdef", "Acc", "Eva"]);
   const g = statGrid(STATS) as unknown as F;
   assert.equal(g.tagName, "dl");
-  assert.equal(g.children.length, CARD_STATS.length);
-  assert.deepEqual(g.querySelectorAll("dt").map((d) => d.textContent), ["HP", "Atk", "Matk", "Def", "Mdef", "Acc", "Eva", "Crit"]);
-  assert.equal(g.querySelector("dd")!.textContent, "12.3K", "five digits shortened");
-  assert.equal(g.querySelector("dd")!.title, "HP 12,345");
-  assert.deepEqual((statGrid(null) as unknown as F).querySelectorAll("dd").map((d) => d.textContent), Array(8).fill("–"));
-  assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.equal(g.children.length, HERO_STATS.length);
+  assert.deepEqual(g.querySelectorAll("dt").map((d) => d.textContent), ["HP", "Atk", "Matk", "Def", "Mdef", "Acc", "Crit"]);
+  assert.equal(g.querySelector("dd.fc-val")!.textContent, "12.3K", "five digits shortened");
+  assert.equal(g.querySelector("dd.fc-val")!.title, "HP 12,345");
+  assert.deepEqual((statGrid(null) as unknown as F).querySelectorAll("dd.fc-val").map((d) => d.textContent), Array(7).fill("–"));
   // the enemy's are the engine's, the same eight keys
   assert.deepEqual(Object.keys(enemyStats(72)), CARD_STATS.map(([k]) => k));
   assert.match(fn(page, "drawEnemyCard"), /: enemyStats\(foe\.id, foe\.rare, foe\.n\)/);

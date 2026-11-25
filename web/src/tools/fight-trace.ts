@@ -4,7 +4,7 @@
  * same fight as Simulate's first one (seed fightSeed(1, 0)), or the same map run as the Map run mode's first one, and
  * changes nothing in the engine: the trace only reads.
  */
-import { type TraceEffect, type TraceEntry, type TraceHit, type TraceLife, traceStart, traceStop } from "../sim/api.ts";
+import { type TraceEffect, type TraceEntry, type TraceHit, type TraceLife, type TraceOutcome, traceStart, traceStop } from "../sim/api.ts";
 import { fightSeed } from "./combat.ts";
 import type { MapSpec, Row, Scroll, Sim } from "./engine.ts";
 
@@ -22,8 +22,12 @@ export interface FightAction {
   /** The effects on every fighter after the action. */
   fx: TraceEffect[];
   misses: number;
-  /** Every fighter's HP and max HP after the action (0 = the enemy); U65: and its live stats. */
+  /** Every fighter's HP and max HP after the action (0 = the enemy); U65: and its live stats; U67: and their parts. */
   life: TraceLife[];
+  /** U67: the effect that took the action (did false) or changed it (a forced skill). */
+  by?: string;
+  /** U67: what the action did to each fighter it aimed at: damage, healing, misses, crits. */
+  out: TraceOutcome[];
 }
 
 export interface FightTrace {
@@ -45,7 +49,7 @@ function actionsOf(entries: TraceEntry[]): FightAction[] {
       order = 0;
     }
     actions.push({ turn: e.turn, order: order++, who: e.who, planned: e.act, did: e.did === undefined ? e.act : e.did,
-      hits: e.hits ?? [], fx: e.fx ?? [], misses: e.misses ?? 0, life: e.life ?? [] });
+      hits: e.hits ?? [], fx: e.fx ?? [], misses: e.misses ?? 0, life: e.life ?? [], ...(e.by ? { by: e.by } : {}), out: e.out ?? [] });
   }
   return actions;
 }

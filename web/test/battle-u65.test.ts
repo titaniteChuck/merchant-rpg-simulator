@@ -14,7 +14,7 @@ import { fightSeed } from "../src/tools/combat.ts";
 import { traceFight, traceMapRun } from "../src/tools/fight-trace.ts";
 import { loadSaveText } from "../src/tools/save.ts";
 import { locationOf, mapRoomTabs, planTimeline } from "../src/ui/battle-plan.ts";
-import { CARD_STATS, fighterCard, paintCard } from "../src/ui/fighter-card.ts";
+import { cardStats, fighterCard, paintCard } from "../src/ui/fighter-card.ts";
 import { addCredits, CHART_TABS, chartLayout, chartTab, drawHpChart, hpChart, hpData, type HpFighter, HP_W, nearestStep, niceMax, pickStep, plotted, stepAfterKey } from "../src/ui/hp-chart.ts";
 import { fmt, fmtCompact } from "../src/ui/dom.ts";
 import type { FakeElement } from "./helpers/fake-dom.ts";
@@ -210,12 +210,15 @@ test("the cards at a turn: HP, the engine's live stats, the effects and the row 
   const [w, s] = Object.entries(odinData.steps[t].states).find(([, x]) => x.fx.length && x.active !== null)!;
   const stats = { ...s.stats!, maxHP: s.maxHP };
   const rot = [0, 1, 2, 3, 4].map((k) => ({ text: `Skill ${k}` }));
-  const card = fighterCard({ kind: Number(w) ? "hero" : "enemy", head: document.createElement("span") as unknown as HTMLElement, stats,
-    turn: { life: { hp: s.hp, maxHP: s.maxHP, label: "x" }, fx: s.fx, active: s.active }, passive: { text: "Might" }, rotation: rot }) as unknown as F;
+  const kind = Number(w) ? "hero" : "enemy";
+  const card = fighterCard({ kind, head: document.createElement("span") as unknown as HTMLElement, stats,
+    turn: { hp: s.hp, fx: s.fx, active: s.active }, passive: { text: "Might" }, rotation: rot }) as unknown as F;
   const kids = card.children.map((c) => c.className);
-  assert.deepEqual(kids.slice(1, 5), ["fc-hp", "fc-stats", "fc-fx", "fc-rows fc-passive"], "bar, stats, effects, then the passive");
-  assert.deepEqual(card.querySelectorAll("dd").map((x) => x.textContent),
-    CARD_STATS.map(([k]) => (Math.abs(stats[k]) >= 10_000 ? fmtCompact.format(stats[k]) : fmt.format(stats[k]))));
+  // U67: no HP bar; the HP cell reads "HP now / max HP"
+  assert.deepEqual(kids.slice(1, 4), ["fc-stats", "fc-fx", "fc-rows fc-passive"], "stats, effects, then the passive");
+  assert.deepEqual(card.querySelectorAll("dd.fc-val").map((x) => (x.querySelector("span.v-full") ?? x).textContent),
+    cardStats(kind).map(([k]) => (k === "maxHP" ? `${fmt.format(s.hp)} / ${fmt.format(s.maxHP)}`
+      : Math.abs(stats[k]) >= 10_000 ? fmtCompact.format(stats[k]) : fmt.format(stats[k]))));
   const fx = card.querySelector("ul.fc-fx")!;
   assert.equal(fx.children.length, s.fx.length);
   for (const [k, c] of s.fx.entries()) {
@@ -226,21 +229,20 @@ test("the cards at a turn: HP, the engine's live stats, the effects and the row 
   const rows = card.querySelectorAll("li.fc-turn");
   assert.deepEqual(rows.map((r) => r.classList.contains("active")), [0, 1, 2, 3, 4].map((k) => k === s.active));
   assert.equal(rows[s.active!].getAttribute("aria-current"), "true");
-  assert.equal(card.querySelector(".fc-hp")!.querySelector('[role="img"]')!.getAttribute("aria-label"), "x");
-  // another turn painted in place: one bar, one grid, the effects and the mark follow (turn 0: none of them)
-  paintCard(card as unknown as HTMLElement, { stats: odinData.steps[0].states[Number(w)].stats!, fx: [], active: null,
-    life: { hp: 1, maxHP: 2, label: "y" } });
-  assert.equal(card.querySelectorAll(".fc-hp").length, 1);
+  // another turn painted in place: one grid, the effects and the mark follow (turn 0: none of them)
+  paintCard(card as unknown as HTMLElement, { stats: odinData.steps[0].states[Number(w)].stats!, hp: 1, fx: [], active: null });
+  assert.equal(card.querySelectorAll(".fc-hp").length, 0, "U67: no HP bar");
   assert.equal(card.querySelectorAll("dl.fc-stats").length, 1);
   assert.equal(card.querySelectorAll("ul.fc-fx").length, 0);
   assert.equal(card.querySelectorAll("li.active").length, 0);
   paintCard(card as unknown as HTMLElement, { stats: null });
-  assert.equal(card.querySelectorAll(".fc-hp").length, 0, "no fight: the card's own stats only");
+  assert.equal(card.querySelectorAll("span.fc-mod-btn").length, 0, "no fight: the card's own stats only");
   // the page paints every hero card and the enemy's from the chart's step (the Flows' trace)
   const paint = fn(page, "paintTurn");
   assert.match(paint, /const at = chart\?\.steps\[turnAt\];/);
   assert.match(paint, /paintCard\(card, inFight/);
   assert.match(paint, /stats: now\.stats \? \{ \.\.\.now\.stats, maxHP: now\.maxHP \}/);
+  assert.match(paint, /\.\.\.turnOfCard\(at, w, now\)/, "U67: HP, modifiers, effects, outcome");
   assert.match(paint, /drawEnemyCard\(\);/);
   assert.match(fn(page, "showHp"), /paintTurn\(\);/);
 });

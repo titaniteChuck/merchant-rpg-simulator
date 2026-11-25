@@ -540,6 +540,38 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Details panel: no "XP per hero", "Quest time" or "XP / min" (`questXpTiles`, `mapXpTiles` deleted). A quest's
     details: Turns, Enemy HP removed, Party HP left. A map's: Progress, Turns per room, Time (per run; the map's craft
     time in its "?"), Loot value, Party HP left, Essence: six tiles, no lone tile on a row.
+- U67, the Party view's cards at the chart's turn (both pages; `web/src/ui/fighter-card.ts`, `web/src/ui/card-turn.ts`,
+  `battle-page.ts`, the trace in `web/src/sim/api.ts` and `web/src/tools/fight-trace.ts`; tests
+  `web/test/battle-u67.test.ts`, CSS in the `U67` block; the U62 and U65 card tests updated):
+  - No HP bar on the cards (U65's `.fc-hp` and its rule are gone); HP is the first stat, "HP now / max HP".
+  - The stats (`statGrid`, `HERO_STATS`, `ENEMY_STATS`): HP across both columns, then two per row, each three cells,
+    `<name> <value> (<modifier>)` ("Atk 1,234 (+15%)"), lined up on a six-column grid (`.fc-stat` is
+    `display: contents`). A hero card: Atk Matk / Def Mdef / Acc Crit (no Eva); the enemy's: Atk Matk / Def Mdef /
+    Acc Eva (no Crit). The value is the engine's at the selected turn's end (effects applied). The modifier is that
+    stat's % sum then, floored as the game floors it (`pctFloor` in `sim/stats.ts`), plus an effect's flat points
+    ("+15% +50", "+25"; "set" for Holy Shield and the swaps); none, no modifier part. Green when up, red when down,
+    dotted; focusable, its tooltip (`tooltip.ts` `tip`: hover, focus, tap) lists each part with its source (an effect
+    with its caster and turns left, the passive, an item by its "[Prefix]" name, enchantments, a potion, scrolls,
+    "Other") and the calculation in the game's order: `(Base + flat) × (1 + sum of %) = value` (Hero /
+    Enemy.determineStats, then statsService `calculatePercentStats`), the floor said when it applies (`modTipLines`).
+    The % parts include the passive's and the gear's, which apply all fight long, so the sum is the engine's own.
+  - The effects listed under the stats are only those that are no stat modifier (a stun, a taunt, a damage over
+    time: `nonStatFx`); the stat ones are in the modifiers. U65's one-line list of every buff and debuff is gone.
+  - The turn's rotation row ((turn − 1) mod 5) says what came of the action (`outcomeText`, `.fc-out`, focusable, the
+    per-target lines in its tooltip): 💫 (`role=img`, "Action lost: Stun") when an effect took it; else per target,
+    " · " between targets: the damage ("!" a crit), "Miss", "+N" a heal, "(1 miss)" when a multi-hit skill missed some.
+    Nothing for a skill without a target (a buff).
+  - A phone (560 px and less, where the two party rows stack): hero cards two per row; inside a card one stat per row
+    (two would not fit half a phone's width), a hero's HP from five digits shortened ("12.3K / 20K").
+  - The trace (read only, Lua parity unchanged): each `life` entry has the fighter's stat parts (`TraceLife.mods`,
+    `TraceMod`: stat, pct / flat / set, value, source, engine name, and an effect's caster, skill, turns, debuff),
+    the start's too; each action its outcome per target (`TraceEntry.out`, `TraceOutcome`: damage, healing, hits,
+    heals, misses, crits; from the action's own calculations, not a tick) and the effect that took or changed it
+    (`by`, recorded by `Combatant._didBy`, a display field like `_did`). The non-effect % parts are read from the hero
+    (passive, items at or under its level, enchants, potion, the map's scroll buff); what the engine's sum holds
+    beyond those is "Other" (the game keeps an enemy's Acc % across stat updates). `card-turn.ts` reads these for a
+    card at a step (`cardTurnOf`: `modsAt`, `statMods`, `outcomeAt`, `nonStatFx`); `battle-page.ts` keeps the chart's
+    fought runs (`chartRuns`) and heroes' names for it (`turnOfCard`).
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,

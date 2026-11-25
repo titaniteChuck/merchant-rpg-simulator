@@ -8,7 +8,7 @@
  *   const r = fight(81, [h], [], { seed: 1 })
  */
 import { Battle, current, determineBattleGrade } from "./battle.ts";
-import { type CalcSink, calcState, Combatant, type Effect, hooks } from "./combatant.ts";
+import { type CalcSink, calcState, Combatant, type Effect, hooks, statToPct } from "./combatant.ts";
 import { G, loadGameData as loadData } from "./data.ts";
 import { attackListUnlocked, D, heroMaxActionPoints, setMode as setDefaultsMode } from "./defaults.ts";
 import { Equipment } from "./equipment.ts";
@@ -68,6 +68,10 @@ export interface TraceEntry {
    * turn 0): HP, max HP, stats and effects.
    */
   start?: { life: TraceLife[]; fx: TraceEffect[] };
+  /** U67: the effect that took the action (did false: a stun, a freeze) or changed it (a forced skill). */
+  by?: string;
+  /** U67: what the actor's own action did to each fighter it aimed at (damage, healing, misses, crits). */
+  out?: TraceOutcome[];
 }
 /** U65: a fighter's HP, max HP and live stats at one moment of a traced fight. */
 export interface TraceLife {
@@ -75,6 +79,43 @@ export interface TraceLife {
   hp: number;
   maxHP: number;
   stats?: Record<string, number>;
+  /** U67: the parts of its live stats (none when it has none). */
+  mods?: TraceMod[];
+}
+/**
+ * U67: one part of a fighter's live stat, as the game builds it (Hero / Enemy.determineStats, then statsService
+ * calculatePercentStats): stat = (base + flat parts) × (1 + sum of % parts), the sum floored (stats.ts pctFloor).
+ * - "pct": a share in the stat's % sum (0.15 = +15%), from an effect, the passive, an item, an enchant, a potion, the
+ *   map's scrolls, or "other": what the engine's sum holds beyond those (a % the game keeps from earlier stat
+ *   updates, as an enemy's Acc %);
+ * - "flat": points an effect adds before the % (Inspiration's Atk, Expose Weakness's Crit);
+ * - "set": an effect that sets the stat itself (Holy Shield's Mdef, Swap Attack, Swap Defense).
+ * Max HP is "maxHP"; Eva is left out for heroes (the cards don't show it).
+ */
+export interface TraceMod {
+  stat: string;
+  kind: "pct" | "flat" | "set";
+  value: number;
+  src: "effect" | "passive" | "item" | "enchant" | "potion" | "scroll" | "other";
+  /** Engine name (English): the effect, the passive, the item (prefix and suffix included), the potion. */
+  name: string;
+  /** An effect's: who put it on (0 the enemy, 1-6 a party location) and with which skill, its turns left, a debuff. */
+  from?: number;
+  skill?: string;
+  turns?: number;
+  debuff?: boolean;
+}
+/** U67: one fighter the actor's own action aimed at (0 the enemy, 1-6 a party location). */
+export interface TraceOutcome {
+  who: number;
+  /** Damage of the hits that landed on it while standing (crits included), and HP really healed. */
+  dmg: number;
+  heal: number;
+  /** Hits that landed, heals received, attacks that missed, landed hits that were critical. */
+  hits: number;
+  heals: number;
+  miss: number;
+  crit: number;
 }
 /** U65: the stats the trace records per fighter (the Party view cards' eight, max HP apart). */
 export const TRACE_STATS = ["atk", "matk", "def", "mdef", "acc", "eva", "crit"] as const;
@@ -269,11 +310,102 @@ function lifeOf(b: Battle): TraceLife[] {
   return fighters(b).map(([who, f]) => ({ who, hp: f.questHP, maxHP: f.maxHP,
     stats: Object.fromEntries(TRACE_STATS.map((k) => [k, num(f[k])])) }));
 }
+/** U67: the fighter field of each % sum, by the stat it multiplies. */
+const PCT_FIELD: Record<string, string> = { maxHP: "hpPct", atk: "atkPct", matk: "matkPct", def: "defPct", mdef: "mdefPct", acc: "accPct", eva: "evaPct" };
+const PCT_STAT: Record<string, string> = Object.fromEntries(Object.entries(PCT_FIELD).map(([k, v]) => [v, k]));
+/** U67: the stats an effect may add points to (before the %). */
+const FLAT_STATS = new Set(["maxHP", "atk", "matk", "def", "mdef", "acc", "eva", "crit"]);
+/** U67: the effects whose statFunc sets stats, and which ones. */
+const SET_STATS: Record<string, string[]> = { "Holy Shield": ["mdef"], "Swap Attack": ["atk", "matk"], "Swap Defense": ["def", "mdef"] };
+
+/**
+ * U67: the parts of a fighter's live stats (read only): its stat effects (determineEffectStats: OnTurn and Permanent
+ * ones), then the rest of each % sum: a hero's enchants, potion, gear, scrolls and passive (Hero.determineStats), and
+ * what the engine's sum holds beyond them ("other").
+ */
+function modsOf(f: Any): TraceMod[] {
+  const out: TraceMod[] = [];
+  const hero = Boolean(f.heroInventory);
+  const counted: Record<string, number> = {};
+  for (const e of f.effectList as Effect[]) {
+    if (e.trigger !== "OnTurn" && e.trigger !== "Permanent") continue;
+    const src = fxSource.get(e);
+    const meta = { src: "effect" as const, name: e.name ?? "?", ...(src ? { from: src.from, skill: src.skill } : {}),
+      ...(typeof e.turns === "number" ? { turns: e.turns } : {}), ...(e.debuff ? { debuff: true } : {}) };
+    if (e.statFunc) {
+      for (const stat of SET_STATS[e.name] ?? []) out.push({ stat, kind: "set", value: 0, ...meta });
+      continue;
+    }
+    for (const [k, v] of Object.entries(e.stats ?? {})) {
+      if (typeof v !== "number" || !v) continue;
+      const field = statToPct[k] ?? k;
+      const pctOf = PCT_STAT[field];
+      if (pctOf) {
+        counted[field] = (counted[field] ?? 0) + v;
+        if (!(hero && pctOf === "eva")) out.push({ stat: pctOf, kind: "pct", value: v, ...meta });
+      } else if (FLAT_STATS.has(field) && !(hero && field === "eva")) out.push({ stat: field, kind: "flat", value: v, ...meta });
+    }
+  }
+  for (const [stat, field] of Object.entries(PCT_FIELD)) {
+    if (hero && stat === "eva") continue;
+    let rest = num(f[field]) - (counted[field] ?? 0);
+    const add = (src: TraceMod["src"], name: string, v: Any) => {
+      if (typeof v === "number" && v) {
+        out.push({ stat, kind: "pct", value: v, src, name });
+        rest -= v;
+      }
+    };
+    if (hero) {
+      for (const e of f.enchantList ?? []) add("enchant", "Enchantment", e.stat?.[field]);
+      if (f.boost) add("potion", String(G.itemData?.consumable?.[f.boost.id]?.name ?? "Potion"), f.boost.stats?.[field]);
+      for (let i = 1; i <= len(f.heroInventory); i++) {
+        const item = f.heroInventory[i];
+        if (item && !(item.itemLevel > f.level)) add("item", String(item.name ?? "?"), item[field]);
+      }
+      if (f.campaignID !== -1 && f.campaign?.battleBuff) add("scroll", "Scrolls", f.campaign.battleBuff[field]);
+      add("passive", String(f.passiveSelect), G.passiveData[f.passiveSelect]?.stats?.[field]);
+    }
+    if (Math.abs(rest) > 1e-9) out.push({ stat, kind: "pct", value: rest, src: "other", name: "Other" });
+  }
+  return out;
+}
+/** U67: life records with each fighter's stat parts. */
+function withMods(b: Battle, life: TraceLife[]): TraceLife[] {
+  const fs = new Map(fighters(b));
+  return life.map((l) => {
+    const mods = modsOf(fs.get(l.who));
+    return mods.length ? { ...l, mods } : l;
+  });
+}
+/**
+ * U67: what the actor's own action did to each fighter it aimed at, from the action's calculations: its hits and
+ * heals (not a damage or heal over time, not a hit on a fighter already down).
+ */
+function outcomeOf(me: number, evs: TraceCalc[]): TraceOutcome[] {
+  const out = new Map<number, TraceOutcome>();
+  for (const x of evs) {
+    if (x.from !== me || x.tick || x.to < 0) continue;
+    if (x.kind === "dmg" && !x.missed && x.hpBefore <= 0) continue;
+    if (!out.has(x.to)) out.set(x.to, { who: x.to, dmg: 0, heal: 0, hits: 0, heals: 0, miss: 0, crit: 0 });
+    const o = out.get(x.to)!;
+    if (x.kind === "heal") {
+      o.heals++;
+      o.heal += Math.max(0, x.hpAfter - Math.max(0, x.hpBefore));
+    } else if (x.missed) o.miss++;
+    else {
+      o.hits++;
+      o.dmg += x.total;
+      if (x.crit) o.crit++;
+    }
+  }
+  return [...out.values()].sort((a, b) => a.who - b.who);
+}
+
 /** U65: the battle as it begins, taken before its first action (read only), handed to that action's entry. */
 let startSnap: TraceEntry["start"];
 
 /** What the trace adds for display (U39, U40): reads the fighters and the action's records, changes nothing. */
-function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" | "fx" | "misses" | "battle" | "life"> {
+function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" | "fx" | "misses" | "battle" | "life" | "by" | "out"> {
   const hits: TraceHit[] = [], fx: TraceEffect[] = [];
   const evs = [...calcs].sort((x, y) => x.seq - y.seq);
   for (const [who, f] of fighters(b)) {
@@ -299,8 +431,9 @@ function traceDetail(b: Battle, c: Combatant): Pick<TraceEntry, "did" | "hits" |
     for (const e of f.effectList) fx.push(traceEffect(who, f, e));
   }
   if (b !== traceBattle.b) traceBattle = { b, no: traceBattle.no + 1 };
-  const life = lifeOf(b);
-  return { did: c._did ?? null, hits, fx, misses: snap ? num(c.combatStatistics.misses) - snap.misses : 0, battle: traceBattle.no, life };
+  const life = withMods(b, lifeOf(b));
+  return { did: c._did ?? null, hits, fx, misses: snap ? num(c.combatStatistics.misses) - snap.misses : 0, battle: traceBattle.no, life,
+    ...(c._didBy ? { by: String(c._didBy) } : {}), out: outcomeOf(whoOf(c), evs) };
 }
 
 hooks.beforeAction = (c) => {
@@ -311,7 +444,7 @@ hooks.beforeAction = (c) => {
     // U65: a battle's first action (traceDetail moves traceBattle on after it): the state before anything happened.
     if (current.battle !== traceBattle.b) {
       const b = current.battle;
-      startSnap = { life: lifeOf(b), fx: fighters(b).flatMap(([who, f]) => f.effectList.map((e: Effect) => traceEffect(who, f, e))) };
+      startSnap = { life: withMods(b, lifeOf(b)), fx: fighters(b).flatMap(([who, f]) => f.effectList.map((e: Effect) => traceEffect(who, f, e))) };
     }
   }
   return dealt(c);

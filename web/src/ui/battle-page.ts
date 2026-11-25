@@ -43,8 +43,8 @@ import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
-import { type CardRow, fighterCard, paintCard } from "./fighter-card.ts";
-import { hpTexts } from "./flow-hp.ts";
+import { type CardRow, type CardTurn, fighterCard, paintCard } from "./fighter-card.ts";
+import { cardTurnOf } from "./card-turn.ts";
 import type { PickOption } from "./pick-list.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
@@ -53,8 +53,8 @@ import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.t
 import { loadTimelineData, timelineOf } from "./timeline.ts";
 import type { PlanEdit } from "./flow-parts.ts";
 import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
-import { locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
-import { drawHpChart, type HpChartData, hpData, type HpRun, pickStep } from "./hp-chart.ts";
+import { locationLabel, locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
+import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
@@ -755,7 +755,7 @@ function drawEnemyCard(): void {
     lines: [...(foe.room ? [el("p", { class: "fc-line small muted" }, foe.room.startsWith("Boss") ? "Boss room" : `Room ${foe.room.split(" ·")[0]}`)] : []),
       ...(d?.questType === 6 ? [el("p", { class: "fc-line small muted" }, "Attacks first")] : [])],
     stats: now?.stats ? { ...now.stats, maxHP: now.maxHP } : enemyStats(foe.id, foe.rare, foe.n),
-    ...(now ? { turn: { life: { hp: now.hp, maxHP: now.maxHP, label: `${name}: ${hpTexts(now.hp, now.maxHP).full} HP` }, fx: now.fx, active: now.active } } : {}),
+    ...(now && at ? { turn: turnOfCard(at, 0, now) } : {}),
     rotation: enemyRotation(foe.id, foe.rare),
   }));
 }
@@ -1162,6 +1162,8 @@ function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void
   const box = hpBox();
   const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
   chart = runs ? hpData(runs, fighters) : null;
+  // U67: the heroes' names, for the cards' modifiers and outcomes (the fought runs' traces are the chart's own, chart.runs).
+  chartNames = new Map(fighters.map((f) => [f.who, f.name]));
   // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0.
   turnAt = chart ? pickStep(chart, turnPick) : 0;
   if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
@@ -1174,6 +1176,7 @@ function showHp(runs: HpRun[] | null, members: PlanMember[], hide = false): void
  * turn; it outlives a new trace, so an edit keeps the turn when the new fight still has it).
  */
 let chart: HpChartData | null = null;
+let chartNames = new Map<number, string>();
 let turnAt = 0;
 let turnPick: { run: number; turn: number } = { run: 0, turn: 0 };
 
@@ -1198,14 +1201,23 @@ function paintTurn(): void {
     const idx = state.slots[key] ?? null;
     const raw = heroRaw(idx);
     if (!raw) return;
-    const now = at?.states[locationOf(key.startsWith("front") ? "front" : "back", Number(key.slice(-1)))];
-    const inFight = now && inc.has(key);
+    const w = locationOf(key.startsWith("front") ? "front" : "back", Number(key.slice(-1)));
+    const now = at?.states[w];
+    const inFight = at && now && inc.has(key);
     paintCard(card, inFight
-      ? { stats: now.stats ? { ...now.stats, maxHP: now.maxHP } : heroCardStats(idx, raw), fx: now.fx, active: now.active,
-        life: { hp: now.hp, maxHP: now.maxHP, label: `${raw.name}: ${now.hp <= 0 ? "down, " : ""}${hpTexts(now.hp, now.maxHP).full} HP` } }
+      ? { stats: now.stats ? { ...now.stats, maxHP: now.maxHP } : heroCardStats(idx, raw), ...turnOfCard(at, w, now) }
       : { stats: heroCardStats(idx, raw) });
   });
   drawEnemyCard();
+}
+
+/**
+ * U67: a card's state at the chart's step beyond the chart's own (cardTurnOf, card-turn.ts): HP now, each stat's
+ * modifier parts, the effects that are no stat modifier, the row played and what came of it.
+ */
+function turnOfCard(at: HpChartData["steps"][number], who: number, now: FighterState): Omit<CardTurn, "stats"> {
+  const nameOf = (w: number) => (w ? chartNames.get(w) ?? locationLabel(w) : chart?.runs[at.run]?.enemy ?? "Enemy");
+  return { hp: now.hp, active: now.active, ...cardTurnOf(chart?.runs[at.run]?.trace, at.turn, who, now.fx, nameOf) };
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)

@@ -29,7 +29,8 @@ export interface Effect {
   [k: string]: Any;
 }
 
-const statToPct: Record<string, string> = {
+/** Effect stat key → the fighter field it adds to (determineEffectStats); U67: the trace reads it too. */
+export const statToPct: Record<string, string> = {
   atk: "atkPct", matk: "matkPct", def: "defPct", mdef: "mdefPct", acc: "accPct", maxHP: "hpPct",
   crit: "crit", critMod: "critMod", eva: "evaPct",
   atkBns: "atk", matkBns: "matk", accBns: "acc", defBns: "def", mdefBns: "mdef",
@@ -128,8 +129,10 @@ export class Combatant {
   }
 
   private _determineAction(turnNumber: number): Any {
-    // What the combatant really played (read by the trace only): the skill, false when stunned, null when dead.
+    // What the combatant really played (read by the trace only): the skill, false when stunned, null when dead. U67:
+    // and the effect that took or changed the action (read by the trace only).
     this._did = null;
+    this._didBy = undefined;
     if (truthy(this.reviveCooldown)) this.reviveCooldown = Math.max(0, this.reviveCooldown - 1);
     if (this.isDead) {
       this.isDead = true;
@@ -154,8 +157,8 @@ export class Combatant {
     }
     if (finalActionName !== actionName && finalActionName !== undefined && finalActionName !== null) {
       actionName = finalActionName;
+      this._didBy = triggerEffect;
     }
-    void triggerEffect;
     this._did = actionName;
     const target = this.getTarget();
     let action: Any;

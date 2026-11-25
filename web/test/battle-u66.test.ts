@@ -247,10 +247,10 @@ test("Clear all is in the Simulate panel, with its undo; no longer over the card
   assert.match(fn(page, "clearAll"), /#party-tools \.clear-all/);
 });
 
-test("CSS: the U66 block closes style.css; theme tokens only", () => {
+test("CSS: the U66 block follows U65's (later blocks such as U67 may come after it); theme tokens only", () => {
   const block = css.slice(css.indexOf("/* U66 */"), css.indexOf("/* end U66 */"));
   assert.ok(block.length > 200);
-  assert.ok(css.trimEnd().endsWith("/* end U66 */"));
+  assert.ok(css.indexOf("/* U66 */") > css.indexOf("/* end U65 */"), "U66 after U65");
   for (const sel of [".hp-scroll", ".hp-fight", ".hp-step", ".sim-bar .party-tools"]) assert.ok(block.includes(sel), sel);
   assert.doesNotMatch(block.replace(/\/\*[\s\S]*?\*\//g, ""), /#[0-9a-f]{3,6}\b/i);
 });

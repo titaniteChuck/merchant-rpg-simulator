@@ -105,7 +105,8 @@ export interface HpChartData {
   /** Index of the first step of each run, its turn 0 (a map run's room boundaries; [0] for a quest). U66: a later
    * room's turn 0 shares its x with the step before it (the last room's last turn). */
   runStarts: number[];
-  runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number }[];
+  /** U67: each fought run's trace too, so the cards read the very run a step counts (no second filter). */
+  runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number; trace: TracedFight }[];
 }
 
 /** U65: the chart's tabs, one x axis. */
@@ -226,7 +227,7 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
     })
     .filter((s) => s.values.some(Boolean));
   return { steps, series, runStarts,
-    runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns })) };
+    runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns, trace: r.trace })) };
 }
 
 /** U65: the step to show: the one wanted (run and turn) when this fight still has it, else turn 0 (the first room's). */
