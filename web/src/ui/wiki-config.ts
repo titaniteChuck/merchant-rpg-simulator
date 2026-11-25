@@ -192,7 +192,7 @@ export interface MapView {
 }
 
 /** The map built by the engine with a configuration, at grade C; null when the engine can't (unknown map). */
-export function mapView(id: number, cfg: ItemConfig): MapView | null {
+function buildMap(id: number, cfg: ItemConfig): Any | null {
   // The seed only draws the rooms (none of these figures); a level-70 map's room draw can crash (its missing treasure
   // tier, docs maps.md), so a few seeds are tried.
   let map: Any = null;
@@ -203,6 +203,32 @@ export function mapView(id: number, cfg: ItemConfig): MapView | null {
       if (!itemOf("map", id)) return null;
     }
   }
+  return map;
+}
+
+/** Essence of one run of a built map at `grade`, no party luck: [essence id, amount] (default.mapEssenceReward). */
+function runEssence(id: number, asc: number, grade: number, map: Any): [number, number][] {
+  try {
+    return mapEssenceReward(id, asc, grade, map.finalMapStats, 0).map((e: Any) => [e.id, e.amount] as [number, number]);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Essence one run of a map gives with a configuration, at a grade (default C), no party luck: [essence id, amount].
+ * The engine's figure (default.finalMapMod, then mapEssenceReward), so every modifier counts: the prefix's sell and
+ * the suffix's atk on essenceBase, and a prefix's essence modifier (Skilled × 1.25, Expert's × 1.5, data.PrefixData
+ * mapStats.essenceMod). The wiki map page and the save viewer's maps table both use it.
+ */
+export function mapRunEssence(id: number, cfg: ItemConfig, grade = 3): [number, number][] {
+  const map = buildMap(id, cfg);
+  return map ? runEssence(id, cfg.asc, grade, map) : [];
+}
+
+/** The map built by the engine with a configuration, at grade C; null when the engine can't (unknown map). */
+export function mapView(id: number, cfg: ItemConfig): MapView | null {
+  const map = buildMap(id, cfg);
   if (!map) return null;
   const prefixStats: Record<string, number> = {};
   for (const k of Object.keys(prefixData(cfg.prefix)?.mapStats ?? {})) {
@@ -212,10 +238,7 @@ export function mapView(id: number, cfg: ItemConfig): MapView | null {
   try {
     sell = sellValue("map", id, cfg.asc, modCount(cfg)) ?? null;
   } catch { /* unknown */ }
-  let essence: [number, number][] = [];
-  try {
-    essence = mapEssenceReward(id, cfg.asc, 3, map.finalMapStats, 0).map((e: Any) => [e.id, e.amount] as [number, number]);
-  } catch { /* none */ }
+  const essence = runEssence(id, cfg.asc, 3, map);
   return { rarity: map.rarity, enemyMod: map.enemyMod, essenceBase: map.finalMapStats.essenceBase ?? 1, essence, stats: map.finalMapStats, prefixStats, sell };
 }
 

@@ -12,9 +12,8 @@ import { itemName as englishItemName, rarity, sellValue } from "../tools/engine.
 import {
   className as classNameOf, crafterName, enemyName, itemName as shownItemName, itemTypeText, modItemName, prefixTag, suffixName,
 } from "./names.ts";
-import { type Game, gameFromData } from "../tools/gamedata.ts";
-import { mapEssence } from "../tools/profit.ts";
 import { type Save, stackAmount } from "../tools/save.ts";
+import { mapRunEssence } from "./wiki-config.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -204,17 +203,15 @@ export function inventoryRows(sv: Save): Row[] {
   return rows;
 }
 
-let game: Game | null = null;
 /**
- * Essence one run of an owned map gives: [essence id, amount], from the profit model (its grade, ascension, prefix
- * and suffix), as the former savegame.py map_rows did.
+ * Essence one run of an owned map gives at its grade: [essence id, amount]. The wiki map page's engine figure
+ * (wiki-config mapRunEssence) with the map's ascension, prefix and suffix, so a prefix's essence modifier (Skilled,
+ * Expert's) counts.
  */
 export function mapEssenceOf(it: Any): [number, number][] {
   if (!G.itemData.map?.[it.id]) return [];
-  game ??= gameFromData();
   const grade = Number.isInteger(it.grade) ? it.grade : 3;
-  const ess = mapEssence(game, it.id, it.prestigeLevel || 0, grade, [[1.0, it.prefix || 0, Math.max(it.suffix || 0, 0)]]);
-  return [...ess].map(([key, amt]) => [Number(key.split("|")[1]), amt]);
+  return mapRunEssence(it.id, { asc: it.prestigeLevel || 0, prefix: it.prefix || 0, suffix: Math.max(it.suffix || 0, 0) }, grade);
 }
 
 /** Owned maps (map_rows), with the essence one run gives. */

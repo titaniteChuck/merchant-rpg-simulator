@@ -10,14 +10,13 @@ import type { FakeElement } from "./helpers/fake-dom.ts";
 const api = await import("../src/sim/api.ts");
 const { G } = await import("../src/sim/data.ts");
 const {
-  configHref, configQuery, configRoute, equipmentAt, mapEnemyStats, mapView, NO_CONFIG, normaliseConfig, parseConfig, parseHash, prefixEffect,
+  configHref, configQuery, configRoute, equipmentAt, mapEnemyStats, mapRunEssence, mapView, NO_CONFIG, normaliseConfig, parseConfig, parseHash, prefixEffect,
   validAscs, validPrefixes, validSuffixes, configSell, configRarity, consumableStatsAt, isConfigurable,
 } = await import("../src/ui/wiki-config.ts");
 const { itemLink, href } = await import("../src/ui/wiki-data.ts");
 const { enemyTable } = await import("../src/ui/wiki-enemies.ts");
 const { parseSave } = await import("../src/tools/save.ts");
-const { inventoryRows, mapRows, savedMods } = await import("../src/ui/save-tables.ts");
-
+const { inventoryRows, mapEssenceOf, mapRows, savedMods } = await import("../src/ui/save-tables.ts");
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 
 const MAP = 22; // Grimal-Frentir Map, level 52, Enemy × 2, boss 89
@@ -102,6 +101,30 @@ test("a save map's link carries its ascension, prefix and suffix", () => {
   assert.equal(configHref("equipment", Number(eq.id), savedMods(eq)), "wiki.html#/item/equipment/15?asc=2&prefix=1&suffix=5");
 });
 
+test("save maps table: a prefix's essence modifier counts, as on the wiki map page", () => {
+  const EXPERT = 36; // Expert's: sell 0.3 (essenceBase × 1.3) and mapStats.essenceMod 1.5 (data.PrefixData)
+  const SKILLED = 35; // Skilled: sell 0.25 and essenceMod 1.25
+  const sv = parseSave({
+    version: 1.21, gameMode: "Standard", gold: 0, mapSlotsUnlocked: 4, sales: [], crafter: [], hero: [], inventory: [],
+    // map 22 at grade 3: no prefix, Titan's (sell 0.3, no essence modifier), Expert's, Skilled
+    mapInventory: ["4|16|1|3|0|0|A0B0C0|0", `4|16|1|3|${TITAN}|0|A0B0C0|0`, `4|16|1|3|${EXPERT}|0|A0B0C0|0`, `4|16|1|3|${SKILLED}|0|A0B0C0|0`],
+  });
+  const [plain, titan, expert, skilled] = sv.mapInventory.map(mapEssenceOf);
+  assert.deepEqual(plain, [[140, 100], [255, 50]]);
+  assert.deepEqual(titan, [[140, 130], [255, 65]]);
+  // Expert's: × 1.5 over the same sell without the modifier (Titan's), × 1.95 over no prefix
+  // (the game rounds once: 50 × 1.3 × 1.5 = 97.5 → 98)
+  assert.deepEqual(expert, [[140, 195], [255, 98]]);
+  assert.deepEqual(expert, titan.map(([id, amt]) => [id, Math.round(amt * 1.5)]));
+  assert.deepEqual(expert, plain.map(([id, amt]) => [id, Math.round(amt * 1.3 * 1.5)]));
+  // the same figures as the wiki map page with that configuration
+  assert.deepEqual(expert, mapView(MAP, { asc: 0, prefix: EXPERT, suffix: 0 })!.essence);
+  assert.deepEqual(skilled, mapView(MAP, { asc: 0, prefix: SKILLED, suffix: 0 })!.essence);
+  assert.deepEqual(plain, mapView(MAP, NO_CONFIG)!.essence);
+  // and the table row's text form (the CSV)
+  assert.match(String(mapRows(sv)[2].essence), /^195 .+, 98 .+$/);
+});
+
 test("computed values change with a modifier (engine figures)", () => {
   const plain = mapView(MAP, NO_CONFIG)!;
   assert.equal(plain.enemyMod, 2);
@@ -125,6 +148,10 @@ test("computed values change with a modifier (engine figures)", () => {
   assert.match(prefixEffect("map", MAP, TITAN), /essence ×1\.3, enemy HP \+240/);
   // Skilled's essence modifier counts on top of its sell (essenceBase 1.25 × 1.25)
   assert.deepEqual(mapView(MAP, { asc: 0, prefix: 35, suffix: 0 })!.essence, [[140, 156], [255, 78]]);
+
+  // the shared helper is the map page's figure, and takes a grade
+  assert.deepEqual(mapRunEssence(MAP, { asc: 0, prefix: 35, suffix: 0 }), [[140, 156], [255, 78]]);
+  assert.deepEqual(mapRunEssence(MAP, NO_CONFIG, 3), plain.essence);
 
   // asc 1: Enemy × doubled, the essence becomes the asc-2 tier
   const a1 = mapView(MAP, { asc: 1, prefix: 0, suffix: 0 })!;
