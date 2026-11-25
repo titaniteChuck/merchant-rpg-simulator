@@ -258,6 +258,17 @@ function toggleWhy(btn: HTMLElement, costs: Record<string, CostPart>, open: Set<
 }
 
 /**
+ * R3: on a phone the Item column is sticky (style.css), so the wrapper's scroll-padding-left is that column's width
+ * (`--pf-sticky`, kept up to date as it resizes): focusing or scrolling to a cell never leaves it under the column.
+ */
+export function stickyPad(wrap: HTMLElement): HTMLElement {
+  const first = wrap.querySelector<HTMLElement>("th"); // the Item column's head (the first header cell)
+  if (!first || typeof ResizeObserver === "undefined") return wrap;
+  new ResizeObserver(() => wrap.style.setProperty("--pf-sticky", `${first.offsetWidth}px`)).observe(first);
+  return wrap;
+}
+
+/**
  * dom.ts table over the sorted rows (first `limit`), with the explanation of each column on its header and
  * the sort kept by the caller, so that filtering does not lose it.
  */
@@ -288,6 +299,7 @@ export function rankedTable(o: RankedTableOptions): HTMLElement {
     // Our handler runs after dom.ts's own: re-sort the whole list, not only the rows shown.
     btn.addEventListener("click", () => o.onSort({ key: c.key, desc: c.key === o.sort.key ? !o.sort.desc : Boolean(c.num) }));
   });
+  stickyPad(wrap);
   if (sorted.length <= shown.length) return wrap;
   const more = el("button", { type: "button", class: "secondary" }, `Show ${fmt.format(Math.min(MORE_STEP, sorted.length - shown.length))} more`);
   more.addEventListener("click", o.onMore);

@@ -1588,6 +1588,16 @@ function onLanguage(): void {
 }
 
 /**
+ * R3: the map run that Scribe hidden pushed back to a quest (syncOppKinds), kept apart from the current opponent and
+ * from the remembered one, so the fallback itself stays as it is; null when there is none. In this page only.
+ */
+let scribeFallback: OppChoice | null = null;
+/** A map run can still be set up as it was: maps offered, and its map among them. */
+function mapRunValid(o: OppChoice): boolean {
+  return mapsAvailable() && o.map !== undefined && mapOptions(state.sv).some(([, list]) => list.some(([v]) => v === o.map));
+}
+
+/**
  * The expansion switches changed: rebuild the opponent card (the pickers' lists change), keeping the chosen enemy or
  * map when it is still offered, and the search panel (its candidate options).
  */
@@ -1595,14 +1605,30 @@ function onExpansions(): void {
   if (!state.sv) return;
   // The choice on screen, else (first build, U36) the one remembered from an earlier visit.
   const built = Boolean(document.querySelector("#quest, #map"));
-  const was = built ? currentOpponent() : storedOpponent();
+  let was = built ? currentOpponent() : storedOpponent();
   // R1 F02: nothing remembered: a quest that fits the save's heroes, not the first bush of the list.
   if (!built && !was.quest) was.quest = startQuest();
   if (!built && was.kind) {
     const r = document.querySelector<HTMLInputElement>(`input[name=opp][value=${was.kind}]`);
     if (r) r.checked = true;
   }
+  // R3: Scribe shown again: the map run its hiding pushed back to a quest comes back, if that map is still offered.
+  if (scribeFallback && !mapsHidden()) {
+    const back = scribeFallback;
+    scribeFallback = null;
+    const r = document.querySelector<HTMLInputElement>("input[name=opp][value=map]");
+    if (r && oppKind() === "quest" && mapRunValid(back)) {
+      r.checked = true;
+      was = { ...was, ...back, kind: "map" };
+    }
+  }
+  const wasMap = oppKind() === "map";
   syncOppKinds();
+  // R3: Scribe hidden pushed a map run back to a quest: remember that map run on its own (put back above once Scribe
+  // shows again).
+  if (wasMap && oppKind() !== "map" && mapsHidden()) {
+    scribeFallback = { kind: "map", map: was.map, asc: was.asc, grade: was.grade, scrolls: was.scrolls };
+  }
   saving = false;
   try {
     restoreOpponent(was);

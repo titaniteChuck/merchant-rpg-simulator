@@ -13,7 +13,7 @@ import { $, chipToggle, el, fmt1, gold, segField, segmented, tabKeys, tile } fro
 import { isDefaultRequest, type Orb, type ProfitRequest, type ProfitResponse, type Row } from "./profit-worker.ts";
 import {
   enchantColumns, essenceColumns, goldCell, type InfoColumn, itemColumns, MORE_STEP, type ProfitTab, profitTabs, rankedTable, type SortState,
-  STRATEGY, TAB_LABELS,
+  STRATEGY, stickyPad, TAB_LABELS,
 } from "./profit-tables.ts";
 import { initSaveSource } from "./save-source.ts";
 import { itemLink, loadWikiText, REGIONS } from "./wiki-data.ts";
@@ -349,7 +349,7 @@ const orbRegion = (band: number): string => {
 };
 
 function orbsPanel(r: Result): HTMLElement[] {
-  const best = (tier: number) => el("div", { class: "table-wrap pf-table" }, el("table", {},
+  const best = (tier: number) => stickyPad(el("div", { class: "table-wrap pf-table" }, el("table", {},
     el("thead", {}, el("tr", {}, ...["Orb", "Region", "Cost per orb", "Cheapest map", "Orbs per run"]
       .map((h, i) => el("th", { scope: "col", class: i === 2 || i === 4 ? "num" : "" }, h)))),
     el("tbody", {}, ...r.orbs.filter((o) => o.tier === tier && isVisible("material", o.id)).map((o) => el("tr", {},
@@ -358,7 +358,7 @@ function orbsPanel(r: Result): HTMLElement[] {
       el("td", { class: "num" }, gold(o.cost, 1)),
       el("td", {}, o.mapId === null ? "—" : el("span", { class: "nowrap" }, itemLink("map", o.mapId, undefined, undefined, o.mapAsc),
         ...(o.label && o.label !== "as crafted" ? [el("span", { class: "muted small" }, ` · ${o.label}`)] : []))),
-      el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun)))))));
+      el("td", { class: "num" }, o.perRun === null ? "—" : fmt1.format(o.perRun))))))));
   const f = state.filters;
   const rows = r.essence.filter(visibleOrbRow).filter((x) => f.orb === "all" || String(x.essence_id) === f.orb)
     .filter((x) => !f.q.trim() || `${x.map} ${x.essence} ${itemName("map", Number(x.map_id)) ?? ""} ${itemName("material", Number(x.essence_id)) ?? ""}`.toLowerCase().includes(f.q.trim().toLowerCase()));

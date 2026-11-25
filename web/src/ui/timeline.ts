@@ -330,10 +330,14 @@ function actorEl(l: TimelineLine): HTMLElement[] {
   return [skill, ...(l.misses ? [el("span", { class: "tc-miss", title: `${l.misses} attack${l.misses > 1 ? "s" : ""} missed` }, "miss")] : [])];
 }
 
-/** One term of a formula: its operator, then its words, where it comes from on hover. */
+/**
+ * One term of a formula: its operator, then its words; where it comes from in the shared tooltip (R3 QA: tip(), so it
+ * shows on hover, keyboard focus and tap, and is announced through aria-describedby; a `title` only showed on hover).
+ */
 function termEl(t: CalcTerm): HTMLElement[] {
-  return [...(t.op ? [el("span", { class: "cf-op", "aria-hidden": t.op === "=" ? "false" : "true" }, ` ${t.op} `)] : []),
-    el("span", { class: `cf-term${t.kind ? ` cf-${t.kind}` : ""}`, title: t.tip, tabindex: "0" }, t.text)];
+  const term = el("span", { class: `cf-term${t.kind ? ` cf-${t.kind}` : ""}`, tabindex: "0" }, t.text);
+  tip(term, () => t.tip);
+  return [...(t.op ? [el("span", { class: "cf-op", "aria-hidden": t.op === "=" ? "false" : "true" }, ` ${t.op} `)] : []), term];
 }
 
 /** The calculation of a fighter's damage or healing in one action (U40): one block per hit or heal, then their sum. */
@@ -355,7 +359,8 @@ function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) 
  * in column order), and turns to "▸"; clicking again closes it.
  */
 function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
-  const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false", title: `How ${what} was worked out` }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"), " calculation");
+  const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false" }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"), " calculation");
+  tip(btn, () => `How ${what} was worked out`);
   let panel: HTMLElement | null = null;
   btn.addEventListener("click", () => {
     if (panel) {
@@ -419,6 +424,25 @@ function roundDivider(round: number): HTMLElement {
 }
 
 /**
+ * R3 QA: the rotation turns (1-5) the fight never reached (it ended sooner), one compact muted row each, "planned, not
+ * reached": each hero's planned skill with its ▾ (the same PlanEdit, so the same party state and AP limit refusal as
+ * the reached turns). Nothing when every rotation turn was played.
+ */
+function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit): HTMLElement[] {
+  const turns = [1, 2, 3, 4, 5].filter((t) => !reached.has(t));
+  if (!turns.length) return [];
+  return [el("div", { class: "pg-cycle tc-unreached-head", role: "row" }, el("span", { role: "cell" }, "Planned, not reached")),
+    ...turns.map((t) => el("div", { class: "tc-turn tc-unreached", role: "rowgroup", "aria-label": `Turn ${t}: planned, not reached` },
+      el("div", { class: "tc-turnlab", role: "rowheader" }, `T${t}`),
+      el("div", { class: "tc-lines" }, el("div", { class: "tc-line", role: "row" }, ...cols.map((c) => {
+        if (c.kind !== "hero") return el("div", { class: "tc-cell", role: "cell" });
+        const planned = (c.cells[t - 1] as HeroCell).planned;
+        return el("div", { class: "tc-cell tc-planned", role: "cell" },
+          el("span", { class: "tc-skill" }, planned === "Basic" ? "Basic" : skillLink(planned)), ...skillEdit(edit, c.loc!, t, planned));
+      })))))];
+}
+
+/**
  * The flow diagram (U39, U40): every turn of one simulated fight, from turn 1 to its end. Per turn, one line per
  * action in action order (the actor's column: the skill; the others: damage −, healing +, each with its "▾
  * calculation", and what a landed effect does), then the end-of-turn summary on its own background: each fighter's HP
@@ -460,7 +484,7 @@ function flowChart(tl: EnemyTimeline, cols: PlanColumn[], trace: TracedFight, ed
     });
     body.append(more);
   }
-  body.append(result);
+  body.append(result, ...unreachedRows(cols, new Set(data.turns.map((t) => t.turn)), edit));
   return el("div", { class: "tl pg tc", role: "group", "aria-label": "The fight, turn by turn and action by action" },
     el("div", { class: "pg-scroll tc-scroll" }, el("div", { class: "pg-grid tc-grid", role: "table", style: `--pg-cols: ${cols.length}` },
       el("div", { class: "pg-row pg-heads", role: "row" }, el("div", { class: "pg-turn", role: "columnheader" }, "Turn"), ...planHeads(tl, cols, edit)),
@@ -494,6 +518,7 @@ export function planNote(quest: { id: number; rare: boolean }): string {
   "Each turn shows the fight action by action, one line per fighter in the order they act: the skill in the actor's column, the "
     + "damage (−) or healing (+) in the column of whoever takes it, and what an effect that lands does (+15% Def). ▾ calculation after a "
     + "number opens how it was worked out. Under the lines, on their own band, each fighter's HP and effects at the end of the turn, with "
-    + "their turns left. \"No target\": a hit on a fighter already down (the game plays the rest of the turn), which changes nothing.",
+    + "their turns left. \"No target\": a hit on a fighter already down (the game plays the rest of the turn), which changes nothing. "
+    + "A fight over before turn 5: the turns it never reached follow the result, muted, with their ▾.",
   "Without a party that can fight, the rotation as planned. [Skill]: where an effect comes from. Hover anything for the full text."].join(" ");
 }

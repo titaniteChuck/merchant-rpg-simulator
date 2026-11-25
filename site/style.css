@@ -1746,6 +1746,12 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .tc-result.won { background: color-mix(in srgb, var(--good) 18%, transparent); }
 .tc-result.lost { background: color-mix(in srgb, #ef4444 18%, transparent); }
 .tc-more { display: block; margin: 10px auto; }
+/* R3 QA: rotation turns the fight never reached, after the result: compact, muted, dashed; the ▾ stays usable. */
+.tc-unreached-head { margin-top: 12px; }
+.tc-unreached { padding: 2px 0; border-top: 1px dashed color-mix(in srgb, var(--border) 80%, transparent); }
+.tc-unreached .tc-cell { min-height: 1.2em; padding-block: 1px; }
+.tc-unreached .tc-planned { font-style: italic; background: color-mix(in srgb, var(--card-2) 50%, transparent); }
+.tc-unreached .tc-skill, .tc-unreached .tc-skill a.wl.skill { color: var(--muted); font-weight: 500; }
 /* Long fights: the page scrolls and the column heads stay at the top. On a narrow screen the chart scrolls sideways
    in its own frame (which then scrolls down too, so the heads still stick). */
 .tc .pg-heads { position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 4px; box-shadow: 0 1px 0 var(--border); }
@@ -2223,6 +2229,8 @@ footer .footer-line a { color: inherit; }
      width (100cqw) less the cell's left padding and the 22 px right-edge fade, keeping "10,000 g" out of the fade. */
   .table-wrap.pf-table { container-type: inline-size; }
   .pf-table .pf-why-row .pf-why { max-width: calc(100cqw - 12px - 22px - 6px); }
+  /* R3 QA: focusing or scrolling to a cell stops clear of the sticky Item column (its width, set by stickyPad). */
+  .table-wrap.pf-table { scroll-padding-left: var(--pf-sticky, 0px); }
 }
 /* end r3-profit */
 /* r3-farming */
