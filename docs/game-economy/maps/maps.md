@@ -2,7 +2,7 @@
 type: Mechanic
 title: Maps
 description: Maps are crafted by the Scribe, consumed when run, and yield essence plus room loot.
-timestamp: 2026-11-24
+timestamp: 2026-11-25
 ---
 
 # Maps
@@ -75,6 +75,8 @@ timestamp: 2026-11-24
 
 - `baseReward = {essenceIds…, amounts…}`.
 - Amount = `round(gradeBonus[grade] × amount × essenceBase × (1 + partyLuck / 100))` (`data.Default.lua:757`). Campaign grade = average of fights.
+  `essenceBase` = `(1 + prefix sell) × (1 + suffix stats.atk) × prefix essenceMod` (see [Prefix and suffix](#prefix-and-suffix)),
+  one rounding only.
   Party luck raises map essence; it does not change gold or XP.
 - Asc-1 map: each base essence becomes its asc-2 tier (see [ascension](../ascension/ascension.md)).
 
@@ -86,6 +88,10 @@ timestamp: 2026-11-24
 
 - Rolled at craft like equipment, but with no grade condition (see [crafting](../crafting/crafting.md#modifiers)).
 - Essence: prefix × `(1 + sell)`, suffix × `(1 + stats.atk)`. Suffix uses `stats.atk`, not `sell`.
+- A prefix's `mapStats.essenceMod` multiplies on top (`data.PrefixData.lua`): Skilled ×1.25, Expert's ×1.5.
+  `default.finalMapMod` folds it into `essenceBase` before the run, so `mapEssenceReward` rounds once (its second
+  `round(amount × essenceMod)` branch never fires). Map 22 (100 / 50) at grade C: 130 / 65 with Titan's (sell 0.3),
+  195 / 98 with Expert's (sell 0.3 × 1.5), 156 / 78 with Skilled.
 - Also raise rarity (sell value), cost and run time; prefixes add map stats; suffixes raise enemy strength.
 - With a level-60 Scribe on low-level maps: 24% prefix, 39% suffix, so about +26% essence on average.
 

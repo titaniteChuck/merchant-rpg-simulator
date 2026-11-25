@@ -2,7 +2,7 @@
 type: Tool
 title: Profit calculator
 description: The profit calculator (profit.ts) ranks every item and ascension level by sell value against its cheapest full production cost.
-timestamp: 2026-11-24
+timestamp: 2026-11-25
 ---
 
 # Profit calculator
@@ -50,6 +50,9 @@ The `how` column says which one won.
   `p_prefix%`, `p_suffix%`, `p_both%` give the odds; `ev_sell` and `ev_profit` are expected values.
 - An ascend route keeps the plain item plain, so its `ev_sell` = `sell`.
 - Crafted maps roll too, so expected essence per run includes their modifiers (`--no-map-mods` to compare).
+  `mapEssenceMultiplier` = (1 + prefix sell) × (1 + suffix atk) × the prefix's `mapStats.essenceMod` (Skilled ×1.25,
+  Expert's ×1.5, read from the game data), rounded once as in `default.mapEssenceReward`; it matches the engine's
+  `mapEssenceReward` on `finalMapStats` (`web/test/profit-map-essence.test.ts`).
 - `ascend_modded_*.csv`: gain of upgrading an item you already own with 0/1/2 modifiers
   (`sell after − sell before − essence × cost`).
 - Rules: [crafting](../../game-economy/crafting/crafting.md#modifiers), [selling](../../game-economy/selling/selling.md#base-value).

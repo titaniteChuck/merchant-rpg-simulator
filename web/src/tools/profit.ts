@@ -133,7 +133,8 @@ export type Outcome = [number, number, number];
 
 /**
  * Expected essence of one run; `outcomes` = modifier roll distribution of the map. default.mapEssenceReward:
- * round(gradeBonus[grade] x amount x essenceBase x (1 + partyLuck / 100)) per essence (data.Default.lua:757).
+ * round(gradeBonus[grade] x amount x essenceBase x (1 + partyLuck / 100)) per essence (data.Default.lua:757), essenceBase
+ * from mapEssenceMultiplier (prefix sell, suffix atk, prefix essence modifier).
  */
 export function mapEssence(g: Game, mid: number, prestige: number, grade: number, outcomes: Outcome[] = [[1.0, 0, 0]],
   luck = 0): Map<string, number> {
@@ -219,11 +220,16 @@ export interface IngredientBoost {
   suffix?: number;
 }
 
-/** Map:applyPrefix / applySuffix effect on essenceBase. */
+/**
+ * Final essenceBase of a map: Map:applyPrefix (x (1 + sell)), Map:applySuffix (x (1 + atk)), then
+ * default.finalMapMod folds the prefix's mapStats.essenceMod (Skilled x1.25, Expert's x1.5) into it, so
+ * mapEssenceReward rounds once.
+ */
 export function mapEssenceMultiplier(g: Game, prefix: number, suffix: number): number {
   let m = 1.0;
   if (prefix) m *= 1 + (g.prefixes.get(prefix).sell ?? 0);
   if (suffix) m *= 1 + (g.suffixes.get(suffix).stats?.atk ?? 0);
+  if (prefix) m *= g.prefixes.get(prefix).mapStats?.essenceMod ?? 1;
   return m;
 }
 
