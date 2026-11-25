@@ -113,3 +113,4 @@
 - **Update**: U64 done (0c3fee2): in the Flows a hero's skill name opens the in-place skill picker (effects and AP); no wiki links in any Flow; read-only views show plain text with the effect tooltip.
 - **Update**: U65 added (turn-driven Party view).
 - **Update**: U65 done (2b4bbd7): turn-driven Party view (full-width HP · Damage dealt · Heals chart picks the turn; cards show that turn's stats, effects and skill; one enemy per card, opponent choices in the Simulate panel; no XP tiles in the details); Lua parity held.
+- **Update**: U65 follow-up (c5f59a5): the Party chart of a map run has a turn 0 only for the first room; later rooms start at their turn 1, damage and heal totals carry on.
