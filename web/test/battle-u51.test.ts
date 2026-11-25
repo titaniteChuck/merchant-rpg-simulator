@@ -70,7 +70,7 @@ test("the tab row's one \"?\" follows the open tab, on the Simulator and the Sol
   }
   const show = fn(page, "showTab");
   assert.match(show, /partyTip\.hidden = tab !== "party";/);
-  assert.match(show, /flowTip\.hidden = tab !== "flow";/);
+  assert.match(show, /flowTip\.hidden = !flow;/); // U58: any of the Flow tabs
   assert.match(u51, /#plan-help:empty \{ display: none; \}/);
 });
 

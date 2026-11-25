@@ -30,7 +30,7 @@ import { enemyName, skillName } from "./names.ts";
 export type { PlanMember };
 
 /** The timeline's enemy in the visitor's language (U29). */
-const tlName = (tl: EnemyTimeline): string => enemyName(tl.quest, tl.rare) ?? tl.name;
+export const tlName = (tl: EnemyTimeline): string => enemyName(tl.quest, tl.rare) ?? tl.name;
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -252,7 +252,7 @@ function editControl(label: string, options: [string, string][], value: string, 
  * A column head's name with a ▾ (U40): the transparent <select> covers the name and the ▾, so clicking the name opens
  * the choices, as on the heroes' heads.
  */
-function nameEdit(name: Node | string, label: string, options: [string, string][] | OptionGroups, value: string, focus: string,
+export function nameEdit(name: Node | string, label: string, options: [string, string][] | OptionGroups, value: string, focus: string,
   onChange: (v: string) => void): HTMLElement {
   return el("span", { class: "fl-name", title: label, "data-flow-focus": focus }, el("strong", {}, name),
     el("span", { class: "fl-caret", "aria-hidden": "true" }, "▾"), selectEl(label, options, value, onChange));
@@ -272,7 +272,7 @@ function heroCellEl(c: HeroCell, loc: number, edit?: PlanEdit): HTMLElement {
 }
 
 /** The rotation slot's ▾ (turns 1-5 only: later turns repeat it). */
-function skillEdit(edit: PlanEdit | undefined, loc: number, turn: number, planned: string): HTMLElement[] {
+export function skillEdit(edit: PlanEdit | undefined, loc: number, turn: number, planned: string): HTMLElement[] {
   const opts = turn <= 5 ? edit?.skills(loc) : null;
   if (!edit || !opts) return [];
   const list = opts.some(([v]) => v === planned) ? opts : [...opts, [planned, skillName(planned)] as [string, string]];
@@ -306,7 +306,7 @@ function planHeads(tl: EnemyTimeline, cols: PlanColumn[], edit?: PlanEdit): HTML
 }
 
 // ---------------------------------------------------------------- the flow diagram (U39, U40)
-const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+export const fmtInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 /** Past this many turns the rest of a fight waits behind a button (a 200-turn stalemate is thousands of lines). */
 export const FLOW_PAGE = 100;
 
@@ -317,7 +317,7 @@ function fxEl(c: TimelineChip): HTMLElement {
 }
 
 /** The actor's cell: the skill it played (the planned one struck out under a stun or a forced action). */
-function actorEl(l: TimelineLine): HTMLElement[] {
+export function actorEl(l: TimelineLine): HTMLElement[] {
   if (l.did === null) return [el("span", { class: "tc-skill tc-down", title: "Down: no action" }, "down")];
   const played = l.did === false ? null : l.did;
   const skill = played === null
@@ -341,7 +341,7 @@ function termEl(t: CalcTerm): HTMLElement[] {
 }
 
 /** The calculation of a fighter's damage or healing in one action (U40): one block per hit or heal, then their sum. */
-function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) => string, shown: number): HTMLElement {
+export function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) => string, shown: number): HTMLElement {
   const views = calc.filter((c) => c.kind === kind && !(c.kind === "dmg" && c.missed)).map((c) => calcView(c, nameOf));
   const blocks = views.map((v) => el("div", { class: `cf-block${v.void ? " void" : ""}` }, el("div", { class: "cf-head" }, v.head),
     ...v.lines.map((l) => el("div", { class: "cf-line" }, ...(v.lines.length > 1 || l.label !== "Heal" ? [el("span", { class: "cf-label" }, `${l.label}: `)] : []),
@@ -361,7 +361,7 @@ function calcPanel(calc: TraceCalc[], kind: "dmg" | "heal", nameOf: (w: number) 
  * panel takes its column (battle-layout.ts calcColumn): exactly the column's width, its text wrapping inside; panels
  * of other columns sit side by side, a second one in the same column (damage and healing) under the first.
  */
-function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
+export function calcToggle(open: () => HTMLElement, box: HTMLElement, order: number, what: string): HTMLElement {
   // U48: the word goes on a phone (CSS), the ▾ stays; the button's name stays "calculation".
   const btn = el("button", { type: "button", class: "tc-calc-btn", "aria-expanded": "false" }, el("span", { class: "tc-caret", "aria-hidden": "true" }, "▾"),
     el("span", { class: "tc-calc-word" }, " calculation"));
@@ -427,7 +427,7 @@ function hpEl(v: { hp: number; maxHP: number } | undefined, name: string, turn: 
  * U51: the full-width band before a turn ("Turn 3"), in place of a "Turn" column: a row whose one header spans every
  * column (aria-colspan). A turn starting a new 5-turn round says the rotations start again (the old round divider).
  */
-function turnRow(turn: number, cols: number): HTMLElement {
+export function turnRow(turn: number, cols: number): HTMLElement {
   const b = turnBand(turn);
   return el("div", { class: "tc-turnrow", role: "row" }, el("div", { class: "tc-turnhead", role: "rowheader", "aria-colspan": String(cols) },
     b.label, ...(b.again ? [el("span", { class: "tc-again" }, " · ↻ rotations again")] : [])));
@@ -438,7 +438,7 @@ function turnRow(turn: number, cols: number): HTMLElement {
  * reached": each hero's planned skill with its ▾ (the same PlanEdit, so the same party state and AP limit refusal as
  * the reached turns). Nothing when every rotation turn was played.
  */
-function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit): HTMLElement[] {
+export function unreachedRows(cols: PlanColumn[], reached: Set<number>, edit?: PlanEdit): HTMLElement[] {
   const turns = [1, 2, 3, 4, 5].filter((t) => !reached.has(t));
   if (!turns.length) return [];
   return [el("div", { class: "pg-cycle tc-unreached-head", role: "row" }, el("span", { role: "cell" }, "Planned, not reached")),

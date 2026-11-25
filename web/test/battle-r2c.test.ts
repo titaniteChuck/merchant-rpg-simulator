@@ -119,8 +119,9 @@ test("F28: the flow's note is in its \"?\"; no heading repeating the tab", () =>
     assert.match(html, /<span id="party-help"><\/span><span id="plan-help" hidden><\/span>/);
   }
   assert.doesNotMatch(page, /flow-note/);
-  assert.match(page, /helpTip\(\[\.\.\.\(trace \? \[FLOW_NOTE\] : \[\]\), planNote\(t\)\], "the flow"\)/);
-  assert.match(page, /helpTip\(\[MAP_FLOW_NOTE, planNote\(/);
+  // U58: the open layout's own help (flow-layouts.ts; Flow 1's is planNote)
+  assert.match(page, /helpTip\(\[\.\.\.\(trace \? \[FLOW_NOTE\] : \[\]\), layout\.help\(t, Boolean\(edit\)\)\], "the flow"\)/);
+  assert.match(page, /helpTip\(\[MAP_FLOW_NOTE, layout\.help\(/);
 });
 
 test("F29: the room bar is a scroll row with edge fades", () => {

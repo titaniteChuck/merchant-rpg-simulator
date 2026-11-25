@@ -76,8 +76,11 @@ test("Battle and Solver: the Party / Flow tabs are a full tablist, keyboard from
     const html = read(page);
     assert.match(html, /<div class="tabs b3-tabs" role="tablist" aria-label="Views">/, page);
     assert.match(html, /<button id="tab-party" type="button" role="tab" aria-selected="true" aria-controls="setup-grid" data-tab="party">/, page);
-    assert.match(html, /<button id="tab-flow" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow" tabindex="-1">/, page);
-    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow" hidden>/, page);
+    // U58: three Flow tabs over one panel
+    for (const n of [1, 2, 3]) {
+      assert.match(html, new RegExp(`<button id="tab-flow${n}" type="button" role="tab" aria-selected="false" aria-controls="flow-panel" data-tab="flow${n}" tabindex="-1">`), page);
+    }
+    assert.match(html, /<div id="flow-panel" class="flow-panel" role="tabpanel" aria-labelledby="tab-flow1" hidden>/, page);
     assert.match(html, /<div id="setup-grid" class="setup-grid b3-grid" role="tabpanel" aria-labelledby="tab-party"/, page);
   }
   const bp = src("battle-page.ts");
@@ -88,7 +91,7 @@ test("Battle and Solver: the Party / Flow tabs are a full tablist, keyboard from
   // showTab keeps aria-selected, the roving tabindex and the panels in step.
   const show = bp.match(/function showTab\([\s\S]*?\n\}/)?.[0] ?? "";
   assert.match(show, /b\.setAttribute\("aria-selected", String\(on\)\);\s*b\.tabIndex = on \? 0 : -1;/);
-  assert.match(show, /\$\("#flow-panel"\)\.hidden = tab !== "flow";\s*\$\("#setup-grid"\)\.hidden = tab !== "party";/);
+  assert.match(show, /\$\("#flow-panel"\)\.hidden = !flow;\s*\$\("#setup-grid"\)\.hidden = tab !== "party";/);
 });
 
 test("Flow tab: the map room bar is a tablist over one room panel, keyboard from tabKeys", () => {

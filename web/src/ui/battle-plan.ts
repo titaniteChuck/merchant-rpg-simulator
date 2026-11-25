@@ -159,6 +159,9 @@ export interface PlanMember {
   cls: number;
   /** 5 skill names (English keys). */
   rotation: string[];
+  /** U58: level and ascension (0-2), for Flow 2's hero cards; Flow 1 doesn't use them. */
+  level?: number;
+  asc?: number;
 }
 
 export interface HeroCell {

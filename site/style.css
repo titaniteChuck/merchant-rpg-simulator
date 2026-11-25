@@ -2468,3 +2468,61 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* Recipe / Used in with nothing to list: the section's title, then one muted line where the list would be. */
 #wiki .wiki-empty-state { margin: 0; }
 /* end U56 */
+/* U58 tabs */
+/* Party · Flow 1 · Flow 2 · Flow 3 (flow-layouts.ts): four tabs and the "?" on one line on a 375 px phone. */
+@media (max-width: 420px) { .b3-tabs button { padding: 7px 10px; } }
+/* end U58 tabs */
+/* Flow 2 */
+/* U58, Flow 2 (flow2.ts): no column heads; each turn's band is followed by one card per fighter, in the action lines'
+   columns (same grid, gap 3px): the name strong, a slim HP bar with its number, then the buffs and the debuffs one per
+   line as text (green, red; turns left at the right). The class colour is the card's top edge and a light tint; an
+   ascended hero's frame is silver or gold; a fallen fighter's card is dashed and muted, ✝ before its name, the bar empty.
+   The cards of a row share its height. A narrow card (a phone: about 46 px) puts the bar over the number and shortens a
+   long number (container query). */
+.f2-cards { display: grid; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); gap: 3px; align-items: stretch; margin: 0 0 4px; }
+.f2-card { --c: var(--muted); --f2-bg: color-mix(in srgb, var(--c) 7%, var(--card)); position: relative; container-type: inline-size;
+  box-sizing: border-box; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 5px; border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--border)); background: var(--f2-bg); box-shadow: inset 0 3px 0 var(--c);
+  font-size: 0.62rem; line-height: 1.25; }
+.f2-card.enemy { --c: #ec4899; }
+.f2-card.asc-1, .f2-card.asc-2 { border: 2px solid transparent; padding: 5px 5px 4px;
+  background: linear-gradient(var(--f2-bg), var(--f2-bg)) padding-box, var(--asc-grad) border-box; }
+.f2-name { display: flex; align-items: baseline; gap: 3px; min-width: 0; font-size: 0.72rem; font-weight: 750; line-height: 1.15; color: var(--fg); }
+.f2-name strong { min-width: 0; font-weight: 750; white-space: normal; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.f2-name .fl-name { align-items: flex-start; }
+.f2-meta { font-size: 0.56rem; line-height: 1.2; color: var(--muted); }
+.f2-meta > span { white-space: nowrap; }
+.f2-rare { font-weight: 700; color: color-mix(in srgb, #ec4899 60%, var(--fg)); }
+.f2-hp { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; font-size: 0.6rem; font-variant-numeric: tabular-nums; }
+.f2-bar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 25%, transparent); overflow: hidden; }
+.f2-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--good); }
+.f2-hp.mid .f2-bar > span { background: var(--mid); }
+.f2-hp.low .f2-bar > span { background: #ef4444; }
+.f2-hpnum { font-weight: 650; color: var(--fg); white-space: nowrap; }
+.f2-short { display: none; }
+.f2-fxs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.f2-fxs + .f2-fxs { padding-top: 2px; border-top: 1px dotted color-mix(in srgb, var(--muted) 45%, transparent); }
+.f2-fx { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; min-width: 0; font-size: 0.6rem; font-weight: 650;
+  line-height: 1.2; cursor: help; }
+.f2-fx.buff { color: color-mix(in srgb, var(--good) 70%, var(--fg)); }
+.f2-fx.debuff { color: color-mix(in srgb, var(--bad) 70%, var(--fg)); }
+.f2-fx-name { min-width: 0; overflow-wrap: anywhere; }
+.f2-fx-left { flex: none; font-size: 0.56rem; font-weight: 500; color: color-mix(in srgb, var(--muted) 70%, var(--fg)); }
+.f2-card.dead { --f2-bg: color-mix(in srgb, var(--fg) 3%, var(--card)); border: 1px dashed color-mix(in srgb, var(--muted) 50%, transparent);
+  padding: 6px 6px 5px; background: var(--f2-bg); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c) 30%, transparent); }
+.f2-card.dead .f2-name { color: var(--muted); }
+.f2-dead, .f2-card.dead .f2-hpnum { color: color-mix(in srgb, var(--bad) 80%, var(--fg)); font-weight: 800; }
+.f2-end .tc-turnhead { border-left-color: var(--accent); }
+@container (max-width: 84px) {
+  .f2-hp { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .f2-full { display: none; }
+  .f2-short { display: inline; }
+}
+@media (max-width: 700px) {
+  .flow-panel .f2-card { padding: 5px 3px 4px; gap: 2px; border-radius: 5px; }
+  .flow-panel .f2-card.asc-1, .flow-panel .f2-card.asc-2 { padding: 4px 2px 3px; }
+  .flow-panel .f2-card.dead { padding: 5px 3px 4px; }
+  .flow-panel .f2-name { font-size: 0.66rem; }
+}
+/* end Flow 2 */

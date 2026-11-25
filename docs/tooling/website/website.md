@@ -297,6 +297,33 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     side (a boss hit's damage on each hero at once); a heal's panel in the same column goes under the damage's. No
     margin maths, no `ResizeObserver` (`calcPanelLeft` and `placeCalcs` are gone).
 
+- U58, three Flow layouts to compare (tests `web/test/battle-u58.test.ts`, CSS in the `U58 tabs` and `Flow 2` blocks):
+  - Tabs Party · Flow 1 · Flow 2 · Flow 3 on both pages (the Solver's read-only as before), one Flow panel
+    (`#flow-panel`, `aria-labelledby` the open Flow tab). `tabKeys` keyboard and the U51 "?" unchanged; each Flow has
+    its own help after the run's note. The open tab is remembered per page (sessionStorage `battle-tab` on the
+    Simulator, `solver-tab` on the Solver; an old "flow" reads as Flow 1). On a phone (420 px and less) the tabs are
+    narrower so the four and the "?" fit one line.
+  - Registry `web/src/ui/flow-layouts.ts`: `FLOW_LAYOUTS` (id, label, render, help). Every layout has Flow 1's
+    signature, `FlowRender = (quest: { id: number; rare: boolean }, members: PlanMember[], trace?: TracedFight | null,
+    edit?: PlanEdit) => HTMLElement | null` (null: no timeline for the enemy; `trace` null: no fight to show; `edit`
+    undefined: read-only). `renderPlan` draws the open layout (the last one opened while Party is open), and opening
+    another Flow tab draws the panel again. Adding a layout: an entry there and a tab button in both pages.
+  - Flow 1 is `partyPlan` in `timeline.ts`, unchanged (its helpers are exported for the other layouts).
+  - Flow 2 (`web/src/ui/flow2.ts`, `renderFlow2`): no column heads. Each turn: its band, then a row of cards, one per
+    fighter in Flow 1's column order, then the action lines as in Flow 1 (calculations one column wide, `calcColumn`)
+    without the effect texts, which are in the cards. After the last turn, an "End" band and the cards as the fight
+    ended, then the result and the "Planned, not reached" turns. A card: the name (strong, two lines at most), a slim
+    HP bar with the number (the HP at the turn's start: the previous turn's end; turn 1 from the trace, `fightStart`),
+    then the buffs and then the debuffs, one per line as text with their turns left at the right (green, red; a dotted
+    line between the two groups; no dots), the source on hover. Turn 1's cards add the place and level ("Front 1 ·
+    lvl 42", `PlanMember.level`) or "enemy" (· rare), and carry the hero and opponent pickers Flow 1 has in its heads.
+    Class colour: the card's top edge and a 7 % tint; an ascended hero's frame is silver or gold (`--asc-grad`). A
+    fallen fighter: a dashed muted card, ✝ before the name, the bar empty at 0, no effects. Screen readers: each card
+    row is a `role=row` named "Turn 3: each fighter at its start", each card a cell with its HP and "Buff: …" /
+    "Debuff: …, 2 turns left" as text. A narrow card (a phone) puts the bar over the number and shortens a long number
+    (container query at 84 px). Without a traced fight, Flow 1's planned rotation.
+  - Flow 3 (`web/src/ui/flow3.ts`, `renderFlow3`): U59's layout; until it lands, "Coming soon".
+
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
   - F20: the Simulate box's sentence is the "?" of its heading (`#sim-help`); the Results wait for the first run.

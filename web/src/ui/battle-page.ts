@@ -7,7 +7,8 @@
  * slots, back row | front row; cards move by drag and drop, party-drag.ts) on the left and the opponent card (a quest
  * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
- * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab).
+ * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Party · Flow 1 · Flow 2 · Flow 3, three Flow
+ * layouts to compare (flow-layouts.ts), one Flow panel drawn by the open one.
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
@@ -38,7 +39,8 @@ import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
 import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
-import { loadTimelineData, partyPlan, type PlanEdit, planNote, type PlanMember, timelineOf } from "./timeline.ts";
+import { loadTimelineData, type PlanEdit, type PlanMember, timelineOf } from "./timeline.ts";
+import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
 import { mapRoomTabs } from "./battle-plan.ts";
 import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyRadar, EVA_RIM, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
@@ -792,20 +794,26 @@ function syncAmount(): void {
   }
 }
 
-// ---------------------------------------------------------------- the two views: Party and Flow (U39, U40)
+// ---------------------------------------------------------------- the views: Party and the Flows (U39, U40, U58)
 /**
- * Step 3 has two tabs over one party state: Party (the hero cards and the opponent; first, U40) and Flow (the fight,
- * turn by turn). Edits in either change the same state (battle-edit.ts), then both redraw and the flow is simulated
- * again. The active tab is remembered for this browser tab (sessionStorage `battle-tab`; convenience only); without
- * one, the first tab, Party.
+ * Step 3's tabs over one party state: Party (the hero cards and the opponent; first, U40) and the Flow (the fight, turn
+ * by turn). U58: three Flow layouts, Flow 1 · Flow 2 · Flow 3 (flow-layouts.ts), sharing one panel (#flow-panel, drawn
+ * by renderPlan with the open layout, or the last one opened while Party is open). Edits in any change the same state
+ * (battle-edit.ts), then everything redraws and the flow is simulated again. The open tab is remembered per page for
+ * this browser tab (sessionStorage `battle-tab` on the Simulator, `solver-tab` on the Solver; convenience only; the old
+ * "flow" reads as Flow 1); without one, the first tab, Party.
  */
-type Tab = "flow" | "party";
-const TAB_KEY = "battle-tab";
+type Tab = ViewTab;
+const tabKey = () => (solving() ? "solver-tab" : "battle-tab");
 let tabChoice: Tab | null = null;
+/** The Flow layout the panel shows: the open tab's, else the last one opened (Flow 1 at first). */
+let flowChoice: FlowId = "flow1";
+/** The layout the panel holds now, so opening another one redraws it. */
+let flowDrawn: FlowId | null = null;
 function storedTab(): Tab {
   if (tabChoice) return tabChoice;
   try {
-    return sessionStorage.getItem(TAB_KEY) === "flow" ? "flow" : "party";
+    return parseTab(sessionStorage.getItem(tabKey()));
   } catch {
     return "party";
   }
@@ -814,7 +822,7 @@ function showTab(tab: Tab, remember = true): void {
   if (remember) {
     tabChoice = tab;
     try {
-      sessionStorage.setItem(TAB_KEY, tab);
+      sessionStorage.setItem(tabKey(), tab);
     } catch { /* not remembered: it holds until the page is left */ }
   }
   document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]").forEach((b) => {
@@ -822,15 +830,22 @@ function showTab(tab: Tab, remember = true): void {
     b.setAttribute("aria-selected", String(on));
     b.tabIndex = on ? 0 : -1;
   });
-  $("#flow-panel").hidden = tab !== "flow";
+  const flow = isFlow(tab);
+  $("#flow-panel").hidden = !flow;
   $("#setup-grid").hidden = tab !== "party";
-  // U51: one "?" beside the tabs, the open tab's: the party's rule on Party, how to read the flow on Flow.
+  if (flow) {
+    $("#flow-panel").setAttribute("aria-labelledby", `tab-${tab}`);
+    flowChoice = tab;
+    // U58: another layout than the one drawn: draw the panel again with it.
+    if (flowDrawn !== null && flowDrawn !== tab) renderPlan();
+  }
+  // U51: one "?" beside the tabs, the open tab's: the party's rule on Party, how to read the open Flow on a Flow.
   const [partyTip, flowTip] = [document.querySelector<HTMLElement>("#party-help"), document.querySelector<HTMLElement>("#plan-help")];
   if (partyTip) partyTip.hidden = tab !== "party";
-  if (flowTip) flowTip.hidden = tab !== "flow";
+  if (flowTip) flowTip.hidden = !flow;
 }
 function initTabs(): void {
-  for (const b of document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")) b.addEventListener("click", () => showTab(b.dataset.tab as Tab));
+  for (const b of document.querySelectorAll<HTMLButtonElement>(".b3-tabs [role=tab]")) b.addEventListener("click", () => showTab(parseTab(b.dataset.tab)));
   // The arrow keys, Home and End move between the tabs (the tablist pattern, dom.ts tabKeys).
   const list = document.querySelector<HTMLElement>(".b3-tabs[role=tablist]");
   if (list) tabKeys(list);
@@ -1006,8 +1021,12 @@ function renderPlan(): void {
   box.replaceChildren();
   opp.replaceChildren();
   help?.replaceChildren();
+  // U58: the open Flow layout (flow-layouts.ts), the same inputs for each.
+  const layout = flowLayout(flowChoice);
+  flowDrawn = layout.id;
   const members: PlanMember[] = partyOf().members.map((m) => ({
     row: m.row, i: m.i, name: String(m.raw.name), cls: Number(m.raw.class), rotation: rotationOf(m.idx).attackList,
+    level: Number(m.raw.level), asc: heroAsc(m.raw.prestigeLevel),
   }));
   const problem = partyProblem();
   // U40: a hero over its AP limit (an old saved party): the warning, not a fight with the default rotation.
@@ -1018,12 +1037,12 @@ function renderPlan(): void {
     // U48: no "vs <enemy> change" line: the enemy column's head names the enemy and, clicked, changes it.
     const t = targetOf().quest!;
     const trace = members.length ? planTrace(t) : null;
-    const plan = partyPlan(t, members, trace, edit);
+    const plan = layout.render(t, members, trace, edit);
     if (plan) {
       box.append(...(problem && members.length ? [el("p", { class: "error small" }, `⚠ ${problem} The rotation as planned until then.`)] : []),
         ...(ap && members.length ? [el("p", { class: "error small flow-ap", role: "status" }, `⚠ ${ap} Below, the rotation as planned.`)] : []), plan);
       // R2 F28: what the flow shows (one concrete fight) is the first paragraph of its "?", not a line above it.
-      help?.append(helpTip([...(trace ? [FLOW_NOTE] : []), planNote(t)], "the flow"));
+      help?.append(helpTip([...(trace ? [FLOW_NOTE] : []), layout.help(t, Boolean(edit))], "the flow"));
     } else box.append(el("p", { class: "muted" }, "No timeline for this enemy yet."));
     return;
   }
@@ -1056,11 +1075,11 @@ function renderPlan(): void {
       help?.replaceChildren(helpTip(MAP_FLOW_NOTE, "the flow"));
       return;
     }
-    const plan = partyPlan({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
+    const plan = layout.render({ id: r.questId, rare: r.isRare }, members, r.trace, edit);
     view.replaceChildren(...(r.trace ? [] : [el("p", { class: "muted small" }, "Not reached in this run: the rotation as planned.")]),
       plan ?? el("p", { class: "muted" }, "No timeline for this enemy yet."));
     // R2 F28: the run's note is the first paragraph of the "?".
-    help?.replaceChildren(helpTip([MAP_FLOW_NOTE, planNote({ id: r.questId, rare: r.isRare })], "the flow"));
+    help?.replaceChildren(helpTip([MAP_FLOW_NOTE, layout.help({ id: r.questId, rare: r.isRare }, Boolean(edit))], "the flow"));
   };
   tabs.forEach((x, k) => {
     const b = el("button", { type: "button", role: "tab", id: `room-tab-${k}`, "aria-controls": "flow-room", class: `room-tab st-${x.status}${x.boss ? " boss" : ""}`, "aria-selected": "false",
