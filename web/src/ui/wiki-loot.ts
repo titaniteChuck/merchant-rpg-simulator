@@ -41,13 +41,16 @@ export function weightedOdds(t: LuaTable): Map<number | string, number> {
   return out;
 }
 
-/** Amount → probability of one "every win" reward { id, min, max } at a grade (quantity 0 = nothing). */
-export function fixedAmounts(reward: number[], grade: number, luck = 0): Map<number, number> {
+/**
+ * Amount → probability of one "every win" reward { id, min, max } at a grade (quantity 0 = nothing). U60: `enemyAmount`
+ * (the quest size ×N) multiplies the rolled quantity, after the clamp to 5 (lootService.generateNormalItem).
+ */
+export function fixedAmounts(reward: number[], grade: number, luck = 0, enemyAmount = 1): Map<number, number> {
   const gb = G.gradeBonus[grade];
   const lo = Math.trunc(reward[1] * gb * 10), hi = Math.trunc(reward[2] * gb * 10); // math.random truncates
   const out = new Map<number, number>();
   for (let x = lo; x <= hi; x++) {
-    const q = clamp(round((x + luck) / 10), 0, 5);
+    const q = clamp(round((x + luck) / 10), 0, 5) * enemyAmount;
     out.set(q, (out.get(q) ?? 0) + 1 / (hi - lo + 1));
   }
   return new Map([...out].sort((a, b) => a[0] - b[0]));
@@ -77,7 +80,11 @@ export function lootTable(name: string, luck = 0, enemyAmount = 1): LootTable | 
     else if (amt.length > 1) {
       const t = new LuaTable();
       for (let i = 0; i + 1 < amt.length; i += 2) t.set(amt[i], amt[i + 1]);
-      amounts = new Map([...weightedOdds(t)].map(([k, v]) => [Number(k), v] as [number, number]).sort((a, b) => a[0] - b[0]));
+      const one = new Map([...weightedOdds(t)].map(([k, v]) => [Number(k), v] as [number, number]));
+      // U60: at ×N the game rolls the amount N times and adds them up (lootService.generateParcelItem)
+      amounts = one;
+      for (let n = 1; n < enemyAmount; n++) amounts = sumOdds(amounts, one);
+      amounts = new Map([...amounts].sort((a, b) => a[0] - b[0]));
     } else amounts = new Map([[(amt[0] ?? 1) * enemyAmount, 1]]);
     return { type: ids.length > 1 ? String(ids[0]) : "material", id: Number(ids.length > 1 ? ids[1] : ids[0]), amounts, chance: [] };
   });
@@ -90,6 +97,13 @@ export function lootTable(name: string, luck = 0, enemyAmount = 1): LootTable | 
     rows.forEach((r, i) => r.chance.push(100 * (odds.get(i + 1) ?? 0)));
   }
   return { name, nothing, rows };
+}
+
+/** The odds of the sum of two independent amounts. */
+function sumOdds(a: Map<number, number>, b: Map<number, number>): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const [x, p] of a) for (const [y, q] of b) out.set(x + y, (out.get(x + y) ?? 0) + p * q);
+  return out;
 }
 
 /** "1", "1–3" from an amount → probability map. */

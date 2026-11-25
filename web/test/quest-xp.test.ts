@@ -113,6 +113,7 @@ test("the enemy page and battle results link XP and time to the Stats page, with
     assert.match(src(f), /statLink\("xp"/, f);
     assert.match(src(f), /statLink\("time"/, f);
   }
-  const help = src("wiki-enemies.ts").match(/const (QUEST|MAP)_XP_HELP = \[[\s\S]*?\];/g)!.join("\n");
+  // U60: the XP block's help moved to the stats table's (STATS_HELP_QUEST / STATS_HELP_MAP)
+  const help = src("wiki-enemies.ts").match(/const STATS_HELP_(QUEST|MAP) = \[[\s\S]*?\];/g)!.join("\n");
   assert.doesNotMatch(help, /round\(|×\s*\(|\/ heroes|gradeTime/, "the \"?\" texts say what, not the formula");
 });

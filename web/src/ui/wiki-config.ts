@@ -23,7 +23,9 @@ import { consumableStat, mapEssenceReward } from "../sim/defaults.ts";
 import { Enemy } from "../sim/enemy.ts";
 import { band, maxSuffixFor, PREFIX_GEM } from "../tools/enchant.ts";
 import { rarity as rarityAfter, sellValue } from "../tools/engine.ts";
-import { bonusText, game, itemAscLevels } from "./wiki-items.ts";
+import { bonusText, game, itemAscLevels, totalCost } from "./wiki-items.ts";
+import { maxQuestAmount } from "../tools/combat.ts";
+import { isBoardQuest, mapRunStats, mapsWithQuest, questStats, TREASURE_CHANCE, TREASURE_IDS } from "../tools/quest-stats.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -209,14 +211,14 @@ export function mapBaseTime(baseTime: number | undefined, speed = 0): number | n
   return determineMapWalkTime(NO_PARTY_SPEED, baseTime, speed);
 }
 
-/** The map built by the engine with a configuration, at grade C; null when the engine can't (unknown map). */
-function buildMap(id: number, cfg: ItemConfig): Any | null {
+/** The map built by the engine with a configuration, at a map grade (default 3); null when the engine can't (unknown map). */
+function buildMap(id: number, cfg: ItemConfig, grade = 3): Any | null {
   // The seed only draws the rooms (none of these figures); a level-70 map's room draw can crash (its missing treasure
   // tier, docs maps.md), so a few seeds are tried.
   let map: Any = null;
   for (let seed = 1; seed <= 8 && !map; seed++) {
     try {
-      map = api.makeMap({ id, prestigeLevel: cfg.asc, grade: 3, prefix: cfg.prefix || undefined, suffix: cfg.suffix || undefined, seed });
+      map = api.makeMap({ id, prestigeLevel: cfg.asc, grade, prefix: cfg.prefix || undefined, suffix: cfg.suffix || undefined, seed });
     } catch {
       if (!itemOf("map", id)) return null;
     }
@@ -244,9 +246,12 @@ export function mapRunEssence(id: number, cfg: ItemConfig, grade = 3): [number, 
   return map ? runEssence(id, cfg.asc, grade, map) : [];
 }
 
-/** The map built by the engine with a configuration, at grade C; null when the engine can't (unknown map). */
-export function mapView(id: number, cfg: ItemConfig): MapView | null {
-  const map = buildMap(id, cfg);
+/**
+ * The map built by the engine with a configuration, at a map grade (default 3, the wiki's map figures; U60: an enemy
+ * page's grade for a map-only enemy); null when the engine can't (unknown map).
+ */
+export function mapView(id: number, cfg: ItemConfig, grade = 3): MapView | null {
+  const map = buildMap(id, cfg, grade);
   if (!map) return null;
   const prefixStats: Record<string, number> = {};
   for (const k of Object.keys(prefixData(cfg.prefix)?.mapStats ?? {})) {
@@ -256,7 +261,7 @@ export function mapView(id: number, cfg: ItemConfig): MapView | null {
   try {
     sell = sellValue("map", id, cfg.asc, modCount(cfg)) ?? null;
   } catch { /* unknown */ }
-  const essence = runEssence(id, cfg.asc, 3, map);
+  const essence = runEssence(id, cfg.asc, grade, map);
   const baseTime = mapBaseTime(map.baseTime, map.finalMapStats.speed ?? 0);
   return { rarity: map.rarity, enemyMod: map.enemyMod, essenceBase: map.finalMapStats.essenceBase ?? 1, essence, stats: map.finalMapStats, prefixStats, sell, baseTime };
 }
@@ -276,6 +281,120 @@ export function mapEnemyStats(questId: number, rare: boolean, stats: Any): Recor
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------- U60: an enemy page's grade and quest size
+/**
+ * An enemy page's modifiers (U60): the battle grade (1..5 = D..S, as the wiki's grade badges) and the quest size ×N
+ * (the game's enemyAmount). Kept in the route's query like a map's (`#/enemy/12?grade=4&size=3`); grade 3 (B) and
+ * size 1 are the clean URL.
+ */
+export interface EnemyConfig {
+  grade: number;
+  size: number;
+}
+export const ENEMY_DEFAULT: Readonly<EnemyConfig> = Object.freeze({ grade: 3, size: 1 });
+
+/**
+ * Grades an enemy page offers: D..S; a Treasure Bush only B..S (it appears only in a map run of grade B or better:
+ * obj.Map treasurePerRoomPerGradeChance is 0 at grades 1 and 2).
+ */
+export function enemyGrades(id: number): number[] {
+  return TREASURE_IDS.includes(id) ? [1, 2, 3, 4, 5].filter((g) => (TREASURE_CHANCE[g] ?? 0) > 0) : [1, 2, 3, 4, 5];
+}
+
+/**
+ * Quest sizes an enemy page offers: a quest-board quest ×1 up to the game's cap for a hero of tier `maxTier`
+ * (default.enemyAmount = tier × 2 − 1: ×3 at tier 2, ×5 at tier 3; questService.getCurrentAndMaxAmount, any size in
+ * between); a map-only enemy ×1 (a map room is one enemy).
+ */
+export function enemySizes(id: number, maxTier = 3, mode = "Standard"): number[] {
+  if (!isBoardQuest(id)) return [1];
+  const top = maxQuestAmount([{ prestigeLevel: maxTier } as never], false, mode);
+  return Array.from({ length: Math.max(1, top) }, (_, i) => i + 1);
+}
+
+/** An enemy configuration with any value the enemy can't take back to its default. */
+export function normaliseEnemyConfig(id: number, cfg: Partial<EnemyConfig> = {}): EnemyConfig {
+  const int = (v: unknown) => (Number.isInteger(Number(v)) ? Number(v) : NaN);
+  return {
+    grade: enemyGrades(id).includes(int(cfg.grade)) ? int(cfg.grade) : ENEMY_DEFAULT.grade,
+    size: enemySizes(id).includes(int(cfg.size)) ? int(cfg.size) : ENEMY_DEFAULT.size,
+  };
+}
+
+/** The query of an enemy configuration: "" at the defaults, else "?grade=4&size=3" (only the values not default). */
+export function enemyConfigQuery(cfg: Partial<EnemyConfig> = {}): string {
+  const parts = (["grade", "size"] as const).filter((k) => cfg[k] !== undefined && Number(cfg[k]) !== ENEMY_DEFAULT[k]).map((k) => `${k}=${Number(cfg[k])}`);
+  return parts.length ? `?${parts.join("&")}` : "";
+}
+
+/** A query read into a configuration valid for the enemy. */
+export function parseEnemyConfig(id: number, query: URLSearchParams | string = ""): EnemyConfig {
+  const q = typeof query === "string" ? new URLSearchParams(query.replace(/^\?/, "")) : query;
+  return normaliseEnemyConfig(id, { grade: Number(q.get("grade") ?? ENEMY_DEFAULT.grade), size: Number(q.get("size") ?? ENEMY_DEFAULT.size) });
+}
+
+/** The route of an enemy page with its configuration ("#/enemy/12?grade=4&size=3"); values it can't take left out. */
+export const enemyRoute = (id: number, cfg?: Partial<EnemyConfig>): string =>
+  `#/enemy/${id}${cfg ? enemyConfigQuery(normaliseEnemyConfig(id, cfg)) : ""}`;
+
+/**
+ * A quest enemy's stats at a quest size, by table label: the engine's Enemy (sim/enemy determineStats: max HP × the
+ * amount, the other stats unchanged; questData × default.enemyMods). The rare variant is always ×1
+ * (questService.getCurrentAndMaxAmount). Null when the engine can't build it.
+ */
+export function questEnemyStats(questId: number, rare: boolean, size = 1): Record<string, number> | null {
+  try {
+    const e: Any = new Enemy({ questID: questId, isRare: rare, amount: rare ? 1 : size });
+    return Object.fromEntries(MAP_ENEMY_STATS.map(([k, label]) => [label, e[k]]));
+  } catch {
+    return null;
+  }
+}
+
+/** What fighting an enemy once costs and gives: gold paid, seconds (no fight), XP for the whole party, XP per minute. */
+export interface EnemyRun {
+  cost: number | null;
+  seconds: number;
+  xp: number;
+  xpPerMin: number;
+}
+
+/**
+ * A quest-board quest at a grade and size (tools/quest-stats questStats, one hero so the XP is the party's whole share):
+ * cost = the quest's gold × size (rare: goldB, ×1; scene.QuestDescriptionOverlay), time = quest time × size ×
+ * gradeTime[grade] without the fight, XP = exp × size.
+ */
+export function questRun(questId: number, rare: boolean, cfg: EnemyConfig): EnemyRun {
+  const q = G.questData[questId];
+  const s = questStats(questId, { grade: cfg.grade, amount: rare ? 1 : cfg.size, heroes: 1, rare });
+  const cost = rare ? q.goldB ?? q.gold ?? 0 : (q.gold ?? 0) * s.amount;
+  return { cost, seconds: s.seconds, xp: s.xpPerHero, xpPerMin: s.xpPerMin };
+}
+
+/**
+ * One run of a map at a grade (tools/quest-stats mapRunStats, one hero: every room's XP): cost = the map's total cost
+ * (wiki-items totalCost, asc 0), time = craft + walk (the fights add to it), XP = the whole run with every room won.
+ */
+export function mapRun(map: number, grade: number): EnemyRun {
+  const s = mapRunStats(map, { grade, asc: 0, heroes: 1 });
+  return { cost: totalCost("map", map, 0), seconds: s.seconds, xp: s.xpPerHero, xpPerMin: s.xpPerMin };
+}
+
+const ROLE_RANK: Record<string, number> = { boss: 0, room: 1, treasure: 2 };
+
+/**
+ * U60: the one map a map-only enemy's page takes its cost, time and XP from: among the craftable maps that fight it at
+ * the grade (`visible`: the maps the visitor's expansions show), the ones where it is the boss first (its own map),
+ * then the cheapest (total cost), then the lowest id. `of`: how many maps fight it. Null when none does.
+ */
+export function enemyRunMap(questId: number, grade: number, visible: (map: number) => boolean = () => true): { map: number; role: string; of: number } | null {
+  const all = mapsWithQuest(questId, grade).filter((a) => visible(a.map));
+  if (!all.length) return null;
+  const cost = (m: number) => totalCost("map", m, 0) ?? Infinity;
+  const best = [...all].sort((a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || cost(a.map) - cost(b.map) || a.map - b.map)[0];
+  return { map: best.map, role: best.role, of: new Set(all.map((a) => a.map)).size };
 }
 
 // ---------------------------------------------------------------- figures: equipment and consumables

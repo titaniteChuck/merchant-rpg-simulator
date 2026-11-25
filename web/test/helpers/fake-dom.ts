@@ -155,6 +155,8 @@ export class FakeElement {
     return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
   }
   matches(sel: string): boolean {
+    // a selector list ("h2, h3, h4"): any of them (U60: sectionHelp)
+    if (sel.includes(",")) return sel.split(",").some((s) => this.matches(s.trim()));
     const m = sel.match(/^([a-z0-9]*)((?:\.[\w-]+|\[[^\]]+\])*)$/i);
     if (!m) throw new Error(`fake-dom: unsupported selector ${sel}`);
     if (m[1] && this.tagName !== m[1].toLowerCase()) return false;

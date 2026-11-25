@@ -31,10 +31,11 @@ import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGrad
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import {
-  baseTag, enemyBody, enemyFightTarget, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, TREASURE_HELP, uncraftableTag,
+  baseTag, enemyBody, enemyConfigBar, enemyFightTarget, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, titleLine, TREASURE_HELP,
+  uncraftableTag,
 } from "./wiki-enemies.ts";
 import {
-  ascCraftEssence, configRarity, configRoute, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
+  ascCraftEssence, configRarity, configRoute, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView, parseEnemyConfig,
   modCount, NO_CONFIG, parseConfig, parseHash, prefixEffect, prefixStats, suffixEffect, validAscs, validPrefixes, validSuffixes,
 } from "./wiki-config.ts";
 import { helpTip, sectionHelp } from "./wiki-help.ts";
@@ -610,12 +611,17 @@ function modifierFacts(type: string, id: number, cfg: ItemConfig): FactCard[] {
  * A configurable page: crumbs, the title, the pickers, then `body` drawn for the configuration (again on each change;
  * the document title follows the h1).
  */
-function configuredPage(type: string, id: number, query: URLSearchParams, crumbsEl: HTMLElement, body: (cfg: ItemConfig) => (Node | string)[], cls = ""): HTMLElement {
+function configuredPage(type: string, id: number, query: URLSearchParams, crumbsEl: HTMLElement, body: (cfg: ItemConfig) => (Node | string)[], cls = "",
+  actions?: (cfg: ItemConfig) => HTMLElement[]): HTMLElement {
   let cfg = CONFIG_TYPES.has(type) ? parseConfig(type, id, query) : { ...NO_CONFIG };
   const h1 = el("h1");
+  // U60: the title shares its line with the page's "Fight in simulator" button (drawn again with the configuration)
+  const line = titleLine(h1);
+  const acts = line.querySelector(".title-actions") as HTMLElement;
   const holder = el("div", { class: "cfg-body" });
   const draw = () => {
     h1.replaceChildren(configTitle(type, id, cfg));
+    acts.replaceChildren(...(actions?.(cfg) ?? []));
     holder.replaceChildren(...body(cfg));
   };
   const bar = CONFIG_TYPES.has(type) ? configBar(type, id, cfg, (c) => {
@@ -624,7 +630,7 @@ function configuredPage(type: string, id: number, query: URLSearchParams, crumbs
     document.title = `${h1.textContent?.replace(/^[^\w[]+/, "") || "Wiki"} · Merchant RPG Simulator`;
   }) : null;
   draw();
-  return el("div", cls ? { class: cls } : {}, crumbsEl, h1, ...(bar ? [bar] : []), holder);
+  return el("div", cls ? { class: cls } : {}, crumbsEl, line, ...(bar ? [bar] : []), holder);
 }
 
 /** The crafting chain with its explanation moved from under the diagram into the section's "?". */
@@ -767,7 +773,9 @@ function mapPage(id: number, query = new URLSearchParams()): HTMLElement {
   if (!m) return notFound(`map #${id}`);
   if (!isVisible("map", id)) return hiddenPage(["Maps", "#/maps"], itemName("map", id) ?? m.name, "", needsOf("map", id));
   // U49: the map opens on the ascension, prefix and suffix of the URL (#/map/22?asc=1&prefix=20&suffix=5)
-  return configuredPage("map", id, query, crumbs(["Maps", "#/maps"], itemName("map", id) ?? m.name), (cfg) => mapBody(id, cfg));
+  return configuredPage("map", id, query, crumbs(["Maps", "#/maps"], itemName("map", id) ?? m.name), (cfg) => mapBody(id, cfg), "",
+    // U53 button, U60: on the title's line
+    (cfg) => fightButton(mapFightTarget(id, cfg), modCount(cfg) ? "The plain map at this ascension, grade C: the simulator's maps take no prefix or suffix." : undefined));
 }
 
 /**
@@ -793,7 +801,6 @@ function mapBody(id: number, cfg: ItemConfig): (Node | string)[] {
   return [
     // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Enemies table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
-    ...fightButton(mapFightTarget(id, cfg), modCount(cfg) ? "The plain map at this ascension, grade C: the simulator's maps take no prefix or suffix." : undefined),
     // U56: the facts as cards (wiki-data factCards, as on the item pages): Region, Rarity and Sell value coloured on
     // the card (the sell value by the picked ascension), the value plain text; the essence spans the row
     // U55: a level-70 map is dormant data (no crafter reaches it, no base time in the data): marked as on the enemy pages
@@ -822,16 +829,25 @@ function enemiesPage(): HTMLElement {
     (r) => `${r.name} ${r.rareName} ${r.en} ${r.kind} ${r.skills} ${r.regionName}`, regionRowClass, all.length - rows.length, { href: "#/enemies" });
 }
 
-function enemyPage(id: number): HTMLElement {
+/**
+ * An enemy page: the title with "Fight in simulator" on its line (U60), the Grade and Size bar (U60: the route's
+ * query, `#/enemy/12?grade=4&size=3`), then the body at that grade and size, drawn again on each pick.
+ */
+function enemyPage(id: number, query = new URLSearchParams()): HTMLElement {
   const q = quest(id);
   if (!isEnemy(id)) return notFound(`enemy #${id}`);
   const needs = needsOf("enemy", id);
   const name = enemyName(id) ?? q.name;
   if (!isVisible("enemy", id)) return hiddenPage(["Enemies", "#/enemies"], name, "👹", needs);
-  return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name), el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])),
-    // U56: no lead line ("Boss · lvl 20 · …"): the Kind, Level and Region cards say it
-    ...fightButton(enemyFightTarget(id)),
-    ...enemyBody(id, section, emptyLine));
+  const holder = el("div", { class: "cfg-body" });
+  // U56: no lead line ("Boss · lvl 20 · …"): the Kind, Level and Region cards say it
+  const draw = (cfg: ReturnType<typeof parseEnemyConfig>) => holder.replaceChildren(...enemyBody(id, section, emptyLine, cfg));
+  const start = parseEnemyConfig(id, query);
+  const bar = enemyConfigBar(id, start, draw);
+  draw(start);
+  return el("div", { class: "enemy-page" }, crumbs(["Enemies", "#/enemies"], name),
+    titleLine(el("h1", {}, "👹 ", name, ...(needs.length ? [expansionBadge(needs, { link: true })] : [])), fightButton(enemyFightTarget(id))),
+    ...(bar ? [bar] : []), holder);
 }
 
 // ---------------------------------------------------------------- classes
@@ -921,7 +937,7 @@ function route(): HTMLElement {
     case "maps": return mapsPage();
     case "map": return mapPage(Number(b), query);
     case "enemies": return enemiesPage();
-    case "enemy": return enemyPage(Number(b));
+    case "enemy": return enemyPage(Number(b), query);
     case "classes": return classesPage();
     case "class": return classPage(Number(b), c, parts[3]);
     case "stats": return statsPage(b);

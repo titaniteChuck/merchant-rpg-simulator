@@ -77,12 +77,13 @@ test("F43 / F44 / F45: compact facts; the XP pickers on one row and Left out clo
   const wiki = ui("wiki.ts"), en = ui("wiki-enemies.ts");
   // U56: the compact facts became the shared fact cards (wiki-data factCards, three to a row at 375 px)
   assert.match(wiki, /factCards\(\[isCraftableMap\(id\) \? \["Level", m\.itemLevel\] : /); // U55: a level-70 map's level is marked
-  assert.match(wiki, /enemyBody\(id, section, emptyLine\)/);
-  assert.match(en, /el\("details", \{ class: "qxp-left muted small" \}/);
-  assert.match(block, /#wiki \.qxp-controls \{ flex-wrap: nowrap; overflow-x: auto;/);
+  // U60: the body takes the page's grade and size; the XP block (its pickers and "Left out") is gone
+  assert.match(wiki, /enemyBody\(id, section, emptyLine, cfg\)/);
+  assert.doesNotMatch(en, /qxp-left|qxp-controls/);
+  assert.doesNotMatch(block, /qxp-/, "U60: the XP block's rules are gone with it");
   assert.doesNotMatch(en, /Timeline and drops|function variantCard|enemy-variant/);
   assert.match(en, /section\("Timeline", variantCols\(/);
-  assert.match(en, /section\("Drops", variantCols\(id, \(r\) => dropsBlock\(id, r\)\)\)/);
+  assert.match(en, /section\("Drops", variantCols\(id, \(r\) => dropsBlock\(c, r\)\)\)/);
 });
 
 /** WCAG contrast of two #rrggbb colours. */

@@ -956,6 +956,48 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Recipe and Used in: always their section with its title; with nothing to list, one muted line inside it ("Not
     craftable.", "Not used in any recipe." / "… you can make."), in the same place a list would be; the hidden-recipes
     note inside Used in. Tests `web/test/wiki-u56.test.ts`.
+- Title line (U60, `titleLine` in `wiki-enemies.ts`, CSS block `U60`): on every details page with "⚔️ Fight in
+  simulator" (maps, enemies) the button sits on the title's line, right-aligned (`.title-line`, a wrapping flex row;
+  `.title-actions` with `margin-left: auto`); with no room (a long name at 375 px) it wraps under the title. Map
+  pages pass it to `configuredPage` as `actions`, drawn again with the configuration.
+- Enemy page modifiers (U60, the user's request; `EnemyConfig` in `wiki-config.ts`, `enemyConfigBar` /
+  `enemyContext` / `statsRows` in `wiki-enemies.ts`; tests `web/test/wiki-u60.test.ts`):
+  - Grade and Size in the maps' modifier bar (`.wiki-config.enemy-config`): grade chips D..S, size chips ×1..×5. Kept
+    in the route's query, `#/enemy/12?grade=4&size=3`; grade 3 (B) and size 1 are the clean URL (`enemyConfigQuery`,
+    `parseEnemyConfig` / `normaliseEnemyConfig` drop what the enemy can't take, `enemyRoute`). A pick updates the URL
+    with `replaceState` and redraws the body under the bar.
+  - Ranges from the game: grades 1..5 as the site's grade badges; a Treasure Bush 3..5 only (it appears only in map
+    runs of grade B+, `treasurePerRoomPerGradeChance`). Size = the quest's enemyAmount, any value from 1 to
+    `default.enemyAmount(hero)` = tier × 2 − 1 (`questService.getCurrentAndMaxAmount`, the quest dialog's −/+): ×1..×5
+    (tier 3), ×1..×3 while the Frozen Tome is hidden (`isVisible("prestige", 3)`; a URL asking for more keeps it);
+    a map-only enemy ×1 (a map room is one enemy). The party size (heroes) is not a modifier: it changes neither HP
+    nor loot, and "XP per hero" is gone; the party line is the Party card ("Solo · 1 hero", "1–2 heroes", from
+    `partyRules`; still none on a map room, R1 F41).
+  - What follows them (the engine's rules): HP = `Enemy` with `amount` (max HP × size, the other stats unchanged;
+    `questEnemyStats`); quest cost = gold × size (the quest dialog; rare: goldB); time = quest time × size ×
+    gradeTime[grade] (no fight) and XP = exp × size (`questStats`, one hero: the party's whole XP); loot: every-win
+    quantity × size after the clamp to 5 (`fixedAmounts(…, enemyAmount)`), a loot roll's item odds × size and its
+    weighted amount rolled size times and summed (`lootTable(…, enemyAmount)`, lootService.generateParcelItem). The
+    grade sets gradeTime, the loot tables' highlighted column and Every win's Chance; it does not change a quest's HP
+    (the game sets a quest's grade after the fight). The rare variant is always ×1.
+  - Stats table (`statsTable`): the XP and time table is gone ("XP per hero" dropped); one row per variant, columns
+    Variant, Lvl, HP, Atk, Matk, Def, Mdef, Eva, Cost, Time, XP, XP / min (columns, as the table is one row per
+    variant). A size above 1 tags the names "×3" / "×1".
+  - Map-only enemies (map bosses, Treasure Bushes): the same cards, stats table and drops. Their stats are inside
+    their map at the page's grade (`mapView(map, NO_CONFIG, grade)`: map grade S adds `mapGradeMod` 0.25 to Enemy ×),
+    their Cost, Time and XP the map's run (`mapRun`: total cost at asc 0, craft + walk at the grade, the whole run's XP
+    with every room won), one cell over both variants. Which map (`enemyRunMap`): among the craftable maps the
+    visitor sees that fight it at the grade, a map where it is the boss first (its own map), then the cheapest (total
+    cost), then the lowest id; shown as a "Map" card, with a "cheapest of N" tag (the rule in its tooltip) when more
+    than one map fights it. Murlok Monarch → Murlok Madness Map (7) of 2; Goblin Warlord → map 3 of 2; a Treasure Bush
+    → the cheapest map of its level band; The Mighty Bush (only in a level-70 map): "none craftable", "–". The
+    "Fought in" table and "Left out" note are gone; the Maps section stays, its "HP there" at the page's grade.
+  - Drops: Every win and the loot rolls share one colgroup (`LOOT_COLS`, `.loot-cols`: `table-layout: fixed`, Item
+    30 %, Rarity 16 %, third column 14 %, each grade 8 %; at least 520 px, scrolling in its frame on a phone), so
+    their columns line up. Loot roll rows go from the most likely to the least at the page's grade, Nothing included
+    (`rollOrder`, ties in data order). The page's grade column is highlighted (`.pick`).
+  - Removed facts: "Mainly drops" (`bushDrops`; `bushDropKinds` / `bushDropText` stay). The bush Level card reads
+    "Maps lvl 1–10 · quest lvl 5" under the `LV` label.
 - Rarity: the game has no rarity names (TextData only has the word "Rarity"; "Common … Legendary!" in
   `scene.SpinGame` names the prize-wheel slices), so the site uses the user's names (U57, `rarityName` /
   `RARITY_NAMES` in `web/src/ui/names.ts`): 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary, 6 Legendary+1,
@@ -1150,7 +1192,9 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   region chip, ordered by the game's region order, then level (`enemyLines` in `wiki-data.ts`). "Good against" merges
   a rare variant into its base enemy's row when their turn marks are the same; that table keeps its best-match order
   (its # rank).
-- XP and time on enemy pages (U33, `questXpBlock` / `mapXpBlock` in `wiki-enemies.ts` on `ui/quest-xp.ts`): a section
+- XP and time on enemy pages (U33; removed in U60: Time and XP / min are columns of the stats table, the grade and
+  size page modifiers, see "Enemy page modifiers (U60)" above; `questXpBlock` / `mapXpBlock` and `xpPicksOf` are gone,
+  `ui/quest-xp.ts` stays for the Battle page): was a section
   right under the facts, with toggles (grade D–S, default B; party size; map ascension 0 / 1) and a small table. No
   formula on the page: the column headers link to Stats › Quest size, Experience, Quest and map time, Craft, and the
   "?" says what the numbers include.

@@ -9,7 +9,8 @@ import { loadLanguage, setLanguage } from "../src/tools/i18n.ts";
 import { setShowAll } from "../src/ui/expansion-state.ts";
 import { mapXpRows, uncraftableMapsWith } from "../src/ui/quest-xp.ts";
 import { enemyIds, enemyMapRoles, loadWikiText, mapFlavour, regionOf } from "../src/ui/wiki-data.ts";
-import { bushDropKinds, mapsFact, xpPicksOf } from "../src/ui/wiki-enemies.ts";
+import { bushDropKinds, mapsFact } from "../src/ui/wiki-enemies.ts";
+import { parseEnemyConfig } from "../src/ui/wiki-config.ts";
 
 api.loadGameData(JSON.parse(readFileSync(new URL("../../inventory/gamedata.json", import.meta.url), "utf8")));
 const wikiText = JSON.parse(readFileSync(new URL("../../inventory/wikidata.json", import.meta.url), "utf8"));
@@ -70,12 +71,9 @@ test("F40: neutral formats around translated names (no English glue)", () => {
   }
 });
 
-test("F03: the XP block's picks are kept per enemy across a re-render", () => {
-  const p = xpPicksOf(20, 1);
-  p.grade = 5;
-  p.heroes = 3;
-  assert.deepEqual(xpPicksOf(20, 1), { grade: 5, heroes: 3, asc: 0 });
-  assert.equal(xpPicksOf(21, 1).grade, 3, "another enemy starts at grade B");
+test("F03 (U60: the XP block is gone): the page's grade and size live in the URL, so a re-render keeps them", () => {
+  assert.deepEqual(parseEnemyConfig(20, "?grade=5&size=3"), { grade: 5, size: 3 });
+  assert.equal(parseEnemyConfig(21, "").grade, 3, "another enemy starts at grade B");
 });
 
 test("F11 / F08 / F15 / F16 / F19 / F41 in the page code", () => {

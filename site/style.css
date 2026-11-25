@@ -1253,24 +1253,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .help-more a.ref-link:hover, .help-more a.ref-link:focus-visible { border-bottom: 1px solid currentColor; }
 .facts dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, .seg-label a.ref-link { color: inherit; }
 /* end wiki cross-links */
-/* quest xp */
-/* U33. Enemy pages' "XP and time" section (wiki-enemies.ts: questXpBlock, mapXpBlock): grade / party / ascension
-   toggles, then a small table. */
-.qxp-controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 4px 0 10px; }
-.qxp-controls .seg-opt .grade { min-width: 18px; height: 18px; }
-.qxp-wrap { max-width: 720px; }
-.qxp-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.qxp-table th, .qxp-table td { padding: 6px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); text-align: left; }
-.qxp-table th { color: var(--muted); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.qxp-table th.num, .qxp-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.qxp-table th a.ref-link { color: inherit; }
-.qxp-table tr.rare td { background: color-mix(in srgb, #ec4899 7%, transparent); }
-.qxp-where { margin: 0 0 8px; }
-@media (max-width: 600px) {
-  .qxp-table th, .qxp-table td { padding: 5px 6px; }
-  .qxp-controls { gap: 8px 12px; }
-}
-/* end quest xp */
 /* battle v4 */
 /* U36 / U39. Step 3 in two columns: party | opponent (U39: the Party tab; the fight is in the Flow tab); stacked below 960px. */
 .setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; }
@@ -1459,11 +1441,7 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 /* end u43 battle results */
 /* r1 wiki world */
 /* R1-B1 (live-site review R1): wiki enemy, map and XP fixes.
-   F04: the XP table is as wide as its columns need (no 720 px cap), scrolling in its frame when the page is narrower.
-   F14: its numbers centred like the other tables (th.num / td.num rule of the tables block). */
-.qxp-wrap { max-width: 100%; width: max-content; }
-.qxp-table th.num, .qxp-table td.num { text-align: center; }
-.qxp-left { margin: 6px 0 0; }
+   F04 / F14: the XP table's rules went with the table (U60: XP and time are in the enemy stats table). */
 /* F16 / F19: the map page's "Essence per run" card and the compact bush facts: in the U56 fact cards since. */
 /* F15: a wiki list whose every row is hidden expansion content: one empty state. */
 .wiki-empty { background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
@@ -1997,13 +1975,7 @@ footer .footer-line a { color: inherit; }
 
 /* F43: compact facts on the map and enemy pages: U56 fact cards since (style.css U56). */
 
-/* F44: the XP block's pickers on one row (it scrolls sideways when narrower); "Left out" closed. */
-#wiki .qxp-controls { flex-wrap: nowrap; overflow-x: auto; gap: 14px; padding: 2px; scrollbar-width: thin; }
-#wiki .qxp-controls > * { flex: none; }
-#wiki .qxp-controls .seg-field { flex-wrap: nowrap; }
-#wiki .qxp-left { margin: 8px 0 0; }
-#wiki .qxp-left > summary { cursor: pointer; }
-#wiki .qxp-left > p { margin: 4px 0 0; }
+/* F44: the XP block and its pickers are gone (U60: grade and size are page modifiers). */
 
 /* F45: the timeline and the drops as page sections, a column per variant (no card around the tables). */
 #wiki .variant-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px 24px; align-items: start; }
@@ -2389,6 +2361,33 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   background: var(--card); color: var(--fg); font-size: 0.88rem; font-weight: 600; text-decoration: none; transition: border-color .15s; }
 .fight-btn:hover { border-color: var(--accent); color: var(--accent); }
 /* end U53 */
+/* U60 */
+/* A details page's title line (wiki-enemies.ts titleLine): the h1, then "Fight in simulator" on the same line,
+   right-aligned; with no room (a long name on a 375 px phone) the button wraps under the title. */
+#wiki .title-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0 0 10px; }
+#wiki .title-line > h1 { margin: 0; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+#wiki .title-actions { margin-left: auto; }
+#wiki .title-actions:empty { display: none; }
+#wiki .title-line .fight-sim { margin: 0; }
+/* The enemy page's Grade and Size bar (wiki-enemies.ts enemyConfigBar), in the maps' modifier bar (U49). */
+#wiki .enemy-config .seg-opt .grade { min-width: 18px; height: 18px; }
+/* The stats table with the run's Cost, Time, XP and XP / min (statsTable): the rare row tinted; a map-only enemy's run
+   cells span both variants. */
+#wiki .stats-run td, #wiki .stats-run th { white-space: nowrap; }
+#wiki .stats-run tr.rare td { background: color-mix(in srgb, #ec4899 7%, transparent); }
+#wiki .stats-run td[rowspan] { background: none; vertical-align: middle; }
+/* Drop tables: one colgroup (LOOT_COLS) and a fixed layout, so Every win and the loot rolls line up column for column;
+   the page's grade highlighted. */
+#wiki .loot-table.loot-cols { table-layout: fixed; width: 100%; min-width: 520px; }
+#wiki .loot-cols col.lt-item { width: 30%; }
+#wiki .loot-cols col.lt-rar { width: 16%; }
+#wiki .loot-cols col.lt-3 { width: 14%; }
+#wiki .loot-cols col.lt-g { width: 8%; }
+#wiki .loot-cols td { overflow-wrap: anywhere; white-space: normal; }
+#wiki .loot-cols td.loot-rar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#wiki .loot-table .pick { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+#wiki .loot-table th.pick { box-shadow: inset 0 -2px 0 var(--accent); }
+/* end U60 */
 /* U51 */
 /* The Flow without a "Turn" column: heads, plan rows and action lines share one grid of the actors' columns. */
 .pg-row { display: grid; gap: 3px; grid-template-columns: repeat(var(--pg-cols), minmax(0, 1fr)); }
