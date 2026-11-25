@@ -87,8 +87,8 @@ test("the page: a drop goes through moveHero with the opponent's rules, then sav
   // Every slot is a target; only a filled one on the Simulator is picked up.
   const party = fn(page, "renderParty");
   assert.match(party, /"data-slot": key, \.\.\.\(ctl\.drag && raw \? \{ "data-drag": "" \} : \{\}\)/);
-  // The click-to-pick hero picker stays on the Simulator's cards (keyboard and screen readers too).
-  assert.match(party, /head, \.\.\.\(ctl\.edit \? \[s\] : \[\]\), statStrip\(raw\)/);
+  // The click-to-pick hero picker stays on the Simulator's cards (keyboard and screen readers too); U62: it is the card's head.
+  assert.match(party, /const head = ctl\.edit \? s/);
 });
 
 test("drag and drop: Pointer Events, the page still scrolls on touch (hold first), no native drag, Escape cancels", () => {
@@ -103,19 +103,19 @@ test("drag and drop: Pointer Events, the page still scrolls on touch (hold first
   assert.doesNotMatch(u48, /touch-action\s*:\s*[\w-]+\s*[;}]/);
   assert.doesNotMatch(drag, /\.touchAction|setProperty\("touch-action"/);
   // The form controls keep their clicks; empty slots (no data-drag) aren't picked up.
-  assert.match(drag, /t\.closest\("select, input, textarea, label\.include"\)/);
+  assert.match(drag, /t\.closest\("select, input, textarea, label\.include, \.pk-list"\)/);
   assert.match(drag, /closest<HTMLElement>\("\[data-drag\]\[data-slot\]"\)/);
   assert.match(drag, /e\.key === "Escape"/);
   assert.match(drag, /"dragstart"/);
-  assert.match(u48, /\.b3-slot\[data-drag\] \{ cursor: grab;/);
-  assert.match(u48, /#party \.b3-slot\.drop-over \{/);
+  assert.match(u48, /\.fc\[data-drag\] \{ cursor: grab;/);
+  assert.match(u48, /#party \.fc\.drop-over \{/);
 });
 
 test("the size cap: under the opponent's picker, without the names left out", () => {
   assert.doesNotMatch(page, /left out\.`/);
   assert.match(page, /cap\.replaceChildren\(\.\.\.\(fight\.capped\.length \? \[`ℹ️ At most \$\{rules\.maxSize\} heroes`\] : \[\]\)\);/);
-  // In both opponent kinds' controls, after the pickers.
-  assert.equal(page.match(/capNote\(\)\), card\);/g)?.length, 2);
+  // In both opponent kinds' controls (U62: a quest's in its card, the Solver's in its panel).
+  assert.equal(page.match(/capNote\(\)/g)?.length, 2);
   assert.doesNotMatch(fn(page, "renderParty"), /party-capped/);
 });
 
@@ -132,8 +132,8 @@ test("pageControls: the Simulator edits and drags; the Solver is read-only (U50:
   assert.match(party, /const ctl = pageControls\(state\.mode\.key\);/);
   assert.match(party, /const include = raw && ctl\.edit \?/);
   assert.match(party, /\.\.\.\(ctl\.edit \? \[el\("div", \{ class: "toolbar party-tools" \}, clear/);
-  assert.match(party, /abilityBlock\(raw \? idx : null, raw, key, ctl\.edit\)/);
-  assert.match(fn(page, "abilityBlock"), /\.\.\.\(editable \? \[el\("td", \{ class: "swap-col"/);
+  assert.match(party, /heroRows\(raw \? idx : null, raw, key, ctl\.edit\)/);
+  assert.match(fn(page, "heroRows"), /pick: editable && live \?/);
   assert.match(fn(page, "renderPlan"), /const edit = pageControls\(state\.mode\.key\)\.edit \? planEdit\(\) : undefined;/);
 });
 

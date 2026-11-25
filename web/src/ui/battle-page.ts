@@ -8,8 +8,12 @@
  * enemy or a map run) on the right; U39: two tabs, Party (those) and Flow (the whole fight, turn by turn, editable).
  * U48: the Solver's Party and Flow are read-only (battle-edit.ts pageControls); both pages have a "↑" back-to-top button.
  * U51: one "?" beside the Party / Flow tabs, the open tab's (showTab). U58: Flow layouts to compare (flow-layouts.ts;
- * U63: Party · Flow 2 · Flow 3, Flow 1 gone), one Flow panel drawn by the open one. U61: the Party view's HP chart under the
- * opponent's card (hp-chart.ts), drawn by renderPlan from the very trace it hands the Flow layout.
+ * U63: Party · Flow 2 · Flow 3, Flow 1 gone), one Flow panel drawn by the open one. U61: the Party view's HP chart
+ * (hp-chart.ts), drawn by renderPlan from the very trace it hands the Flow layout. U62: the Party view in three
+ * columns, heroes | opponent | HP chart (#hp-col); the hero and enemy cards are one builder (fighter-card.ts): the picker as the
+ * head, the stats on two lines, the rotation (the enemy's from its timeline, read-only); a skill or passive opens its
+ * picker in place, each choice with its effect (pick-list.ts). The enemy list holds each rare variant as its own entry
+ * ("<id>:rare"), no "Rare variant" box.
  *
  * Solver (U42): the spoiler guard (battle-search.ts) first, then one full-width Solve panel: the quest / map toggle and
  * its pickers (the opponent card waits in #target-card, beside the party: placeTarget), the options, the time budget,
@@ -33,9 +37,10 @@ import { type MapSpec, type Scroll, Sim } from "../tools/engine.ts";
 import { type FightTrace, type MapRoomTrace, traceFight, traceMapRun } from "../tools/fight-trace.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, apBadge, clickableRow, duration, el, expansionMark, fmt, fmt1, fmtCompact, gold, gradeBadge, heroAsc, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast, withAsc } from "./dom.ts";
+import { $, duration, el, expansionMark, fmt, fmt1, gold, gradeBadge, heroAsc, lv, lvStart, pct, pill, rateTone, type Row, select, table, tabKeys, tile, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
-import { radar, type RadarAxis } from "./radar.ts";
+import { type CardRow, fighterCard } from "./fighter-card.ts";
+import type { PickOption } from "./pick-list.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
 import { migrateOldLocks } from "./solver-heroes.ts";
@@ -45,14 +50,14 @@ import type { PlanEdit } from "./flow-parts.ts";
 import { type FlowId, flowLayout, isFlow, parseTab, type ViewTab } from "./flow-layouts.ts";
 import { locationOf, mapRoomTabs, type PlanMember } from "./battle-plan.ts";
 import { drawHpChart, hpData, type HpRun } from "./hp-chart.ts";
-import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyRadar, EVA_RIM, includedSlots, isFightable, type SlotRef } from "./battle-setup.ts";
+import { defaultQuest, defaultSlots, effectiveDamage, enemyGroups, enemyMaxHp, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
 import { initSaveSource } from "./save-source.ts";
 import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, slotKeyOfLoc } from "./battle-edit.ts";
 import { enableSlotDrag } from "./party-drag.ts";
 import { roomBarWheel, rowStep, scrollToShow, toTopVisible } from "./battle-layout.ts";
-import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillLink } from "./wiki-data.ts";
+import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
 import { type MapRunContext, mapResultXp, type QuestRunContext, questResultXp, xpText } from "./quest-xp.ts";
 import { statLink } from "./wiki-ref.ts";
 import { cappedNote, compactResult, essenceLines, hpLeftCell, resultTile, tileColumns, turnCapNote } from "./battle-results.ts";
@@ -119,9 +124,6 @@ function restoreParty(heroes: number): boolean {
   }
 }
 
-/** The combat stats on a hero card, in the game's order. */
-const CARD_STATS: [string, string][] = [["maxHP", "HP"], ["atk", "Atk"], ["matk", "Matk"], ["def", "Def"], ["mdef", "Mdef"], ["acc", "Acc"], ["crit", "Crit"]];
-
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
   dataReady ??= dataJson("gamedata.json", "game data").then((json) => api.loadGameData(json));
@@ -129,26 +131,31 @@ function loadData(): Promise<void> {
 }
 
 const className = (cls: number) => classNameOf(cls) ?? `class ${cls}`;
-// No "asc N" in option text: the chosen hero's avatar carries the ascension outline.
-const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} lvl ${h.level}`;
+// No "asc N" in option text: the card's hero picker carries the ascension frame (U62: asc-N on the <select>).
+const heroLabel = (h: Any) => `${h.name} · ${className(h.class)} ${lv(h.level)}`;
 const slotKey = (row: string, i: number) => `${row}${i}`;
 const slotLabel = (key: string) => `${key.startsWith("front") ? "Front" : "Back"} ${key.endsWith("1") ? 1 : key.endsWith("2") ? 2 : 3}`;
 
 // ---------------------------------------------------------------- choices
 /**
  * The enemy picker (U36): by region and kind, region by region: "<Region>", "<Region> – Event", "<Region> – Map" (map
- * bosses and map Treasure Bushes only), each by level (battle-setup.ts enemyGroups on wiki-data.ts regionOf).
+ * bosses and map Treasure Bushes only), each by level (battle-setup.ts enemyGroups on wiki-data.ts regionOf). U62: an
+ * enemy with a rare variant is listed twice, "Lvl 20 · Goblin" ("20") then "Lvl 20 · Goblin Warlord (rare)"
+ * ("20:rare"), so the list sets rare too (no "Rare variant" box); the Flow's enemy head uses the same list.
  */
 function questOptions(): [string, [string, string][]][] {
   const ids = Object.keys(G.questData).map(Number)
     // Placeholders are not fights (wiki-data PLACEHOLDER_QUEST_IDS); the quest bushes (gathering quests) are. Nor is
     // an expansion the visitor hides (Frentir, map bosses).
     .filter((id) => isFightable(id) && isVisible("enemy", id));
-  return enemyGroups(ids, !mapsHidden()).map((g) => [g.label, g.ids.map((id): [string, string] => {
-    const q = G.questData[id];
-    const rare = q.enemyHpB !== undefined && q.attackListB !== undefined && q.nameB ? ` / rare: ${enemyName(id, true)}` : "";
-    return [String(id), `Lvl ${enemyLevelText(id)} · ${enemyName(id)}${rare}${expansionMark(needsOf("enemy", id))}`];
-  })]);
+  return enemyGroups(ids, !mapsHidden()).map((g) => [g.label, g.ids.flatMap((id) => questEntries(id).map(([value, rare]): [string, string] =>
+    [value, `${lvStart(enemyLevelText(id))} · ${(rare ? enemyName(id, true) : undefined) ?? enemyName(id)}${rare ? " (rare)" : ""}${expansionMark(needsOf("enemy", id))}`]))]);
+}
+
+/** The enemy chosen in #quest, or null while no quest opponent is built. */
+function questPick(): { id: number; rare: boolean } | null {
+  const q = document.querySelector<HTMLSelectElement>("#quest");
+  return q ? parseQuestValue(q.value) : null;
 }
 
 function mapOptions(sv: Save | null): [string, [string, string][]][] {
@@ -201,21 +208,14 @@ function heroRaw(i: number | null): Any | null {
   return i === null || i === undefined || !state.sv ? null : state.sv.raw.hero[i];
 }
 
-/** A compact "⇄" control over a transparent <select>: swaps a skill or the passive in place (the slot keeps its size). */
-function swapControl(label: string, options: [string, string][], value: string, onChange: (v: string) => void): HTMLElement {
-  const s = select({ "aria-label": label, class: "swap-select" }, options);
-  s.value = value;
-  s.addEventListener("change", () => onChange(s.value));
-  return el("span", { class: "swap", title: label }, el("span", { "aria-hidden": "true" }, "⇄"), s);
-}
-/** The same control, greyed, for an empty slot. */
-const swapPlaceholder = () => el("span", { class: "swap off", "aria-hidden": "true" }, "⇄");
+/** U62: the focus back on a card's control after a redraw: the skill or passive button (`[data-focus]`). */
+const refocusCard = (focusKey: string) => document.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`)?.focus();
 
 /** Rebuild the party after an in-place edit, then put the focus back on the control that made it. */
 function afterEdit(focusKey: string): void {
   persistParty();
   renderParty(false);
-  document.querySelector<HTMLElement>(`[data-focus="${focusKey}"] select`)?.focus();
+  refocusCard(focusKey);
 }
 
 /**
@@ -223,16 +223,21 @@ function afterEdit(focusKey: string): void {
  * skill it plays but hasn't unlocked (old save) stays listed, so the control shows the truth. Both tabs use it (U39).
  */
 function rotationOptions(raw: Any | null, current?: string): [string, string][] {
+  return rotationChoices(raw, current).map((c): [string, string] => [c.name, `${skillName(c.name)} (${c.ap ?? "?"} AP)`]);
+}
+/** The same choices as skill names and AP (U62: the card's picker shows them with their effects). */
+function rotationChoices(raw: Any | null, current?: string): { name: string; ap: number | undefined }[] {
   if (!raw) return [];
   const info = api.skillInfo(api.newHero(raw));
   const unlocked: Any[] = info.skills.slice(0, info.unlocked);
-  const opts: [string, string][] = [["Basic", "Basic (0 AP)"], ...unlocked.map((u): [string, string] => [u.name, `${skillName(u.name)} (${u.ap} AP)`])];
+  const out = [{ name: "Basic", ap: 0 as number | undefined }, ...unlocked.map((u) => ({ name: String(u.name), ap: u.ap as number | undefined }))];
   if (current && current !== "Basic" && !unlocked.some((u) => u.name === current)) {
-    const ap = info.skills.find((x: Any) => x.name === current)?.ap ?? skillAp(current) ?? "?";
-    opts.push([current, `${skillName(current)} (${ap} AP)`]);
+    out.push({ name: current, ap: info.skills.find((x: Any) => x.name === current)?.ap ?? skillAp(current) });
   }
-  return opts;
+  return out;
 }
+/** U62: a skill choice of the card's picker: its name, AP and effect. */
+const skillOption = (c: { name: string; ap: number | undefined }): PickOption => ({ value: c.name, label: skillName(c.name), ap: c.ap, note: skillDesc(c.name) });
 
 /** The rotation and passive a hero (save index) plays: its edited one, else its save's. */
 function rotationOf(idx: number): SkillChoice {
@@ -277,50 +282,18 @@ function refuseAp(idx: number, r: { used?: number; max?: number }, focus?: () =>
 }
 
 /**
- * Passive, then rotation, as the wiki / save viewer's ability rows (U22): the whole row opens the wiki page, the AP
- * as apBadge, the "x / y AP" budget beside the label; each row edits in place with its ⇄ control. An empty slot
- * (`raw` null) shows the same skeleton, greyed, so every slot has the same size.
+ * U62: a hero card's passive and rotation rows (fighter-card.ts). Editable (the Simulator), a skill or the passive is
+ * a button that opens its picker in place, each choice with its effect (pick-list.ts; was a "⇄" select and a wiki
+ * link); read-only (the Solver), plain text. Both carry the effect on hover; the passive's effect is not on its line.
+ * The passive row ends with the rotation's "14 / 20 AP". An empty slot (`raw` null) shows the same skeleton, greyed.
  */
-function abilityBlock(idx: number | null, raw: Any | null, key: string, editable = true): HTMLElement[] {
+function heroRows(idx: number | null, raw: Any | null, key: string, editable = true): { passive: CardRow; rotation: CardRow[] } {
   const hero = raw ? api.newHero(raw) : null;
   const info = hero ? api.skillInfo(hero) : null;
   const apOf: Record<string, number> = Object.fromEntries((info?.skills ?? []).map((x: Any) => [x.name, x.ap]));
   const rot: string[] = idx !== null && hero ? state.skills[idx]?.attackList ?? hero.attackList.slice(1, 6) : ["", "", "", "", ""];
   const passive: string = idx !== null && hero ? state.skills[idx]?.passive ?? hero.passiveSelect : "";
-  const edit = (attackList: string[], p: string) => {
-    state.skills[idx!] = { attackList, passive: p };
-  };
-
-  // Passive row: name, bonus, ⇄.
-  const pLink = raw ? passiveLink(passive || "None") : el("span", { class: "muted" }, "—");
-  const pRow = el("tr", {}, el("td", { class: "name" }, pLink),
-    el("td", { class: "eff" }, raw ? (passive && passive !== "None" ? passiveText(passive) : "no passive") : ""),
-    // U48: no ⇄ column on a read-only page (the Solver).
-    ...(editable ? [el("td", { class: "swap-col", "data-focus": `${key}-p` }, raw && info
-      ? swapControl(`${raw.name}: passive`, info.passives.map((x: string): [string, string] => [x, passiveName(x)]), passive, (v) => {
-        // U40: a passive that gives AP (Wisdom) can't be dropped when the rotation then goes over the limit.
-        const b = apBudgetOf(idx!, v), used = apUsed(rot, b);
-        if (used > b.max && b.max < apBudgetOf(idx!, passive).max) return refuseAp(idx!, { used, max: b.max });
-        edit([...rot], v);
-        afterEdit(`${key}-p`);
-      }) : swapPlaceholder())] : []));
-  if (raw) clickableRow(pRow, pLink);
-
-  // Rotation rows: turn, skill, AP, ⇄.
-  const rows = rot.map((sk, k) => {
-    const link = raw ? (sk === "Basic" ? el("span", {}, "Basic") : skillLink(sk)) : el("span", { class: "muted" }, "—");
-    const opts = rotationOptions(raw, sk);
-    const tr = el("tr", {}, el("td", { class: "n" }, String(k + 1)), el("td", { class: "name" }, link),
-      el("td", { class: "ap-col" }, raw ? apBadge(sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk)) : el("span", { class: "ap-badge off", "aria-hidden": "true" }, "–")),
-      ...(editable ? [el("td", { class: "swap-col", "data-focus": `${key}-${k}` }, raw ? swapControl(`${raw.name}: turn ${k + 1} skill`, opts, sk, (v) => {
-        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
-        const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
-        if (!r.ok) return refuseAp(idx!, r, () => document.querySelector<HTMLElement>(`[data-focus="${key}-${k}"] select`)?.focus());
-        afterEdit(`${key}-${k}`);
-      }) : swapPlaceholder())] : []));
-    if (raw) clickableRow(tr, link);
-    return tr;
-  });
+  const live = Boolean(raw && info && idx !== null);
 
   // "14 / 20 AP"; over budget the game plays the default rotation (Hero.calculateAPRemainder).
   const used = rot.reduce((a, n) => a + (n && n !== "Basic" ? apOf[n] ?? skillAp(n) ?? 0 : 0), 0);
@@ -329,30 +302,50 @@ function abilityBlock(idx: number | null, raw: Any | null, key: string, editable
   const over = info !== null && used > max;
   const apTitle = info ? `${used} of ${max} action points used${over ? `: ${used - max} over budget, the game plays the default rotation instead` : `, ${max - used} remaining`}` : "";
   const ap = info
-    ? el("span", { class: `ap-mini${over ? " over" : ""}`, title: apTitle, role: "img", "aria-label": apTitle }, over ? "⚠ " : "", el("strong", {}, String(used)), ` / ${max} AP`)
-    : el("span", { class: "ap-mini off", "aria-hidden": "true" }, "– / – AP");
-  return [
-    el("div", { class: "ab-block" }, el("p", { class: "section-label" }, "Passive"),
-      el("table", { class: "ability-rows slot-rows passive-rows", "aria-label": "Passive" }, el("tbody", {}, pRow))),
-    el("div", { class: "ab-block" }, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ap),
-      el("table", { class: "ability-rows slot-rows skill-rows", "aria-label": "Rotation, turns 1 to 5" }, el("tbody", {}, ...rows))),
-  ];
+    ? el("span", { class: `fc-ap${over ? " over" : ""}`, title: apTitle, role: "img", "aria-label": apTitle }, over ? "⚠ " : "", el("strong", {}, String(used)), ` / ${max} AP`)
+    : el("span", { class: "fc-ap off", "aria-hidden": "true" }, "– / – AP");
+
+  const passiveRow: CardRow = {
+    text: raw ? (passive && passive !== "None" ? passiveName(passive) : "No passive") : "—",
+    tip: raw ? (e) => passiveTip(e, passive) : undefined,
+    end: ap,
+    pick: editable && live ? {
+      label: `${raw.name}: passive`, value: passive, focus: `${key}-p`,
+      options: () => (info!.passives as string[]).map((x): PickOption => ({ value: x, label: x === "None" ? "No passive" : passiveName(x), note: x === "None" ? "" : passiveText(x) })),
+      onPick: (v) => {
+        // U40: a passive that gives AP (Wisdom) can't be dropped when the rotation then goes over the limit.
+        const b = apBudgetOf(idx!, v), u = apUsed(rot, b);
+        if (u > b.max && b.max < apBudgetOf(idx!, passive).max) return refuseAp(idx!, { used: u, max: b.max }, () => refocusCard(`${key}-p`));
+        state.skills[idx!] = { attackList: [...rot], passive: v };
+        afterEdit(`${key}-p`);
+      },
+    } : undefined,
+  };
+  const rotation = rot.map((sk, k): CardRow => ({
+    text: raw ? skillName(sk) : "—",
+    ap: raw ? (sk === "Basic" ? 0 : apOf[sk] ?? skillAp(sk) ?? 0) : null,
+    tip: raw && sk !== "Basic" ? (e) => skillTip(e, sk) : undefined,
+    pick: editable && live ? {
+      label: `${raw.name}: turn ${k + 1} skill`, value: sk, focus: `${key}-${k}`,
+      options: () => rotationChoices(raw, sk).map(skillOption),
+      onPick: (v) => {
+        // U39: the same edit as the Flow tab's skill ▾ (battle-edit.ts); U40: refused over the AP limit.
+        const r = editRotationSkill(state, idx!, k, v, { attackList: rot, passive }, apBudgetOf(idx!));
+        if (!r.ok) return refuseAp(idx!, r, () => refocusCard(`${key}-${k}`));
+        afterEdit(`${key}-${k}`);
+      },
+    } : undefined,
+  }));
+  return { passive: passiveRow, rotation };
 }
 
-/**
- * A hero's combat stats as a compact two-line table (labels, values); dashes for an empty slot. The columns size to
- * their values (style.css), so four-digit values ("1,183") stay whole and apart; from five digits a value is
- * shortened ("12.3K") with the full one in its tooltip.
- */
-function statStrip(raw: Any | null): HTMLElement {
-  const st: Any = raw ? api.heroStats(api.newHero(raw)) : {};
-  const cell = (k: string, label: string) => {
-    if (!raw) return el("td", {}, "–");
-    const v = Number(st[k] ?? 0);
-    return Math.abs(v) >= 10_000 ? el("td", { title: `${label} ${fmt.format(v)}` }, fmtCompact.format(v)) : el("td", {}, fmt.format(v));
-  };
-  return el("table", { class: "stat-strip" }, el("thead", {}, el("tr", {}, ...CARD_STATS.map(([, l]) => el("th", { scope: "col" }, l)))),
-    el("tbody", {}, el("tr", {}, ...CARD_STATS.map(([k, l]) => cell(k, l)))));
+/** A hero's card stats (fighter-card.ts statGrid), with the passive it plays (an edited one too); null: an empty slot. */
+function heroCardStats(idx: number | null, raw: Any | null): Record<string, number> | null {
+  if (!raw) return null;
+  const h = api.newHero(raw);
+  const p = idx !== null ? state.skills[idx]?.passive : undefined;
+  if (p && p !== h.passiveSelect) h.passiveSelect = p;
+  return api.heroStats(h);
 }
 
 /**
@@ -423,20 +416,29 @@ function renderParty(refreshSearch = true): void {
     const required = rules.required.some((x) => x.row === row && x.i === i);
     const soloOff = rules.kind === "solo" && !required;
     const off = !raw && (soloOff || (rules.kind !== "solo" && filled >= rules.maxSize));
-    if (off) s.disabled = true;
     const offText = soloOff ? "solo: Front 1 only" : `at most ${rules.maxSize} heroes`;
-    const head = el("div", { class: "slot-head" }, el("span", { class: "slot-name" },
-      raw ? withAsc(el("span", { class: "avatar" }, String(raw.name).slice(0, 1).toUpperCase()), heroAsc(raw.prestigeLevel), String(raw.name))
-        : el("span", { class: "avatar off", "aria-hidden": "true" }, "?"),
-      `${row === "front" ? "Front" : "Back"} ${i + 1}`,
-      raw ? pill(`${className(raw.class)} · ${raw.level}`) : pill(off ? offText : picks ? "to be found" : "empty", "plain"),
-      ...(out ? [el("span", { class: "pill plain out-badge" }, capped ? "over the limit" : "left out")] : []),
-      ...(required ? [el("span", { class: "pill t-orange req-badge", title: rules.kind === "solo" ? "A solo quest takes one hero, here" : "A party quest always fills this slot (it can be swapped, never emptied)" }, "required")] : [])),
-    el("span", { class: "slot-tools" }, ...(include ? [include] : [])));
+    if (off) {
+      s.disabled = true;
+      // U62: no pill beside the picker: an empty slot the opponent doesn't allow says why in the picker itself.
+      if (s.options[0]) s.options[0].textContent = `— ${offText} —`;
+    }
+    // U62: the picker is the card's head (no avatar, place or class pill); the hero's ascension frames it. Read-only
+    // (the Solver): the same words as plain text.
+    if (raw && heroAsc(raw.prestigeLevel)) s.classList.add(`asc-${heroAsc(raw.prestigeLevel)}`);
+    s.classList.add("fc-pick");
+    const outText = capped ? "over the limit" : out ? "left out" : "";
+    const head = ctl.edit ? s
+      : el("span", { class: "fc-name" }, raw ? heroLabel(raw) : off ? offText : picks ? "to be found" : "empty", ...(outText ? [el("span", { class: "muted" }, ` · ${outText}`)] : []));
+    const title = [required ? (rules.kind === "solo" ? "Required: a solo quest takes one hero, here" : "Required: a party quest always fills this slot (it can be swapped, never emptied)") : "",
+      outText ? `${String(raw?.name)}: ${outText}` : ""].filter(Boolean).join(". ");
+    const rows = heroRows(raw ? idx : null, raw, key, ctl.edit);
     // U48: every slot is a drop target (data-slot); a filled one on the Simulator is picked up by dragging (data-drag).
-    return el("div", { class: `${raw ? `slot b3-slot filled cls-${raw.class}` : "slot b3-slot empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}`,
-      "data-slot": key, ...(ctl.drag && raw ? { "data-drag": "" } : {}) },
-    head, ...(ctl.edit ? [s] : []), statStrip(raw), ...abilityBlock(raw ? idx : null, raw, key, ctl.edit));
+    return fighterCard({
+      kind: "hero",
+      classes: `${raw ? `filled cls-${raw.class}` : "empty"}${required ? " required" : ""}${off ? " off-limits" : ""}${out ? " excluded" : ""}`,
+      attrs: { "data-slot": key, ...(ctl.drag && raw ? { "data-drag": "" } : {}), ...(title ? { title } : {}) },
+      head, tools: include ? [include] : [], stats: heroCardStats(idx, raw), passive: rows.passive, rotation: rows.rotation,
+    });
   };
   // R1 F20: what the rows mean is in the heading's tooltip, not a line under it. R2 F33: on the Solver, a row's empty
   // slots (not the required one) fold into one line, "3 empty back slots", that opens them (foldEmpty).
@@ -510,8 +512,8 @@ function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean, drag: bool
 /** The opponent for the party rules, or null while the opponent card isn't built yet. */
 function pageTarget(): PageTarget | null {
   if (oppKind() !== "quest") return document.querySelector("#map") ? { map: targetOf().map!.spec } : null;
-  const q = document.querySelector<HTMLSelectElement>("#quest");
-  return q ? { quest: { id: Number(q.value), rare: document.querySelector<HTMLInputElement>("#rare")?.checked ?? false } } : null;
+  const q = questPick();
+  return q ? { quest: q } : null;
 }
 /** Why the six slots can't fight the opponent (battle-rules.ts), or null. */
 function partyProblem(front?: (unknown | null)[], back?: (unknown | null)[]): string | null {
@@ -592,8 +594,10 @@ function currentOpponent(): OppChoice {
   const kind = oppKind();
   // The other kind's choice stays as it was remembered.
   const was = storedOpponent();
+  // U62: stored as before, the quest id and `rare` apart (the picker's value is "<id>" or "<id>:rare").
+  const q = questPick();
   return kind === "quest"
-    ? { ...was, kind, quest: v("#quest"), rare: document.querySelector<HTMLInputElement>("#rare")?.checked ?? false, amount: v("#amount") }
+    ? { ...was, kind, quest: q ? String(q.id) : undefined, rare: q?.rare ?? false, amount: v("#amount") }
     : { ...was, kind, map: v("#map"), asc: v("#map-asc"), grade: v("#map-grade"), scrolls };
 }
 function storedOpponent(key = oppKey()): OppChoice {
@@ -634,52 +638,39 @@ function renderTarget(): void {
   });
   const box = $("#target");
   if (oppKind() === "quest") {
-    const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
-    const rare = el("input", { type: "checkbox", id: "rare" }) as HTMLInputElement;
-    const amount = select({ id: "amount", "aria-label": "Quest size" }, [["1", "×1"]]);
+    // U62: one list with each rare variant as its own entry ("<id>:rare"); the quest size a compact control.
+    const q = select({ id: "quest", class: "fc-pick", "aria-label": "Enemy" }, questOptions());
+    const amount = select({ id: "amount", class: "fc-size", "aria-label": "Quest size" }, [["1", "×1"]]);
     // R1 F20: the quest size's explanation is in a "?" (syncAmount fills it), not a paragraph.
     const sizeNote = el("span", { id: "amount-note" });
-    const card = el("article", { class: "opp-card" });
+    const cap = capNote();
+    // U42: the Solver chooses the enemy in its Solve panel (#target); its card (#target-card) is read-only.
+    const apart = Boolean(document.querySelector("#target-card"));
+    const holder = el("div", { class: "opp-card-box" });
     const update = () => {
-      const d = G.questData[q.value];
-      const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined;
-      rare.disabled = !hasRare;
-      if (!hasRare) rare.checked = false;
-      syncAmount();
-      const r = rare.checked;
-      // U39: HP as text (it follows the quest size: one enemy with N× HP); the radar's other axes share one rim, this
-      // enemy's highest stat, and Eva has its own, 200.
+      const { id, rare } = parseQuestValue(q.value);
+      const d = G.questData[id];
+      syncAmount(amount, sizeNote, rare);
       const n = Number(amount.value) || 1;
-      const rd = enemyRadar(d, r, n);
-      const common = rd.axes.find((a) => a.key !== "enemyEva")?.max ?? 0;
-      const axes: RadarAxis[] = rd.axes.map((a) => ({ label: a.label, value: a.value, max: a.max,
-        rim: a.key === "enemyEva" ? `the scale (${fmt.format(EVA_RIM)}: 200 or more sits on the rim)` : `the scale (${fmt.format(common)}: its highest stat)` }));
-      const hpText = el("p", { class: "opp-hp" }, el("span", { class: "muted small" }, "HP "), el("strong", {}, fmt.format(rd.hp)),
-        ...(n > 1 ? [el("span", { class: "muted small" }, ` (${fmt.format(rd.baseHp)} ×${n}, quest size)`)] : []));
-      card.className = `opp-card${r ? " rare" : ""}`;
-      card.replaceChildren(
-        el("header", {}, el("span", { class: "opp-ico", "aria-hidden": "true" }, "👹"),
-          el("div", {}, el("h3", {}, enemyLink({ id: Number(q.value), rare: r })),
-            el("div", { class: "pills" }, pill(`level ${enemyLevelText(Number(q.value))}`, "plain"), ...(r ? [pill("rare", "t-pink")] : []),
-              ...(d.questType === 6 ? [pill("attacks first", "t-orange")] : []),
-              // R1 F20: the radar's scale in a "?", not a caption.
-              helpTip(`The radar's scale: Atk, Matk, Def and Mdef share one rim, this enemy's highest of the four (${fmt.format(common)}), `
-                + `so the shape shows what it is strong at. Eva's rim is ${EVA_RIM}: ${EVA_RIM} or more sits on the rim.`, "the stats radar")))),
-        hpText,
-        radar(axes, { title: `${enemyName(q.value, r)}'s stats`, size: 240 }),
-        // U36: the turns are in the plan (U39: the Flow tab); the plain rotation only without timeline data.
-        ...(timelineOf(Number(q.value), r) ? [] : [el("h4", {}, "Skills"),
-          el("ol", { class: "rotation compact" }, ...seq<string>((r ? d.attackListB : d.attackList) ?? {}).map((sk) => el("li", {}, skillLink(sk))))]));
+      const focused = document.activeElement;
+      holder.replaceChildren(fighterCard({
+        kind: "enemy", classes: rare ? "rare" : "",
+        head: apart ? el("span", { class: "fc-name" }, q.selectedOptions[0]?.textContent ?? "", ...(n > 1 ? [el("span", { class: "muted" }, ` ×${n}`)] : [])) : q,
+        tools: apart ? [] : [amount, sizeNote],
+        lines: [...(apart ? [] : [cap]), ...(d.questType === 6 ? [el("p", { class: "fc-line small muted" }, "Attacks first")] : [])],
+        stats: enemyStats(id, rare, n),
+        rotation: enemyRotation(id, rare),
+      }));
+      // The picker and the size move into the new card: give them their focus back.
+      if (focused instanceof HTMLElement && focused !== document.activeElement && holder.contains(focused)) focused.focus();
       saveOpponent();
     };
     // Another enemy may have other party rules (required slot, size cap): the slots are drawn again.
     q.addEventListener("change", () => (update(), renderParty()));
-    rare.addEventListener("change", () => (update(), renderParty(false)));
-    // The radar's HP follows the quest size.
+    // The card's HP follows the quest size.
     amount.addEventListener("change", () => (update(), renderPlan()));
-    placeTarget(box, el("div", { class: "opp-controls" }, q,
-      el("div", { class: "toolbar" }, el("label", { class: "check" }, rare, " Rare variant"),
-        el("label", { class: "check nowrap" }, el("span", { class: "muted small" }, "Quest size"), amount), sizeNote), capNote()), card);
+    if (apart) placeTarget(box, el("div", { class: "opp-controls" }, q, el("div", { class: "toolbar" }, amount, sizeNote), cap), holder);
+    else box.replaceChildren(holder);
     update();
     setRuns("200");
   } else {
@@ -736,7 +727,16 @@ function renderTarget(): void {
   renderParty(false);
 }
 
-/** U48: under the opponent's picker, the size cap when it leaves heroes out (renderParty fills it). */
+/**
+ * U62: the enemy card's rotation, read-only: its skill on turns 1-5 (turn 6 is turn 1 again) from its timeline (the
+ * data the Flow and the wiki's timeline strip use), else its game rotation; the effect on hover.
+ */
+function enemyRotation(id: number, rare: boolean): CardRow[] {
+  // No AP: the enemy spends none.
+  return enemyTurns(id, rare, timelineOf(id, rare)).map((sk): CardRow => ({ text: skillName(sk), tip: sk === "Basic" ? undefined : (e) => skillTip(e, sk) }));
+}
+
+/** U48: under the opponent's picker, the size cap when it leaves heroes out (renderParty fills it). U62: in its card. */
 const capNote = () => el("p", { id: "party-cap", class: "small party-capped", role: "status", title: "The last heroes in slot order are left out.", hidden: "" });
 
 /**
@@ -773,11 +773,10 @@ function roomsFact(id: number, grade: number): HTMLElement {
  * hero prestige of the party; a rare quest is always ×1. The modes that pick the party allow up to the strongest hero
  * of the save (searchParty / optimiseFight skip parties that can't take the size). Keeps the current choice when allowed.
  */
-function syncAmount(): void {
-  const amount = document.querySelector<HTMLSelectElement>("#amount");
-  const note = document.querySelector<HTMLElement>("#amount-note");
+function syncAmount(amount = document.querySelector<HTMLSelectElement>("#amount"), note = document.querySelector<HTMLElement>("#amount-note"),
+  rare = questPick()?.rare ?? false): void {
+  // U62: the opponent card passes its own controls (it calls this before the card is in the page).
   if (!amount || !state.sv) return;
-  const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
   // Modes that choose the party: up to the strongest hero of the save (the search skips parties that can't take it).
   const max = maxQuestAmount(state.mode.party ? partyOf().members.map((m) => m.raw) : state.sv.raw.hero, rare, state.sv.raw.gameMode || "Standard");
   const was = Number(amount.value) || 1;
@@ -955,46 +954,21 @@ function planEdit(): PlanEdit {
     enemies: () => {
       if (oppKind() === "quest") {
         const q = document.querySelector<HTMLSelectElement>("#quest");
-        if (!q) return null;
-        const rare = document.querySelector<HTMLInputElement>("#rare")?.checked ?? false;
-        return { label: "Enemy", groups: flowEnemyOptions(), value: `${q.value}${rare ? ":rare" : ""}` };
+        // U62: the Party view's own list, rare variants included ("<id>:rare"; was flowEnemyOptions).
+        return q ? { label: "Enemy", groups: questOptions(), value: q.value } : null;
       }
       const m = document.querySelector<HTMLSelectElement>("#map");
       return m ? { label: "Map", groups: mapOptions(state.sv), value: m.value } : null;
     },
     setEnemy: (v) => {
-      if (oppKind() === "quest") {
-        const [id, variant] = v.split(":");
-        const q = $<HTMLSelectElement>("#quest"), rare = $<HTMLInputElement>("#rare");
-        if (q.value !== id) {
-          q.value = id;
-          q.dispatchEvent(new Event("change"));
-        }
-        if (!rare.disabled && rare.checked !== (variant === "rare")) {
-          rare.checked = variant === "rare";
-          rare.dispatchEvent(new Event("change"));
-        }
-      } else {
-        const m = $<HTMLSelectElement>("#map");
-        m.value = v;
-        m.dispatchEvent(new Event("change"));
+      const s = $<HTMLSelectElement>(oppKind() === "quest" ? "#quest" : "#map");
+      if (s.value !== v) {
+        s.value = v;
+        s.dispatchEvent(new Event("change"));
       }
       refocus("enemy");
     },
   };
-}
-
-/**
- * The flow's enemy choices (U40): the Party tab's enemy list (questOptions), each enemy with a rare variant listed a
- * second time as that variant ("<id>:rare"), since the flow has no "Rare variant" box.
- */
-function flowEnemyOptions(): [string, [string, string][]][] {
-  return questOptions().map(([g, list]) => [g, list.flatMap(([id, label]): [string, string][] => {
-    const d = G.questData[id];
-    const hasRare = d.enemyHpB !== undefined && d.attackListB !== undefined && d.nameB;
-    const lv = `Lvl ${enemyLevelText(Number(id))} · `, mark = expansionMark(needsOf("enemy", Number(id)));
-    return hasRare ? [[id, `${lv}${enemyName(id)}${mark}`], [`${id}:rare`, `${lv}${enemyName(id, true)} (rare)${mark}`]] : [[id, label]];
-  })]);
 }
 
 /** U63: how far the selected room stays clear of the bar's edges (the 36 px fade and its ‹ › button). */
@@ -1152,11 +1126,11 @@ function renderPlan(): void {
 }
 
 /**
- * U61: the HP chart's box in the Party view, under the opponent's card and its spider chart (made once, at the end of
- * #opp-col, after #target / #target-card, so redrawing the card leaves it in place).
+ * U61: the HP chart's box in the Party view, made once. U62: in the view's third column, #hp-col (heroes | opponent |
+ * HP chart; was under the opponent's card in #opp-col).
  */
 function hpBox(): HTMLElement | null {
-  const col = document.querySelector<HTMLElement>("#opp-col");
+  const col = document.querySelector<HTMLElement>("#hp-col");
   if (!col) return null;
   let box = col.querySelector<HTMLElement>("#hp-chart");
   if (!box) {
@@ -1268,7 +1242,7 @@ function partyOf() {
 function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } } {
   const sv = state.sv!;
   if (oppKind() === "quest") {
-    return { quest: { id: Number($<HTMLSelectElement>("#quest").value), rare: $<HTMLInputElement>("#rare").checked, amount: Number($<HTMLSelectElement>("#amount").value) } };
+    return { quest: { ...questPick()!, amount: Number($<HTMLSelectElement>("#amount").value) } };
   }
   const v = $<HTMLSelectElement>("#map").value;
   const spec: MapSpec = v.startsWith("own:") ? sv.raw.mapInventory.filter((c: unknown) => typeof c === "string")[Number(v.slice(4))]
@@ -1799,12 +1773,10 @@ function restoreOpponent(was: OppChoice): void {
       s.dispatchEvent(new Event("change"));
     }
   };
-  put("#quest", was.quest);
-  const rare = document.querySelector<HTMLInputElement>("#rare");
-  if (rare && was.rare && !rare.disabled) {
-    rare.checked = true;
-    rare.dispatchEvent(new Event("change"));
-  }
+  // U62: the stored { quest, rare } (a wiki "Fight in simulator" link's too) is the picker's "<id>:rare" entry; an
+  // enemy without a rare variant falls back to its normal one.
+  const quest = document.querySelector<HTMLSelectElement>("#quest");
+  if (was.quest !== undefined) put("#quest", [questValue(was.quest, Boolean(was.rare)), was.quest].find((v) => quest && [...quest.options].some((o) => o.value === v)));
   // The quest size (U36: kept too; the sizes offered follow the party, so a size it can't take falls back to ×1).
   put("#amount", was.amount);
   put("#map", was.map);

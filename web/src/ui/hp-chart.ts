@@ -3,8 +3,8 @@
  * the traced fight the Flow tabs show (battle-page.ts renderPlan traces it once and hands the same object to the open
  * Flow layout and to this chart), so the chart and the Flows always agree.
  *
- * - One line per hero in its class colour (`cls-N`, --c), one for the enemy in the gold trim (dashed). The y axis is
- *   HP as a share of max HP (heroes and enemy on one scale); the absolute HP is in the readout and the legend.
+ * - One line per hero in its class colour (`cls-N`, --c), one for the enemy in purple (dashed; U62: --boss, was the
+ *   gold trim). The y axis is HP as a share of max HP (heroes and enemy on one scale); the absolute HP is in the readout and the legend.
  * - x: the fight's start, then the end of each turn. A map run puts its fought rooms one after the other: a dashed
  *   boundary before each room after the first, the enemy line restarting with each room's enemy.
  * - A fighter that falls: its line drops to 0 and a cross marks the point (again if it stands up and falls again).

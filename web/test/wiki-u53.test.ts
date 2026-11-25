@@ -78,7 +78,8 @@ test("Simulator intake: the link's opponent becomes the remembered one before th
   assert.doesNotMatch(fn, /battle-party/, "the party is not touched");
   // the battle page restores what the link's fields name: the option values it builds
   assert.match(src, /\[`cat:\$\{id\}`, `Lvl/);
-  assert.match(src, /put\("#quest", was\.quest\)/);
+  // U62: a rare link ({ quest, rare: true }) picks the "<id>:rare" entry of the enemy list, else the normal one.
+  assert.match(src, /put\("#quest", \[questValue\(was\.quest, Boolean\(was\.rare\)\), was\.quest\]/);
   assert.match(src, /put\("#map-asc", was\.asc\)/);
 });
 

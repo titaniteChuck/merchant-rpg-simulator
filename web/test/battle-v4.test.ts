@@ -1,4 +1,4 @@
-// Battle page v4 (U36): enemy picker groups, radar rims, the solver's shortlist, the include / size-cap rule and the
+// Battle page v4 (U36): enemy picker groups, the enemy card stats (U62; radar rims until then), the solver's shortlist, the include / size-cap rule and the
 // 5-turn plan grid (battle-setup.ts, battle-plan.ts). Game data only, CI runs it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -7,7 +7,7 @@ import * as api from "../src/sim/api.ts";
 import { G } from "../src/sim/data.ts";
 import { enemyTimeline, loadTimelines } from "../src/tools/schedule.ts";
 import { partyRules } from "../src/tools/combat.ts";
-import { enemyGroups, enemyRadar, EVA_RIM, includedSlots, isFightable, solveShortlist } from "../src/ui/battle-setup.ts";
+import { enemyGroups, enemyStats, includedSlots, isFightable, solveShortlist } from "../src/ui/battle-setup.ts";
 import { compactEffect, type EnemyCell, type HeroCell, PLAN_TURNS, planGrid } from "../src/ui/battle-plan.ts";
 import { regionOf } from "../src/ui/wiki-data.ts";
 
@@ -42,31 +42,17 @@ test("enemy picker: region by region, Region / Event / Map, the Map group only m
   assert.ok(!groups.some((g) => /Level \d/.test(g.label)));
 });
 
-test("enemy radar (U39): no HP axis, Atk/Matk/Def/Mdef on the enemy's own highest stat, Eva on 200", () => {
+test("enemy card stats (U62, was the U39 radar): the hero card's eight, as the engine fights it, HP times the quest size", () => {
   // Odin: atk 1500, matk 1000, def 800, mdef 450, eva 400, HP 140,000
-  const odin = enemyRadar(G.questData[72], false, 3);
-  assert.deepEqual(odin.axes.map((a) => a.label), ["Atk", "Matk", "Def", "Mdef", "Eva"]);
-  assert.ok(!odin.axes.some((a) => a.key === "enemyHp"));
-  for (const a of odin.axes.filter((x) => x.key !== "enemyEva")) assert.equal(a.max, 1500, a.label);
-  assert.equal(odin.axes.find((a) => a.key === "enemyEva")!.max, EVA_RIM);
-  assert.equal(EVA_RIM, 200);
-  // HP as text, times the quest size
-  assert.equal(odin.baseHp, 140000);
-  assert.equal(odin.hp, 420000);
-  assert.equal(odin.amount, 3);
-  // The Mighty Bush no longer sets anyone's rim: a weak enemy's shape fills its own scale
-  const wolf = enemyRadar(G.questData[81]);
-  assert.equal(wolf.axes.find((a) => a.key === "enemyAtk")!.max, 600);
-  assert.equal(wolf.hp, 17000);
-  // every enemy: the common rim is its highest of the four, and at least one axis reaches it
+  assert.deepEqual(enemyStats(72, false, 3), { maxHP: 420000, atk: 1500, matk: 1000, def: 800, mdef: 450, acc: 100, eva: 400, crit: 0 });
+  assert.equal(enemyStats(81).maxHP, 17000);
+  // every enemy and rare variant builds
   for (const id of fightable()) {
     for (const rare of [false, true]) {
       const q = G.questData[id];
-      if (rare && q.enemyHpB === undefined) continue;
-      const r = enemyRadar(q, rare);
-      const four = r.axes.filter((a) => a.key !== "enemyEva");
-      const max = Math.max(...four.map((a) => a.value));
-      assert.ok(four.every((a) => a.max === max && a.value <= a.max), `${q.name}${rare ? " (rare)" : ""}`);
+      if (rare && (q.enemyHpB === undefined || q.attackListB === undefined)) continue;
+      const s = enemyStats(id, rare);
+      assert.equal(s.maxHP, rare ? q.enemyHpB : q.enemyHp, `${q.name}${rare ? " (rare)" : ""}`);
     }
   }
 });

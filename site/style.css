@@ -30,6 +30,7 @@
   --banner: #b8322a;        /* top bar */
   --banner-fg: #ffffff;
   --trim: #c8961e;          /* gold trim */
+  --boss: #c99bff;          /* U62: the boss / enemy line, purple: 4.6:1 on --card, 7.1:1 on --bg */
   --inset: #c8b898;         /* sand / parchment cells */
   --inset-fg: #2a2018;
   --skill: #9fc8ff;         /* skill links */
@@ -67,6 +68,7 @@
   --banner: #b8322a;
   --banner-fg: #ffffff;
   --trim: #c8961e;
+  --boss: #6b21a8;          /* U62: 7.7:1 on --card, 6.4:1 on --bg */
   --inset: #e2d2ae;
   --inset-fg: #2a2018;
   --skill: #2350a8;
@@ -299,18 +301,6 @@ section > h2:first-child { margin-top: 36px; }
 .party-row h3 { margin: 18px 0 10px; font-size: 1rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .party-row h3 .muted { font-weight: 500; }
 .slots { display: grid; gap: 14px; grid-template-columns: 1fr; }
-.slot {
-  position: relative; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; box-shadow: var(--shadow);
-  transition: border-color .2s, box-shadow .2s;
-}
-.slot.filled { border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
-.slot.filled::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--c); }
-.slot.empty { background: color-mix(in srgb, var(--card) 60%, transparent); border-style: dashed; box-shadow: none; }
-.slot-name { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-.slot-name .avatar { width: 26px; height: 26px; border-radius: 8px; font-size: 0.8rem; }
-.slot select { width: 100%; }
-.slot details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .skills { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .turns { display: grid; gap: 6px; grid-template-columns: 1fr; }
 .turn { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); align-items: center; gap: 8px; }
@@ -378,7 +368,6 @@ ol.rotation > li::before { content: counter(rot); grid-area: n; color: var(--mut
 ol.rotation > li > :first-child { grid-area: s; font-weight: 650; }
 ol.rotation .ap { grid-area: ap; justify-self: end; color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
 ol.rotation .eff { grid-area: e; }
-ol.rotation.compact > li { grid-template-areas: "n s"; grid-template-columns: 22px minmax(0, 1fr); }
 
 /* ------------------------------------------------------------------ wiki links + tooltip */
 a.wl { text-decoration: none; color: inherit; border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent); }
@@ -438,7 +427,6 @@ td .skill-line { display: inline-block; min-width: 220px; }
 a.wl.asc { border-bottom: 0; }
 .avatar.asc { display: grid; padding: 0; overflow: visible; }
 .avatar.asc::before { inset: -4px; padding: 2px; border-radius: 17px; }
-.slot-name .avatar.asc::before { inset: -3px; border-radius: 10px; }
 .asc-swatch { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; vertical-align: middle; border-radius: 6px; font-size: 0.72rem; font-weight: 700; line-height: 1; }
 /* U46: the number centred both ways: its own box (dom.ts ascSwatch), its line trimmed to the digits (cap height to
    baseline, where text-box is supported) so the font's ascent and descent don't push it off-centre; text-align and
@@ -537,25 +525,19 @@ a.secondary-link:hover { text-decoration: underline; }
 .hero-detail .radar-fig { max-width: 380px; }
 @media (max-width: 760px) { .hero-detail-grid { grid-template-columns: minmax(0, 1fr); } }
 
-/* U15: the enemy on the left, the six hero slots on the right, in every mode. */
-.setup-grid { display: grid; gap: 20px; grid-template-columns: minmax(300px, 1fr) minmax(0, 2fr); align-items: start; }
-@media (max-width: 960px) { .setup-grid { grid-template-columns: minmax(0, 1fr); } }
 .party-cols { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 560px) { .party-cols { grid-template-columns: minmax(0, 1fr); } }
 .party-cols .party-row h3 { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 2px; }
 .col-title { margin: 0 0 10px; font-size: 1rem; }
 .opp-col { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
-@media (max-width: 960px) { .opp-col { position: static; } }
 .opp-col .seg { align-self: flex-start; }
 .opp-controls { display: flex; flex-direction: column; gap: 8px; }
 .opp-controls > select { width: 100%; }
 .opp-controls .toolbar, .opp-controls p { margin: 0; }
 .opp-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.opp-card.rare { border-top: 3px solid #ec4899; }
 .opp-card header { display: flex; gap: 12px; align-items: center; }
 .opp-card h3 { margin: 0 0 4px; font-size: 1.1rem; }
 .opp-card h4 { margin: 6px 0 0; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.opp-card .radar-fig { max-width: 260px; margin-inline: auto; }
 .opp-card .pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .opp-card p { margin: 0; }
 .opp-ico { font-size: 1.8rem; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 12px; background: var(--card-2); border: 1px solid var(--border); }
@@ -622,7 +604,6 @@ h3.sub { margin: 16px 0 8px; font-size: 0.95rem; }
 .tl-win.k-stun { background: color-mix(in srgb, #ef4444 28%, transparent); }
 .tl-win:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tl-note { margin: 2px 0 0; }
-.opp-card .tl { margin-top: 2px; }
 .pickers { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 
 /* ------------------------------------------------------------------ class balance page (U4) */
@@ -666,15 +647,6 @@ th button .grade { text-transform: none; letter-spacing: 0; }
 /* end save viewer v3 */
 
 /* ------------------------------------------------------------------ battle hero cards (U15) */
-.slot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* Hero card stats: each column as wide as its value (auto layout, no wrap), the spare width shared out, at least 6px
-   between two values, so "1,183" and "1,159" never run together; battle.ts shortens five-digit values. */
-.stat-strip { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; table-layout: auto; }
-.stat-strip th, .stat-strip td { white-space: nowrap; text-align: center; padding: 1px 3px; }
-.stat-strip th:first-child, .stat-strip td:first-child { padding-left: 0; }
-.stat-strip th:last-child, .stat-strip td:last-child { padding-right: 0; }
-.stat-strip th { color: var(--muted); font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .04em; padding-block: 0; }
-.stat-strip td { font-weight: 650; }
 .chips { display: flex; flex-direction: column; gap: 5px; }
 
 /* ------------------------------------------------------------------ game palette components (U16) */
@@ -901,37 +873,6 @@ h2, h3 { color: var(--fg); }
 .run-box .search-panel > p:first-child { margin-top: 0; }
 .run-box .search-form { margin-bottom: 0; }
 .b3-results .search-out { margin-top: 0; }
-/* Hero slots: the same skeleton filled or empty (stats, passive, rotation), so every slot has the same size. */
-.b3-slot { gap: 7px; padding: 12px; }
-.b3-slot .slot-head { min-height: 28px; }
-.b3-slot .slot-name { min-width: 0; flex-wrap: wrap; row-gap: 2px; }
-.b3-slot .avatar.off { opacity: 0.45; background: var(--card-2); color: var(--muted); box-shadow: none; }
-.b3-slot.empty .stat-strip, .b3-slot.empty .ab-block { opacity: 0.55; }
-.b3-slot .ab-block { min-width: 0; }
-.b3-slot .section-label { margin: 0 0 3px; }
-.b3-slot .rot-head { margin: 0 0 3px; align-items: center; flex-wrap: nowrap; height: 18px; }
-table.slot-rows { table-layout: fixed; width: 100%; font-size: 0.82rem; }
-table.slot-rows td { padding: 2px 4px; height: 30px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-table.slot-rows tr:last-child td { border-bottom: 0; }
-table.slot-rows td.n { width: 1.6em; padding-right: 2px; }
-table.slot-rows td.ap-col { width: 2.6em; text-align: center; overflow: visible; }
-table.slot-rows td.swap-col { width: 32px; padding: 1px 0 1px 2px; text-align: right; overflow: visible; }
-table.slot-rows td.name { overflow: hidden; text-overflow: ellipsis; }
-table.slot-rows.passive-rows td.name { width: 46%; }
-table.slot-rows td.eff { min-width: 0; font-size: 0.78rem; }
-.slot-rows .ap-badge { min-width: 22px; height: 22px; padding: 0 5px; font-size: 0.75rem; }
-.slot-rows .ap-badge.off { background: var(--card-2); color: var(--muted); }
-/* "⇄": a transparent <select> over the icon, so a click opens the list and the row keeps its size. */
-.swap { position: relative; display: inline-grid; place-items: center; width: 28px; height: 24px; border-radius: 7px;
-  border: 1px solid var(--border); background: var(--card-2); color: var(--accent); font-weight: 700; font-size: 0.85rem; line-height: 1; }
-.swap:hover { border-color: var(--accent); }
-.swap:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-.swap.off { color: var(--muted); }
-.b3-slot .swap select.swap-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; padding: 0; margin: 0; border: 0; cursor: pointer; }
-.ap-mini { font-size: 0.78rem; line-height: 18px; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
-.ap-mini strong { color: var(--fg); font-size: 0.9rem; line-height: 18px; }
-.b3-slot .rot-head .section-label { line-height: 18px; }
-.ap-mini.over, .ap-mini.over strong { color: var(--bad); font-weight: 700; }
 /* Gear in search results: the two-column gearGrid; changed slots outlined. */
 .search-out .gear-grid { margin: 4px 0 6px; }
 /* "change" on the sand inset: white on dark green (the pill's own green text is too light there). */
@@ -1002,7 +943,7 @@ th.num, td.num, .loot-table td.num, .loot-table th.num { text-align: center; }
 th.num button { text-align: center; }
 /* Row numbers of the ability rows (save viewer, wiki class pages, battle slots), and the class-balance matrix headers
    over its centred win rates. */
-.ability-rows .n, table.slot-rows td.n { text-align: center; padding-left: 4px; padding-right: 4px; }
+.ability-rows .n { text-align: center; padding-left: 4px; padding-right: 4px; }
 .cb-matrix th.cb-q { text-align: center; }
 /* end battle v3.1 + numbers */
 
@@ -1230,10 +1171,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .solver-table .no-scrolls { font-size: 0.7rem; white-space: nowrap; cursor: help; }
 .solver-loaded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .party-tools, .party-problem { margin: 0 0 8px; }
-.slot.required { outline: 2px dashed color-mix(in srgb, #f97316 70%, transparent); outline-offset: 2px; }
-.slot.required.filled { outline-style: solid; outline-color: color-mix(in srgb, #f97316 40%, transparent); }
-.req-badge { font-size: 0.66rem; letter-spacing: .04em; }
-.slot.off-limits { opacity: 0.55; }
 /* plan: what the enemy does to the heroes */
 .tl-cell.hero.hit { background: color-mix(in srgb, #f59e0b 9%, var(--card-2)); }
 .tl-cell.hero.forced { border-color: color-mix(in srgb, #ef4444 65%, var(--border)); background: color-mix(in srgb, #ef4444 10%, var(--card-2)); }
@@ -1254,19 +1191,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .facts dt a.ref-link, .loot-table th a.ref-link, .ability-rows th a.ref-link, .seg-label a.ref-link { color: inherit; }
 /* end wiki cross-links */
 /* battle v4 */
-/* U36 / U39. Step 3 in two columns: party | opponent (U39: the Party tab; the fight is in the Flow tab); stacked below 960px. */
-.setup-grid.b3-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 14px; }
-@media (max-width: 960px) { .setup-grid.b3-grid { grid-template-columns: minmax(0, 1fr); } }
-/* Hero cards: the include box at the top right; a hero left out is dimmed but keeps its slot. */
-.slot-tools { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.slot .include { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px;
-  background: var(--card-2); cursor: pointer; }
-.slot .include input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
-.slot .include.capped, .slot .include.capped input { cursor: not-allowed; }
-.slot .include:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.slot.excluded > :not(.slot-head), .slot.excluded .slot-name { opacity: 0.45; }
-.slot.excluded { border-style: dashed; }
-.out-badge { font-size: 0.66rem; letter-spacing: .03em; }
 .party-capped { margin: 0 0 10px; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #f59e0b;
   background: color-mix(in srgb, #f59e0b 12%, transparent); }
 /* The 5-turn plan: turns down, actors across (timeline.ts partyPlan). */
@@ -1574,8 +1498,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* end r1 wiki ref */
 /* u39 battle */
 /* U39 (battle page). The enemy's HP as text above the radar (it left the radar; it follows the quest size). */
-.opp-card .opp-hp { font-variant-numeric: tabular-nums; text-align: center; }
-.opp-card .opp-hp strong { font-size: 1.05rem; }
 /* The Solver's spoiler guard hides the whole rest of the page until accepted: only the guard shows (U41: the opponent and options too). */
 #setup.solve-guarded > section:not(:first-child) { display: none; }
 /* The flow's "Planned, not reached" line: a light gap and a dashed gold line. */
@@ -1745,7 +1667,7 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 /* F33: a Solver row's empty slots folded into one line. */
 .empty-slots > summary { cursor: pointer; padding: 6px 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); }
 .empty-slots[open] > summary { margin-bottom: 14px; }
-.empty-slots > .slot + .slot { margin-top: 14px; }
+.empty-slots > .fc + .fc { margin-top: 14px; }
 /* F34: one status line over the solver's table. */
 .solve-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
 /* F35: the row icon stays on its first chip's line; "rough" with its "?". */
@@ -2249,11 +2171,11 @@ html.wiz-open #drop, html.wiz-open details:has(> #drop), html.wiz-open .example-
 p.empty-slots { margin: 0; padding: 6px 12px; border: 1px dashed var(--border); border-radius: 10px; }
 /* Hero cards move by drag and drop (party-drag.ts): picked up from anywhere but their form controls, the card follows
    the pointer, the slot under it is outlined. No touch-action change: a finger scrolls the page unless it rests first. */
-.b3-slot[data-drag] { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-#party .b3-slot.dragging { z-index: 30; transform: translate(var(--dx, 0), var(--dy, 0)); cursor: grabbing; opacity: .92;
+.fc[data-drag] { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#party .fc.dragging { z-index: 30; transform: translate(var(--dx, 0), var(--dy, 0)); cursor: grabbing; opacity: .92;
   box-shadow: 0 10px 30px rgb(0 0 0 / .35); transition: none; }
-#party.drag-on, #party.drag-on .b3-slot { cursor: grabbing; }
-#party .b3-slot.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+#party.drag-on, #party.drag-on .fc { cursor: grabbing; }
+#party .fc.drop-over { outline: 2px solid var(--accent); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 /* The Flow: one long page at every width, no scroll frame of its own (the column heads stick to the window's top). On
    a phone the columns share the width (no minimum width), with tighter cells (U51: no turn column). */
 .tc .tc-scroll, .flow-panel .pg-scroll { overflow: visible; max-height: none; }
@@ -2569,9 +2491,9 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 }
 /* end Flow 3 */
 /* U61 */
-/* The Party view's HP chart (web/src/ui/hp-chart.ts), under the opponent's card: the full width of its column (the
-   page's width on a phone), one line per hero in its class colour (--c), the enemy dashed in the gold trim. */
-.hp-chart-box { margin-top: 12px; min-width: 0; }
+/* The Party view's HP chart (web/src/ui/hp-chart.ts): U62 the Party view's third column, the full width of it (the
+   page's width on a phone), one line per hero in its class colour (--c), the enemy dashed in purple (--boss, U62; was the gold trim). */
+.hp-chart-box { min-width: 0; }
 .hp-chart { margin: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px;
   box-shadow: var(--shadow); min-width: 0; }
 .hp-chart figcaption { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 4px; }
@@ -2583,7 +2505,7 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .hp-axis-title { font-style: italic; }
 .hp-room { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .hp-line { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.hp-enemy { --c: var(--trim); }
+.hp-enemy { --c: var(--boss); }
 .hp-line.hp-enemy { stroke-width: 2.5; stroke-dasharray: 6 3; }
 .hp-death { fill: none; stroke: var(--c, var(--fg)); stroke-width: 2.4; stroke-linecap: round; }
 .hp-guide { stroke: var(--fg); stroke-width: 1; opacity: .5; }
@@ -2639,3 +2561,79 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* Touch screens swipe: no buttons there. */
 @media (hover: none) { .room-scroll { display: none; } }
 /* end U63 */
+/* U62 */
+/* The Party view in three columns, heroes | opponent | HP chart (battle-page.ts, #hp-col). 961-1199 px: the heroes on
+   the left over two rows, the opponent then the chart on the right. 641-960 px: the heroes full width, opponent | chart
+   under them. 640 px and less (a 375 px phone): one column, heroes, opponent, chart. */
+.setup-grid { display: grid; gap: 14px; align-items: start; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr) minmax(270px, 1fr);
+  grid-template-areas: "party opp hp"; }
+.setup-grid > .party-col { grid-area: party; min-width: 0; }
+.setup-grid > .opp-col { grid-area: opp; min-width: 0; }
+.setup-grid > .hp-col { grid-area: hp; min-width: 0; }
+@media (max-width: 1199px) { .setup-grid { grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); grid-template-areas: "party opp" "party hp"; } }
+@media (max-width: 960px) {
+  .setup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "party party" "opp hp"; }
+  .opp-col { position: static; }
+}
+@media (max-width: 640px) { .setup-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "party" "opp" "hp"; } }
+/* One card family for the heroes and the enemy (fighter-card.ts): the picker as the head, the stats on two lines, the
+   passive and the rotation as compact rows. The class colour (the enemy: purple, --boss) as a stripe on the left. */
+.fc { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 8px 10px 8px 13px; font-size: 0.82rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); transition: border-color .2s; }
+.fc-enemy { --c: var(--boss); }
+.fc.filled, .fc-enemy { border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+.fc.filled::before, .fc-enemy::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--c); border-radius: 12px 0 0 12px; }
+.fc-enemy.rare { border-top: 3px solid #ec4899; }
+.fc.empty { background: color-mix(in srgb, var(--card) 60%, transparent); border-style: dashed; box-shadow: none; }
+.fc.empty .fc-stats, .fc.empty .fc-rows { opacity: 0.55; }
+.fc.required { outline: 2px dashed color-mix(in srgb, #f97316 70%, transparent); outline-offset: 2px; }
+.fc.required.filled { outline-style: solid; outline-color: color-mix(in srgb, #f97316 40%, transparent); }
+.fc.off-limits { opacity: 0.55; }
+.fc.excluded { border-style: dashed; }
+.fc.excluded > :not(.fc-head) { opacity: 0.45; }
+/* The head: the picker (or the plain name), the tools at its right (a hero's include box, the enemy's quest size). */
+.fc-head { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.fc-head > .fc-pick, .fc-head > .fc-name { flex: 1 1 auto; min-width: 0; }
+.fc-head > .fc-pick { width: 100%; padding: 4px 8px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; text-overflow: ellipsis; }
+/* A hero's ascension frames its picker, silver or gold (dom.ts .asc-N gradients). */
+.fc-head > .fc-pick.asc-1, .fc-head > .fc-pick.asc-2 { border: 2px solid transparent;
+  background: linear-gradient(var(--card), var(--card)) padding-box, var(--asc-grad) border-box; }
+.fc-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-tools { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.fc-tools .fc-size { padding: 3px 6px; border-radius: 8px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.fc .include { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--card-2); cursor: pointer; }
+.fc .include input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.fc .include.capped, .fc .include.capped input { cursor: not-allowed; }
+.fc .include:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fc-line, .fc #party-cap { margin: 0; }
+/* The stats: four "label value" pairs per line, two lines (HP Atk Matk Def / Mdef Acc Eva Crit). */
+.fc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px 8px; margin: 0; font-variant-numeric: tabular-nums; }
+.fc-stats > div { display: flex; align-items: baseline; justify-content: space-between; gap: 3px; min-width: 0; white-space: nowrap; }
+.fc-stats dt { color: var(--muted); font-size: 0.68rem; font-weight: 700; }
+.fc-stats dd { margin: 0; font-weight: 650; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
+/* The passive and the rotation: one row each, the skill then its AP; no turn numbers, no titles. */
+.fc-rows { list-style: none; margin: 0; padding: 0; }
+.fc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; min-height: 26px; border-bottom: 1px solid var(--border); }
+.fc-rot > .fc-row:last-child { border-bottom: 0; }
+.fc-row > .pk-btn, .fc-row > .fc-skill { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.fc-skill { font-weight: 650; padding: 2px 0; }
+.fc-row .ap-badge { min-width: 22px; height: 22px; padding: 0 5px; font-size: 0.75rem; }
+.fc-row .ap-badge.off { background: var(--card-2); color: var(--muted); }
+.fc-ap { font-size: 0.75rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fc-ap strong { color: var(--fg); }
+.fc-ap.over, .fc-ap.over strong { color: var(--bad); font-weight: 700; }
+/* A skill or passive that can change: the name is a button opening its choices in place (pick-list.ts). */
+.pk-btn { padding: 2px 4px; margin-left: -4px; border: 0; border-radius: 6px; background: none; color: var(--fg); font-size: inherit; font-weight: 650; }
+.pk-btn::after { content: " ▾"; color: var(--muted); font-size: 0.7rem; }
+.pk-btn:hover, .pk-btn[aria-expanded="true"] { background: var(--card-2); color: var(--accent); }
+.pk-list { flex: 1 0 100%; list-style: none; margin: 2px 0 4px; padding: 3px; max-height: min(60vh, 320px); overflow-y: auto;
+  background: var(--card-2); border: 1px solid var(--accent); border-radius: 9px; box-shadow: var(--shadow-hover); }
+.pk-list:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pk-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 6px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.pk-opt .pk-name { font-weight: 650; }
+.pk-opt .pk-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.74rem; line-height: 1.3; }
+.pk-opt.active, .pk-opt:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.pk-opt[aria-selected="true"] .pk-name { color: var(--accent); }
+.pk-opt[aria-selected="true"] .pk-name::before { content: "✓ "; }
+/* end U62 */

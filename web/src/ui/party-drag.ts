@@ -137,7 +137,7 @@ export function enableSlotDrag(box: HTMLElement, onDrop: (from: string, to: stri
     if (d || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
     const t = e.target as Element;
     const card = t.closest<HTMLElement>("[data-drag][data-slot]");
-    if (!card || !box.contains(card) || t.closest("select, input, textarea, label.include")) return;
+    if (!card || !box.contains(card) || t.closest("select, input, textarea, label.include, .pk-list")) return;
     const touch = e.pointerType === "touch";
     d = { id: e.pointerId, card, from: card.dataset.slot!, touch, x0: e.clientX, y0: e.clientY, sy0: scrollY, x: e.clientX, y: e.clientY,
       active: false, timer: null, over: null, raf: 0 };

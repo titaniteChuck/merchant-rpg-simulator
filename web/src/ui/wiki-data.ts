@@ -601,15 +601,24 @@ export function skillLink(name: string, cls = ""): HTMLElement {
   if (name === "Basic") return el("span", { class: `wl skill basic ${cls}`.trim() }, name);
   // The route stays the English key (stable URLs); the text is the visitor's language (U29).
   const a = markName(el("a", { class: `wl skill ${cls}`.trim(), href: href.skill(name) }, skillName(name)), "skill", name);
-  tip(a, () => tipBox(skillName(name), `Skill · ${skillAp(name) ?? "?"} AP`, skillDesc(name)));
-  return a;
+  return skillTip(a, name);
+}
+
+/** U62: a skill's hover card (name, AP, effect) on any element: a link, or the battle cards' skill buttons and text. */
+export function skillTip<T extends Element>(e: T, name: string): T {
+  tip(e, () => tipBox(skillName(name), `Skill · ${skillAp(name) ?? "?"} AP`, skillDesc(name)));
+  return e;
+}
+/** U62: a passive's hover card (name, its bonus) on any element. */
+export function passiveTip<T extends Element>(e: T, name: string): T {
+  if (name && name !== "None" && G.passiveData?.[name]) tip(e, () => tipBox(passiveName(name), "Passive", passiveText(name)));
+  return e;
 }
 
 export function passiveLink(name: string, cls = ""): HTMLElement {
   if (!name || name === "None" || !G.passiveData?.[name]) return el("span", { class: `wl ${cls}`.trim() }, name || "none");
   const a = markName(el("a", { class: `wl passive ${cls}`.trim(), href: href.passive(name) }, passiveName(name)), "passive", name);
-  tip(a, () => tipBox(passiveName(name), "Passive", passiveText(name)));
-  return a;
+  return passiveTip(a, name);
 }
 
 /** The content kind of an item type for the expansion rules (null: not an item). */

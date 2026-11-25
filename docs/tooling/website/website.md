@@ -398,7 +398,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     are `tabKeys`, unchanged.
 - U61, the Party view's HP chart (`web/src/ui/hp-chart.ts`; tests `web/test/battle-u61.test.ts`, CSS in the `U61`
   block), on both pages (the Solver's once a result's Show fills the party; nothing to edit in it):
-  - Place: a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
+  - Place (U62: the third column, `#hp-col`, below): a box `#hp-chart` made once at the end of `#opp-col` (`hpBox` in `battle-page.ts`), so under the opponent's
     card and its spider chart (the Simulator's `#target`, the Solver's `#target-card`); redrawing the card leaves it.
   - Data: the very trace the Flow tabs show. `renderPlan` traces once (`planTrace`: Simulate's first fight, seed
     `fightSeed(1, 0)`; a map run: `mapTrace`, the Map run mode's first run) and hands that object to the open Flow
@@ -420,6 +420,45 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     once the party can fight."); no opponent built: the box is hidden.
   - Size: viewBox 360 × 200, `width: 100%`, so about 1:1 on a 375 px phone (full width there, its column on a desktop);
     colours from the theme tokens only (light and dark).
+
+- U62, smaller Party view cards (both pages; `web/src/ui/fighter-card.ts`, `web/src/ui/pick-list.ts`; tests
+  `web/test/battle-u62.test.ts`, CSS in the `U62` block):
+  - Three columns: heroes | opponent | HP chart (`#hp-col`, after `#opp-col` in both pages' `#setup-grid`; `hpBox`
+    makes the U61 box there, no longer under the opponent's card). 961-1199 px: heroes on the left over two rows, the
+    opponent then the chart on the right; 641-960 px: heroes full width, opponent | chart under them; 640 px and less
+    (a 375 px phone): one column, heroes, opponent, chart.
+  - The boss line: purple, a `--boss` token in both themes (dark `#c99bff`, 4.6:1 on `--card`; light `#6b21a8`,
+    7.7:1), still dashed, since the Assassin's class colour is purple too. The enemy card's stripe uses it as well.
+  - One builder, `fighterCard({ kind, classes, attrs, head, tools, lines, stats, passive, rotation })`, for the hero
+    cards and the quest enemy's card; one CSS family, `.fc` (`.fc-hero`, `.fc-enemy`, `.fc-head`, `.fc-stats`,
+    `.fc-rows`). The old ones are deleted: `abilityBlock`, `statStrip`, the "⇄" `swapControl`, the U39 spider chart
+    (`enemyRadar`, `EVA_RIM`) and their CSS (`.slot`, `.b3-slot`, `.stat-strip`, `table.slot-rows`, `.swap`,
+    `.ap-mini`, `.opp-hp`, ...). The map run's card is unchanged.
+  - The head is the picker. A hero: its `<select>` (`.fc-pick`, the ascension as a silver or gold frame), the include
+    box at the right; no avatar, place, class or level pill, no "required" / "left out" pill (the outline, the
+    dimming and the card's title say it; an empty slot the opponent doesn't allow says why in its picker, "— solo:
+    Front 1 only —"). The enemy: the enemy `<select>`, then the quest size as a compact `<select>` ("×1",
+    `aria-label` "Quest size", no label text) and its "?"; the size cap note and "Attacks first" under the head.
+    Read-only (the Solver): the same words as plain text (the enemy's pickers stay in the Solve panel).
+  - Rare variants: no "Rare variant" box. The enemy list (`questOptions`, also the Flow's enemy head; was
+    `flowEnemyOptions`) lists a quest with a rare variant twice, "Lvl 20 · Goblin" (`20`) and "Lvl 20 · Goblin
+    Warlord (rare)" (`20:rare`; `questEntries`, `questValue`, `parseQuestValue` in `battle-setup.ts`). The stored
+    opponent keeps its `{ quest, rare }` format, so old choices and U53's "Fight in simulator" links (`rare=1`) pick
+    the rare entry (`restoreOpponent`), else the normal one.
+  - Stats: two lines of four "label value" pairs (a `<dl>` grid), the same for heroes and the enemy: HP Atk Matk
+    Def / Mdef Acc Eva Crit (`statGrid`; five digits shortened, "12.3K", the whole value in its tooltip). A hero's
+    with the passive it plays (an edited one too); the enemy's from the engine's `Enemy` (`enemyStats`: the game
+    mode's multipliers, Acc 100, Crit 0, HP times the quest size).
+  - Passive and rotation: no "Passive" / "Rotation" titles, no turn numbers (an ordered list). A hero: its passive
+    (no effect on its line) with the rotation's "14 / 20 AP" at the right, then five rows, skill and AP. On the
+    Simulator a skill or the passive is a button (`aria-label` "Ana: turn 2 skill: Fireball. Change"; no wiki link,
+    no "⇄"): it opens a list in place under its row (`role=listbox`, ↑ ↓ Home End, Enter or Space picks, Escape
+    closes, Tab or a tap elsewhere closes), each choice with its AP and its effect under the name (`skillDesc`,
+    `passiveText`). The edits are the same (U40's AP refusal toast and focus back on the button). On the Solver,
+    plain text. Both show the effect on hover (`skillTip`, `passiveTip` in `wiki-data.ts`). The drag leaves the
+    open list alone (`.pk-list` in `party-drag.ts`).
+  - The enemy's rotation: its skill on turns 1-5 from its timeline (`enemyTurns`, the data of the Flow and the wiki's
+    strip; without it, the game's rotation), the same rows, read-only, no AP.
 
 - Mobile review R2, batch R2-C ([review](../roadmap/review-r2.md#battle-simulator)): explanation sentences become "?"
   helps and the phone layout loses what costs a screen. Tests `web/test/battle-r2c.test.ts`; CSS in the `r2-c` block.
@@ -481,7 +520,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   opponent change keeps the results and a running search. Until a run, Results is hidden (R2 F20; a one-line hint before).
 - Step 3, party, opponent and plan (U15, reworked in U23, U36 and U39; step 2 until U26), the same arrangement in every
   mode: two tabs (U39; U40: Party first), Party and Flow (the fight turn by turn, see "Flow tab" below). Party: the six hero slots (back row 1-3
-  | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
+  | front row 1-3) and the opponent card in two columns, stacked below 960 px. (U36 had the 5-turn plan as a third column.) Until U62 (see U62 above for the cards and the three columns now): every slot has the same size, filled or empty (empty: the same skeleton greyed, "–" stats, "—" rows): head
   (avatar, Back / Front N, class and level pill; 🔒 in the search modes until U50), hero picker, stat strip (HP, Atk, Matk, Def,
   Mdef, Acc, Crit; columns as wide as their values, five-digit values shortened to "12.3K" with the full value in a
   tooltip), then PASSIVE before ROTATION, both as the wiki / save viewer ability rows (`table.ability-rows`,

@@ -3,8 +3,8 @@
  * - enemyGroups(): the enemy picker's groups, by region and kind: "<Region>", "<Region> – Event", "<Region> – Map" for
  *   each region in turn (regionOf of wiki-data.ts). The Map group holds only what maps alone have: map bosses and the
  *   map Treasure Bushes.
- * - enemyRadar(): the enemy radar (U39): HP as text (times the quest size), the other stats on one common rim (the
- *   enemy's highest of Atk, Matk, Def, Mdef), Eva on a fixed rim of 200.
+ * - enemyStats(), enemyTurns(), questEntries(): the enemy card's stats and rotation, the picker's rare entries (U62;
+ *   until then enemyRadar, the U39 spider chart's axes).
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
  *   most 5; winners first, then within each tier the fewest scrolls first (E25).
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
@@ -12,12 +12,13 @@
  * - solverFigures() (U51): a Solver row's grade, life left and heroes dead, from the setup's evaluation.
  */
 import { G } from "../sim/data.ts";
+import { Enemy } from "../sim/enemy.ts";
+import { seq } from "../sim/lua.ts";
 import { fmt, fmt1 } from "./dom.ts";
 import type { PartyRules } from "./battle-rules.ts";
 import { locationOf } from "./battle-plan.ts";
 import { isBoardQuest } from "../tools/quest-stats.ts";
 import { enemyLevelSort, isEnemy, isGathering, isTreasureBush, regionOf, regionOfLevel } from "./wiki-data.ts";
-import { ENEMY_STATS } from "./wiki-enemies.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -56,33 +57,31 @@ export function enemyGroups(ids: number[], maps = true): EnemyGroup[] {
   return out;
 }
 
-/** The evasion axis's rim (U39): always 200; an enemy with 200 or more sits on the rim. */
-export const EVA_RIM = 200;
+/** The quest has a rare variant the engine can fight (its HP and its rotation). */
+export const hasRareVariant = (id: number): boolean => G.questData?.[id]?.enemyHpB !== undefined && G.questData?.[id]?.attackListB !== undefined;
+/** U62: the enemy picker's value: the quest id, then ":rare" for its rare variant (the Flow's enemy head used it already). */
+export const questValue = (id: number | string, rare: boolean): string => `${id}${rare ? ":rare" : ""}`;
+export const parseQuestValue = (v: string): { id: number; rare: boolean } => ({ id: Number(v.split(":")[0]), rare: v.endsWith(":rare") });
+/** U62: a quest's entries in the enemy picker, [value, rare]: the enemy, then its rare variant when it has one. */
+export const questEntries = (id: number): [string, boolean][] =>
+  [[questValue(id, false), false], ...(hasRareVariant(id) ? [[questValue(id, true), true] as [string, boolean]] : [])];
 
-export interface EnemyRadar {
-  /** HP for the quest size (one enemy with `amount`× HP): shown as text, not on the radar. */
-  hp: number;
-  baseHp: number;
-  amount: number;
-  /** The other stats, in ENEMY_STATS order: Atk, Matk, Def and Mdef on one common rim (the highest of the four), Eva on 200. */
-  axes: { key: string; label: string; value: number; max: number }[];
+/**
+ * U62: the enemy card's rotation: its skill on turns 1-5 (turn 6 is turn 1 again) from its timeline (`tl`, the data the
+ * Flow and the wiki's timeline strip use), else the game's rotation of that variant.
+ */
+export function enemyTurns(id: number, rare: boolean, tl: { slots: { name: string }[] } | null): string[] {
+  const d = G.questData[id];
+  return tl?.slots.map((s) => s.name) ?? seq<string>((rare ? d.attackListB : d.attackList) ?? {}).slice(0, 5);
 }
 
 /**
- * The enemy radar (U39): HP left out (as text, with the quest size), the other axes on one scale, this enemy's own
- * highest stat, so an enemy with huge stats (the Mighty Bush) no longer squashes everyone else's shape. Evasion has its
- * own fixed rim, 200.
+ * U62: the enemy card's stats, the same eight as a hero card's (fighter-card.ts CARD_STATS), as the engine fights it
+ * (sim/enemy.ts: the game mode's enemy multipliers, Acc 100 and Crit 0, HP times the quest size).
  */
-export function enemyRadar(q: Any, rare = false, amount = 1): EnemyRadar {
-  const sfx = rare ? "B" : "";
-  const val = (k: string) => Number(q?.[`${k}${sfx}`]) || 0;
-  const n = Math.max(1, Math.trunc(amount) || 1);
-  const stats = ENEMY_STATS.filter(([k]) => k !== "enemyHp");
-  const common = Math.max(0, ...stats.filter(([k]) => k !== "enemyEva").map(([k]) => val(k)));
-  return {
-    hp: val("enemyHp") * n, baseHp: val("enemyHp"), amount: n,
-    axes: stats.map(([k, label]) => ({ key: k, label, value: val(k), max: k === "enemyEva" ? EVA_RIM : common })),
-  };
+export function enemyStats(id: number, rare = false, amount = 1): Record<string, number> {
+  const e: Any = new Enemy({ questID: id, isRare: rare, amount: Math.max(1, Math.trunc(amount) || 1) });
+  return Object.fromEntries(["maxHP", "atk", "matk", "def", "mdef", "acc", "eva", "crit"].map((k) => [k, Number(e[k]) || 0]));
 }
 
 /** True when a rate prints as "0.0%" (the page's pct). */

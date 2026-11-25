@@ -1,4 +1,4 @@
-// Battle Simulator and Solver U61: the Party view's HP chart (web/src/ui/hp-chart.ts) under the opponent's card,
+// Battle Simulator and Solver U61: the Party view's HP chart (web/src/ui/hp-chart.ts) (U62: in the Party view's third column),
 // drawn by battle-page.ts renderPlan from the very trace it hands the Flow layout. No browser: the series from known
 // traces, the chart built in the fake DOM, and battle-page.ts / style.css read as text.
 import "./helpers/fake-dom.ts";
@@ -128,7 +128,7 @@ test("the chart and the Flow read one trace: the trace's turn ends and Flow 2's 
   const show = fn(page, "showHp");
   assert.doesNotMatch(show, /trace(Fight|MapRun)|planTrace|mapTrace|new Sim/, "the chart never simulates");
   assert.match(show, /drawHpChart\(box, runs \? hpData\(runs, fighters\) : null, \{ hide \}\);/);
-  // the box: under the opponent's card (#target / #target-card) in #opp-col, made once
+  // the box: made once in its column (U62: the third column, #hp-col; until then #opp-col under the opponent's card)
   assert.match(fn(page, "hpBox"), /col\.querySelector<HTMLElement>\("#hp-chart"\)/);
   assert.match(fn(page, "hpBox"), /col\.append\(box\);/);
 });
@@ -196,6 +196,6 @@ test("CSS: the U61 block, theme tokens only, full width", () => {
   assert.ok(block.length > 200);
   assert.match(block, /\.hp-svg \{ display: block; width: 100%; height: auto;/);
   assert.match(block, /\.hp-line \{[^}]*stroke: var\(--c/);
-  assert.match(block, /\.hp-enemy \{ --c: var\(--trim\); \}/);
+  assert.match(block, /\.hp-enemy \{ --c: var\(--boss\); \}/);
   assert.doesNotMatch(block.replace(/\/\*[\s\S]*?\*\//g, ""), /#[0-9a-f]{3,6}\b/i, "colours from the theme tokens");
 });
