@@ -78,7 +78,7 @@ test("F42 / F54: the item page's fact strip, labelled sell boxes and one muted l
 
 test("F43 / F44 / F45: compact facts; the XP pickers on one row and Left out closed; drops out of the timeline card", () => {
   const wiki = ui("wiki.ts"), en = ui("wiki-enemies.ts");
-  assert.match(wiki, /compactFacts\(\[\["Level", m\.itemLevel\]/);
+  assert.match(wiki, /compactFacts\(\[\["Level", isCraftableMap\(id\) \? m\.itemLevel : /); // U55: a level-70 map's level is marked
   assert.match(wiki, /enemyBody\(id, compactFacts, section, emptyLine\)/);
   assert.match(block, /#wiki \.facts\.compact \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
   assert.match(en, /el\("details", \{ class: "qxp-left muted small" \}/);
@@ -152,6 +152,6 @@ test("F52 / F54: sentences of the Skills and class pages moved into \"?\", empty
   const wiki = ui("wiki.ts");
   assert.doesNotMatch(wiki, /el\("p", \{ class: "muted small" \}, "In the game's data, but no hero class/);
   assert.match(wiki, /emptyLine\(\["Good against"/);
-  assert.match(wiki, /emptyLine\(\["Boss", "None\."\]\)/);
+  assert.match(wiki, /emptyLine\(\["Recipe", "Not craftable\."\]\)/); // U55: no Boss line, the bosses are rows of the one Enemies table
   assert.match(ui("wiki-enemies.ts"), /empty\(\["Maps", "None: met only as a quest\."\]\)/);
 });

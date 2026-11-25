@@ -2439,3 +2439,21 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .solver-table .grade { min-width: 18px; padding: 0 3px; }
 }
 /* end U51 */
+/* U55 */
+/* A map page's one enemy table (wiki-enemies.ts mapEnemyTable): the Treasure Bush row first, the boss rows last, each
+   tinted in its pill's colour (.t-gold, .t-orange). On a phone the Enemy column stays in view (sticky, as the Profit
+   tables) and its name wraps above its tags; tighter cells. */
+.map-enemies .me-name { white-space: nowrap; }
+.map-enemies tr.me-treasure { --c: #f59e0b; }
+.map-enemies tr.me-boss { --c: #f97316; }
+.map-enemies tr:is(.me-treasure, .me-boss) td { background: color-mix(in srgb, var(--c) 7%, var(--card)); }
+.map-enemies tr.me-boss:not(.me-boss ~ .me-boss) td { border-top: 2px solid color-mix(in srgb, var(--c) 45%, var(--border)); }
+@media (max-width: 600px) {
+  .map-enemies :is(th, td) { padding: 6px 7px; }
+  .map-enemies td:first-child, .map-enemies th:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
+  .map-enemies th:first-child { z-index: 2; background: var(--card-2); }
+  .map-enemies td:first-child { min-width: 7.5rem; max-width: 9.5rem; white-space: normal; }
+  .map-enemies .me-name, .map-enemies .me-name .nowrap { white-space: normal; overflow-wrap: anywhere; }
+  .map-enemies tr:is(.me-treasure, .me-boss) td:first-child { background: color-mix(in srgb, var(--c) 7%, var(--card)); }
+}
+/* end U55 */

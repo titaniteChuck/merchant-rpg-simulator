@@ -133,6 +133,27 @@ Up to 3 scroll slots per map run (duplicates allowed), consumed at the start (`G
 - Six maps are defined at `itemLevel = 70`: Hard Boss Rush (27), Weekly Boss Rush (28), the three Random maps
   (29–31) and The Mighty Bush (32). Crafters cap at level 60 and recipes need `itemLevel ≤ crafter level`,
   so players can't craft them: dormant data (confirmed by the game's author: level 70 shouldn't exist).
+- They are the only maps without a run time: `baseMapTime = 0` for all six (`data.MapData.lua`); every map up to
+  level 60 has one. Not obtainable in 3.18 by any path (checked 2026-11-25, U55):
+  - Scribe: the craft list keeps a recipe only when `itemLevel <= crafter.level` (`scene.CraftSelectMenu.lua:182`),
+    crafters cap at level 60 (`crafterLevelRequirement` has 60 steps), and the region filter has 6 regions, so
+    level 70 (region 7) never passes (`obj.items.craftFilterService.lua` `checkItemRequirement`). Maps 29–32 have no
+    recipe at all (`materialID = {}`); 27 and 28 have one (map 24 or 16 + 50 Glacial Essence) no one can use.
+  - Nothing else adds a map: `Player:addMapToInventory` is called only by a finished craft (`obj.Craft.lua:119`), an
+    enchant (the same map back), cancelling one's own sale (`scene.ShopMenu.lua:142`) and the debug test maps
+    (ids 1, 3, 6). No loot table, parcel, order, achievement, spin or event reward holds a map; the "Weekly boss"
+    notification is the event boss quests, not map 28.
+  - The site keeps their pages, marked "not craftable" ([website](../../tooling/website/website.md#wiki)).
+
+| Id | Map | Recipe in data |
+|---|---|---|
+| 27 | Hard Boss Rush Map | Treant Revenge Map (24) + 50 Glacial Essence |
+| 28 | Weekly Boss Rush Map | Vanquishers Map (16) + 50 Glacial Essence |
+| 29 | Hard Random Map | none |
+| 30 | Superhard Random Map | none |
+| 31 | Extreme Random Map | none |
+| 32 | The Mighty Bush Map | none |
+
 - Latent crash: `treasureId` has 6 tiers, so a level-70 map gets a `nil` treasure room. Generation then fails
   at `obj.Map.lua:164`: 6% of seeds at grade 3, 66% at grade 4, 82% at grade 5 (0% at grades 1–2).
   Only matters if these maps are ever enabled.

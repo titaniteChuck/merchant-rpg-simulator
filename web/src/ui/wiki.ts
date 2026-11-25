@@ -23,6 +23,7 @@ import { sellValue } from "../tools/engine.ts";
 import { loadListState, saveListState } from "./list-state.ts";
 import { $, ascValues, type Column, duration, el, expansionBadge, fmt, gold, segField, segmented, select, slotName, gradeBadge, LV, pill, type Row, table } from "./dom.ts";
 import { ascLevels } from "../tools/profit.ts";
+import { isCraftableMap } from "../tools/quest-stats.ts";
 import { craftLine, recipeChain } from "./recipe-chain.ts";
 import { tip } from "./tooltip.ts";
 import { classStats, RADAR_HELP, tiersOf } from "./wiki-classes.ts";
@@ -30,7 +31,7 @@ import { bonusLabel, bonusLines, bonusRange, craftCost, itemAscLevels, mergeGrad
 import { goodAgainst, isHeroOnlySkill, isUnusedSkill, listedSkillNames, removesEffects, skillUnlockLevels, turnMarks, unlockCell } from "./wiki-skills.ts";
 import { battleLink, statLink } from "./wiki-ref.ts"; // U30: cross-links to the Stats / Battle sections
 import {
-  baseTag, enemyBody, enemyFightTarget, enemyLead, enemyListColumns, enemyListRows, enemyTable, fightButton, mapFightTarget, regionRowClass, TREASURE_HELP,
+  baseTag, enemyBody, enemyFightTarget, enemyLead, enemyListColumns, enemyListRows, fightButton, mapEnemyTable, mapFightTarget, regionRowClass, TREASURE_HELP, uncraftableTag,
 } from "./wiki-enemies.ts";
 import {
   ascCraftEssence, configRarity, configRoute, configSell, CONFIG_TYPES, consumableStatsAt, equipmentAt, type ItemConfig, isPlain, mapView,
@@ -772,7 +773,8 @@ function mapsPage(): HTMLElement {
   }).sort((a, b) => Number(a.region) - Number(b.region) || Number(a.id) - Number(b.id));
   const ids = rows.map((r) => Number(r.id));
   return listPage("Maps", rows, [
-    { key: "name", label: "Map", render: (r) => itemLink("map", Number(r.id)) },
+    { key: "name", label: "Map", render: (r) => isCraftableMap(Number(r.id)) ? itemLink("map", Number(r.id))
+      : el("span", {}, itemLink("map", Number(r.id)), " ", uncraftableTag()) }, // U55: the level-70 maps, marked as on the enemy pages
     { key: "region", label: "Region", render: (r) => regionChip(regionOf("map", Number(r.id))) }, { key: "level", label: "Level", num: true },
     { key: "rooms", label: "Rooms", num: true }, { key: "minutes", label: "Base time", num: true, show: (v) => (typeof v === "number" ? duration(v * 60) : "") }, { key: "mod", label: "Enemy ×", num: true },
     { key: "boss", label: "Boss", render: (r) => el("span", {}, ...joinNodes(seq<number>(item("map", Number(r.id)).bossList ?? {}).map((b) => enemyLink({ id: b })))) },
@@ -810,24 +812,25 @@ function mapBody(id: number, cfg: ItemConfig): (Node | string)[] {
     ? view.essence.map(([eid, amt]) => el("span", { class: "nowrap" }, `${fmt.format(amt)} × `, itemLink("material", eid)))
     : [...essenceParts(m), ...(isPlain(cfg) ? [] : [baseTag("The engine could not build this map with these modifiers: the plain map's essence")])];
   const sell = view ? view.sell : safeSell("map", id, 0);
-  const enemies = (ids: number[]) => enemyTable(ids, view?.stats ?? null);
   return [
-    // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Boss table has them).
+    // R1 F17: the flavour sentence only; the game's "Boss: … Mod: Nx" tail named bosses loosely (the Enemies table has them).
     ...(mapFlavour(id) ? [el("p", { class: "lead" }, mapFlavour(id))] : []),
     ...fightButton(mapFightTarget(id, cfg), modCount(cfg) ? "The plain map at this ascension, grade C: the simulator's maps take no prefix or suffix." : undefined),
     // R2-D F43: compact facts, three to a row on a phone; the essence spans the row
-    compactFacts([["Level", m.itemLevel], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(view?.rarity ?? m.rarity)], ["Rooms", m.baseEnemyAmount],
+    // U55: a level-70 map is dormant data (no crafter reaches it, no base time in the data): marked as on the enemy pages
+    compactFacts([["Level", isCraftableMap(id) ? m.itemLevel : el("span", { class: "fact-compact" }, String(m.itemLevel), " ", uncraftableTag())], ["Region", regionChip(regionOf("map", id))], ["Rarity", rarityChip(view?.rarity ?? m.rarity)], ["Rooms", m.baseEnemyAmount],
       ["Base time", m.baseMapTime ? baseTimeFact(m.baseMapTime, speed, view?.baseTime ?? null) : undefined],
       [statLink("map-essence", "Enemy ×"), `×${fmt.format(mod)}`], ["Rare boss", m.isRareBoss ? "yes" : undefined],
       [statLink("sell", "Sell value"), sell !== null ? gold(sell) : undefined],
       ...modifierFacts("map", id, cfg),
       // R1 F16: the essence names wrap inside the card ("500 × Essence de la forêt" in French).
       [statLink("map-essence", "Essence per run"), el("span", { class: "ess-fact" }, ...essence)]]),
-    bosses.length ? sectionHelp(section(`Boss${bosses.length > 1 ? "es" : ""}`, enemies(bosses)), modHelp, [statLink("map-essence")]) : emptyLine(["Boss", "None."]),
-    sectionHelp(section("Room enemies", enemies(mapEnemies(m))), modHelp, [statLink("map-essence")]),
-    // U24: the Treasure Bush of the map's level band (added to a room at run time, so not in the map's own lists)
-    ...(bush && isEnemy(bush) ? [sectionHelp(section("Treasure", enemies([bush])), [TREASURE_HELP, modHelp], [statLink("map-essence")])] : []),
-    ((rec) => (rec ? section("Recipe", rec, ...recipeNotes("map", id, cfg)) : emptyLine(["Recipe", "Not craftable."])))(recipeList("map", id)),
+    // U55: one table, the Treasure Bush first (U24: the one of the map's level band, added to a room at run time, so
+    // not in the map's own lists), then the room enemies, the boss(es) last
+    sectionHelp(section("Enemies", mapEnemyTable(bush, mapEnemies(m), bosses, view?.stats ?? null)),
+      [...(bush && isEnemy(bush) ? [TREASURE_HELP] : []), modHelp], [statLink("map-essence")]),
+    // U55: a level-70 map's recipe is data no Scribe can use
+    ((rec) => (rec ? section("Recipe", rec, ...recipeNotes("map", id, cfg)) : emptyLine(["Recipe", "Not craftable."])))(isCraftableMap(id) ? recipeList("map", id) : null),
   ];
 }
 

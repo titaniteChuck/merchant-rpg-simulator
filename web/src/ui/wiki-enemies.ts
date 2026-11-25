@@ -98,24 +98,53 @@ function mapEnemyRow(id: number, rare: boolean, mapStats: unknown): Row {
 /** A small "base" tag: the figure beside it is the unmodified one (U49). */
 export const baseTag = (why: string): HTMLElement => el("span", { class: "cfg-base", title: why }, "base", el("span", { class: "visually-hidden" }, `: ${why}`));
 
+/** What an enemy is in a map (the pills of the enemy page's Maps table and of the map page's enemy table). */
+export type MapRole = "treasure" | "room" | "boss";
+const ROLE_TONE: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
+const rolePills = (roles: MapRole[]) => roles.flatMap((x) => [" ", pill(x, ROLE_TONE[x])]);
+
 /**
  * Enemy stats for a map: one row per variant, the stats each has inside the map (`mapStats`: wiki-config mapView's
- * run stats), names linked to the enemy pages.
+ * run stats), names linked to the enemy pages. U55: each id with its roles, tagged after the name (a room enemy
+ * alone has no tag) and as the row's class (`me-boss`, `me-treasure`).
  */
-export function enemyTable(ids: number[], mapStats: unknown): HTMLElement {
+function roleTable(list: [number, MapRole[]][], mapStats: unknown): HTMLElement {
   const rows: Row[] = [];
-  for (const id of new Set(ids)) {
+  for (const [id, roles] of list) {
     if (!quest(id)?.name) continue;
-    rows.push({ ...mapEnemyRow(id, false, mapStats), skills: skillSummaryText(id, false) });
-    if (hasRare(id)) rows.push({ ...mapEnemyRow(id, true, mapStats), skills: skillSummaryText(id, true) });
+    const tags = roles.length === 1 && roles[0] === "room" ? [] : roles;
+    rows.push({ ...mapEnemyRow(id, false, mapStats), skills: skillSummaryText(id, false), roles: tags.join(" ") });
+    if (hasRare(id)) rows.push({ ...mapEnemyRow(id, true, mapStats), skills: skillSummaryText(id, true), roles: tags.join(" ") });
   }
   const mark = (r: Row) => (r.base ? [" ", baseTag("The quest's own stats: the engine could not build this enemy in the map")] : []);
-  return table(rows, [
-    { key: "name", label: "Enemy", render: (r) => el("span", { class: "nowrap" }, nameCell(r), ...mark(r)) },
+  const roles = (r: Row) => (r.roles ? String(r.roles).split(" ") as MapRole[] : []);
+  const t = table(rows, [
+    { key: "name", label: "Enemy", render: (r) => el("span", { class: "me-name" }, nameCell(r), ...rolePills(roles(r)), ...mark(r)) },
     { key: "level", label: "Level", num: true, render: levelCell }, ...ENEMY_STATS.map(([, l]) => ({ key: l, label: l, num: true })),
     { key: "skills", label: "Skills", render: (r) => skillLine(Number(r.id), !!r.rare) },
-  ]);
+  ], (r) => roles(r).filter((x) => x !== "room").map((x) => `me-${x}`).join(" "));
+  t.classList.add("map-enemies");
+  return t;
 }
+
+/** Enemy stats for a map, the ids without roles (no tags). */
+export const enemyTable = (ids: number[], mapStats: unknown): HTMLElement => roleTable([...new Set(ids)].map((id) => [id, []]), mapStats);
+
+/**
+ * U55: a map's one enemy table: its Treasure Bush first, then the room enemies, the boss(es) last. A boss the rooms
+ * also draw (Vanquishers Map) is one row, tagged boss and room.
+ */
+export function mapEnemyTable(bush: number | null | undefined, rooms: number[], bosses: number[], mapStats: unknown): HTMLElement {
+  const isBoss = new Set(bosses), inRooms = new Set(rooms);
+  return roleTable([
+    ...(bush && isEnemy(bush) ? [[bush, ["treasure"]] as [number, MapRole[]]] : []),
+    ...[...inRooms].filter((id) => !isBoss.has(id)).map((id): [number, MapRole[]] => [id, ["room"]]),
+    ...[...isBoss].map((id): [number, MapRole[]] => [id, inRooms.has(id) ? ["boss", "room"] : ["boss"]]),
+  ], mapStats);
+}
+
+/** R1 F42: the mark of a map no crafter can make (the level-70 maps); U55: also on the Maps list and the map page. */
+export const uncraftableTag = (): HTMLElement => el("span", { class: "muted small nowrap", title: UNCRAFTABLE_TITLE }, "not craftable");
 
 // ---------------------------------------------------------------- list
 /**
@@ -264,13 +293,12 @@ function mapsTable(id: number): HTMLElement {
     return { map, name: itemName("map", map) ?? m.name, level: m.itemLevel ?? null, role: [room ? "room" : "", boss ? "boss" : "", treasure ? "treasure" : ""].filter(Boolean).join(" "),
       mod, hp: inMap ? inMap.HP : hp, base: !inMap };
   });
-  const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
   // R1 F42: maps no crafter can make (the level-70 maps) stay listed, marked, as the XP section leaves them out.
   const t = table(rows, [
     { key: "name", label: "Map", render: (r) => el("span", {}, itemLink("map", Number(r.map)),
-      ...(isCraftableMap(Number(r.map)) ? [] : [" ", el("span", { class: "muted small nowrap", title: UNCRAFTABLE_TITLE }, "not craftable")])) },
+      ...(isCraftableMap(Number(r.map)) ? [] : [" ", uncraftableTag()])) },
     { key: "level", label: "Level", num: true },
-    { key: "role", label: "As", render: (r) => el("span", { class: "nowrap" }, ...String(r.role).split(" ").flatMap((x, i) => [...(i ? [" "] : []), pill(x, tone[x])])) },
+    { key: "role", label: "As", render: (r) => el("span", { class: "nowrap" }, ...String(r.role).split(" ").flatMap((x, i) => [...(i ? [" "] : []), pill(x, ROLE_TONE[x])])) },
     { key: "mod", label: "Enemy ×", num: true, render: (r) => el("span", { class: "mod-pair" }, `×${fmt.format(Number(r.mod))}`,
       withAsc(el("span", { class: "mod-asc" }, `×${fmt.format(Number(r.mod) * MAP_ASC_MOD)}`), 1)) },
     { key: "hp", label: "HP there", num: true, render: (r) => el("span", {}, fmt.format(Number(r.hp)),
@@ -408,8 +436,7 @@ function mapXpBlock(id: number): HTMLElement {
   const p = xpPicksOf(id, 1);
   let { grade, heroes, asc } = p;
   const box = el("div", { class: "qxp" });
-  const tone: Record<string, string> = { boss: "t-orange", room: "t-slate", treasure: "t-gold" };
-  const roleCell = (role: string, perRun: number) => el("span", { class: "nowrap" }, pill(role, tone[role]),
+  const roleCell = (role: string, perRun: number) => el("span", { class: "nowrap" }, pill(role, ROLE_TONE[role]),
     ...(perRun < 0.999 ? [el("span", { class: "muted small" }, ` · ${pctOfRuns(perRun)}`)] : []));
   const draw = () => {
     Object.assign(p, { grade, heroes, asc });

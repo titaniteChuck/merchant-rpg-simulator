@@ -822,6 +822,18 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     the Grimal-Frentir boss), which is not what the game does; they now show the engine's stats inside the map
     (`default.statModFromMap`: m = (Enemy × − 1) / 2, HP × 1.5m, Atk and Matk × m, Def, Mdef, Eva × (0.75 + 0.25m):
     41,250), as Stats › Map essence already said. The enemy page's Maps table "HP there" the same way.
+  - One enemy table (U55, `mapEnemyTable` in `wiki-enemies.ts`, CSS `U55` block): the "Enemies" section replaces the
+    Boss(es), Room enemies and Treasure sections. Rows: the Treasure Bush of the map's level band first, then the room
+    enemies, the boss(es) last (each variant a row, as before); the same columns (Enemy, Level, HP … Eva, Skills), the
+    same in-map stats and "base" tags. The bush and boss rows carry the enemy page's role pills ("treasure" gold, "boss"
+    orange) and a tint (`tr.me-treasure`, `tr.me-boss`, a line above the first boss); a boss the rooms also draw
+    (Vanquishers Map: 63, 64, 67) is one row tagged "boss room". One "?" (the Treasure Bush text, then the stats
+    formula). Under 600 px the Enemy column is sticky (as the Profit tables) and its name wraps above its pills.
+  - Level-70 maps (U55): the six maps with no base time (27–32) are the level-70 maps; no crafter can make them and
+    nothing else gives a map in 3.18 (see [Maps](../../game-economy/maps/maps.md#level-70-maps)). They stay listed, as
+    on the enemy pages (R1 F42), with the same muted "not craftable" mark (`uncraftableTag`) after the name on the Maps
+    list and after the level on the map page; their page shows "Recipe · Not craftable." (27 and 28 have recipe data
+    no Scribe can use). No base time is computed for them: the data has 0 and the game never runs them.
   - Save viewer links (`savedMods` in `save-tables.ts`, a WeakMap beside each row so the CSV columns don't change):
     an owned map, an inventory or counter stack and a hero's gear open their wiki page on their ascension, prefix and
     suffix (`itemLink(…, { config })`); a crafter's job on its ascension. Tests `web/test/wiki-config-u49.test.ts`.
@@ -954,7 +966,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     quest-size; Maps "?" → map-essence.
   - Item: "Sell value" → sell; "Bonus stats" fact and Stats by grade "?" → item-stats (the range formula is gone
     from the "?"); the ascension switch's "Ascension" → essence; recipe cost and time → craft; Crafting chain "?" →
-    craft. Map: "Enemy modifier", "Essence per run" and the Boss / Room enemies / Treasure "?" → map-essence; "Sell
+    craft. Map: "Enemy modifier", "Essence per run" and the Enemies "?" (U55; was Boss / Room enemies / Treasure) → map-essence; "Sell
     value" → sell.
   - Skill: "AP cost" → ap; Good against "?" → battle rotation, effects, and buffs-debuffs for cleanse / dispel
     skills (`removesEffects` in `wiki-skills.ts`).
@@ -975,7 +987,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   (levels 10–60). What hid them: the list sorted by quest id put them at the very end, all named "Treasure Bush", and
   map pages build their tables from the map's `enemyList` and `bossList` only, while the bush is added to a room at run
   time (`obj.Map:generateTreasure`), so no map page showed it (a level-1 map such as Tuvale Map gets bush 99). Now the
-  list is in region order (the region-1 bush sits with Tuvale), and map pages have a "Treasure" section with the bush of
+  list is in region order (the region-1 bush sits with Tuvale), and map pages have a "Treasure" section (U55: the first row of the one Enemies table) with the bush of
   their level band (none for the level-70 maps: `treasureId[7]` does not exist).
 - Treasure Bush levels (U28 follow-up): a bush's quest `levelReq` (10, 20 … 60) is the top of its band, so bush 99 read
   as a level-10 enemy sorted after Tuvale's level-9 ones, and looked like Yarsol's. Now a bush shows the level range of
