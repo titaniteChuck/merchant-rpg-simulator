@@ -87,3 +87,4 @@
 - **Update**: U48 done (8813366): Simulator results in the Simulate panel, drag-and-drop hero cards, "At most N heroes" under the opponent picker, Flow without "vs … change", page-long on phones with back-to-top; Solver party and Flow read-only.
 - **Update**: U50 added (Solver hero table with Must include / Neutral / Exclude, locks removed); U48's calculation alignment confirmed by the user.
 - **Fix**: Save viewer's Essence / run counts the Skilled and Expert's prefixes (8c12ed9), through one map-essence function shared with the wiki.
+- **Fix**: Profit and Farming count the Skilled and Expert's essence bonus on maps (0236a86): cost per essence down 0.3–0.8%, no cheapest source changed; Save and Profit agree (map 22, Expert's, grade C: 195 / 98).
