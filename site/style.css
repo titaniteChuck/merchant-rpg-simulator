@@ -2509,3 +2509,9 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .short-pick::after { right: 9px; }
 }
 /* end U76 */
+
+/* U75 */
+/* The Solver's kept findings beside Solve ("💾 41 parties · 3 solves" and Reset). */
+.solve-cache { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.solve-cache[hidden] { display: none; }
+/* end U75 */

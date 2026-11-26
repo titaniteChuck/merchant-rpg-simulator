@@ -152,7 +152,8 @@ test("the Solver's table: the Party cell a small table, no rough, no Scrolls or 
 
 test("CSS: the U74 block; hero cells reach AA in both themes; the chips' and rough's rules are gone", () => {
   assert.ok(block.length > 200);
-  assert.ok(css.lastIndexOf("/* end U74 */") > css.lastIndexOf("/* end U73 */"), "after U73 (U76 follows)");
+  // U75 and U76 added their blocks after this one.
+  assert.ok(css.lastIndexOf("/* end U74 */") > css.lastIndexOf("/* end U73 */"), "after U73");
   assert.doesNotMatch(css, /\.solver-lead|\.rough-wrap|\.solver-party \.hero-chip|\.solver-scrolls|\.no-scrolls|\.solver-row/);
   assert.match(block, /td\.sp-hero[^{]*\{\s*color: var\(--fg\); font-weight: 650; background: color-mix\(in srgb, var\(--c, var\(--accent\)\) 30%, var\(--pill-base\)\); \}/);
   const tint = 0.3;

@@ -9,7 +9,7 @@ import {
   type PartySearch, type ScrollLoadout, searchGear, searchParty, searchScrolls, searchSkills, type SkillSearch,
 } from "../tools/combat.ts";
 import { optimiseFight, type OptimiseResult } from "../tools/optimise.ts";
-import { type PartiesResult, searchParties } from "../tools/parties.ts";
+import { type PartiesMemo, type PartiesResult, searchParties } from "../tools/parties.ts";
 import { loadTimelines } from "../tools/schedule.ts";
 import { loadWarmStart, WARMSTART_VERSION } from "../tools/warmstart.ts";
 import { type ConsumableKind, type ConsumableRanking, rankConsumables } from "../tools/consumables.ts";
@@ -67,7 +67,9 @@ export type SearchRequest = {
   | { search: "party"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; size: number; nQuick: number; nFinal: number }
   | { search: "parties"; pool: Any[]; lock?: number[]; poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
-    map?: { spec: MapSpec; scrolls: Scroll[] }; minSize: number; maxSize: number; scrolls: boolean; timeBudgetMs: number; topK?: number }
+    map?: { spec: MapSpec; scrolls: Scroll[] }; minSize: number; maxSize: number; scrolls: boolean; timeBudgetMs: number; topK?: number;
+    /** U75: an earlier search's findings with the same inputs (the Solver's cache) and the round to run. */
+    prior?: PartiesMemo; round?: number }
   | { search: "optimise"; pool: Any[]; lock?: number[]; startParty?: { front: (number | null)[]; back: (number | null)[] };
     poolSkills?: Record<number, SkillChoice>; quest?: { id: number; rare: boolean; amount: number };
     map?: { spec: MapSpec; scrolls: Scroll[] }; save: Save; size: number; timeBudgetMs: number;
@@ -251,7 +253,7 @@ export async function runSearch(req: SearchRequest, post: (m: SearchResponse) =>
         const target = req.quest ? quest(req.quest)
           : { map: req.map!.spec, scrolls: !req.scrolls && req.map!.scrolls.length ? req.map!.scrolls : null };
         const result = searchParties(sim, pool, target, { minSize: req.minSize, maxSize: req.maxSize, scrolls: Boolean(req.map && req.scrolls),
-          lock: req.lock, timeBudgetMs: req.timeBudgetMs, topK: req.topK ?? 10 }, ctl);
+          lock: req.lock, timeBudgetMs: req.timeBudgetMs, topK: req.topK ?? 10, prior: req.prior, round: req.round }, ctl);
         return post({ type: "done", search: "parties", result, ms: ms() });
       }
       case "consumables": {

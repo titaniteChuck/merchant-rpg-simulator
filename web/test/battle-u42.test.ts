@@ -70,17 +70,21 @@ test("Solver: the time budget is back, a seconds input (30 by default) the searc
   assert.match(search, /scrolls: true, time: 30 \}/);
   assert.match(search, /const budget = el\("input", \{ type: "number", class: "solve-time"/);
   // R2 F31: sentence-case label.
-  assert.match(search, /field\("Time budget \(s\)", budget\), go\)/);
+  // U75: the kept findings' indicator and Reset after Solve.
+  assert.match(search, /field\("Time budget \(s\)", budget\), go, cacheBox\)/);
   assert.match(search, /const budgetMs = prefs\.time \* 1000;/);
-  assert.match(search, /minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs \}/);
+  assert.match(search, /minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs,/);
   // The order in the panel: sizes ("Party 1 – 5", R2 F31), scrolls, time, Solve.
   const form = search.slice(search.indexOf('el("div", { class: "toolbar search-form" }'));
-  const pos = ["sizes", "...scrollOpt", 'field("Time budget (s)"', "go)"].map((s) => form.indexOf(s));
+  const pos = ["sizes", "...scrollOpt", 'field("Time budget (s)"', "go, cacheBox)"].map((s) => form.indexOf(s));
   for (let k = 1; k < pos.length; k++) assert.ok(pos[k - 1] >= 0 && pos[k - 1] < pos[k], String(k));
 });
 
 test("Solver: without Include scrolls a map run is solved with none", () => {
   const search = read("web/src/ui/battle-search.ts");
-  assert.match(search, /if \(target\.map && !scrolls\) target\.map = \{ \.\.\.target\.map, scrolls: \[\] \};/);
-  assert.match(search, /poolSkills: ctx\.poolSkills\(\), \.\.\.target,/);
+  // U75: never the shown result's scrolls (with Include scrolls the worker ignored them anyway), so the request and
+  // its cache key are the same either way; no poolSkills (the Solver's rotations only came from a Show).
+  assert.match(search, /if \(target\.map\) target\.map = \{ \.\.\.target\.map, scrolls: \[\] \};/);
+  assert.match(search, /search: "parties", pool, lock, \.\.\.target,/);
+  assert.doesNotMatch(search, /poolSkills: ctx\.poolSkills\(\)/);
 });

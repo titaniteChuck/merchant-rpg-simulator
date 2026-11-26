@@ -42,6 +42,12 @@
  * its class colour or per scroll, "–" for an empty line; no "rough" chip, no Scrolls or Progress column; "Life
  * remaining" is the average HP left of the heroes still standing (battle-setup.ts lifeRemaining), as the Simulator's
  * Life left.
+ *
+ * U75: the findings of every solve are kept in this browser per setup (solver-cache.ts: the heroes fed to the search,
+ * Must include, the opponent, the sizes, Include scrolls, the cache version). A setup solved before shows its results
+ * at once, with "💾 41 parties · 3 solves" and Reset beside Solve; Solve again resumes (searchParties `prior`: nothing
+ * evaluated again) one round wider, and its findings are merged in. The solve no longer feeds the shown result's
+ * rotations back in (poolSkills): the Solver's party is read-only, its rotations only ever came from a Show.
  */
 import * as api from "../sim/api.ts";
 import type { FightEval, MapEval } from "../tools/combat.ts";
@@ -58,6 +64,7 @@ import { className } from "./names.ts";
 import { HERO_PICKS, type HeroPick, heroPick, type HeroPicks, picksSummary, readHeroPicks, type SolverHero,
   solverHeroesKey, solverPick } from "./solver-heroes.ts";
 import { itemLink } from "./wiki-data.ts";
+import { cacheLabel, entryResult, mergeEntry, nextRound, pageCache, type SolveCacheEntry, solveKey } from "./solver-cache.ts";
 import { isVisible } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 
@@ -83,7 +90,7 @@ export interface SearchContext {
   applyRotation(idx: number, rotation: string[], passive: string): void;
   /** Put heroes (save hero ids) in the slots. */
   applyParty(front: (number | null)[], back: (number | null)[]): void;
-  /** Edited rotations by save hero id (heroes outside the party too), for the searches over all heroes. */
+  /** Edited rotations by save hero id (heroes outside the party too). U75: not fed to the solve (its cache key). */
   poolSkills(): Record<number, SkillChoice>;
   /** Set the map run's scrolls in step 3. */
   applyScrolls(ids: number[]): void;
@@ -191,6 +198,11 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
   let last: { out: HTMLElement; draw: (again: boolean) => Node[] } | null = null;
   let current: SearchKey | null = null;
   let out: HTMLElement = el("div", { class: "search-out" });
+  // U75: the findings kept per setup, and the setup whose findings `out` shows (undefined: none drawn yet).
+  const cache = pageCache();
+  let shownKey: string | null | undefined;
+  /** U75: the current Solve panel's lookup (a solve that ends after the panel was rebuilt asks the new one). */
+  let lookupNow: (() => void) | null = null;
   // U42: a solve's progress (and a Cancel, an error) is in the Solve panel, under the options: this line survives the
   // form's rebuilds (refresh) while a search runs. The results (`results`) stay hidden until a solve is done.
   const status = el("div", { class: "solve-status", "aria-live": "polite" });
@@ -205,6 +217,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     if (key !== current) stopWorker();
     if (key !== current || !keep) {
       out = el("div", { class: "search-out" });
+      shownKey = undefined;
       results.replaceChildren(...(key ? [out] : []));
       showResults(false);
       status.replaceChildren();
@@ -228,6 +241,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     budgetMs?: number, soft = false): void {
     stopWorker();
     last = null;
+    shownKey = undefined; // U75: nothing drawn now
     showResults(false);
     out.replaceChildren();
     // Review F13/F16: the game data, timelines and warm start come from the page (fetched once, on the first search).
@@ -253,11 +267,13 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
           if (worker !== w) return;
           stopWorker();
           status.replaceChildren(el("p", { class: "muted small" }, "Cancelled."));
+          lookupNow?.(); // U75: the setup's kept findings again
         }, 10000);
         return;
       }
       stopWorker();
       status.replaceChildren(el("p", { class: "muted small" }, "Cancelled."));
+      lookupNow?.(); // U75: the setup's kept findings again
     });
     // With a time budget the bar shows the time used ("0:12 of 0:30"); otherwise the current stage's progress.
     const clock = el("span", { class: "muted small" });
@@ -281,8 +297,10 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       if (timer) clearInterval(timer);
       release();
       stopWorker();
-      if (m.type === "error") status.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
-      else {
+      if (m.type === "error") {
+        status.replaceChildren(el("p", { class: "error", role: "alert" }, m.error));
+        lookupNow?.(); // U75: the setup's kept findings again
+      } else {
         // R2 F34: the search time is part of the result's one status line (render); `stopping`: Cancel was used.
         const cancelled = stopping;
         const draw = (again: boolean) => render(m, again, cancelled);
@@ -297,6 +315,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
       release();
       stopWorker();
       status.replaceChildren(el("p", { class: "error", role: "alert" }, `Search failed: ${e.message}`));
+      lookupNow?.(); // U75: the setup's kept findings again
     };
     w.postMessage(req);
   }
@@ -358,46 +377,120 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     const budget = el("input", { type: "number", class: "solve-time", min: String(TIME_MIN), max: String(TIME_MAX), step: "5",
       "aria-label": "Time budget in seconds", title: `How long the search may run, ${TIME_MIN} to ${TIME_MAX} seconds: it then stops and shows the setups found so far.` }) as HTMLInputElement;
     budget.value = String(prefs.time);
-    minN.addEventListener("change", () => (prefs.min = intOf(minN, 1, cap)));
-    maxN.addEventListener("change", () => (prefs.max = intOf(maxN, 1, cap)));
-    sc.addEventListener("change", () => (prefs.scrolls = sc.checked));
+    // U75: a setup solved before shows its findings (lookup); these change the setup.
+    minN.addEventListener("change", () => ((prefs.min = intOf(minN, 1, cap)), lookup()));
+    maxN.addEventListener("change", () => ((prefs.max = intOf(maxN, 1, cap)), lookup()));
+    sc.addEventListener("change", () => ((prefs.scrolls = sc.checked), lookup()));
     budget.addEventListener("change", () => (prefs.time = intOf(budget, TIME_MIN, TIME_MAX)));
-    const excl = heroTable(sv, ctx.saveName());
+    const excl = heroTable(sv, ctx.saveName(), () => lookup());
     const go = el("button", { type: "button", class: "primary" }, "🔎 Solve");
+    // U75: what is kept for this setup, and Reset (hidden when nothing is).
+    const kept = el("span", { class: "muted small solve-kept" });
+    const reset = el("button", { type: "button", class: "link-btn solve-reset", "aria-label": "Reset this setup's kept findings" }, "Reset");
+    const cacheBox = el("span", { class: "solve-cache" }, kept, reset);
+    cacheBox.hidden = true;
+    const showKept = (e: SolveCacheEntry | null) => {
+      cacheBox.hidden = !e;
+      kept.textContent = e ? `💾 ${cacheLabel(e)}` : "";
+      kept.title = e ? `Kept: ${fmt.format(e.memo.screened.length)} parties, ${fmt.format(e.tried)} evaluations, ${e.runs} solves` : "";
+    };
+
+    /**
+     * U75: the solve's request and cache key from the form as it is (sizes in order, the hero table's pool and Must
+     * include), or the one error that stops it.
+     */
+    const solveInput = () => {
+      let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
+      if (lo > hi) [lo, hi] = [hi, lo];
+      // U50: the hero table's Must include and Exclude; too many must-include heroes: one error, no solve.
+      const pick = solverPick(excl.heroes, excl.picks(), hi, cap);
+      if ("error" in pick) return { error: pick.error };
+      const inPool = new Set(pick.pool);
+      const scrolls = isMap && sc.checked;
+      // U42: without "Include scrolls" a map run uses none; with it the search picks them. U75: the shown result's
+      // scrolls are never sent (the worker ignored them with Include scrolls anyway).
+      const target = ctx.target();
+      if (target.map) target.map = { ...target.map, scrolls: [] };
+      const pool: Any[] = sv.raw.hero.filter((h: Any) => inPool.has(Number(h.id)));
+      const key = solveKey({ gameMode: ctx.gameMode(), pool, lock: pick.must, quest: target.quest, map: target.map?.spec, minSize: lo, maxSize: hi, scrolls });
+      return { lo, hi, scrolls, target, pool, lock: pick.must, key };
+    };
+    /** U75: draw a setup's kept findings into the results (nothing kept: no results). */
+    const drawKept = (key: string | null, e: SolveCacheEntry | null) => {
+      shownKey = key;
+      last = null;
+      if (!e) {
+        out.replaceChildren();
+        showResults(false);
+        return;
+      }
+      const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
+      const draw = () => partiesResult(entryResult(e), sv, isMap, isMap && sc.checked, st, { ms: e.last.ms, cancelled: e.last.cancelled, budgetMs: e.last.budgetMs });
+      out.replaceChildren(...draw());
+      showResults(true);
+      last = { out, draw };
+    };
+    /** U75: the setup now on the form: its kept findings and their indicator (a running solve's results stay). */
+    function lookup(): void {
+      if (worker) return;
+      const inp = solveInput();
+      const key = inp.error !== undefined ? null : inp.key;
+      const e = key ? cache.get(key) : null;
+      showKept(e);
+      if (key !== shownKey) drawKept(key, e);
+    }
+    reset.addEventListener("click", () => {
+      const inp = solveInput();
+      if (inp.error !== undefined) return;
+      cache.remove(inp.key);
+      showKept(null);
+      if (!worker) drawKept(inp.key, null);
+      go.focus();
+    });
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
       + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
       + "Heroes marked ✓ are in every party, ✗ never. Up to 5 setups within 25 % of the best one found: the highest win rate first, "
       + `then the fewest heroes dead, then the most life left${isMap ? ", then the fewest scrolls" : ""}.`;
     go.addEventListener("click", () => {
-      let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
-      minN.value = String(lo);
-      maxN.value = String(hi);
-      if (lo > hi) [lo, hi] = [hi, lo];
-      // U50: the hero table's Must include and Exclude; too many must-include heroes: one error, no solve.
-      const pick = solverPick(excl.heroes, excl.picks(), hi, cap);
-      if ("error" in pick) {
-        status.replaceChildren(el("p", { class: "error", role: "alert" }, pick.error));
+      minN.value = String(intOf(minN, 1, cap));
+      maxN.value = String(intOf(maxN, 1, cap));
+      const inp = solveInput();
+      if (inp.error !== undefined) {
+        status.replaceChildren(el("p", { class: "error", role: "alert" }, inp.error));
         return;
       }
-      const inPool = new Set(pick.pool);
-      const scrolls = isMap && sc.checked;
+      const { lo, hi, scrolls, target, pool, lock, key } = inp;
       prefs.time = intOf(budget, TIME_MIN, TIME_MAX);
       budget.value = String(prefs.time);
       const budgetMs = prefs.time * 1000;
-      // U42: without "Include scrolls" a map run uses none (the scroll pickers are on the card, out of sight until a Show).
-      const target = ctx.target();
-      if (target.map && !scrolls) target.map = { ...target.map, scrolls: [] };
+      // U75: this setup's findings: the solve resumes from them (nothing evaluated again), one round wider.
+      const prior = cache.get(key);
       // Show state of this result (kept when it is drawn again in another language).
       const st: { loaded: number; undo: HTMLElement | null } = { loaded: -1, undo: null };
-      runSearch({ ...base(), search: "parties", pool: sv.raw.hero.filter((h: Any) => inPool.has(Number(h.id))), lock: pick.must, poolSkills: ctx.poolSkills(), ...target,
-        minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs }, out,
-      (r, _again, cancelled) => (r.search === "parties" ? partiesResult(r.result, sv, isMap, scrolls, st, { ms: r.ms, cancelled, budgetMs }) : []),
+      let entry: SolveCacheEntry | null = null;
+      runSearch({ ...base(), search: "parties", pool, lock, ...target, minSize: lo, maxSize: hi, scrolls, timeBudgetMs: budgetMs,
+        ...(prior ? { prior: prior.memo } : {}), round: nextRound(prior?.memo) }, out,
+      (r, _again, cancelled) => {
+        if (r.search !== "parties") return [];
+        if (!entry) {
+          // U75: merged into the setup's findings (the result already ranks the prior's configurations with the new ones).
+          entry = mergeEntry(prior, key, r.result, { ms: r.ms, budgetMs, cancelled }, Date.now());
+          cache.put(entry);
+          shownKey = key;
+          showKept(entry);
+          // The setup changed while it ran: its own findings (or none) once this is drawn.
+          queueMicrotask(() => lookupNow?.());
+        }
+        return partiesResult(entryResult(entry), sv, isMap, scrolls, st, { ms: r.ms, cancelled, budgetMs });
+      },
       budgetMs, true);
     });
     // R1 F20: how the solver works is in a "?" on the warning line, not a paragraph.
     warn.append(" ", helpTip(intro, "the solver"));
+    lookupNow = lookup;
+    lookup();
     return { head: warn, form: el("div", { class: "search-panel solver" },
-      el("div", { class: "toolbar search-form" }, sizes, ...scrollOpt, field("Time budget (s)", budget), go), excl.node) };
+      el("div", { class: "toolbar search-form" }, sizes, ...scrollOpt, field("Time budget (s)", budget), go, cacheBox), excl.node) };
   }
 
   /**
@@ -511,7 +604,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
    * U50: the save's heroes, one row each: name and level, class, and Must include / Neutral / Exclude (a radio group
    * named after the hero). Every change is stored at once; the fold's summary counts the ✓ and ✗.
    */
-  function heroTable(sv: Save, saveName: string): { node: HTMLElement; heroes: SolverHero[]; picks(): HeroPicks } {
+  function heroTable(sv: Save, saveName: string, onChange?: () => void): { node: HTMLElement; heroes: SolverHero[]; picks(): HeroPicks } {
     const names = heroNames(sv.raw.hero);
     const heroes: SolverHero[] = sv.raw.hero.map((h: Any, i: number) => ({ id: Number(h.id), name: names[i], hidden: !isVisible("class", Number(h.class)) }));
     const picks = loadPicks(saveName, heroes.map((h) => h.id));
@@ -525,6 +618,7 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         picks[me.id] = v as HeroPick;
         savePicks(saveName, picks);
         summary.textContent = picksSummary(heroes, picks);
+        onChange?.();
       });
       seg.classList.add("hero-pick");
       return el("tr", {}, el("th", { scope: "row" }, me.name, " ", el("span", { class: "muted small" }, lv(h.level))),

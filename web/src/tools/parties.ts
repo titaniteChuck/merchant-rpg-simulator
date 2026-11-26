@@ -14,6 +14,11 @@
  * filled, a solo quest's one hero in front 1.
  *
  * Pure, worker-safe; progress ("size 3: 12/40") and cancel through SearchControl; heroes are left as they were.
+ *
+ * U75, resume: `prior` is the memo (PartiesResult.memo) of an earlier search with the same inputs. Its solo scores,
+ * quick screens and configurations are reused, not evaluated again (fixed seeds: an evaluation run again would give
+ * the same numbers), and its configurations stay in the results. `round` widens the search: every round adds 3 hero
+ * sets to the beam and 2 to the tuned sets of a size. Without `prior` and at round 0 the search is the one before U75.
  */
 import {
   evaluateTarget, type FightEval, type MapEval, type MapTarget, maxQuestAmount, type PartyLayout, partyProblem, partyRules,
@@ -45,6 +50,29 @@ export interface PartySearchOptions {
   refine?: number;
   /** Wall-clock budget (default 120000 ms); when it runs out the configurations found so far are returned. */
   timeBudgetMs?: number;
+  /** U75: an earlier search's findings (same pool, target and options), reused instead of evaluated again. */
+  prior?: PartiesMemo;
+  /** U75: how wide the search is (0, the default: beam and refine as given; each round +3 and +2, at most MAX_ROUND). */
+  round?: number;
+}
+
+/** U75: the widest round (beam 6 + 3 x 8 = 30 sets, 3 + 2 x 8 = 19 tuned per size). */
+export const MAX_ROUND = 8;
+
+/**
+ * U75: what a search evaluated, so a later one with the same inputs starts from it (PartySearchOptions.prior). Plain
+ * JSON (stored in the browser by the Solver page).
+ */
+export interface PartiesMemo {
+  /** [hero id, solo score]. */
+  solo: [number, number][];
+  /** [hero set (sorted ids, "1,4,7"), quick score, quick win rate] of the default layout's quick screen. */
+  screened: [string, number, number][];
+  /** The configurations kept (tuned, or only screened), one per hero set. */
+  configs: PartyConfig[];
+  /** The round this memo's last search ran, and whether that search ran to its end (not stopped by time or Cancel). */
+  round: number;
+  complete: boolean;
 }
 
 export interface PartyConfig {
@@ -72,11 +100,17 @@ export interface PartiesResult {
   tried: number;
   /** True when the time budget or shouldStop ended the search early. */
   stopped: boolean;
+  /** U75: everything evaluated (the prior's findings included), for a later search to resume from. */
+  memo: PartiesMemo;
 }
+
+/** U75: the hero set of a configuration ("1,4,7", sorted ids), the memo's key. */
+export const configSet = (c: Pick<PartyConfig, "layout">): string =>
+  key([...c.layout.front, ...c.layout.back].filter((x): x is number => x !== null));
 
 type Layout = { front: (number | null)[]; back: (number | null)[] };
 
-const key = (ids: number[]) => [...ids].sort((a, b) => a - b).join(",");
+const key = (ids: readonly number[]) => [...ids].sort((a, b) => a - b).join(",");
 
 /** Every split of `ids` into a front and a back row (3 slots each), heroes in the given order within each row. */
 function splits(ids: number[]): Layout[] {
@@ -104,7 +138,8 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
   const map = "map" in target;
   const nQuick = o.nQuick ?? (map ? 3 : 10), nFinal = o.nFinal ?? (map ? 20 : 100);
   const topK = o.topK ?? 10, enough = o.enough ?? topK, threshold = o.winThreshold ?? 0.9;
-  const beamW = o.beam ?? 6, refine = o.refine ?? 3;
+  const round = Math.max(0, Math.min(MAX_ROUND, Math.trunc(o.round ?? 0)));
+  const beamW = (o.beam ?? 6) + 3 * round, refine = (o.refine ?? 3) + 2 * round;
   const lock = [...new Set(o.lock ?? [])];
   const exclude = new Set(o.exclude ?? []);
   for (const id of lock) {
@@ -170,19 +205,29 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
   const skillTarget: QuestTarget | MapTarget = boss?.bossID ? { quest: boss.bossID, rare: Boolean(boss.bossRare), mapRoom: true } : target;
   const questN = "map" in skillTarget ? nQuick : Math.max(nQuick, 10);
   const configs = new Map<string, PartyConfig>();
+  // U75: the prior's findings (only hero sets of this pool)
+  const inPool = (set: string) => set.split(",").every((id) => ids.includes(Number(id)));
+  const screened = new Map<string, { score: number; win: number; ev?: FightEval | MapEval }>();
+  const solo = new Map<number, number>();
+  if (o.prior) {
+    for (const [id, sc] of o.prior.solo) if (ids.includes(id)) solo.set(id, sc);
+    for (const [set, score, win] of o.prior.screened) if (inPool(set)) screened.set(set, { score, win });
+    for (const c of o.prior.configs) if (inPool(configSet(c))) configs.set(configSet(c), c);
+  }
   // winners first, the smallest first; parties that don't win by score (a bigger one may simply get further)
   const ranked = () => [...configs.values()].sort((a, b) => {
     const wa = a.ev.win >= threshold, wb = b.ev.win >= threshold;
     if (wa !== wb) return Number(wb) - Number(wa);
     return (wa ? a.size - b.size : 0) || b.score - a.score;
   });
-  const winners = () => [...configs.values()].filter((c) => c.ev.win >= threshold).length;
+  // U75: of this size or smaller (a prior's bigger winners don't stop the growth early)
+  const winners = (size: number) => [...configs.values()].filter((c) => c.size <= size && c.ev.win >= threshold).length;
 
   try {
     // solo strength: each hero alone (a quest amount it can't take alone: its own max)
     ctl.onProgress?.(0, ids.length, "solo");
-    const solo = new Map<number, number>();
     ids.forEach((id, i) => {
+      if (solo.has(id)) return ctl.onProgress?.(i + 1, ids.length, "solo");
       const h = pool.get(id)!;
       const t = map ? target : { ...(target as QuestTarget), amount: Math.min(amount, maxQuestAmount([h], rare, sim.mode)) };
       check();
@@ -218,24 +263,34 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
       ctl.onProgress?.(0, total, stage);
       // quick screen: default layout, current rotations
       const quick = sets.map((s) => {
-        const ev = evalLayout(defaultLayout(s), nQuick);
+        let q = screened.get(key(s));
+        if (!q) {
+          const ev = evalLayout(defaultLayout(s), nQuick);
+          q = { score: ev.score, win: ev.win, ev };
+          screened.set(key(s), q);
+        }
         ctl.onProgress?.(++done, total, stage);
-        return [ev.score, s, ev] as const;
+        return [q.score, s, q] as const;
       }).sort((a, b) => b[0] - a[0]);
       beam = quick.slice(0, beamW).map(([, s]) => s);
       // tune the best sets, once this size comes near winning (or it is the last size); else keep the screened ones
       const near = quick.length > 0 && (quick[0][2].win >= threshold / 2 || size === maxSize);
       // every set is first kept as screened: a set whose tuning runs out of time stays in the results that way
       const refined = quick.slice(0, refine);
-      for (const [, set, ev] of refined) {
+      for (const [, set, q] of refined) {
+        const had = configs.get(key(set));
+        if (had?.tuned) continue; // U75: a prior's tuned configuration stays
+        // U75: a prior's screen keeps no evaluation: its screened configuration's, else the same evaluation again
+        const ev = q.ev ?? had?.ev ?? evalLayout(defaultLayout(set), nQuick);
+        q.ev = ev;
         const skills = Object.fromEntries(set.map((id) => [id, { ...saved.get(id)! }]));
         configs.set(key(set), { size: set.length, layout: defaultLayout(set), skills, scrolls: null, ev, score: ev.score, tuned: false });
       }
       for (const [, set] of refined) {
-        if (near) configs.set(key(set), tune(set));
+        if (near && !configs.get(key(set))!.tuned) configs.set(key(set), tune(set));
         ctl.onProgress?.(++done, total, stage);
       }
-      if (winners() >= enough) break;
+      if (winners(size) >= enough) break;
     }
   } catch (e) {
     if (!(e instanceof SearchCancelled)) throw e;
@@ -243,7 +298,11 @@ export function searchParties(sim: Sim, pool: Map<number, Hero>, target: QuestTa
   } finally {
     restore();
   }
-  return { results: ranked().slice(0, topK), tried, stopped };
+  const memo: PartiesMemo = {
+    solo: [...solo], screened: [...screened].map(([set, q]) => [set, q.score, q.win]), configs: [...configs.values()],
+    round, complete: !stopped,
+  };
+  return { results: ranked().slice(0, topK), tried, stopped, memo };
 
   /** Rows and order, rotations, scrolls and a final evaluation for one hero set. */
   function tune(set: number[]): PartyConfig {

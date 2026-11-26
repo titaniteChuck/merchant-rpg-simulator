@@ -212,7 +212,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     shows with the party a result's Show brings (U65: `drawEnemyCard` in `battle-page.ts`, on both pages; the map's
     facts and scrolls are in the panel, and until U65 the Simulator had no `#target-card` and kept its card under its
     pickers). The results section (`#search-results`, full width, under
-    the panel) is hidden until a solve is done; a new solve hides the last results until it ends; a Cancel or an
+    the panel) is hidden until a solve is done (U75: or until a setup solved before is on the form, its kept findings, see U75); a new solve hides the last results until it ends; a Cancel or an
     error is a line in the panel. Then "Party and flow" (U70: "Party", the Party view only, its "?" after the
     heading), the Party and Flow tabs (`#party-box`), hidden in
     the HTML: no party panel at all until a solve has run and a result's Show (was "Load") has put its setup in the
@@ -854,7 +854,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
 
 - U76, the chart and the opponent panel on a phone (the Simulator; the panel and the chart's code are shared with the
   Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`, `dom.ts`; tests `web/test/battle-u76.test.ts`, the U65, U72 and
-  U74 tests updated; CSS in the `U76` block, the last one of `style.css`):
+  U74 tests updated; CSS in the `U76` block):
   - No blue on a tap: the chart's box and the sticky turn controls have `-webkit-tap-highlight-color: transparent`, no
     text or SVG selection and no iOS callout (`user-select: none`; the Table fold's table stays selectable); the run
     picker's option gets no ring after a tap (U70's `data-pointer` rule extended to `.seg-opt:has(input:focus)`). The
@@ -889,6 +889,48 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     asc / grade options are short in the open list too (plain selects, the labels as asked); "No prefix" / "No
     suffix" stay as the empty choice's face; the edge zones are overlays (native pan) rather than a decision at
     `pointerdown` (a browser fixes `touch-action` when the touch starts, so it can't be switched then).
+- U75, the Solver's kept findings and resumable solves (the Solver; `web/src/ui/solver-cache.ts` (new),
+  `web/src/tools/parties.ts`, `web/src/ui/battle-search.ts`, `battle-worker.ts`; tests `web/test/battle-u75.test.ts`,
+  the U42 and U74 tests updated; CSS in the `U75` block, the last one of `style.css`):
+  - Kept per setup in this browser: every solve's findings (the heroes' solo scores, every hero set's quick screen,
+    the configurations kept, tuned or only screened, with their evaluations) and its results. The key (`solveKey`, two
+    53-bit hashes of the canonical JSON) covers what the search is fed: `SOLVER_CACHE_VERSION`, the game mode, the
+    pool's raw save entries (levels, gear, rotations; Neutral and Exclude decide who is in it), Must include, the
+    opponent (a quest's id, Rare variant and size; a map's spec: id, ascension, grade, prefix, suffix, or a save map's
+    own string), the party sizes and Include scrolls. Not the time budget: more time is how a solve goes further.
+  - On opening the Solver, and whenever the setup changes (the opponent, a size, Include scrolls, a hero's ✓ / ✗),
+    a setup solved before shows its results at once (the same table, its Show and status line) and, beside 🔎 Solve,
+    "💾 41 parties · 3 solves" (hero sets evaluated, solves; the tooltip adds the evaluations) and Reset (forgets this
+    setup's findings). A setup with nothing kept shows no results (before U75 the last solve's results stayed under
+    another opponent).
+  - Solve again resumes (`searchParties` `prior` and `round`): the solo scores, the quick screens and the
+    configurations kept are reused, not evaluated again, and the kept configurations stay in the results. A solve
+    that ran to its end makes the next one a round wider (each round: 3 more hero sets in the beam, 2 more tuned per
+    size, at most `MAX_ROUND` 8); one stopped by its time budget or Cancel finishes the same round first. Tuned
+    configurations are not tuned again and not refined with more runs (their final evaluation already has `nFinal`,
+    20 runs or 100 fights). The new findings are merged in (`mergeMemo`: a tuned configuration over a screened one,
+    else the later); the results are the new solve's, ordered as before (the search's ranking, then
+    `solveShortlist` / `compareSolutions`, unchanged).
+  - Deterministic: an evaluation reused is the number it would give again (fixed seeds); a search without `prior` at
+    round 0 is exactly the one before U75 (tests: the same round resumed evaluates nothing and gives the same results;
+    a stopped search resumed gives the fresh search's results; a resumed round equals that round from scratch). A
+    solve's answer is stored under the key it was started with, so an answer that comes back after the setup changed
+    is kept for its own setup and the page shows the current setup's findings. Stale-run cancellation unchanged (one
+    worker; a new solve terminates the old one; a hard Cancel, an error or a 10 s timeout keeps nothing).
+  - Storage: localStorage, one item per setup (`solver-cache:<key>`) and an LRU index (`solver-cache-index`: key,
+    version, characters, last used). Measured on the example save (17 heroes): 6 to 18 kB per quest setup, 17 to
+    31 kB per map setup over 1 to 4 solves, about 1 kB per configuration. Caps (`LIMITS`): 40 configurations (the
+    shown results first, then the tuned ones, then by score) and 2,000 screens per setup, 12 setups, 1.5 M characters
+    in all; the least recently used setup goes first, and when the browser's quota is full the oldest are dropped
+    until it fits. An entry of another version, another key or broken JSON is ignored and removed. Storage blocked
+    or too small: kept in memory for the page view.
+  - The solve no longer sends the Solver's own rotations (`poolSkills`): its party is read-only and its rotations
+    only ever came from a result's Show, which would have changed the next solve's input (and its key). The shown
+    result's scrolls are not sent either (with Include scrolls the worker already ignored them).
+  - Judgement calls: localStorage over IndexedDB (synchronous, so the kept results draw with the panel; the sizes fit
+    well within its quota); the sizes and Include scrolls are in the key (they change what is found), the time budget
+    is not; the quick screens keep only score and win rate (a screen whose evaluation is needed again is run again,
+    same numbers); while a solve runs the results stay hidden, as before (U42).
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,

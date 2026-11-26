@@ -230,9 +230,9 @@ test("the page: asc 0 / asc 1, grades A…, the prefix's name and the suffix's s
 });
 
 // ---------------------------------------------------------------- 4. CSS
-test("CSS: the U76 block, the last one: no tap highlight or selection on the chart, edge zones pan, row 3 shrinks", () => {
+test("CSS: the U76 block, after U74's (U75 follows): no tap highlight or selection on the chart, edge zones pan, row 3 shrinks", () => {
   assert.ok(block.length > 300);
-  assert.ok(css.trimEnd().endsWith("/* end U76 */"), "the last block");
+  assert.ok(css.lastIndexOf("/* end U76 */") > css.lastIndexOf("/* end U74 */"), "after U74");
   assert.match(block, /\.hp-chart-box, \.hp-chart-box \*, \.hp-nav-host, \.hp-nav-host \* \{ -webkit-tap-highlight-color: transparent; \}/);
   assert.match(block, /\.hp-chart-box, \.hp-nav-host, \.hp-svg, \.hp-svg \* \{ -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; \}/);
   assert.match(block, /\.hp-fold \.table-wrap \{ -webkit-user-select: text; user-select: text; \}/, "the table stays selectable");
