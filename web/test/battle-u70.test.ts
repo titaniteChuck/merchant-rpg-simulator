@@ -188,7 +188,9 @@ test("every change that matters runs the 20 runs after a pause; the same fight i
   assert.doesNotMatch(fn(page, "selectTurn"), /renderPlan|startRuns/);
   // every edit goes through renderPlan (renderParty draws it; the opponent's controls too)
   assert.match(fn(page, "renderParty"), /renderPlan\(\);/);
-  assert.equal(fn(page, "renderTarget").match(/renderPlan\(\)/g)?.length, 5, "the quest size, the map, its ascension, grade and scrolls");
+  // U72: the quest size, the map, and one listener for its ascension, grade, prefix and suffix (no scrolls)
+  assert.equal(fn(page, "renderTarget").match(/renderPlan\(\)/g)?.length, 3, "the quest size, the map, its modifiers");
+  assert.match(fn(page, "renderTarget"), /for \(const x of \[asc, grade, pre, suf\]\) x\.addEventListener\("change", \(\) => \(sync\(\), renderPlan\(\)\)\);/);
 });
 
 test("a run still going is dropped for a newer one; a stale answer is ignored", () => {
@@ -232,8 +234,9 @@ test("HTML: the figures between the Simulate panel and the party, on the Simulat
   assert.match(setup, /<\/section>\s*<!--[^>]*-->\s*<div id="sim-stats" class="sim-stats" role="group" aria-label="Results" aria-busy="false"><\/div>\s*<section>/);
   assert.doesNotMatch(sim0, /id="run"|id="runs"|sim-summary|id="results"/);
   assert.doesNotMatch(solver, /sim-stats/);
-  // the panel keeps the opponent's controls and Clear all
-  for (const id of ["opp-switch", "target", "party-tools", "sim-help"]) assert.ok(sim0.includes(`id="${id}"`), id);
+  // the panel keeps the opponent's controls (U72: no Clear all, no "?"s)
+  for (const id of ["opp-switch", "target"]) assert.ok(sim0.includes(`id="${id}"`), id);
+  for (const id of ["party-tools", "sim-help", "party-help"]) assert.ok(!sim0.includes(`id="${id}"`), id);
 });
 
 test("CSS: the U70 block: sticky, opaque, one row at every width, under the picker and the tooltips", () => {

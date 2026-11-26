@@ -197,14 +197,15 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Simulator (`battle.html`): no mode chooser. U48: no section titles on screen (the `h2`s are visually hidden) and
     no Results section. (U70: no Runs, ▶ Simulate, `#sim-summary` or `#results` any more, and no Party / Flow tabs: the
     panel holds the opponent's controls, Clear all and the "?"s, then the four sticky figures and the Party view; see
-    U70.) The Simulate panel holds (U65) the opponent's controls first (see U65), then Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
+    U70. U72: the opponent's controls only, on three rows; see U72.) The Simulate panel holds (U65) the opponent's controls first (see U65), then Runs, ▶ Simulate, its "?" and then `#sim-summary`: a run's progress
     and Cancel, its error, or its summary (win rate, grade when won, Show details and the run line); the details
     (`#results`, empty and not shown until a result) sit right under the panel; then the Party and Flow tabs with the
     opponent's card in the Party tab, as below. Until U48 these were numbered steps (Simulate, Results hidden until the first
     run, Party and opponent).
   - Solver (`solver.html`, U42 layout): no step headings. The spoiler guard first; once accepted, the warning line,
     then one full-width Solve panel (`#solve-box`): a compact Quest / Map segmented control with its picker (the
-    enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map), then smallest and
+    enemy with Rare variant and Quest size, or the map with ascension and grade for a catalog map; U72: and prefix and
+    suffix, on three rows, see U72), then smallest and
     largest party, Include scrolls, the time budget in seconds and 🔎 Solve, the hero table under them (U50); a running
     solve's progress bar, clock and Cancel show inside the panel. No enemy card and no tabs during setup: the
     opponent card (radar, map facts, scroll pickers) is drawn into `#target-card`, the Party tab's right column, so it
@@ -671,6 +672,48 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Game names in these tooltips go through the site's translation helpers (`effectName` → `skillName` → `tr`), as
     the rotation rows do: English by default, the visitor's language when picked (or when the browser's is one the
     game has): "Bénédiction Sacrée" for Holy Blessing in French.
+
+- U72, the opponent panel and the Solver's order (the Simulator and the Solver; `web/src/ui/battle-page.ts`,
+  `battle-setup.ts`, `battle-search.ts`, `site/battle.html`, `site/solver.html`; tests `web/test/battle-u72.test.ts`, the
+  v4, R2-C, U48, U65, U66 and U70 tests updated; CSS in the `U72` block, the last one of `style.css`):
+  - The Solver's order (`compareSolutions`, pure, used by `solveShortlist`): the highest win rate first (100 % first),
+    then the fewest heroes dead on average (the sum of the heroes' death rates), then the most life left (`hp_left`),
+    then the fewest scrolls (E25), then the solver's own order (a stable sort: the fewest heroes, then its score).
+    The best solution wins every time, nobody dies and it ends at full health. Differences under 1e-9 are ties. The 25 %
+    window and the cut to 5 are unchanged; the order is applied before the cut. U36's "winners (90 % or more) first"
+    tier is gone (the win rate itself is the first key).
+  - The opponent panel on three rows, both pages: row 1 the Quest enemy / Map run toggle; row 2 the enemy or map list;
+    row 3 its modifiers (`.opp-mods`, one wrapping row): a quest's size (the quest's only modifier, so it sits there),
+    or a catalog map's ascension, grade, prefix and suffix. A map of the save carries its own modifiers: no row 3. The
+    size cap line (`#party-cap`) stays under them. On the Solver the options and Solve follow, as before.
+  - Gone from the panel: the quest size's "?" (`#amount-note`, R1 F20), the map's facts line (U65's name link, "yours",
+    its "?", Lvl, Grade, Rooms, Time, Enemy power, Boss, Modifiers; `roomsFact` deleted), and the three scroll pickers.
+    The Simulator's map runs use no scrolls. The Solver's shown result keeps its own: `applyScrolls` stores them
+    (`shownScrolls`) for the shown party's runs; another map drops them. The remembered opponent no longer stores
+    scrolls. Farming and Profit keep their own scroll pickers (`farming.ts`, not shared with the battle pages).
+  - The Simulator's Simulate panel holds only the opponent: no Clear all and its undo (U32 / U66; `clearAll`,
+    `#party-tools` deleted), no party "?" and no runs "?" (`#party-help`, `#sim-help`, `SIMULATE_HELP`). The Solver keeps
+    its party "?" after its "Party" heading.
+  - Prefix and suffix on a catalog map (`#map-prefix`, `#map-suffix`, "No prefix" / "No suffix" first): the wiki's
+    lists and effects (`validPrefixes`, `validSuffixes` by ascension, `prefixEffect`, `suffixEffect` of
+    `wiki-config.ts`, the option text as the wiki's picker: "[Titan] · essence ×1.3, enemy HP +240", "+5 · essence and
+    Enemy × ×1.3"). A suffix the new ascension can't carry goes back to none; a picker with nothing to pick is hidden.
+    They go into the run's `MapSpec` (`targetOf`: `prefix`, `suffix`, undefined for none), which the engine applies as
+    for a saved map (`sim/map.ts` `applyPrefix` / `applySuffix`, `defaults.mapEnemyMod`), on both pages and in the
+    Solver's search. Remembered with the opponent (`prefix`, `suffix`); a wiki "Fight in simulator" link's map starts
+    with none. What reaches the fight: a suffix multiplies the map's Enemy × by (1 + its atk), so every room's enemy is
+    stronger; a prefix's enemy stat bonuses (Burning … atkBns, Cold … matkBns, Keen … accBns, Tenacious … hpBns,
+    Solid … defBns, Focused … mdefBns, scaled by the map's tier) and its % bonuses (Radiant, Frigid, Brisk, Strong,
+    Rigid) raise the enemies' stats; Savvy / Master's add to Enemy ×. Quick / Swift (speed) change the run's time,
+    Lucky / Fortunate (lckMod) its treasure luck, Skilled / Expert's (essenceMod), a prefix's sell and a suffix's atk its essence:
+    not the fight. The catalog group of the map list is "All maps".
+  - No "🛡️ Front row", "🏹 Back row" or "👹 Opponent" titles: the party columns are `role="group"` with `aria-label`
+    "Front row" / "Back row", the opponent column `role="group"` `aria-label="Opponent"`.
+  - Judgement calls: the quest size sits on row 3 (the modifiers row) rather than beside the enemy list; the prefix and
+    suffix options keep the wiki's effect text (a long option shrinks to the row); the Solver's chart keeps a shown
+    result's scrolls (without them it would draw a different fight from the row it shows); the size cap line is not a
+    preview field and stays; dead CSS of the removed parts (`.map-facts`, `.opp-scrolls`, `#amount-note`,
+    `.sim-bar .party-tools`, `.col-title`) is left in its blocks (owned by other passes), unused.
 
 - U70, the Simulator runs by itself (the Simulator and the Solver; `web/src/ui/battle-page.ts`,
   `web/src/tools/worst-run.ts`, `web/src/tools/fight-trace.ts`, `web/src/ui/battle-worker.ts`, `web/src/ui/hp-chart.ts`,

@@ -6,7 +6,7 @@
  * - enemyStats(), enemyTurns(), questEntries(): the enemy card's stats and rotation, the picker's rare entries (U62;
  *   until then enemyRadar, the U39 spider chart's axes).
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
- *   most 5; winners first, then within each tier the fewest scrolls first (E25).
+ *   most 5; U72 order (compareSolutions): win rate, then fewest heroes dead, then most life left, then fewest scrolls.
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
  * - solveStatus(), sizeHelp(), ROUGH_HELP (R2 F31, F34, F35): the Solver's texts, its one status line and its "?"s.
  * - solverFigures() (U51): a Solver row's grade, life left and heroes dead, from the setup's evaluation.
@@ -112,26 +112,35 @@ export function solverFigures(ev: { win: number; grade: number; hp_left: number;
   };
 }
 
+/** U72: a solution's figures the order reads (an evaluation without heroes or hp_left counts as none dead, no life). */
+type Ranked = { ev: { win: number; hp_left?: number; heroes?: Record<string, { death_rate: number }> }; scrolls?: readonly number[] | null };
+
+/**
+ * U72: the Solver's order of two solutions: the higher win rate first (100 % first), then the fewest heroes dead on
+ * average, then the most life left (the party's HP at the end): the best run wins every time, nobody dies and it ends
+ * at full health. Then the fewest scrolls (none first, E25); a tie is 0, so a stable sort keeps the solver's own order
+ * (the fewest heroes, then its score).
+ */
+export function compareSolutions(a: Ranked, b: Ranked): number {
+  const dead = (c: Ranked) => Object.values(c.ev.heroes ?? {}).reduce((n, h) => n + (Number(h.death_rate) || 0), 0);
+  const life = (c: Ranked) => Math.max(0, Math.min(1, Number(c.ev.hp_left) || 0));
+  const near = (x: number) => (Math.abs(x) < 1e-9 ? 0 : x);
+  return near(b.ev.win - a.ev.win) || near(dead(a) - dead(b)) || near(life(b) - life(a)) || scrollCount(a) - scrollCount(b);
+}
+
 /**
  * The solver's results to show (U36): never a 0 % result, only setups within `slack` (25 %) of the best one found, on
  * the win rate (win ≥ 0.75 × best win) and on the ranking score (score ≥ 0.75 × best score), at most `max` (5).
- * Order (E25): winners (win ≥ `winAt`, the solver's 90 %) first, as the solver ranks them; within the winners, and
- * within the others, the fewest scrolls first (none first), then the solver's own order (winners: the fewest heroes,
- * then score; others: score). A scroll-free setup never jumps over a better one blindly: a clearly weaker one (40 %
- * against 95 %) is outside the 25 % window, and a non-winner always stays below every winner. The order is applied
- * before the cut to `max`, so a scroll-free setup just past the top 5 can take the place of a scroll-using one.
+ * Order (U72, compareSolutions): win rate (highest first), heroes dead (fewest first), life left (most first), then
+ * the fewest scrolls (E25), then the solver's own order. The order is applied before the cut to `max`.
  */
-export function solveShortlist<T extends { ev: { win: number }; score: number; scrolls?: readonly number[] | null }>(
-  results: T[], max = 5, slack = 0.25, winAt = 0.9,
-): T[] {
+export function solveShortlist<T extends Ranked & { score: number }>(results: T[], max = 5, slack = 0.25): T[] {
   const live = results.filter((c) => !showsZero(c.ev.win));
   if (!live.length) return [];
   const bestWin = Math.max(...live.map((c) => c.ev.win));
   const bestScore = Math.max(...live.map((c) => c.score));
   const kept = live.filter((c) => c.ev.win >= (1 - slack) * bestWin && (bestScore <= 0 || c.score >= (1 - slack) * bestScore));
-  // a stable sort: the solver's order holds between setups of the same tier and scroll count
-  const tier = (c: T) => (c.ev.win >= winAt ? 0 : 1);
-  return kept.sort((a, b) => tier(a) - tier(b) || scrollCount(a) - scrollCount(b)).slice(0, max);
+  return kept.sort(compareSolutions).slice(0, max);
 }
 
 export interface SlotRef {

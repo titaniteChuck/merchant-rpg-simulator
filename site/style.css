@@ -2467,3 +2467,17 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
   .hp-act-text { min-width: 6ch; max-width: 16ch; }
 }
 /* end U73 */
+/* U72 */
+/* The opponent's controls on three rows (both pages): the Quest / Map toggle, the enemy or map list, then its
+   modifiers on one wrapping row (the quest size; a catalog map's ascension, grade, prefix and suffix). The prefix and
+   suffix options carry their effect, so a picker may be wide: it shrinks to the row, never past it. */
+.opp-row { flex-direction: column; align-items: stretch; gap: 8px; }
+.opp-row > #opp-switch { align-self: flex-start; }
+.opp-row #target { flex: none; }
+.opp-row .opp-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+.opp-row .opp-controls > select { flex: none; width: 100%; max-width: 560px; }
+.opp-mods { gap: 8px; margin: 0; }
+.opp-mods > select { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+/* The Simulator's panel holds only the opponent now: no rule under it. */
+.run-box > .opp-row:last-child { padding-bottom: 0; border-bottom: 0; }
+/* end U72 */

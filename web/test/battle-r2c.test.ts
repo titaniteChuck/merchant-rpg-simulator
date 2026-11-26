@@ -24,16 +24,16 @@ test("one marked r2-c block of CSS", () => {
 
 test("F20: the Simulate sentence is a \"?\"; U48: no section titles; U70: no Simulate button, no Results", () => {
   assert.doesNotMatch(sim, /run-hint|Set them up in step 3/);
-  // U70: the "?" closes the Simulate panel's row (Clear all, the party's "?", the runs' "?"); no ▶ Simulate, no runs
-  // count, no summary or details.
-  assert.match(sim, /<span id="party-tools" class="party-tools"><\/span>\s*<span id="party-help"><\/span>\s*<span id="sim-help"><\/span>/);
+  // U72: no "?"s in the Simulate panel (U70's party "?" and runs "?" gone) and no Clear all; U70: no ▶ Simulate, no
+  // runs count, no summary or details.
+  assert.doesNotMatch(sim, /id="party-tools"|id="party-help"|id="sim-help"/);
   assert.doesNotMatch(sim, /id="run"|id="runs"|sim-summary|id="results"|▶ Simulate/);
   assert.doesNotMatch(sim, /class="step"/);
   assert.doesNotMatch(sim, /results-box|Results<\/h2>/);
   assert.deepEqual([...sim.matchAll(/<h2[^>]*>/g)].map((m) => m[0]), ['<h2 class="visually-hidden">', '<h2 id="setup-title" class="visually-hidden">']);
   assert.match(r2c, /#setup\.b3-steps > section:not\(\[hidden\]\) > h2 > \.step::before \{ counter-increment: b3-step; content: counter\(b3-step\); \}/);
   for (const html of [sim, solver]) assert.match(html, /<div id="setup" class="b3-steps" hidden>/);
-  assert.match(page, /helpTip\(SIMULATE_HELP, "Simulate"\)/);
+  assert.doesNotMatch(page, /SIMULATE_HELP|#sim-help/);
   assert.doesNotMatch(page, /showResultsBox|revealResults|clearResults|function run\(\)/);
 });
 
@@ -52,10 +52,11 @@ test("F20: Levelling and Farming write their own step numbers, so the CSS counte
 test("F23 / F36: no inner Party heading; the rule and the Solver's sentence are the party's \"?\"", () => {
   for (const html of [sim, solver]) {
     assert.doesNotMatch(html, /<h3 class="col-title">👥 Party<\/h3>/);
-    // U70: no tab row: the "?" beside Clear all (the Simulator), after the party's heading (the Solver)
+    // U70: no tab row. U72: the party's "?" only on the Solver, after the party's heading.
     assert.doesNotMatch(html, /b3-tab-row|role="tablist"/);
-    assert.equal(html.match(/<span id="party-help"><\/span>/g)?.length, 1);
   }
+  assert.equal(solver.match(/<span id="party-help"><\/span>/g)?.length, 1);
+  assert.equal(sim.match(/<span id="party-help"><\/span>/g), null);
   assert.match(solver, /<h2 id="setup-title">Party<\/h2>\s*<!--[^>]*-->\s*<span id="party-help"><\/span>/);
   assert.doesNotMatch(page, /party-note|party-rules/);
   const help = fn(page, "partyHelp");

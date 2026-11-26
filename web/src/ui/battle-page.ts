@@ -2,8 +2,8 @@
  * The Battle section's two pages (U41), one code: initBattlePage("simulate") for the Simulator (site/battle.html,
  * entry battle.ts) and initBattlePage("solve") for the Solver (site/solver.html, entry solver.ts).
  *
- * Simulator (U48: no section titles, no Results section): the Simulate panel (the opponent's controls, Clear all,
- * the "?"s); U70: the four figures over the runs (#sim-stats, sticky); then the Party view: the HP chart over the party
+ * Simulator (U48: no section titles, no Results section): the Simulate panel (the opponent's controls; U72: no Clear
+ * all, no "?"s); U70: the four figures over the runs (#sim-stats, sticky); then the Party view: the HP chart over the party
  * (six slots, back row | front row; cards move by drag and drop, party-drag.ts) and the opponent card (a quest enemy
  * or a map run's room). U48: the Solver's Party view is read-only (battle-edit.ts pageControls); both pages have a "↑"
  * back-to-top button. U61: the Party view's HP chart (hp-chart.ts). U62: the hero and enemy cards are one builder
@@ -31,20 +31,22 @@
  * U73: `‹ Turn X ›` and `‹ <actor> k/n ›` (the turn's actions in game order) in #hp-nav, sticky under the figures; at a
  * step the cards show the state right after that action (turnView), the actor's card marked.
  *
- * Expansions (U28): the enemy and map pickers and the scrolls leave out content of expansions the visitor hides
+ * U72: the opponent's controls on three rows (the toggle, the enemy or map, its modifiers: quest size; a catalog map's
+ * ascension, grade, prefix and suffix); no scroll pickers, no map facts; no row or opponent titles on screen.
+ *
+ * Expansions (U28): the enemy and map pickers leave out content of expansions the visitor hides
  * (expansion-state.ts); the save's own maps always stay. Options of expansion content end with ❄ / ✒. The opponent
  * card is rebuilt (keeping the choice when it is still there) whenever the expansion switches change.
  */
 import * as api from "../sim/api.ts";
 import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
-import { seq } from "../sim/lua.ts";
-import { maxQuestAmount, SCROLL_IDS } from "../tools/combat.ts";
+import { maxQuestAmount } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
 import { gradeLetter, type RunStats, runStats, WORST_RUNS, type WorstRuns } from "../tools/worst-run.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, duration, el, expansionMark, fmt1, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, select, toast } from "./dom.ts";
+import { $, el, expansionMark, fmt1, heroAsc, lv, lvStart, pct, rateTone, select, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { type CardRow, type CardTurn, fighterCard, paintCard } from "./fighter-card.ts";
 import { cardTurnOf, stepStates } from "./card-turn.ts";
@@ -58,14 +60,14 @@ import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
 import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep, stepsOf } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
-import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
+import { prefixEffect, suffixEffect, validPrefixes, validSuffixes } from "./wiki-config.ts";
 import { initSaveSource } from "./save-source.ts";
 import { type ApBudget, apRefusal, apUsed, assignHeroChecked, editRotationSkill, moveHero, moveRefusal, pageControls, budgetOptions } from "./battle-edit.ts";
 import { enableSlotDrag } from "./party-drag.ts";
 import { PARTY_COLUMNS, toTopVisible } from "./battle-layout.ts";
-import { enemyLevelText, enemyLink, itemLink, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
+import { enemyLevelText, loadWikiText, passiveText, passiveTip, skillAp, skillDesc, skillTip } from "./wiki-data.ts";
 import { languageReady, onLanguageChange } from "./language.ts";
-import { className as classNameOf, enemyName, itemName, modItemName, passiveName, prefixName, skillName, suffixName } from "./names.ts";
+import { className as classNameOf, enemyName, itemName, modItemName, passiveName, prefixTag, skillName, suffixName } from "./names.ts";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -168,12 +170,11 @@ function mapOptions(sv: Save | null): [string, [string, string][]][] {
   const owned = sv?.mapInventory ?? [];
   if (owned.length) {
     groups.push(["Your maps", owned.map((m: Any, i: number): [string, string] => {
-      // U34 / U36: "[Prefix] Map +N", each part translated (names.ts modItemName). Options can't be outlined: the
-      // chosen map is shown outlined under the pickers (renderTarget).
+      // U34 / U36: "[Prefix] Map +N", each part translated (names.ts modItemName).
       return [`own:${i}`, `${modItemName("map", m.id, m)} · ${GRADES[(m.grade ?? 3) - 1] ?? m.grade}`];
     })]);
   }
-  if (catalog.length) groups.push(["All maps (choose ascension and grade)", catalog]);
+  if (catalog.length) groups.push(["All maps", catalog]);
   return groups;
 }
 
@@ -394,7 +395,6 @@ function renderParty(refreshSearch = true): void {
       const pick = s.value === "" ? null : Number(s.value);
       const r = assignHeroChecked(state, key, pick, pick === null ? null : apOver(pick));
       if (!r.ok) return refuseAp(pick!, r);
-      clearUndo = null;
       persistParty();
       renderParty();
     });
@@ -452,19 +452,14 @@ function renderParty(refreshSearch = true): void {
   const cols = PARTY_COLUMNS.map((row) => {
     const empty = picks ? [0, 1, 2].filter((i) => isEmptySlot(row, i) && !rules.required.some((x) => x.row === row && x.i === i)) : [];
     const shown = [0, 1, 2].filter((i) => !empty.includes(i)).map((i) => slot(row, i));
-    return el("div", { class: "party-row" },
-      el("h3", { title: row === "front" ? "Enemies hit the front row while anyone stands in it." : "Safe until the front row falls." },
-        row === "front" ? "🛡️ Front row" : "🏹 Back row"),
+    // U72: no "Front row" / "Back row" titles on screen; the column keeps its name for screen readers.
+    return el("div", { class: "party-row", role: "group", "aria-label": row === "front" ? "Front row" : "Back row" },
       el("div", { class: "slots" }, ...shown, ...(empty.length
         // U48: read-only (the Solver), the folded empty slots are a plain count: no hero is added by hand.
         ? [ctl.edit ? foldEmpty(row, empty.map((i) => slot(row, i))) : el("p", { class: "small muted empty-slots" }, emptyCount(row, empty.length))] : [])));
   });
-  // U32: "Clear all" empties the six slots, with the same undo as a search's Load. U48: not on a read-only page.
-  const clear = el("button", { type: "button", class: "secondary clear-all" }, "🧹 Clear all");
-  clear.title = "Empty every hero slot (the edited rotations are kept)";
-  if (!Object.values(state.slots).some((v) => v !== null && v !== undefined)) clear.setAttribute("disabled", "");
-  clear.addEventListener("click", clearAll);
-  // R2 F23 / F36: the party's rule and, on the Solver, what this party is, in the party's "?" (U70: no tabs).
+  // U72: no Clear all (U32-U66). R2 F23 / F36: on the Solver, the party's rule and what this party is, in the party's
+  // "?" (#party-help, in its head; the Simulator has none since U72).
   document.querySelector("#party-help")?.replaceChildren(...partyHelp(rules, picks, ctl.drag));
   // U36: heroes left out over the size cap. U48: said on the opponent's side, under its picker, without their names
   // (their cards say "over the limit").
@@ -473,8 +468,6 @@ function renderParty(refreshSearch = true): void {
     cap.hidden = !fight.capped.length;
     cap.replaceChildren(...(fight.capped.length ? [`ℹ️ At most ${rules.maxSize} heroes`] : []));
   }
-  // U66: Clear all (and its undo) sits in the Simulate panel (#party-tools), no longer over the cards.
-  document.querySelector("#party-tools")?.replaceChildren(...(ctl.edit ? [clear, ...(clearUndo ? [clearUndo] : [])] : []));
   $("#party").replaceChildren(
   // What keeps this party from fighting (shown before Simulate, not as a worker error). The modes that pick the
   // party fill the slots themselves.
@@ -505,7 +498,7 @@ function foldEmpty(row: "front" | "back", slots: HTMLElement[]): HTMLElement {
 const emptyCount = (row: "front" | "back", n: number) => `${n} empty ${row} slot${n === 1 ? "" : "s"}`;
 
 /**
- * R2 F23 / F36: the party's "?" (U70: beside Clear all; the Solver: in the party's head): the opponent's party rule, on the Solver what the shown party is (U48:
+ * R2 F23 / F36: the party's "?" (the Solver only since U72, in the party's head): the opponent's party rule, on the Solver what the shown party is (U48:
  * read-only there), on the Simulator that cards move by dragging (U48).
  */
 function partyHelp(rules: ReturnType<typeof rulesOf>, picks: boolean, drag: boolean): HTMLElement[] {
@@ -548,30 +541,8 @@ function dropHero(from: string, to: string): void {
     if (r.reason === "required" || r.reason === "solo") toast(moveRefusal(r.reason, slotLabel(`${from.replace(/\d$/, "")}${Number(from.slice(-1)) + 1}`)));
     return;
   }
-  clearUndo = null;
   persistParty();
   renderParty();
-}
-
-/** The "Put back the previous party" button after Clear all (until it is used or the slots change by hand). */
-let clearUndo: HTMLElement | null = null;
-function clearAll(): void {
-  const prev = { slots: { ...state.slots }, excluded: { ...state.excluded } };
-  state.slots = {};
-  state.excluded = {};
-  const b = el("button", { type: "button", class: "secondary" }, "↩ Put back the previous party");
-  b.addEventListener("click", () => {
-    state.slots = prev.slots;
-    state.excluded = prev.excluded;
-    clearUndo = null;
-    persistParty();
-    renderParty();
-    document.querySelector<HTMLElement>("#party-tools .clear-all")?.focus();
-  });
-  clearUndo = b;
-  persistParty();
-  renderParty();
-  clearUndo.focus();
 }
 
 // ---------------------------------------------------------------- target
@@ -579,14 +550,14 @@ let search: ReturnType<typeof initSearch> | null = null;
 const oppKind = (): Opp => ($<HTMLInputElement>("input[name=opp]:checked")?.value ?? "quest") as Opp;
 
 /**
- * U36: the chosen opponent (quest or map, size, rare, map grade, ascension, scrolls), remembered in this browser across
+ * U36: the chosen opponent (quest or map, size, rare, map grade, ascension; U72: prefix and suffix, no scrolls), remembered in this browser across
  * pages (localStorage `battle-opponent`, convenience only) and put back when the page is built again. U41: the Solver
  * remembers its own (`solver-opponent`), starting from the Simulator's.
  */
 const OPP_KEY = "battle-opponent";
 const SOLVER_OPP_KEY = "solver-opponent";
 const oppKey = () => (solving() ? SOLVER_OPP_KEY : OPP_KEY);
-interface OppChoice { kind?: Opp; quest?: string; rare?: boolean; amount?: string; map?: string; asc?: string; grade?: string; scrolls?: string[] }
+interface OppChoice { kind?: Opp; quest?: string; rare?: boolean; amount?: string; map?: string; asc?: string; grade?: string; prefix?: string; suffix?: string }
 /** False while onExpansions puts a choice back (the intermediate states are not remembered). */
 let saving = true;
 function saveOpponent(): void {
@@ -598,7 +569,6 @@ function saveOpponent(): void {
 /** The opponent as the controls show it, or what was remembered when they aren't built yet. */
 function currentOpponent(): OppChoice {
   const v = (sel: string) => document.querySelector<HTMLSelectElement>(sel)?.value;
-  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value);
   const kind = oppKind();
   // The other kind's choice stays as it was remembered.
   const was = storedOpponent();
@@ -606,7 +576,7 @@ function currentOpponent(): OppChoice {
   const q = questPick();
   return kind === "quest"
     ? { ...was, kind, quest: q ? String(q.id) : undefined, rare: q?.rare ?? false, amount: v("#amount") }
-    : { ...was, kind, map: v("#map"), asc: v("#map-asc"), grade: v("#map-grade"), scrolls };
+    : { ...was, kind, map: v("#map"), asc: v("#map-asc"), grade: v("#map-grade"), prefix: v("#map-prefix"), suffix: v("#map-suffix") };
 }
 function storedOpponent(key = oppKey()): OppChoice {
   try {
@@ -629,6 +599,11 @@ function takeLinkedOpponent(): void {
   const linked = linkedOpponent(location.search);
   if (!linked) return;
   const o: OppChoice = { ...storedOpponent(OPP_KEY), ...linked };
+  // U72: the link's map is the plain catalog map (a link names no prefix or suffix): not an earlier visit's.
+  if (linked.kind === "map") {
+    delete o.prefix;
+    delete o.suffix;
+  }
   try {
     localStorage.setItem(OPP_KEY, JSON.stringify(o));
   } catch {
@@ -645,15 +620,18 @@ function renderTarget(): void {
     if (!keepSearchForm) search?.refresh();
   });
   const box = $("#target");
+  // U72: three rows in the panel: the Quest enemy / Map run toggle (the page's HTML), the enemy or map list, then its
+  // modifiers on one row (a quest: its size; a catalog map: ascension, grade, prefix, suffix; a map of the save: none,
+  // it carries its own). No "?" and no map facts (U65's line), no scrolls (the Solver's shown result keeps its own).
+  const mods = el("div", { class: "toolbar opp-mods", role: "group", "aria-label": "Modifiers" });
   if (oppKind() === "quest") {
-    // U62: one list with each rare variant as its own entry ("<id>:rare"); the quest size a compact control. U65: both
-    // in the Simulate (Solve) panel, #target; the card (#target-card) shows the enemy, no picker (drawEnemyCard).
+    // U62: one list with each rare variant as its own entry ("<id>:rare"). U65: in the Simulate (Solve) panel, #target;
+    // the card (#target-card) shows the enemy, no picker (drawEnemyCard).
     const q = select({ id: "quest", "aria-label": "Enemy" }, questOptions());
     const amount = select({ id: "amount", "aria-label": "Quest size" }, [["1", "×1"]]);
-    // R1 F20: the quest size's explanation is in a "?" (syncAmount fills it), not a paragraph.
-    const sizeNote = el("span", { id: "amount-note" });
+    mods.append(amount);
     const update = () => {
-      syncAmount(amount, sizeNote, parseQuestValue(q.value).rare);
+      syncAmount(amount, parseQuestValue(q.value).rare);
       saveOpponent();
     };
     // Another enemy may have other party rules (required slot, size cap): the slots are drawn again (and the fight
@@ -661,54 +639,40 @@ function renderTarget(): void {
     q.addEventListener("change", () => (update(), renderParty()));
     // The card's HP follows the quest size.
     amount.addEventListener("change", () => (update(), renderPlan()));
-    box.replaceChildren(el("div", { class: "opp-controls" }, q, el("div", { class: "toolbar" }, amount, sizeNote), capNote()));
+    box.replaceChildren(el("div", { class: "opp-controls" }, q, mods, capNote()));
     update();
   } else {
     const m = select({ id: "map", "aria-label": "Map" }, mapOptions(state.sv));
     const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "No ascension"], ["1", "Ascension 1"]]);
     const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
     grade.value = "3";
-    const scrollOpts: [string, string][] = [["", "— no scroll —"], ...SCROLL_IDS.filter((id) => G.itemData.consumable?.[id] && isVisible("consumable", id))
-      .map((id): [string, string] => [String(id), `${itemName("consumable", id)}${expansionMark(needsOf("consumable", id))}`])];
-    const scrolls = [0, 1, 2].map((k) => select({ class: "scroll", "aria-label": `Scroll ${k + 1}` }, scrollOpts));
-    // U65: the map's facts, one compact line in the panel (was the map card beside the party, with the scrolls).
-    const facts = el("div", { class: "map-facts small" });
+    // U72: a catalog map's prefix and suffix, the wiki's lists and effects (wiki-config.ts, as its map pages); the run
+    // gets them in its MapSpec (targetOf), so the engine applies them (sim/map.ts applyPrefix / applySuffix).
+    const pre = select({ id: "map-prefix", "aria-label": "Map prefix" }, [["0", "No prefix"]]);
+    const suf = select({ id: "map-suffix", "aria-label": "Map suffix" }, [["0", "No suffix"]]);
+    mods.append(asc, grade, pre, suf);
+    const listed = { pre: "", suf: "" };
     const sync = () => {
       const own = m.value.startsWith("own:");
-      asc.hidden = grade.hidden = own;
-      const it: Any = own ? state.sv?.mapInventory[Number(m.value.slice(4))] : null;
-      const id = own ? Number(it?.id) : Number(m.value.slice(4));
-      const d: Any = G.itemData.map?.[id] ?? {};
-      const a = own ? it?.prestigeLevel : Number(asc.value), g = own ? (it?.grade ?? 3) : Number(grade.value);
-      const pre = own && it?.prefix ? prefixName(it.prefix) : "", suf = own && it?.suffix > 0 ? suffixName(it.suffix) : "";
-      // Plain catalog map: no label, so the link shows (and keeps in step) the map's name in the visitor's language. A
-      // modded map (U34 / U36): "[Prefix] Map +N" from its translated parts (modItemName).
-      const name = pre || suf ? modItemName("map", id, it) : undefined;
-      const bosses = seq<number>(d.bossList ?? {});
-      const fact = (k: string, v: Node | string) => el("div", {}, el("dt", {}, k), el("dd", {}, v));
-      facts.replaceChildren(
-        el("span", { class: "map-name" }, itemLink("map", id, name, undefined, a, { always: own }), ...(own ? [" ", pill("yours", "t-green")] : []),
-          // R1 F20: what a run is, in a "?" instead of a paragraph.
-          helpTip("Each run uses a new layout (rooms, enemies, rare spawns, boss); hero HP carries over between rooms. "
-            + "Rooms and time are the map's own, before its prefix and suffix.", "map runs")),
-        el("dl", {},
-          fact(LV, String(d.itemLevel ?? "?")),
-          ...(own ? [fact("Grade", gradeBadge(GRADES[g - 1] ?? String(g)))] : []),
-          fact("Rooms", roomsFact(id, g)),
-          fact("Time", d.baseMapTime ? duration(d.baseMapTime) : "?"),
-          fact("Enemy power", `×${d.enemyMod ?? 1}`),
-          fact(bosses.length > 1 ? "Bosses" : "Boss", bosses.length
-            ? el("span", {}, ...bosses.flatMap((b, k) => [...(k ? [", "] : []), enemyLink({ id: b })])) : "none"),
-          ...(pre || suf ? [fact("Modifiers", [pre && `prefix ${pre}`, suf && `suffix ${suf}`].filter(Boolean).join(" · "))] : [])));
+      mods.hidden = own;
+      if (!own) {
+        const id = Number(m.value.slice(4)), a = Number(asc.value);
+        if (listed.pre !== `${id}`) {
+          listed.pre = `${id}`;
+          fillMods(pre, mapPrefixOptions(id));
+        }
+        if (listed.suf !== `${id}:${a}`) {
+          listed.suf = `${id}:${a}`;
+          fillMods(suf, mapSuffixOptions(id, a));
+        }
+      }
       saveOpponent();
     };
-    // U39: the chart follows the map, its ascension, grade and scrolls (U70: the runs start again).
-    m.addEventListener("change", () => (sync(), renderPlan()));
-    asc.addEventListener("change", () => (sync(), renderPlan()));
-    grade.addEventListener("change", () => (sync(), renderPlan()));
-    for (const x of scrolls) x.addEventListener("change", () => (saveOpponent(), renderPlan()));
-    box.replaceChildren(el("div", { class: "opp-controls" }, m, el("div", { class: "toolbar" }, asc, grade),
-      el("div", { class: "toolbar opp-scrolls", role: "group", "aria-label": "Scrolls" }, ...scrolls), facts, capNote()));
+    // U39: the chart follows the map, its ascension, grade, prefix and suffix (U70: the runs start again). U72: another
+    // map drops the Solver's shown scrolls.
+    m.addEventListener("change", () => ((shownScrolls = []), sync(), renderPlan()));
+    for (const x of [asc, grade, pre, suf]) x.addEventListener("change", () => (sync(), renderPlan()));
+    box.replaceChildren(el("div", { class: "opp-controls" }, m, mods, capNote()));
     sync();
   }
   // The party rules follow the opponent (renderParty also draws the plan); the search panel is refreshed above.
@@ -765,21 +729,20 @@ function drawEnemyCard(): void {
   }));
 }
 
-/**
- * R1 F29: the map card's rooms, counted as the results count them: the rooms at this grade (boss included, ±1 by
- * grade) plus the treasure rooms expected per run ("9 + 0.9 treasure"), the tooltip saying what is counted.
- */
-function roomsFact(id: number, grade: number): HTMLElement {
-  let rooms: number, treasure = 0;
-  try {
-    rooms = mapRooms(id, grade);
-    treasure = mapTreasure(id, grade)?.perRun ?? 0;
-  } catch {
-    return el("span", {}, "?");
-  }
-  const t = treasure >= 0.05 ? ` + ${fmt1.format(treasure)} treasure` : "";
-  return el("span", { title: `${rooms} rooms at grade ${GRADES[grade - 1] ?? grade}, the boss included${t ? `, and ${fmt1.format(treasure)} treasure room${treasure === 1 ? "" : "s"} per run on average` : ""}. `
-    + "The results count every room a run meets (treasure rooms and boss included), so their average can differ a little." }, `${rooms}${t}`);
+/** U72: a catalog map's prefixes as the wiki lists them: "No prefix", then "[Titan] · essence ×1.3, enemy HP +240". */
+function mapPrefixOptions(id: number): [string, string][] {
+  return [["0", "No prefix"], ...validPrefixes("map", id).map((p): [string, string] => [String(p), `[${prefixTag(p)}] · ${prefixEffect("map", id, p)}`])];
+}
+/** U72: a catalog map's suffixes at an ascension, as the wiki lists them: "No suffix", then "+3 · essence and Enemy × ×1.3". */
+function mapSuffixOptions(id: number, asc: number): [string, string][] {
+  return [["0", "No suffix"], ...validSuffixes("map", id, asc).map((x): [string, string] => [String(x), `${suffixName(x)} · ${suffixEffect("map", x)}`])];
+}
+/** U72: a modifier picker's options, the choice kept when still offered (else none); hidden with nothing to pick. */
+function fillMods(s: HTMLSelectElement, opts: [string, string][]): void {
+  const was = s.value;
+  s.replaceChildren(...opts.map(([v, label]) => el("option", { value: v }, label)));
+  s.value = opts.some(([v]) => v === was) ? was : "0";
+  s.hidden = opts.length < 2;
 }
 
 /**
@@ -787,8 +750,7 @@ function roomsFact(id: number, grade: number): HTMLElement {
  * hero prestige of the party; a rare quest is always ×1. The modes that pick the party allow up to the strongest hero
  * of the save (searchParty / optimiseFight skip parties that can't take the size). Keeps the current choice when allowed.
  */
-function syncAmount(amount = document.querySelector<HTMLSelectElement>("#amount"), note = document.querySelector<HTMLElement>("#amount-note"),
-  rare = questPick()?.rare ?? false): void {
+function syncAmount(amount = document.querySelector<HTMLSelectElement>("#amount"), rare = questPick()?.rare ?? false): void {
   // U62: the opponent card passes its own controls (it calls this before the card is in the page).
   if (!amount || !state.sv) return;
   // Modes that choose the party: up to the strongest hero of the save (the search skips parties that can't take it).
@@ -797,17 +759,7 @@ function syncAmount(amount = document.querySelector<HTMLSelectElement>("#amount"
   amount.replaceChildren(...Array.from({ length: max }, (_, k) => el("option", { value: String(k + 1) }, `×${k + 1}`)));
   amount.value = String(Math.min(was, max));
   amount.disabled = max === 1;
-  const n = Number(amount.value);
-  // R1 F20 / F36: the explanation in a "?"; the cap only once the party has heroes (before, it depends on them).
-  if (note) {
-    const what = `Quest size ×${n}: one enemy with ${n > 1 ? `${n}× HP, ${n}× loot and ${n}× quest time` : "its normal HP"}.`;
-    const heroes = state.mode.party ? partyOf().members.length : state.sv.raw.hero.length;
-    const cap = rare ? "A rare quest is always ×1."
-      : !heroes ? "The largest size depends on your heroes' ascension tier."
-      : !state.mode.party ? `Up to ×${max} with your strongest hero; parties that can't take this size are skipped.`
-      : `Up to ×${max} for this party: its highest hero ascension sets the cap.`;
-    note.replaceChildren(helpTip([what, cap], "the quest size"));
-  }
+  // U72: no "?" beside the size (R1 F20's note gone).
 }
 
 // ---------------------------------------------------------------- U70: the runs behind the chart and the figures
@@ -1202,6 +1154,14 @@ function partyOf() {
   return { front, back, skills, members };
 }
 
+/** U72: a catalog map's prefix or suffix picker as the engine takes it: its id, or undefined for none. */
+const modOf = (sel: string): number | undefined => Number(document.querySelector<HTMLSelectElement>(sel)?.value) || undefined;
+/**
+ * U72: the scrolls of the Solver's shown result (SearchContext.applyScrolls), its map runs' scrolls since the pickers
+ * went; another map drops them. Always none on the Simulator.
+ */
+let shownScrolls: number[] = [];
+
 /** The opponent chosen in step 3. */
 function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } } {
   const sv = state.sv!;
@@ -1210,9 +1170,10 @@ function targetOf(): { quest?: { id: number; rare: boolean; amount: number }; ma
   }
   const v = $<HTMLSelectElement>("#map").value;
   const spec: MapSpec = v.startsWith("own:") ? sv.raw.mapInventory.filter((c: unknown) => typeof c === "string")[Number(v.slice(4))]
-    : { id: Number(v.slice(4)), prestigeLevel: Number($<HTMLSelectElement>("#map-asc").value), grade: Number($<HTMLSelectElement>("#map-grade").value) };
-  const scrolls = [...document.querySelectorAll<HTMLSelectElement>("select.scroll")].map((s) => s.value).filter(Boolean)
-    .map((id) => ({ id: Number(id), prestigeLevel: 0 }));
+    : { id: Number(v.slice(4)), prestigeLevel: Number($<HTMLSelectElement>("#map-asc").value), grade: Number($<HTMLSelectElement>("#map-grade").value),
+      prefix: modOf("#map-prefix"), suffix: modOf("#map-suffix") };
+  // U72: no scroll pickers: the Simulator's runs use none; the Solver's, the scrolls of the result it shows.
+  const scrolls = shownScrolls.map((id) => ({ id, prestigeLevel: 0 }));
   return { map: { spec, scrolls } };
 }
 
@@ -1278,10 +1239,6 @@ function startQuest(): string | undefined {
   const id = defaultQuest(top, (q) => isVisible("enemy", q) && !needsOf("enemy", q).length) ?? defaultQuest(top, (q) => isVisible("enemy", q));
   return id === null ? undefined : String(id);
 }
-
-/** R2 F20: the Simulate panel's "?". U70: the runs after every change (was beside ▶ Simulate). */
-const SIMULATE_HELP = [`Every change runs ${WORST_RUNS} fights (or map runs) on the same rolls every time.`,
-  "The chart and the cards show the worst of them; the figures above the party are over all of them."];
 
 /**
  * U48: the "↑" button, fixed bottom right, on both battle pages (the Flow on a phone is one long page): shown once the
@@ -1351,8 +1308,6 @@ export function initBattlePage(kind: PageKind): void {
   else {
     // U48: hero cards move by drag and drop (party-drag.ts); #party stays, its cards are redrawn inside it.
     enableSlotDrag($("#party"), dropHero);
-    // R2 F20: what Simulate does is in the "?" of its heading, not a sentence in the box.
-    document.querySelector("#sim-help")?.replaceChildren(helpTip(SIMULATE_HELP, "Simulate"));
   }
   loadData().catch((e) => $("#loaded").replaceChildren(el("span", { class: "error" }, String(e))));
   subscribe(onExpansions);
@@ -1378,14 +1333,15 @@ function initSolver(): void {
       state.excluded = {};
       front.forEach((id, i) => (state.slots[slotKey("front", i)] = index(id)));
       back.forEach((id, i) => (state.slots[slotKey("back", i)] = index(id)));
-      clearUndo = null;
       persistParty();
       renderParty(false);
     },
     saveName: () => state.saveName,
     poolSkills: () => Object.fromEntries(Object.entries(state.skills).map(([i, s]) => [state.sv!.raw.hero[Number(i)].id, s])),
+    // U72: no scroll pickers: the shown result's scrolls are kept for its runs (targetOf), and the chart runs again.
     applyScrolls: (ids) => {
-      document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => (s.value = ids[k] === undefined ? "" : String(ids[k])));
+      shownScrolls = [...ids];
+      renderPlan();
     },
     // U42: no onStart (the progress is in the Solve panel; the results appear only once a solve is done).
     // U41: a result's Show (after its party is applied) brings the Party view.
@@ -1456,7 +1412,7 @@ function onExpansions(): void {
   // R3: Scribe hidden pushed a map run back to a quest: remember that map run on its own (put back above once Scribe
   // shows again).
   if (wasMap && oppKind() !== "map" && mapsHidden()) {
-    scribeFallback = { kind: "map", map: was.map, asc: was.asc, grade: was.grade, scrolls: was.scrolls };
+    scribeFallback = { kind: "map", map: was.map, asc: was.asc, grade: was.grade, prefix: was.prefix, suffix: was.suffix };
   }
   saving = false;
   try {
@@ -1485,9 +1441,8 @@ function restoreOpponent(was: OppChoice): void {
   put("#map", was.map);
   put("#map-asc", was.asc);
   put("#map-grade", was.grade);
-  const scrolls = was.scrolls ?? [];
-  document.querySelectorAll<HTMLSelectElement>("select.scroll").forEach((s, k) => {
-    if ([...s.options].some((o) => o.value === scrolls[k])) s.value = scrolls[k];
-  });
+  // U72: after the ascension (the suffixes it allows).
+  put("#map-prefix", was.prefix);
+  put("#map-suffix", was.suffix);
 }
 

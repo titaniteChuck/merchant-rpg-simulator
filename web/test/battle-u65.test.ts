@@ -317,19 +317,20 @@ test("the enemy card shows one enemy, no picker; the opponent's controls are in 
   // the Simulator: the toggle and #target in the Simulate panel, before its row (U70: no ▶ Simulate); the opponent
   // column only the card
   const panel = sim0.slice(sim0.indexOf('<div class="run-box"'), sim0.indexOf('id="sim-stats"'));
-  for (const id of ["opp-switch", "target", "party-tools"]) assert.ok(panel.includes(`id="${id}"`), id);
-  assert.ok(panel.indexOf('id="target"') < panel.indexOf('id="party-tools"'));
+  // U72: only the opponent's controls (no Clear all, no "?"s)
+  for (const id of ["opp-switch", "target"]) assert.ok(panel.includes(`id="${id}"`), id);
+  assert.ok(!panel.includes('id="party-tools"'));
   const opp = sim0.slice(sim0.indexOf('id="opp-col"'), sim0.indexOf("</section>", sim0.indexOf('id="opp-col"')));
   assert.match(opp, /<div id="target-card"><\/div>/);
   assert.doesNotMatch(opp, /opp-switch|id="target"|<select|type="radio"/);
   // the Solver: already in its Solve panel
   const solve = solver.slice(solver.indexOf('id="solve-box"'), solver.indexOf('id="search-results"'));
   for (const id of ["opp-switch", "target", "search-form"]) assert.ok(solve.includes(`id="${id}"`), id);
-  // renderTarget: the enemy, the quest size (its "?"), the map, its grade, the scrolls and the size cap, all in #target
+  // renderTarget: the enemy or the map, its modifiers row and the size cap, all in #target (U72: no "?", scrolls or facts)
   const target = fn(page, "renderTarget");
   assert.equal(target.match(/box\.replaceChildren\(el\("div", \{ class: "opp-controls" \}/g)?.length, 2);
-  assert.match(target, /q, el\("div", \{ class: "toolbar" \}, amount, sizeNote\), capNote\(\)/);
-  assert.match(target, /el\("div", \{ class: "toolbar opp-scrolls", role: "group", "aria-label": "Scrolls" \}, \.\.\.scrolls\), facts, capNote\(\)/);
+  assert.match(target, /\{ class: "opp-controls" \}, q, mods, capNote\(\)\)/);
+  assert.match(target, /\{ class: "opp-controls" \}, m, mods, capNote\(\)\)/);
   assert.doesNotMatch(page, /opp-card|placeTarget|class: "fc-pick", "aria-label": "Enemy"/);
   // rare entries stay in the enemy list; U53's links still pick them (restoreOpponent unchanged)
   assert.match(fn(page, "questOptions"), /questEntries\(id\)\.map/);

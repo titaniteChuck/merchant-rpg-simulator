@@ -236,15 +236,12 @@ test("the legend: colour and name only", () => {
 });
 
 // ---------------------------------------------------------------- 5. Clear all, the CSS
-test("Clear all is in the Simulate panel, with its undo; no longer over the cards", () => {
-  // U70: the panel ends with the Simulate row (Clear all, then the "?"s); no runs count or Simulate button any more.
+test("U72: no Clear all (U66 had moved it, with its undo, into the Simulate panel)", () => {
   const panel = html.slice(html.indexOf('<div class="run-box"'), html.indexOf('id="sim-stats"'));
-  assert.ok(panel.includes('<span id="party-tools" class="party-tools"></span>'));
-  assert.ok(panel.indexOf('class="toolbar sim-bar"') < panel.indexOf('id="party-tools"') && panel.indexOf('id="party-tools"') < panel.indexOf('id="sim-help"'));
+  assert.ok(!panel.includes('id="party-tools"') && !panel.includes("sim-bar"));
   const party = fn(page, "renderParty");
-  assert.match(party, /document\.querySelector\("#party-tools"\)\?\.replaceChildren\(\.\.\.\(ctl\.edit \? \[clear, \.\.\.\(clearUndo \? \[clearUndo\] : \[\]\)\] : \[\]\)\);/);
-  assert.doesNotMatch(party.slice(party.indexOf('$("#party").replaceChildren(')), /clear/);
-  assert.match(fn(page, "clearAll"), /#party-tools \.clear-all/);
+  assert.doesNotMatch(party, /clearAll|clearUndo|clear-all/);
+  assert.doesNotMatch(page, /function clearAll|let clearUndo/);
 });
 
 test("CSS: the U66 block follows U65's (later blocks such as U67 may come after it); theme tokens only", () => {

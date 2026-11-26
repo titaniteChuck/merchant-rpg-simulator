@@ -18,9 +18,9 @@
  * scrolls), then SearchContext.onShow lets the page bring its Party and Flow tabs.
  *
  * U36: the results table shows only the setups worth trying (battle-setup.ts solveShortlist): no 0 % result, within
- * 25 % of the best one found, at most 5. E25: winners (90 % or more) first; within the winners, and within the others,
- * the fewest scrolls first (a run needing no scrolls first). A map run's Scrolls cell says "No scrolls" (a pill) or the
- * count and the scrolls.
+ * 25 % of the best one found, at most 5. U72 order (compareSolutions): the highest win rate first, then the fewest
+ * heroes dead, then the most life left, then the fewest scrolls (E25). A map run's Scrolls cell says "No scrolls" (a
+ * pill) or the count and the scrolls.
  *
  * R2 (mobile review): the sizes on one row, "Party 1 – 5", the opponent's limit in their "?" (F31); Include scrolls only
  * for a map run (F31); Show is the first column and a tap on the row shows too, no hero-count column, a quest's lowest
@@ -173,7 +173,7 @@ const HEAD_TIPS: Record<string, string> = {
   "Grade": "Average grade of the won fights (a map: of the won runs), D to S.",
   "Life": "The party's HP left at the end, as a share of its max HP (fallen heroes count 0), on average.",
   "Dead": "Heroes down at the end, on average.",
-  "Scrolls": "The scrolls the run uses. Winners (90 % or more) come first; among the winners, and among the others, the runs with fewer scrolls come first (none first).",
+  "Scrolls": "The scrolls the run uses.",
 };
 
 /**
@@ -363,8 +363,8 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     const go = el("button", { type: "button", class: "primary" }, "🔎 Solve");
     const intro = "Finds the smallest parties that win, from all your heroes: who, in which row and order, every hero's rotation and passive"
       + `${isMap ? ", and the map's scrolls" : ""}. Parties grow one hero at a time, and the best ones of each size are tuned. `
-      + "Heroes marked ✓ are in every party, ✗ never. Up to 5 setups within 25 % of the best one found, winners (90 % or more) first, "
-      + `${isMap ? "then the fewest scrolls (none first), " : ""}the fewest heroes first.`;
+      + "Heroes marked ✓ are in every party, ✗ never. Up to 5 setups within 25 % of the best one found: the highest win rate first, "
+      + `then the fewest heroes dead, then the most life left${isMap ? ", then the fewest scrolls" : ""}.`;
     go.addEventListener("click", () => {
       let lo = intOf(minN, 1, cap), hi = intOf(maxN, 1, cap);
       minN.value = String(lo);

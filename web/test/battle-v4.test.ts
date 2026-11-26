@@ -63,31 +63,31 @@ test("solver shortlist: no 0 % result, within 25 % of the best, at most 5", () =
   const s = solveShortlist(res);
   assert.equal(s.length, 5);
   assert.ok(s.every((x) => x.ev.win >= 0.75 * 0.95 && x.ev.win > 0));
-  // winners (90 % or more) first, otherwise the solver's order is kept
-  assert.deepEqual(s.map((x) => x.ev.win), [0.95, 0.9, 0.8, 0.72, 0.75]);
+  // U72: the highest win rate first (was: winners first, then the solver's order)
+  assert.deepEqual(s.map((x) => x.ev.win), [0.95, 0.9, 0.8, 0.75, 0.72]);
   assert.deepEqual(solveShortlist([c(0, 100), c(0.0001, 90)]), []);
   // the ranking score rule: same win, a much lower score is dropped
   assert.deepEqual(solveShortlist([c(1, 1_000_000), c(1, 700_000)]).length, 1);
 });
 
-test("solver shortlist (E25): fewer scrolls first within winners and within the others, never over a clearly better one", () => {
+test("solver shortlist (E25, U72): fewer scrolls only after win rate, deaths and life; never over a clearly better one", () => {
   const c = (name: string, win: number, scrolls: number[] | null) => ({ name, ev: { win }, score: win * 1_000_000, scrolls });
   const names = (r: { name: string }[]) => r.map((x) => x.name);
-  // winners (90 % or more), in the solver's order (fewest heroes first): the scroll-free one first, then 1, then 2 scrolls
+  // U72: the win rate first, whatever the scrolls
   assert.deepEqual(names(solveShortlist([c("two", 0.98, [5, 5]), c("one", 0.95, [7]), c("none", 0.92, null), c("empty", 0.91, [])])),
-    ["none", "empty", "one", "two"]);
+    ["two", "one", "none", "empty"]);
   // a clearly weaker scroll-free run (40 % against 95 %) is not listed at all
   assert.deepEqual(names(solveShortlist([c("scrolls", 0.95, [7]), c("weak", 0.4, null)])), ["scrolls"]);
-  // a scroll-free non-winner stays below every winner, even one with scrolls
+  // a scroll-free lower win rate stays below
   assert.deepEqual(names(solveShortlist([c("scrolls", 0.95, [7, 8]), c("free", 0.8, null)])), ["scrolls", "free"]);
-  // within the non-winners (both inside the 25 % window), the scroll-free one first
-  assert.deepEqual(names(solveShortlist([c("scrolls", 0.85, [7]), c("free", 0.7, null)])), ["free", "scrolls"]);
-  // the same scroll count keeps the solver's order
-  assert.deepEqual(names(solveShortlist([c("a", 0.93, [1]), c("b", 0.97, [2]), c("c", 0.91, [3])])), ["a", "b", "c"]);
-  // the order comes before the cut to 5: a scroll-free winner in 6th place makes the list
-  const many = [1, 2, 3, 4, 5].map((k) => c(`s${k}`, 0.99, [k])).concat([c("free", 0.9, null)]);
+  // the same win rate (and deaths and life): the fewest scrolls first, none first
+  assert.deepEqual(names(solveShortlist([c("two", 0.9, [7, 8]), c("one", 0.9, [7]), c("free", 0.9, null)])), ["free", "one", "two"]);
+  // the same everything keeps the solver's order
+  assert.deepEqual(names(solveShortlist([c("a", 0.93, [1]), c("b", 0.93, [2]), c("c", 0.93, [3])])), ["a", "b", "c"]);
+  // the order comes before the cut to 5: a scroll-free setup in 6th place with the same win rate makes the list
+  const many = [1, 2, 3, 4, 5].map((k) => c(`s${k}`, 0.99, [k])).concat([c("free", 0.99, null)]);
   assert.deepEqual(names(solveShortlist(many)), ["free", "s1", "s2", "s3", "s4"]);
-  // quest results (no scrolls field): winners first, otherwise the solver's order
+  // quest results (no scrolls field): the highest win rate first
   const q = (name: string, win: number) => ({ name, ev: { win }, score: win * 1000 });
   assert.deepEqual(names(solveShortlist([q("x", 0.8), q("y", 0.95), q("z", 0.9)])), ["y", "z", "x"]);
 });

@@ -31,22 +31,15 @@
       <section>
         <h2 class="visually-hidden">Simulate</h2>
         <div class="run-box" role="group" aria-label="Simulate">
-          <!-- U65: the opponent is chosen here (quest enemy or map run, size, map, grade, scrolls); its card shows one
-               enemy beside the party. -->
+          <!-- U65: the opponent is chosen here; its card shows one enemy beside the party. U72: three rows (this
+               toggle, the enemy or map, its modifiers: quest size, or a catalog map's ascension, grade, prefix and
+               suffix); no scrolls, no map facts, no Clear all and no "?"s. -->
           <div class="opp-row">
             <div class="seg compact" id="opp-switch" role="radiogroup" aria-label="Opponent">
               <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest enemy</span></label>
               <label class="seg-opt"><input type="radio" name="opp" value="map"><span>🗺️ Map run</span></label>
             </div>
             <div id="target"></div>
-          </div>
-          <div class="simulate">
-            <div class="toolbar sim-bar">
-              <!-- U66: the party's Clear all and its undo (battle-page.ts renderParty). U70: the party's "?" and the runs' "?". -->
-              <span id="party-tools" class="party-tools"></span>
-              <span id="party-help"></span>
-              <span id="sim-help"></span>
-            </div>
           </div>
         </div>
       </section>
@@ -63,9 +56,8 @@
           <div id="party-col" class="party-col">
             <div id="party"></div>
           </div>
-          <!-- U65: one enemy, no picker (the opponent is chosen in the Simulate panel). -->
-          <div id="opp-col" class="opp-col">
-            <h3 class="col-title">👹 Opponent</h3>
+          <!-- U65: one enemy, no picker (the opponent is chosen in the Simulate panel). U72: no "Opponent" title. -->
+          <div id="opp-col" class="opp-col" role="group" aria-label="Opponent">
             <div id="target-card"></div>
           </div>
         </div>

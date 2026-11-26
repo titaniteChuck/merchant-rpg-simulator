@@ -54,8 +54,8 @@ export function simulatorPartyFrom(solver: StoredParty, simulator: Partial<Store
 /**
  * U53: the wiki's "Fight in simulator": the Simulator opened on an opponent. `battle.html?quest=12` (an enemy, `&rare=1`
  * its rare variant) or `battle.html?map=22&asc=1` (a catalog map run at an ascension, grade C as on the wiki). The
- * Simulator takes it as its remembered opponent (`battle-opponent`), so the party stays the visitor's own. Catalog map
- * runs take no prefix or suffix (only the save's own maps carry them), so a link never names one.
+ * Simulator takes it as its remembered opponent (`battle-opponent`), so the party stays the visitor's own. A link names
+ * no prefix or suffix (U72: the Simulator's catalog map runs take them, picked there; a link's map starts with none).
  */
 export type SimulatorTarget = { quest: number; rare?: boolean } | { map: number; asc?: number };
 

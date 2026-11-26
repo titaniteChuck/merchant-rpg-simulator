@@ -30,6 +30,7 @@
       <section id="search-panel"></section>
 
       <section id="solve-box" class="run-box solve-box" aria-label="Solve">
+        <!-- U72: three rows (this toggle, the enemy or map, its modifiers), as on the Simulator. -->
         <div class="opp-row">
           <div class="seg compact" id="opp-switch" role="radiogroup" aria-label="Opponent">
             <label class="seg-opt"><input type="radio" name="opp" value="quest" checked><span>⚔️ Quest</span></label>
@@ -56,9 +57,8 @@
           <div id="party-col" class="party-col">
             <div id="party"></div>
           </div>
-          <!-- U42: the opponent card (its pickers are in the Solve panel). U65: one enemy. -->
-          <div id="opp-col" class="opp-col">
-            <h3 class="col-title">👹 Opponent</h3>
+          <!-- U42: the opponent card (its pickers are in the Solve panel). U65: one enemy. U72: no "Opponent" title. -->
+          <div id="opp-col" class="opp-col" role="group" aria-label="Opponent">
             <div id="target-card"></div>
           </div>
         </div>
