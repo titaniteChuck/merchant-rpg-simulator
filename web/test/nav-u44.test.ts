@@ -12,14 +12,13 @@ const root = new URL("../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const src = (f: string) => read(`web/src/ui/${f}`);
 
-test("Save: its pages live in the Save dropdown, not in the main menu (R2-A: the drawer has them again)", () => {
+test("Save: its pages live in the Save dropdown too (R2-A: the drawer has them again; U77: the main menu too)", () => {
   const save = NAV.find((s) => s.id === "save")!;
   assert.equal(save.inSaveMenu, true);
   assert.equal(NAV.filter((s) => s.inSaveMenu).length, 1);
   const nav = src("nav.ts");
-  // The main menu skips it; the drawer keeps it as a group (R2-A F08, web/test/nav-r2a.test.ts).
-  assert.equal(nav.match(/if \(s\.inSaveMenu\) continue;/g)?.length, 1);
-  assert.match(nav, /function buildMenuBar[\s\S]*?if \(s\.inSaveMenu\) continue;/);
+  // U77: neither the main menu nor the drawer skips it (web/test/nav-u77.test.ts, nav-r2a.test.ts).
+  assert.doesNotMatch(nav, /if \(s\.inSaveMenu\) continue;/);
   // The Save pages group is the save viewer's sections, from the same list.
   assert.deepEqual(savePages().map((i) => i.href), itemsOf(save).map((i) => i.href));
   assert.deepEqual(savePages().map((i) => i.label), ["Overview", "Heroes", "Inventory", "Maps", "Crafters"]);

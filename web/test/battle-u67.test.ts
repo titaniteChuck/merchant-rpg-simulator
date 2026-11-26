@@ -277,7 +277,7 @@ test("page: the cards take the modifiers, effects and outcome from the trace; CS
   assert.match(fn(page, "paintTurn"), /\.\.\.turnOfCard\(at, w, now\)/);
   assert.match(fn(page, "drawEnemyCard"), /turn: turnOfCard\(at, 0, now\)/);
   assert.doesNotMatch(page, /chartRuns/, "the cards read the chart\'s own fought runs (chart.runs[i].trace)");
-  assert.match(hpChartSrc, /won: r\.trace\.won, turns: r\.trace\.turns, trace: r\.trace \}/);
+  assert.match(hpChartSrc, /won: r\.trace\.won, turns: r\.trace\.turns, trace: r\.trace,/);
   assert.doesNotMatch(page, /hpTexts/);
   // U71: the value right after its name, the room left between the two stats; HP its own line (the U71 block)
   assert.match(block, /\.fc-stats \{ display: grid; grid-template-columns: auto minmax\(0, max-content\) minmax\(max-content, 1fr\) auto minmax\(0, max-content\) minmax\(max-content, 1fr\);/);

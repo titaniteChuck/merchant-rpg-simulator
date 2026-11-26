@@ -227,7 +227,7 @@ test("the page: the picker on the Simulator only, remembered, switching draws an
   // the Solver's Show: the first run (Random)
   assert.match(page, /const pickNow = \(\): RunPick => \(state\.mode\.key === "simulate" \? runPick : DEFAULT_PICK\);/);
   assert.match(fn(page, "drawShown"), /const run = pickedTrace\(runs, pickNow\(\)\);/);
-  assert.match(fn(page, "showHp"), /pick: state\.mode\.key === "simulate" \? \{ value: runPick, onPick: setPick \} : null, follow: Boolean\(keep\) \}, !keep \|\| clamped\);/);
+  assert.match(fn(page, "showHp"), /pick: state\.mode\.key === "simulate" \? \{ value: runPick, onPick: setPick \} : null, follow: Boolean\(keep\), toEnd: fresh \}, !keep\);/);
   // the pick is not part of the runs' key (the request): the same request, the same runs
   assert.doesNotMatch(fn(page, "autoRun"), /pick/i);
   // stale-run cancellation kept

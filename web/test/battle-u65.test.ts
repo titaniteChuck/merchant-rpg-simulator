@@ -168,7 +168,7 @@ test("turn selection: a click or tap picks the nearest turn, the keys move it; a
   key("Home"); // already there: nothing new
   assert.deepEqual(picks, [5, 6, 7, 6, n - 1, 0]);
   // the page: the pick goes to the cards (no new trace)
-  assert.match(fn(page, "selectTurn"), /turnPick = \{ run: chart\.steps\[i\]\.run, turn: chart\.steps\[i\]\.turn \};\n\s*stepAt = null;[^\n]*\n\s*paintTurn\(\);/);
+  assert.match(fn(page, "selectTurn"), /turnPick = timeOf\(chart, i\);\n\s*stepAt = null;[^\n]*\n\s*paintTurn\(\);/);
   assert.doesNotMatch(fn(page, "selectTurn") + fn(page, "paintTurn"), /renderPlan|renderParty|planTrace|mapTrace/);
 });
 
@@ -306,7 +306,7 @@ test("a map run: each room keeps its turn 0 (U66: on the x of the last room's la
   for (const st of d.steps) assert.equal(d.runs[st.run].quest!.id, runs[st.run].quest.id);
   const card = fn(page, "drawEnemyCard");
   assert.match(card, /const run = chart\.runs\[at\.run\];\n\s*if \(run\.quest\) foe = \{ \.\.\.run\.quest, n: 1, room: run\.room \};/);
-  assert.match(page, /quest: \{ id: r\.questId, rare: r\.isRare \} \}\] : \[\]\)\), members, false, keep\);/);
+  assert.match(page, /quest: \{ id: r\.questId, rare: r\.isRare \}, fight: k \}\] : \[\]\)\), members, false, keep, fresh\);/);
 });
 
 // ---------------------------------------------------------------- 5. the enemy card and the controls

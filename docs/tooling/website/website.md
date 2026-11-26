@@ -117,7 +117,7 @@ flowchart LR
   a big number and an optional one-line hint: gold, inventory value and stacks, gold earned (both as "171,946 g"),
   items crafted, sales, heroes, maps owned / slots, mode and game version. Not the old big header tiles, not a table. No ascension legend:
   outlines carry their own tooltip and screen-reader label.
-- Inventory: a kind filter (All, Equipment, Consumables, Materials, Maps, On the counter) as the shared segmented
+- Inventory: a kind filter (All, Equipment, Consumables, Materials; U77: no Maps or On the counter, a kind shows its stacks on the counter too) as the shared segmented
   control (R1 F27, [Shared page parts](#shared-page-parts)), one row of chips that scrolls sideways on a phone instead
   of wrapping (R2 F14, `.inv-kinds`); above it, one line holds the name filter, the count ("167 stacks · 2,004,759 g",
   the base value) and a "?" with what the value is (the base customer price, before haggling, preferences and counter
@@ -889,6 +889,47 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     asc / grade options are short in the open list too (plain selects, the labels as asked); "No prefix" / "No
     suffix" stay as the empty choice's face; the edge zones are overlays (native pan) rather than a decision at
     `pointerdown` (a browser fixes `touch-action` when the touch starts, so it can't be switched then).
+- U77, the chart's scroll and zoom across results and run switches (the Simulator; the chart's code is shared with
+  the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`; tests `web/test/battle-u77.test.ts`, the U65, U67, U74 and
+  U76 tests updated; no CSS):
+  - A fight's identity across runs is its map room: `HpRun.fight` (the room's index in the map, the boss the last;
+    `drawShown` gives it), `fightOf` (none given: the fight's index), `runOfFight` (-1: this run has no such fight),
+    `timeOf` (a step as a fight and a turn). The fought rooms of a map run are a prefix of the map, but `hpData` drops
+    a room without actions, so a run index alone could name another room. `turnPick` holds `timeOf`; `pickStep` (an
+    edit) and `clampStep` (a run switch, U76's rules) look the fight up by it, never by a step index.
+  - A new result starts at its end: the worker's answer draws with `toEnd` (`drawShown(undefined, true)` →
+    `showHp(…, fresh)`), so a chart wider than its box shows its last fight (`endScroll`); the selected turn stays
+    the one kept (U65: the same turn, else turn 0) and is not brought into view. A redraw of the same runs (a
+    language or expansion change, `renderPlan`'s same key), a tab, a resize or a pick keeps the scroll (the memo
+    never keeps `toEnd` or `follow`).
+  - A run switch in All: the same fight and turn (clampStep; a fight the new run never reached, its last fight's last
+    turn) stays where it was on screen: before the redraw the old chart gives the selected turn's x less its scroll
+    (`selScreen`), after it the new scroll is the new turn's x less that (`anchorScroll`, clamped to the chart's ends).
+    Runs have different turn counts, so the px differ; U76 kept the px scroll and the turn drifted. No reveal after
+    (the turn is where it was).
+  - Zoomed, a run switch: the zoom kept is that fight (the memo's run index turned into the fight's identity and found
+    again in the new data); the chart is laid out from the new run, so the room's turns fill the plot (worst 5 turns
+    → best 3 → worst 5 again; a test runs that sequence on real traces, ticks and the marker's x). The sequence also
+    passed with U76's code in the fake DOM; the report could not be reproduced without a browser, so the zoom is now
+    by identity and the sequence is tested.
+  - Judgement calls: a new result scrolls only (the selected turn is not moved to the last fight); the anchor keeps a
+    selected turn that was off screen off screen by the same offset; a fight the new run has no step of (a dropped
+    room) counts as never reached.
+- U77, Save in the main menu and the Inventory filters (every page; `web/src/ui/nav.ts`, `nav-data.ts`,
+  `save-menu.ts`, `save-viewer.ts`, `save-tables.ts`, `web/scripts/check-site.ts`; tests `web/test/nav-u77.test.ts`,
+  the nav, U44 and U44-fix tests updated; CSS: the Save button's current rule removed):
+  - Save is a main-menu entry again (U35 had one, U44 removed it): Home, Save ▾, Battle ▾, Wiki ▾, More ▾; its link
+    opens the viewer (the Overview), its ▾ the five Save pages, as Wiki. On the Save pages it is the current section
+    (`.is-current`, its link `aria-current="true"`, the page's link `aria-current="page"`, the rule every section
+    has). The drawer's Save group (R2-A, the kept save's file name) and the Save / Wiki second rows are as they were.
+    The top-bar Save dropdown keeps its Save pages group, but its button is no longer marked current (`markSaveChip`
+    and the `.save-chip-btn[aria-current]` CSS removed); check-site wants the menu's Save entry current there.
+  - Save > Inventory: the kind filter is All, Equipment, Consumables, Materials (`INVENTORY_KINDS`,
+    `inventoryKindMatch` in `save-tables.ts`); Maps and On the counter are gone. A kind shows its stacks on the counter
+    too (until U77 they were only under On the counter); their row keeps its "on the counter" mark, and the "?" names
+    that mark.
+  - Judgement calls: the Save entry's label is "Save" (the drawer keeps the file name); the 761–960 px top bar takes
+    the fifth entry with the existing compact paddings, no new CSS.
 - U75, the Solver's kept findings and resumable solves (the Solver; `web/src/ui/solver-cache.ts` (new),
   `web/src/tools/parties.ts`, `web/src/ui/battle-search.ts`, `battle-worker.ts`; tests `web/test/battle-u75.test.ts`,
   the U42 and U74 tests updated; CSS in the `U75` block, the last one of `style.css`):
@@ -2407,6 +2448,7 @@ flowchart LR
 | Main menu | Sub-pages |
 | --- | --- |
 | Home | – |
+| Save ▾ (U77; U44 to U76 none) | Overview, Heroes, Inventory, Maps, Crafters (`save.html#…`; also in the top-bar Save dropdown) |
 | Battle ▾ | Simulator, Solver (U41; two pages, `battle.html` and `solver.html`); no page of its own (U44) |
 | Wiki ▾ | Search; Items: Equipment, Consumables, Materials; World: Maps, Enemies; Heroes: Classes, Skills, Passives; Reference: Stats, Battle, Expansions |
 | More ▾ | Other tools: Profit, Farming, Levelling, Balance (frozen tools) |
@@ -2424,8 +2466,8 @@ flowchart LR
   `keepInView` (`save-menu.ts`, a CSS translate; `theme.js` repeats the rule for the language menu). The current section gets
   `.is-current` (darker, gold underline); its own link `aria-current="true"` when a sub-page is current.
 - Save dropdown (U44): ONE "📜 … ▾" button in the right side of the top bar holds the save's choice and actions and
-  the save viewer's pages; the main menu has no "Save ▾" (phones keep the top-bar button, its file name hidden; R2-A
-  gives the drawer a Save group again, below). R2-A (F07, F09, F10): one button format on every page, "📜 <name> ▾",
+  the save viewer's pages; U44 to U76 the main menu had no "Save ▾" (U77: it has again, see the table; phones keep
+  the top-bar button, its file name hidden; R2-A gives the drawer a Save group again, below). R2-A (F07, F09, F10): one button format on every page, "📜 <name> ▾",
   the kept save's file name or "Save", no expansion icons (`saveChipButton(name, title)`), and always the first of the
   right-side controls (`chipSlot`: before the theme switch, the language picker and GitHub, whichever is there yet;
   `theme.js` adds its two before GitHub after `nav.js` has run, so one order holds on every page). Its head is one
@@ -2443,9 +2485,9 @@ flowchart LR
   `expansion-menu.ts` `mountExpansionChip` (no save, on a page that reads one or shows expansion content) and
   `save-menu.ts` `mountNavSaveChip` (put by `nav.ts` on every page: on Home, and until a page puts its own;
   `placeChip` swaps it out). `save-menu.ts` also holds `savePagesGroup`, `fitMenu`, `menuKeys` (Up / Down / Escape).
-  On the Save pages the button itself is the current section (they have no menu or drawer entry): `aria-current="true"`
-  and the current main-menu entry's look (`saveChipButton`, `markSaveChip` from `mark()`); check-site takes it, or the
-  dropdown's current link, as the current marker. Tests `web/test/nav-u44-fix.test.ts`.
+  U45 to U76 the button itself was the Save pages' current section (`markSaveChip`); U77: the main menu's Save entry
+  is (the button never marked), and check-site wants that entry current there. Tests `web/test/nav-u44-fix.test.ts`,
+  `web/test/nav-u77.test.ts`.
 - Second row (desktop): the current section's sub-pages as chips under the top bar (`nav.subnav`, the former wiki
   chips' look; groups split by a thin bar), only for a section with a page of its own and sub-pages: Save and Wiki.
   U44: none on the Battle pages (Battle has no page of its own). It replaces the wiki's static chip row and the save

@@ -9,9 +9,9 @@ const site = new URL("../../site/", import.meta.url);
 const src = (f: string) => readFileSync(new URL(`../src/ui/${f}`, import.meta.url), "utf8");
 const allHrefs = NAV.flatMap((s) => [...(s.href ? [s.href] : []), ...itemsOf(s).map((i) => i.href)]);
 
-test("main menu: Home, Battle, Wiki, then More with the frozen tools; Save's pages are in the top-bar Save dropdown (U44)", () => {
+test("main menu: Home, Save (U77: its own entry again), Battle, Wiki, then More with the frozen tools", () => {
   assert.deepEqual(NAV.map((s) => s.label), ["Home", "Save", "Battle", "Wiki", "More"]);
-  assert.deepEqual(NAV.filter((s) => !s.inSaveMenu).map((s) => s.label), ["Home", "Battle", "Wiki", "More"]);
+  assert.deepEqual(NAV.filter((s) => s.inSaveMenu).map((s) => s.label), ["Save"], "its pages in the top-bar Save dropdown too");
   assert.deepEqual(itemsOf(NAV.find((s) => s.id === "more")!).map((i) => i.label), ["Profit", "Farming", "Levelling", "Balance"]);
 });
 

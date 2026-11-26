@@ -13,8 +13,8 @@ export interface NavSection {
   title?: string;
   groups?: NavGroup[];
   /**
-   * U44: the section has no entry of its own in the main menu or the drawer; its pages are a group of the top-bar Save
-   * dropdown (save-menu.ts), next to the save's own actions.
+   * U44: its pages are also a group of the top-bar Save dropdown (save-menu.ts), next to the save's own actions; the
+   * drawer labels it with the kept save's file name (R2-A). U77: it has its own main-menu entry again (U44 had none).
    */
   inSaveMenu?: boolean;
 }

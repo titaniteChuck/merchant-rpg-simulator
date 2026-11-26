@@ -1,7 +1,7 @@
 /**
  * The site's menus (U35), built once for every page from NAV (nav-data.ts; js/nav.js, a module in every page's head):
  *
- * - Desktop (wider than 760 px): the top bar's main menu (Home, Battle ▾, Wiki ▾, More ▾). A section's sub-pages
+ * - Desktop (wider than 760 px): the top bar's main menu (Home, Save ▾ (U77), Battle ▾, Wiki ▾, More ▾). A section's sub-pages
  *   open in a dropdown under its ▾ button (the wiki's grouped in columns); More holds the frozen tools (Profit,
  *   Farming, Levelling, Balance). Battle and More have no page of their own: their entry only opens the dropdown
  *   (U44). The save viewer's and the wiki's sub-pages also sit in a compact second row under the top bar (.subnav), so
@@ -9,8 +9,9 @@
  * - Phone (760 px and less): a burger at the left of the top bar opens a left drawer (a modal <dialog>: focus kept
  *   inside, Escape, a tap on the backdrop or on a link closes it) with every section and its sub-pages as nested lists;
  *   the current section is unfolded.
- * - Save (U44): no main-menu entry. The save viewer's pages are a group of the ONE top-bar Save dropdown
- *   (save-menu.ts), with the save's own actions; on phones too (the chip stays in the top bar). This module puts a
+ * - Save (U44): the save viewer's pages are also a group of the ONE top-bar Save dropdown (save-menu.ts), with the
+ *   save's own actions; on phones too (the chip stays in the top bar). U77: Save is a main-menu entry again (its link,
+ *   the Overview, and a ▾ with its pages, as Wiki), the current section on the Save pages. This module puts a
  *   plain Save dropdown (the viewer's pages and a link to open a save) in the top bar of every page; a page that
  *   handles the save (save-source.ts, expansion-menu.ts) replaces it with its full one. R2-A (F08, F11): the drawer
  *   has a Save group again, labelled with the kept save's file name, and the Save second row shows on phones too.
@@ -26,7 +27,7 @@ import { mountScrollMemory } from "./scroll-memory.ts";
 
 export { currentNav, itemsOf, NAV, pageOf, type NavGroup, type NavItem, type NavSection } from "./nav-data.ts";
 import { currentNav, NAV, type NavItem, type NavSection } from "./nav-data.ts";
-import { keepInView, keptSave, markSaveChip, mountNavSaveChip, SAVE_NAME_EVENT } from "./save-menu.ts";
+import { keepInView, keptSave, mountNavSaveChip, SAVE_NAME_EVENT } from "./save-menu.ts";
 import { mountHome } from "./home.ts";
 import { helpTip } from "./wiki-help.ts";
 
@@ -78,10 +79,10 @@ function groupsList(s: NavSection, idPrefix: string): HTMLElement[] {
 }
 
 // ---------------------------------------------------------------- desktop menu
-function buildMenuBar(): HTMLElement {
+/** The desktop main menu, one entry per NAV section (U77: Save included again; exported for tests). */
+export function buildMenuBar(): HTMLElement {
   const bar = h("ul", { class: "menu-bar" });
   for (const s of NAV) {
-    if (s.inSaveMenu) continue; // in the top-bar Save dropdown (U44)
     const li = h("li", { class: "menu-item", "data-section": s.id });
     if (s.href) li.append(link({ label: s.label, href: s.href, title: s.title }, "menu-top"));
     if (s.groups) {
@@ -379,7 +380,6 @@ export function mark(): void {
   });
   document.querySelectorAll<HTMLElement>(".menu-item, .drawer-sec").forEach((x) => x.classList.toggle("is-current", x.dataset.section === section));
   document.querySelectorAll<HTMLElement>(".subnav").forEach(revealCurrent);
-  markSaveChip(); // the Save pages' section is the top-bar Save button (no menu entry since U44)
 }
 
 // ---------------------------------------------------------------- footer (R2-A F57)

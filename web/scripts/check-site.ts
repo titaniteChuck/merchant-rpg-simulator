@@ -5,8 +5,8 @@
  * the tab rows must each be ONE line, or (U35) broken menus: above 760 px the main menu shows, marks the current page
  * and each dropdown opens on screen and closes with Escape; at 760 px and less only the burger shows, and it opens the
  * left drawer (on screen, current page marked, focus inside) that Escape closes. At every width the top-bar Save
- * dropdown opens and closes with Escape, and every dropdown keeps 8 px from both window edges; on the Save pages (no
- * menu entry since U44) the Save button is marked current (aria-current) and counts as the current marker. R2-A: the
+ * dropdown opens and closes with Escape, and every dropdown keeps 8 px from both window edges; U77: on the Save pages
+ * the main menu's Save entry is the current section (U44 to U76: the Save button, marked current). R2-A: the
  * widths are the CSS breakpoints (matchMedia on the viewport, not clientWidth, which a scrollbar narrows), and the
  * Save dropdown must come first of the top bar's right-side controls.
  *
@@ -123,12 +123,10 @@ const PROBE = `(() => {
     // A top-bar dropdown keeps 8 px from both window edges (U44 fix).
     const inMargins = (el, what) => { const r = el.getBoundingClientRect(); if (r.left < 7 || r.right > cw - 7) nav.push(what + " not 8 px inside the window (" + Math.round(r.left) + "–" + Math.round(r.right) + "px of " + cw + ")"); };
     const burger = document.querySelector(".nav-burger"), main = document.querySelector(".mainnav"), drawer = document.querySelector("#nav-drawer");
-    // The Save pages have no main-menu or drawer entry (U44): the top-bar Save button is their current section, and
-    // its dropdown marks the page. It must be marked there.
+    // U77: the Save pages' section is the main menu's Save entry again (U44 to U76: the top-bar Save button).
     const saveBtn = document.querySelector(".topbar .save-chip-btn");
     const savePage = document.documentElement.dataset.navSection === "save";
-    const saveCurrent = () => !!document.querySelector('.topbar .save-chip-btn[aria-current], .topbar .save-menu [aria-current="page"]');
-    if (savePage && !(saveBtn && saveBtn.hasAttribute("aria-current"))) nav.push("Save page: the top-bar Save button is not marked current");
+    if (savePage && main && !main.querySelector('.menu-item.is-current[data-section="save"]')) nav.push("Save page: the main menu's Save entry is not current");
     // R2 F07: one top-bar order on every page: the Save dropdown, then the theme switch, the language and GitHub.
     const right = [...document.querySelectorAll(".topbar > .save-chip, .topbar > .theme-btn, .topbar > .lang-pick, .topbar > .gh")];
     if (right.length && !right[0].classList.contains("save-chip")) nav.push("top bar: the Save dropdown is not the first right-side control");
@@ -145,7 +143,7 @@ const PROBE = `(() => {
     else if (!phone) {
       if (!shown(main)) nav.push("main menu hidden");
       if (shown(burger)) nav.push("burger shown");
-      if (!main.querySelector('[aria-current="page"], .is-current') && !saveCurrent()) nav.push("no current section in the main menu");
+      if (!main.querySelector('[aria-current="page"], .is-current')) nav.push("no current section in the main menu");
       for (const b of main.querySelectorAll(".menu-caret")) {
         b.click();
         const pop = document.getElementById(b.getAttribute("aria-controls"));
@@ -163,7 +161,7 @@ const PROBE = `(() => {
         if (!drawer.open || burger.getAttribute("aria-expanded") !== "true") nav.push("the burger does not open the drawer");
         else {
           onScreen(drawer, "drawer");
-          if (!drawer.querySelector('[aria-current="page"], .is-current') && !saveCurrent()) nav.push("no current page in the drawer");
+          if (!drawer.querySelector('[aria-current="page"], .is-current')) nav.push("no current page in the drawer");
           if (!drawer.contains(document.activeElement)) nav.push("focus not in the open drawer");
           key(drawer, "Escape");
           if (drawer.open || burger.getAttribute("aria-expanded") !== "false") nav.push("the drawer does not close on Escape");

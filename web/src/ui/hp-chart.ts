@@ -45,6 +45,10 @@
  * U76: a run switch (Worst / Random / Best) keeps the turn (clampStep), the actor's step (keepStep), the zoom (zoomAfter
  * `follow`) and the scroll; two touch edge zones at the scroll box's visible edges (edgeZones) pan the chart natively.
  *
+ * U77: a fight's identity across runs is its map room (HpRun.fight; fightOf, runOfFight, timeOf): the turn kept and
+ * the zoom kept go by it, never by a step index. A new result starts scrolled to its end (endScroll); a run switch in
+ * All keeps the selected turn where it was on screen (anchorScroll); a zoom is laid out again from the new run.
+ *
  * Pure parts (hpData, pickStep, fightLayout, chartLayout, nearestStep, stepAfterKey, plotted; U68 minTurnWidth,
  * zoomOf, windowOf, axisTop, fightTabs, scrollForSpan, lerp, ease, lerpView, linePath, turnText) are separate from the
  * drawing (hpChart, drawHpChart) so tests check the series, the states, the layout and the selection without a browser.
@@ -90,6 +94,8 @@ export interface HpRun {
   room?: string;
   /** U65: the enemy fought (its card under the chart): quest id and rare variant. */
   quest?: { id: number; rare: boolean };
+  /** U77: the fight's identity across runs: a map room's index in the map (the boss the last); none: its place here. */
+  fight?: number;
 }
 
 /** U65: a fighter at the end of one step, as the cards show it. */
@@ -144,7 +150,9 @@ export interface HpChartData {
    * room's turn 0 shares its x with the step before it (the last room's last turn). */
   runStarts: number[];
   /** U67: each fought run's trace too, so the cards read the very run a step counts (no second filter). */
-  runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number; trace: TracedFight }[];
+  runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number; trace: TracedFight;
+    /** U77: the fight's identity across runs (HpRun.fight; none: its index). */
+    fight?: number }[];
 }
 
 /** U65: the chart's tabs, one x axis. */
@@ -265,12 +273,28 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
     })
     .filter((s) => s.values.some(Boolean));
   return { steps, series, runStarts,
-    runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns, trace: r.trace })) };
+    runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns, trace: r.trace,
+      ...(r.fight !== undefined ? { fight: r.fight } : {}) })) };
 }
 
-/** U65: the step to show: the one wanted (run and turn) when this fight still has it, else turn 0 (the first room's). */
+/**
+ * U77: a fight's identity across runs (a map room's index in the map, HpRun.fight; else its index in this chart): the
+ * same room of two runs is the same fight even when one of them left a room out (hpData drops a room without actions).
+ */
+export const fightOf = (d: HpChartData, run: number): number => d.runs[run]?.fight ?? run;
+/** U77: the chart's run index of fight `fight` (fightOf), -1 when this run has no such fight. */
+export const runOfFight = (d: HpChartData, fight: number): number => d.runs.findIndex((_, k) => fightOf(d, k) === fight);
+/** U77: chart step `i` as a logical time of the map run: its fight's identity (fightOf) and its turn. */
+export const timeOf = (d: HpChartData, i: number): { run: number; turn: number } =>
+  ({ run: fightOf(d, d.steps[i].run), turn: d.steps[i].turn });
+
+/**
+ * U65: the step to show: the one wanted (U77: `run` the fight's identity, fightOf, and the turn) when this fight still
+ * has it, else turn 0 (the first room's).
+ */
 export function pickStep(d: HpChartData, want: { run: number; turn: number } | null): number {
-  const i = want ? d.steps.findIndex((s) => s.run === want.run && s.turn === want.turn) : -1;
+  const run = want ? runOfFight(d, want.run) : -1;
+  const i = run < 0 ? -1 : d.steps.findIndex((s) => s.run === run && s.turn === want!.turn);
   return i < 0 ? 0 : i;
 }
 
@@ -281,10 +305,11 @@ export function pickStep(d: HpChartData, want: { run: number; turn: number } | n
  * shown.
  */
 export function clampStep(d: HpChartData, want: { run: number; turn: number }): number {
-  const i = d.steps.findIndex((s) => s.run === want.run && s.turn === want.turn);
+  // U77: by the fight's identity (fightOf: the map room), never by a step index
+  const run = runOfFight(d, want.run);
+  if (run < 0) return d.steps.length - 1;
+  const i = d.steps.findIndex((s) => s.run === run && s.turn === want.turn);
   if (i >= 0) return i;
-  const run = Math.max(0, want.run);
-  if (run >= d.runs.length) return d.steps.length - 1;
   const first = d.runStarts[run], last = run + 1 < d.runStarts.length ? d.runStarts[run + 1] - 1 : d.steps.length - 1;
   return want.turn < 0 ? first : last;
 }
@@ -446,6 +471,15 @@ export function fightTabs(d: HpChartData, zoom: number | null): { run: number | 
 /** U68: the scroll (units) that centres a span (`left`, `width`) in a view `view` wide over a chart `total` wide. */
 export const scrollForSpan = (left: number, width: number, total: number, view: number): number =>
   Math.max(0, Math.min(Math.max(0, total - view), left + width / 2 - view / 2));
+
+/** U77: the scroll (px) that shows a chart's end (its last fight): a chart `total` px wide in a box `view` px wide. */
+export const endScroll = (total: number, view: number): number => Math.max(0, total - Math.max(0, view));
+/**
+ * U77: the scroll (px) that keeps a point where it was on screen: it was `before` px from the box's left edge, it is
+ * now `x` px from the left of a chart `total` px wide in a box `view` px wide (clamped to the chart's ends).
+ */
+export const anchorScroll = (x: number, before: number, total: number, view: number): number =>
+  Math.max(0, Math.min(endScroll(total, view), x - before));
 
 /** U68: one frame of the plot: its viewBox width, each step's x and the y axis's top. */
 export interface ChartView {
@@ -640,8 +674,18 @@ export function runPicker(p: RunPickOption): HTMLElement {
   return seg;
 }
 
-/** U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page; U76: it also places the edge zones). */
-const revealers = new WeakMap<HTMLElement, (smooth: boolean, move: boolean) => void>();
+/**
+ * U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page; U76: it also
+ * places the edge zones). U77: and its scroll: the selected turn's place on screen (px from the box's left edge; null
+ * zoomed), to the end, or the selected turn at a given place on screen.
+ */
+interface ChartCtl {
+  reveal: (smooth: boolean, move: boolean) => void;
+  selScreen: () => number | null;
+  toEnd: () => void;
+  anchor: (before: number) => void;
+}
+const revealers = new WeakMap<HTMLElement, ChartCtl>();
 const reducedMotion = (): boolean =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const motion = (): ScrollBehavior => (reducedMotion() ? "auto" : "smooth");
@@ -1014,9 +1058,20 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   const fig = el("figure", { class: "hp-chart" }, el("div", { class: "hp-head" }, tabs, ...(o.pick ? [runPicker(o.pick)] : [])),
     el("div", { id: "hp-panel", role: "tabpanel", "aria-label": CHART_TABS.find((t) => t.id === tab)!.label },
       el("p", { id: "hp-sum", class: "visually-hidden" }, summary), scroller, nav, legend, fold));
-  revealers.set(fig, (smooth, move) => {
-    if (move) reveal(smooth);
+  // U77: the scroll box's px per viewBox unit (1 when the run is wider than the box)
+  const px = () => (track.clientWidth || L.W) / L.W;
+  const setScroll = (left: number) => {
+    if (zoom === null && L.overflow) scroller.scrollLeft = left;
     placeEdges();
+  };
+  revealers.set(fig, {
+    reveal: (smooth, move) => {
+      if (move) reveal(smooth);
+      placeEdges();
+    },
+    selScreen: () => (zoom !== null ? null : L.xs[sel] * px() - (L.overflow ? scroller.scrollLeft || 0 : 0)),
+    toEnd: () => setScroll(endScroll(L.W * px(), scroller.clientWidth || 0)),
+    anchor: (before) => setScroll(anchorScroll(L.xs[sel] * px(), before, L.W * px(), scroller.clientWidth || 0)),
   });
   return fig;
 }
@@ -1069,8 +1124,11 @@ type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) =
   nav?: HTMLElement | null;
   /** U74: the run picker in the head (the Simulator); none: no picker. */
   pick?: RunPickOption | null;
-  /** U76: a run switch: a zoom on goes on to the selected turn's fight (clampStep may land in another one). */
-  follow?: boolean };
+  /** U76: a run switch: a zoom on goes on to the selected turn's fight (clampStep may land in another one). U77: in
+   * All, the selected turn stays where it was on screen (the scroll follows it). */
+  follow?: boolean;
+  /** U77: a new simulation result: the chart starts scrolled to its end (the last fight). */
+  toEnd?: boolean };
 
 /**
  * U68 / U76: the zoom of a redraw without one given: the last one while the selected step is in that fight, else All;
@@ -1101,7 +1159,12 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const focused = !active ? null : fold && fold.querySelector("summary") === active ? "fold"
     : box.querySelector("svg.hp-svg") === active ? "plot" : box.querySelector('[role="tab"][aria-selected="true"]') === active ? "tab"
     : inPicker(box, active) ? "pick" : null;
-  const lastZoom = drawn.get(box)?.o.zoom ?? null;
+  // U77: the zoom kept is a fight (fightOf), found again in the new data by its identity (-1: not in it)
+  const was = drawn.get(box);
+  const lastZoom = d && was?.d && was.o.zoom != null ? runOfFight(d, fightOf(was.d, was.o.zoom)) : null;
+  // U77: a run switch keeps the selected turn's place on screen
+  const oldFig = box.querySelector<HTMLElement>("figure.hp-chart");
+  const anchorAt = o.follow && oldFig ? revealers.get(oldFig)?.selScreen() ?? null : null;
   // U73: a focused turn or step arrow in the nav host gets the focus back after the redraw
   const navBtn = navButtonOf(o.nav, active);
   box.hidden = Boolean(o.hide);
@@ -1115,7 +1178,8 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const width = chartWidth(box.clientWidth ?? 0);
   const selected = o.selected ?? 0;
   const zoom = o.zoom !== undefined ? o.zoom : d ? zoomAfter(d, selected, lastZoom, Boolean(o.follow)) : null;
-  const memo = { d, o: { ...o, zoom }, width };
+  // U77: a later redraw (a tab, a resize) neither scrolls to the end nor follows a run switch again
+  const memo = { d, o: { ...o, zoom, follow: false, toEnd: false }, width };
   drawn.set(box, memo);
   const onSelect = (i: number) => {
     memo.o.selected = i;
@@ -1145,9 +1209,16 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
     if (navBtn) o.nav.querySelector<HTMLElement>(navBtn)?.focus();
   }
   if (fig) {
+    const ctl = revealers.get(fig)!;
     const sc = fig.querySelector<HTMLElement>(".hp-scroll");
-    if (sc && scrolled) sc.scrollLeft = scrolled;
-    revealers.get(fig)?.(false, reveal);
+    // U77: a new result starts at its end; a run switch keeps the selected turn's place on screen; else the scroll
+    // as it was, then the selected turn brought into view (U66)
+    if (o.toEnd) ctl.toEnd();
+    else if (anchorAt !== null) ctl.anchor(anchorAt);
+    else {
+      if (sc && scrolled) sc.scrollLeft = scrolled;
+      ctl.reveal(false, reveal);
+    }
   }
   const back = focused === "fold" ? box.querySelector("details.hp-fold")?.querySelector<HTMLElement>("summary")
     : focused === "plot" ? box.querySelector<HTMLElement>("svg.hp-svg") : focused === "tab" ? box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')

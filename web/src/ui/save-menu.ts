@@ -207,32 +207,14 @@ export function refocusSaveChip(after?: unknown): void {
   if (after instanceof Promise) void after.finally(() => focusLost() && focus()).catch(() => {});
 }
 
-/** True on the save viewer's pages, whose section is the Save dropdown (and, on phones, the drawer's Save group). */
-export const onSavePage = (): boolean => currentNav(location.pathname, location.hash).section === "save";
-
-/**
- * Marks every Save dropdown button as the current section on the save viewer's pages (aria-current="true", styled like
- * a current main-menu entry), unmarks it elsewhere. nav.ts mark() calls it on load and at every hashchange; a button
- * built later is marked by saveChipButton.
- */
-export function markSaveChip(): void {
-  const here = onSavePage();
-  document.querySelectorAll<HTMLElement>(".save-chip-btn").forEach((b) => {
-    if (here) b.setAttribute("aria-current", "true");
-    else b.removeAttribute("aria-current");
-  });
-}
-
 /**
  * The Save dropdown's button, ONE format on every page (F07): "📜 <name> ▾", the kept save's file name or "Save" (the
- * name hidden on phones), no expansion icons. On the save viewer's pages it is marked as the current section
- * (markSaveChip).
+ * name hidden on phones), no expansion icons. U77: never the current section (the main menu's Save entry is; U45 to
+ * U76 marked this button on the Save pages).
  */
 export function saveChipButton(name: string, title: string): HTMLButtonElement {
-  const b = mk("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false", title },
+  return mk("button", { type: "button", class: "save-chip-btn", "aria-haspopup": "menu", "aria-expanded": "false", title },
     "📜 ", mk("span", { class: "save-chip-name" }, name), " ▾");
-  if (onSavePage()) b.setAttribute("aria-current", "true");
-  return b;
 }
 
 /**

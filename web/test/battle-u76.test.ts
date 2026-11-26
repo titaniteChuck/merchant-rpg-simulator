@@ -104,12 +104,12 @@ test("the page: a run switch keeps the turn (clamped), the actor's step, the zoo
   assert.match(set, /const who = chart && stepAt !== null \? stepsOf\(chart, turnAt\)\[stepAt\]\?\.who \?\? null : null;\s*drawShown\(\{ who \}\);/);
   assert.doesNotMatch(set, /renderPlan|startRuns|postMessage|turnPick =|Map\(|\[runPick\]/, "no run, no memory per run");
   const draw = fn(page, "drawShown");
-  assert.equal(draw.match(/members, false, keep\)/g)?.length, 2, "a quest and a map run both keep");
+  assert.equal(draw.match(/members, false, keep, fresh\)/g)?.length, 2, "a quest and a map run both keep");
   const show = fn(page, "showHp");
   assert.match(show, /turnAt = chart \? \(keep \? clampStep\(chart, want\) : pickStep\(chart, want\)\) : 0;/);
   assert.match(show, /stepAt = chart && keep && !clamped \? keepStep\(chart, turnAt, keep\.who\) : null;/);
-  // the scroll is kept (no move to the turn) unless the turn was clamped; the zoom follows the turn
-  assert.match(show, /follow: Boolean\(keep\) \}, !keep \|\| clamped\);/);
+  // the zoom follows the turn; U77: the turn keeps its place on screen (follow), no move to the turn
+  assert.match(show, /follow: Boolean\(keep\), toEnd: fresh \}, !keep\);/);
   // an edit (a new trace) is unchanged: pickStep, turn 0 when the turn is gone, the turn's end
   assert.match(fn(page, "renderPlan"), /drawShown\(\);/);
 });

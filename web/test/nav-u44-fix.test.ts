@@ -48,29 +48,20 @@ test("Every top-bar dropdown is kept on screen by the same rule", () => {
   }
 });
 
-test("Save pages: the top-bar Save button is the current section", () => {
+test("Save pages: the Save section is current there (U77: the main menu's entry, no longer the top-bar Save button)", () => {
   for (const hash of ["", "#heroes", "#hero=1"]) assert.equal(currentNav("/save.html", hash).section, "save");
   assert.notEqual(currentNav("/battle.html", "").section, "save");
   const menu = src("save-menu.ts");
-  assert.match(menu, /export const onSavePage = \(\): boolean => currentNav\(location\.pathname, location\.hash\)\.section === "save";/);
-  // Marked when built (the pages' own dropdowns come after nav.ts) and at every mark() (hashchange).
-  assert.match(menu, /export function saveChipButton[\s\S]*?if \(onSavePage\(\)\) b\.setAttribute\("aria-current", "true"\);/);
-  assert.match(menu, /export function markSaveChip[\s\S]*?\.save-chip-btn[\s\S]*?b\.removeAttribute\("aria-current"\)/);
-  assert.match(src("nav.ts"), /export function mark\(\)[\s\S]*?markSaveChip\(\);[^\n]*\n\}/);
-  // Styled like a current main-menu entry.
-  const css = read("site/style.css");
-  const cur = css.match(/^\.menu-item\.is-current \{([^}]*)\}/m)?.[1].trim();
-  const btn = css.match(/^\.topbar \.save-chip-btn\[aria-current\] \{([^}]*)\}/m)?.[1].trim();
-  assert.ok(cur && btn);
-  assert.equal(btn, cur);
+  assert.doesNotMatch(menu, /markSaveChip|onSavePage|aria-current", "true"/);
+  assert.doesNotMatch(src("nav.ts"), /markSaveChip/);
+  assert.doesNotMatch(read("site/style.css"), /\.save-chip-btn\[aria-current\]/);
 });
 
-test("check-site accepts the Save button and dropdown as the current marker, and checks the Save dropdown's margins", () => {
+test("check-site: the main menu's Save entry is the Save pages' current marker (U77), and the Save dropdown's margins", () => {
   const cs = read("web/scripts/check-site.ts");
-  assert.match(cs, /saveCurrent = \(\) => !!document\.querySelector\('\.topbar \.save-chip-btn\[aria-current\], \.topbar \.save-menu \[aria-current="page"\]'\)/);
+  assert.doesNotMatch(cs, /saveCurrent/);
   assert.match(cs, /"no current section in the main menu"/);
-  assert.match(cs, /&& !saveCurrent\(\)\) nav\.push\("no current section in the main menu"\)/);
-  assert.match(cs, /&& !saveCurrent\(\)\) nav\.push\("no current page in the drawer"\)/);
+  assert.match(cs, /"no current page in the drawer"/);
   assert.match(cs, /inMargins\(menu, "the Save dropdown"\)/);
-  assert.match(cs, /"Save page: the top-bar Save button is not marked current"/);
+  assert.match(cs, /'\.menu-item\.is-current\[data-section="save"\]'[^\n]*"Save page: the main menu's Save entry is not current"/);
 });

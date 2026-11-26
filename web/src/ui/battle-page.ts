@@ -60,7 +60,7 @@ import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, timelineOf } from "./timeline.ts";
 import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
-import { clampStep, drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, keepStep, pickStep, stepsOf } from "./hp-chart.ts";
+import { clampStep, drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, keepStep, pickStep, stepsOf, timeOf } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { prefixEffect, suffixEffect, validPrefixes, validSuffixes } from "./wiki-config.ts";
@@ -889,7 +889,7 @@ function startRuns(next: AutoRun): void {
     } else if (r.kind === "worst") {
       shown = { key: next.key, req: next.req, members: next.members, runs: r.runs };
       runError = null;
-      drawShown();
+      drawShown(undefined, true);
     }
     drawStats();
   };
@@ -932,20 +932,24 @@ function setPick(p: RunPick): void {
   drawShown({ who });
 }
 
-/** The shown runs' picked one (U74; U70: the worst) in the chart (and so the cards), names in the language of the moment. */
-function drawShown(keep?: { who: number | null }): void {
+/**
+ * The shown runs' picked one (U74; U70: the worst) in the chart (and so the cards), names in the language of the moment.
+ * U77: `fresh`, a new answer of the worker: the chart starts at its end; a map room carries its index (the fight's
+ * identity across runs).
+ */
+function drawShown(keep?: { who: number | null }, fresh = false): void {
   if (!shown) return;
   const { req, runs, members } = shown;
   const run = pickedTrace(runs, pickNow());
   if (req.quest && run?.quest) {
     const t = req.quest;
-    showHp([{ trace: run.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members, false, keep);
+    showHp([{ trace: run.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members, false, keep, fresh);
   } else if (run?.map) {
     const rooms = run.map;
     const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
     // U61: every fought room of the run, in map order.
     showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
-      quest: { id: r.questId, rare: r.isRare } }] : [])), members, false, keep);
+      quest: { id: r.questId, rare: r.isRare }, fight: k }] : [])), members, false, keep, fresh);
   } else showHp(null, members);
   drawStats();
 }
@@ -1021,7 +1025,7 @@ function navHost(): HTMLElement | null {
  * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U74: the picked one of the
  * shown runs). Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
  */
-function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false, keep?: { who: number | null }): void {
+function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false, keep?: { who: number | null }, fresh = false): void {
   const box = hpBox();
   const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
   chart = runs ? hpData(runs, fighters) : null;
@@ -1030,15 +1034,17 @@ function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false, keep
   // U70: which save hero each place held in these runs (a card whose hero changed since shows its own stats).
   chartHeroes = new Map(members.map((m) => [locationOf(m.row, m.i), m.idx]));
   // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0. U76: a run switch
-  // (`keep`) clamps it instead (clampStep: past the new run's end, its last turn) and keeps the actor's step.
+  // (`keep`) clamps it instead (clampStep: past the new run's end, its last turn) and keeps the actor's step. U77: the
+  // turn kept is a fight's identity (the map room) and its turn (timeOf); a run switch keeps the turn's place on
+  // screen (`follow`), a new answer (`fresh`) starts the chart at its end.
   const want = turnPick;
   turnAt = chart ? (keep ? clampStep(chart, want) : pickStep(chart, want)) : 0;
-  if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
+  if (chart) turnPick = timeOf(chart, turnAt);
   const clamped = Boolean(chart) && (turnPick.run !== want.run || turnPick.turn !== want.turn);
   // U73: a new trace shows the turn's end; U76: a run switch keeps the same actor's step when the turn is kept
   stepAt = chart && keep && !clamped ? keepStep(chart, turnAt, keep.who) : null;
   if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost(),
-    pick: state.mode.key === "simulate" ? { value: runPick, onPick: setPick } : null, follow: Boolean(keep) }, !keep || clamped);
+    pick: state.mode.key === "simulate" ? { value: runPick, onPick: setPick } : null, follow: Boolean(keep), toEnd: fresh }, !keep);
   paintTurn();
 }
 
@@ -1058,7 +1064,7 @@ let stepAt: number | null = null;
 function selectTurn(i: number): void {
   if (!chart?.steps[i]) return;
   turnAt = i;
-  turnPick = { run: chart.steps[i].run, turn: chart.steps[i].turn };
+  turnPick = timeOf(chart, i);
   stepAt = null; // U73: a turn picked lands on its end, its last step
   paintTurn();
 }

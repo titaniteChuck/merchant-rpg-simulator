@@ -196,6 +196,11 @@ function inventoryRow(where: string, slot: number, it: Any): Row {
   return withMods({ where, slot, ...head, ...gradeCounts(it), total: amount, unit_sell, total_sell, prefix, suffix, mods, rarity, rarity_name }, it);
 }
 
+/** U77: the inventory's kind filters after All (no Maps or On the counter any more). */
+export const INVENTORY_KINDS = ["equipment", "consumable", "material"] as const;
+/** U77: a stack is shown under kind filter `kind`: All, or its item type (on the counter or not). */
+export const inventoryKindMatch = (r: { type?: unknown }, kind: string): boolean => kind === "all" || r.type === kind;
+
 /** Inventory stacks in save order, then items on the sale counter (inventory_rows). */
 export function inventoryRows(sv: Save): Row[] {
   const rows: Row[] = sv.inventory.map((it: Any, i: number) => inventoryRow("inventory", i + 1, it));

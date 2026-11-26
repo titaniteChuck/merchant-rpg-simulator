@@ -21,7 +21,7 @@ import { badgeFor } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, summary, toCsv, withAllTables,
+  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, INVENTORY_KINDS, inventoryKindMatch, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, summary, toCsv, withAllTables,
   savedMods,
 } from "./save-tables.ts";
 
@@ -297,12 +297,12 @@ const inventoryTable = (rows: Row[]) => iconHeaders(table(rows, ITEM_COLS, (r) =
 function renderInventory(sv: Save): HTMLElement {
   const all = inventoryRows(sv);
   const search = el("input", { type: "search", placeholder: "Filter by name", "aria-label": "Filter by name" }) as HTMLInputElement;
-  // The kind filter as the shared segmented control (R1 F27).
+  // The kind filter as the shared segmented control (R1 F27). U77: no Maps or On the counter (a kind takes its stacks
+  // on the counter too, marked by their row).
   const kind = { value: "all" };
   const kinds = segmented("inv-kind", "Item kind", [
     { value: "all", label: "All" },
-    ...["equipment", "consumable", "material", "map"].map((t) => ({ value: t, label: ITEM_TYPE_PLURALS[t] })),
-    { value: "counter", label: "On the counter" },
+    ...INVENTORY_KINDS.map((t) => ({ value: t, label: ITEM_TYPE_PLURALS[t] })),
   ], kind.value, (v) => {
     kind.value = v;
     update();
@@ -310,7 +310,7 @@ function renderInventory(sv: Save): HTMLElement {
   const holder = el("div");
   const filtered = () => {
     const q = search.value.trim().toLowerCase();
-    return all.filter((r) => (kind.value === "all" || (kind.value === "counter" ? r.where === "counter" : r.type === kind.value && r.where !== "counter"))
+    return all.filter((r) => inventoryKindMatch(r, kind.value)
       // U29: the shown name or the English one
       && (!q || `${r.name} ${englishItemName(String(r.type), Number(r.id))}`.toLowerCase().includes(q)));
   };
@@ -334,7 +334,7 @@ function renderInventory(sv: Save): HTMLElement {
 /** The inventory's "?" (R2 F52 / F17): the value's meaning and the ascension outline. */
 const INVENTORY_HELP = ["Value: the base customer price, before haggling, preferences and counter bonuses.",
   "A silver outline around an item's name marks ascension 1, a gold one ascension 2 (the Asc column gives the number).",
-  "\"On the counter\": the stack is on sale in the shop."];
+  "\"on the counter\": the stack is on sale in the shop."];
 
 function renderMaps(sv: Save): HTMLElement {
   const rows = mapRows(sv);
