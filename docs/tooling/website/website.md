@@ -974,6 +974,40 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   - Judgement calls: a new result scrolls only (the selected turn is not moved to the last fight); the anchor keeps a
     selected turn that was off screen off screen by the same offset; a fight the new run has no step of (a dropped
     room) counts as never reached.
+- U79, the run picker on a map run (the Simulator; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
+  `web/src/tools/worst-run.ts`; tests `web/test/battle-u79.test.ts`, the U65, U74 and U77 tests updated; no CSS):
+  - Root cause (the user's report after U76 and U77: Best → Worst in All moved the view and the selected fight to an
+    earlier room; zoomed on the boss, Worst → Best → Worst kept the best's turn count): every run has its own map. The
+    game draws a map run's rooms from the run's seed (`makeMap(spec, seed)`), so the 20 runs of one map have 8 to 11
+    rooms (one or two of an enemy, a Treasure Bush or none). U77's fight identity was the room's index in the map
+    (`fight: k` in `drawShown`): the best run's boss (room 8) is an Antares in the worst run (11 rooms), so
+    `clampStep` landed there and `zoomAfter` (`follow`) zoomed there (worst boss 11 turns → best boss 10 → worst: the
+    Antares' 8). U77's tests cut one run's traces, the same map, so the indexes always matched.
+  - Second cause, All: the scroll's anchor was the selected turn even off screen. A new result starts at its end while
+    the selected turn stays where it was (turn 0 of the first room by default), so a switch kept that turn's
+    off-screen offset, the px scroll, and in the longer run the view showed its middle.
+  - The fix: a room's identity is its enemy (quest id, rare) and which of them it is in the map (the first Antares,
+    the second), the boss its own (`roomIds`, numbers: enemy × 100 + nth); `HpRun.at` its place in the map (0 the
+    first room, 1 the boss). `nearFight`: the same room, else the last earlier room of the same enemy, else the fought
+    room nearest its place (a run that ended sooner: past its last room, U76's last turn). `clampStep` and the zoom
+    kept across a redraw use it; `pickStep` (an edit) still wants the same room. `timeOf` carries `at`
+    (`FightTime`; `turnPick` in the page).
+  - A switch in All (`viewAnchor`, `anchorStep`): the selected turn kept at its place on screen while it is in view
+    (U77); off screen, the step in the middle of the box, found again by its time; a chart scrolled to its end with
+    the selected turn off screen stays at its end. Zoomed, nothing scrolls.
+  - Random (the user's addition): the first run, 0, 1, 2 …, that is neither the worst nor the best (`randomRun`; all
+    runs alike: run 1; fewer than three runs: run 0). The worker knows it only at the end, and it is one of runs 0-2,
+    so `traceWorst` keeps those three while tracing (at most six traces held at once: the three, the worst, the best
+    and the newest; U74: four) and the end keeps three (Random, worst, best). No run again. The Solver's Show
+    (Random) draws that run too.
+  - The test drives the page's chart flow (drawShown → showHp → drawHpChart, setPick through the picker's radios,
+    selectTurn through the plot's End key; the flow checked against `battle-page.ts`'s source) on `traceWorst`'s real
+    20 runs of map 15 (worst 10 rooms 46 turns, best 8 rooms 33 turns), in a fake DOM whose scroll box clamps
+    `scrollLeft` to [0, scrollWidth − clientWidth] (scrollWidth the track's width) as a browser does. Its three
+    scenarios fail on U77's code (the boss out of view after Best → Worst; the selected boss turn moved to an Antares;
+    the zoom left the boss) and pass now.
+  - Judgement calls: the identity counts the nth of an enemy, not its neighbours; a room the other map lacks goes to
+    the same enemy's earlier room before the nearest place; an edit's turn keeping (U65) is unchanged.
 - U77, Save in the main menu and the Inventory filters (every page; `web/src/ui/nav.ts`, `nav-data.ts`,
   `save-menu.ts`, `save-viewer.ts`, `save-tables.ts`, `web/scripts/check-site.ts`; tests `web/test/nav-u77.test.ts`,
   the nav, U44 and U44-fix tests updated; CSS: the Save button's current rule removed):

@@ -49,6 +49,10 @@
  * the zoom kept go by it, never by a step index. A new result starts scrolled to its end (endScroll); a run switch in
  * All keeps the selected turn where it was on screen (anchorScroll); a zoom is laid out again from the new run.
  *
+ * U79: every run has its own map (the game draws it from the run's seed: 8 to 11 rooms), so a room's identity is its
+ * enemy and which of them it is (roomIds), with its place in the map as the fallback (nearFight); a run switch keeps
+ * the fight in view when the selected turn is off screen (anchorStep, viewAnchor).
+ *
  * Pure parts (hpData, pickStep, fightLayout, chartLayout, nearestStep, stepAfterKey, plotted; U68 minTurnWidth,
  * zoomOf, windowOf, axisTop, fightTabs, scrollForSpan, lerp, ease, lerpView, linePath, turnText) are separate from the
  * drawing (hpChart, drawHpChart) so tests check the series, the states, the layout and the selection without a browser.
@@ -94,8 +98,12 @@ export interface HpRun {
   room?: string;
   /** U65: the enemy fought (its card under the chart): quest id and rare variant. */
   quest?: { id: number; rare: boolean };
-  /** U77: the fight's identity across runs: a map room's index in the map (the boss the last); none: its place here. */
+  /** U77: the fight's identity across runs; none: its place here. U79: a map room's roomIds (its enemy and which
+   * of them it is, the boss its own), no longer its index: every run has its own map (8 to 11 rooms). */
   fight?: number;
+  /** U79: a map room's place in its map, 0 (the first room) to 1 (the boss); the fallback when another run has no
+   * such room (roomIds). */
+  at?: number;
 }
 
 /** U65: a fighter at the end of one step, as the cards show it. */
@@ -151,8 +159,8 @@ export interface HpChartData {
   runStarts: number[];
   /** U67: each fought run's trace too, so the cards read the very run a step counts (no second filter). */
   runs: { enemy: string; room?: string; quest?: { id: number; rare: boolean }; won: boolean; turns: number; trace: TracedFight;
-    /** U77: the fight's identity across runs (HpRun.fight; none: its index). */
-    fight?: number }[];
+    /** U77: the fight's identity across runs (HpRun.fight; none: its index). U79: and its place in the map. */
+    fight?: number; at?: number }[];
 }
 
 /** U65: the chart's tabs, one x axis. */
@@ -274,7 +282,7 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
     .filter((s) => s.values.some(Boolean));
   return { steps, series, runStarts,
     runs: fought.map((r) => ({ enemy: r.enemy, room: r.room, ...(r.quest ? { quest: r.quest } : {}), won: r.trace.won, turns: r.trace.turns, trace: r.trace,
-      ...(r.fight !== undefined ? { fight: r.fight } : {}) })) };
+      ...(r.fight !== undefined ? { fight: r.fight } : {}), ...(r.at !== undefined ? { at: r.at } : {}) })) };
 }
 
 /**
@@ -284,9 +292,53 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
 export const fightOf = (d: HpChartData, run: number): number => d.runs[run]?.fight ?? run;
 /** U77: the chart's run index of fight `fight` (fightOf), -1 when this run has no such fight. */
 export const runOfFight = (d: HpChartData, fight: number): number => d.runs.findIndex((_, k) => fightOf(d, k) === fight);
-/** U77: chart step `i` as a logical time of the map run: its fight's identity (fightOf) and its turn. */
-export const timeOf = (d: HpChartData, i: number): { run: number; turn: number } =>
-  ({ run: fightOf(d, d.steps[i].run), turn: d.steps[i].turn });
+/** U77: a logical time of a map run: a fight's identity (fightOf) and a turn; U79: and the room's place in its map. */
+export type FightTime = { run: number; turn: number; at?: number };
+/** U77: chart step `i` as a logical time of the map run: its fight's identity (fightOf) and its turn (U79: its `at`). */
+export const timeOf = (d: HpChartData, i: number): FightTime => {
+  const r = d.runs[d.steps[i].run];
+  return { run: fightOf(d, d.steps[i].run), turn: d.steps[i].turn, ...(r?.at !== undefined ? { at: r.at } : {}) };
+};
+
+/** U79: the boss's mark in a room identity (roomIds), above any quest id. */
+const BOSS_ID = 1e6;
+/**
+ * U79: each map room's identity across runs, and its place in the map. The game draws every run's map from its seed,
+ * so two runs of one map have different rooms (8 to 11 of them, one bush or none): a room's index names another room
+ * in another run (U77's identity; run 0's boss is room 11, run 1's room 8, and its room 8 is an Antares). A room is
+ * its enemy (quest id, rare) and which of them it is in the map (the first Antares, the second), times 100; the boss
+ * has its own mark. `at`: the room's place, 0 the first room, 1 the boss.
+ */
+export function roomIds(rooms: { questId: number; isRare: boolean; boss: boolean }[]): { fight: number; at: number }[] {
+  const seen = new Map<number, number>();
+  return rooms.map((r, k) => {
+    const enemy = (r.boss ? BOSS_ID : 0) + r.questId * 2 + (r.isRare ? 1 : 0);
+    const nth = seen.get(enemy) ?? 0;
+    seen.set(enemy, nth + 1);
+    return { fight: enemy * 100 + Math.min(99, nth), at: rooms.length > 1 ? k / (rooms.length - 1) : 1 };
+  });
+}
+
+/**
+ * U79: the chart's run index that best stands for fight `want` of another run: the same fight (runOfFight); else, a
+ * map room (`want.at` given, roomIds), the last earlier one of the same enemy (a second Antares the new map has only
+ * one of: its Antares), else the fought room nearest its place in the map (the bush the new map has none of: the room
+ * where it would be; a run that ended sooner: its last room). -1: none (no `at`: U76's rule, the caller's).
+ */
+export function nearFight(d: HpChartData, want: FightTime): number {
+  const own = runOfFight(d, want.run);
+  if (own >= 0 || want.at === undefined) return own;
+  for (let id = want.run - 1; id >= want.run - (want.run % 100); id--) {
+    const k = runOfFight(d, id);
+    if (k >= 0) return k;
+  }
+  let best = -1;
+  d.runs.forEach((r, k) => {
+    // a tie (1e-9: the places are fractions) keeps the earlier room
+    if (r.at !== undefined && (best < 0 || Math.abs(r.at - want.at!) < Math.abs(d.runs[best].at! - want.at!) - 1e-9)) best = k;
+  });
+  return best;
+}
 
 /**
  * U65: the step to show: the one wanted (U77: `run` the fight's identity, fightOf, and the turn) when this fight still
@@ -302,12 +354,14 @@ export function pickStep(d: HpChartData, want: { run: number; turn: number } | n
  * U76: the step a run switch (Worst / Random / Best) lands on, the turn shown before (`want`) kept: the same fight
  * and turn when the new run has them; past the end of that fight in the new run: its last turn; a fight the new run
  * never reached (a map run that ends sooner): the last fight's last turn. No memory per run: the turn kept is the one
- * shown.
+ * shown. U79: the fight is found by nearFight (each run has its own map: the same room, else the one standing for it).
  */
-export function clampStep(d: HpChartData, want: { run: number; turn: number }): number {
-  // U77: by the fight's identity (fightOf: the map room), never by a step index
-  const run = runOfFight(d, want.run);
+export function clampStep(d: HpChartData, want: FightTime): number {
+  // U77: by the fight's identity (fightOf: the map room), never by a step index; U79: else the room standing for it
+  const run = nearFight(d, want);
   if (run < 0) return d.steps.length - 1;
+  // U79: a room past this run's last one (it ended sooner): its last turn, as a fight never reached (U76)
+  if (run === d.runs.length - 1 && runOfFight(d, want.run) < 0 && (want.at ?? 0) > (d.runs[run].at ?? 1)) return d.steps.length - 1;
   const i = d.steps.findIndex((s) => s.run === run && s.turn === want.turn);
   if (i >= 0) return i;
   const first = d.runStarts[run], last = run + 1 < d.runStarts.length ? d.runStarts[run + 1] - 1 : d.steps.length - 1;
@@ -675,15 +729,34 @@ export function runPicker(p: RunPickOption): HTMLElement {
 }
 
 /**
+ * U79: what a run switch keeps in view (All): a logical time of the map run (timeOf) and its place on screen (px
+ * from the box's left edge); `end`: the chart was scrolled to its end.
+ */
+export interface ViewAnchor { time: FightTime; before: number; end: boolean }
+
+/**
+ * U79: which step a run switch keeps in place on screen, in a chart scrolled `left` px in a box `view` px wide, the
+ * steps at `xs` px: the selected one while it is in view (U77); else (a new result starts at its end with the
+ * selected turn far off it, or the visitor scrolled away) the step nearest the box's middle, the fight being looked
+ * at. U77 kept an off-screen selected turn off screen by the same offset, and the view drifted to another fight.
+ * No layout (`view` 0): the selected one.
+ */
+export function anchorStep(xs: number[], sel: number, left: number, view: number): number {
+  if (!(view > 0)) return sel;
+  const x = xs[sel] - left;
+  return x >= 0 && x <= view ? sel : nearestStep(left + view / 2, xs);
+}
+
+/**
  * U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page; U76: it also
- * places the edge zones). U77: and its scroll: the selected turn's place on screen (px from the box's left edge; null
- * zoomed), to the end, or the selected turn at a given place on screen.
+ * places the edge zones). U77: and its scroll: to the end, or a logical time at a given place on screen (U79: the
+ * view's anchor, viewAnchor, null zoomed).
  */
 interface ChartCtl {
   reveal: (smooth: boolean, move: boolean) => void;
-  selScreen: () => number | null;
+  viewAnchor: () => ViewAnchor | null;
   toEnd: () => void;
-  anchor: (before: number) => void;
+  anchor: (a: ViewAnchor) => void;
 }
 const revealers = new WeakMap<HTMLElement, ChartCtl>();
 const reducedMotion = (): boolean =>
@@ -1069,9 +1142,20 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
       if (move) reveal(smooth);
       placeEdges();
     },
-    selScreen: () => (zoom !== null ? null : L.xs[sel] * px() - (L.overflow ? scroller.scrollLeft || 0 : 0)),
+    viewAnchor: () => {
+      if (zoom !== null) return null;
+      const k = px(), left = L.overflow ? scroller.scrollLeft || 0 : 0, view = scroller.clientWidth || 0;
+      const xs = L.xs.map((x) => x * k);
+      const i = anchorStep(xs, sel, left, view);
+      return { time: timeOf(d, i), before: xs[i] - left, end: L.overflow && view > 0 && i !== sel && left >= endScroll(L.W * k, view) - 1 };
+    },
     toEnd: () => setScroll(endScroll(L.W * px(), scroller.clientWidth || 0)),
-    anchor: (before) => setScroll(anchorScroll(L.xs[sel] * px(), before, L.W * px(), scroller.clientWidth || 0)),
+    // U79: the anchor's time found again in this run (clampStep: by identity, else the room standing for it)
+    anchor: (a) => {
+      const view = scroller.clientWidth || 0;
+      if (a.end) return setScroll(endScroll(L.W * px(), view));
+      setScroll(anchorScroll(L.xs[clampStep(d, a.time)] * px(), a.before, L.W * px(), view));
+    },
   });
   return fig;
 }
@@ -1159,12 +1243,14 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const focused = !active ? null : fold && fold.querySelector("summary") === active ? "fold"
     : box.querySelector("svg.hp-svg") === active ? "plot" : box.querySelector('[role="tab"][aria-selected="true"]') === active ? "tab"
     : inPicker(box, active) ? "pick" : null;
-  // U77: the zoom kept is a fight (fightOf), found again in the new data by its identity (-1: not in it)
+  // U77: the zoom kept is a fight (fightOf), found again in the new data by its identity (-1: not in it); U79: or
+  // the room standing for it (nearFight: each run has its own map)
   const was = drawn.get(box);
-  const lastZoom = d && was?.d && was.o.zoom != null ? runOfFight(d, fightOf(was.d, was.o.zoom)) : null;
-  // U77: a run switch keeps the selected turn's place on screen
+  const lastZoom = d && was?.d && was.o.zoom != null && was.o.zoom >= 0 && was.o.zoom < was.d.runs.length
+    ? nearFight(d, timeOf(was.d, was.d.runStarts[was.o.zoom])) : null;
+  // U77: a run switch keeps the selected turn's place on screen; U79: the fight in view when that turn is off screen
   const oldFig = box.querySelector<HTMLElement>("figure.hp-chart");
-  const anchorAt = o.follow && oldFig ? revealers.get(oldFig)?.selScreen() ?? null : null;
+  const anchorAt = o.follow && oldFig ? revealers.get(oldFig)?.viewAnchor() ?? null : null;
   // U73: a focused turn or step arrow in the nav host gets the focus back after the redraw
   const navBtn = navButtonOf(o.nav, active);
   box.hidden = Boolean(o.hide);

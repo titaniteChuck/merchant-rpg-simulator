@@ -60,7 +60,7 @@ import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, timelineOf } from "./timeline.ts";
 import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
-import { clampStep, drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, keepStep, pickStep, stepsOf, timeOf } from "./hp-chart.ts";
+import { clampStep, drawHpChart, type FighterState, type FightTime, type HpChartData, hpData, type HpRun, keepStep, pickStep, roomIds, stepsOf, timeOf } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { prefixEffect, suffixEffect, validPrefixes, validSuffixes } from "./wiki-config.ts";
@@ -947,9 +947,11 @@ function drawShown(keep?: { who: number | null }, fresh = false): void {
   } else if (run?.map) {
     const rooms = run.map;
     const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
+    // U79: a room's identity across runs is its enemy and which of them it is (each run has its own map), not its index
+    const ids = roomIds(rooms);
     // U61: every fought room of the run, in map order.
     showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
-      quest: { id: r.questId, rare: r.isRare }, fight: k }] : [])), members, false, keep, fresh);
+      quest: { id: r.questId, rare: r.isRare }, ...ids[k] }] : [])), members, false, keep, fresh);
   } else showHp(null, members);
   drawStats();
 }
@@ -1056,7 +1058,7 @@ let chart: HpChartData | null = null;
 let chartNames = new Map<number, string>();
 let chartHeroes = new Map<number, number>();
 let turnAt = 0;
-let turnPick: { run: number; turn: number } = { run: 0, turn: 0 };
+let turnPick: FightTime = { run: 0, turn: 0 };
 /** U73: the step within the selected turn (its index in stepsOf), null: the turn's end (its last step). */
 let stepAt: number | null = null;
 

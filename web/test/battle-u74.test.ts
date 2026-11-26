@@ -51,7 +51,7 @@ test("the picks: Worst, Random, Best in that order; Random (the first run) is th
   assert.deepEqual(["worst", "random", "best"].map(parsePick), ["worst", "random", "best"]);
   for (const v of [null, undefined, "", "first", "WORST", 3]) assert.equal(parsePick(v), "random", String(v));
   const runs = { outcomes: [run({}), run({ grade: 1 }), run({ grade: 5 })], worst: 1, best: 2 };
-  assert.equal(pickedRun(runs, "random"), 0, "Random is run 0, whatever it is");
+  assert.equal(pickedRun(runs, "random"), 0, "Random: the first run neither the worst nor the best (U79)");
   assert.equal(pickedRun(runs, "worst"), 1);
   assert.equal(pickedRun(runs, "best"), 2);
   assert.equal(pickedRun({ outcomes: [], worst: -1, best: -1 }, "random"), -1);
@@ -70,14 +70,15 @@ test("traceWorst keeps the first, the worst and the best run's traces only, each
   const w = traceWorst(sim, { quest: { id: quest, rare: false, amount: 1 } }, [...f], [...b]);
   assert.equal(w.worst, worstRun(w.outcomes));
   assert.equal(w.best, bestRun(w.outcomes));
-  assert.deepEqual(Object.keys(w.traces).map(Number).sort((x, y) => x - y), [...new Set([0, w.worst, w.best])].sort((x, y) => x - y),
+  const random = pickedRun(w, "random"); // U79: neither the worst nor the best
+  assert.deepEqual(Object.keys(w.traces).map(Number).sort((x, y) => x - y), [...new Set([random, w.worst, w.best])].sort((x, y) => x - y),
     "never more than the three a pick can show");
-  for (const k of [0, w.worst, w.best]) {
+  for (const k of [random, w.worst, w.best]) {
     const [f2, b2] = party();
     assert.deepEqual(w.traces[k].quest, traceFight(sim, quest, [...f2], [...b2], { seed: fightSeed(1, k) }), `run ${k}`);
   }
   // a pick reads one of them, nothing runs again
-  assert.equal(pickedTrace(w, "random"), w.traces[0]);
+  assert.equal(pickedTrace(w, "random"), w.traces[random]);
   assert.equal(pickedTrace(w, "worst"), w.traces[w.worst]);
   assert.equal(pickedTrace(w, "best"), w.traces[w.best]);
   assert.deepEqual(structuredClone(w), w, "it crosses the worker boundary");

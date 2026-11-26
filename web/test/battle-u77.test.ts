@@ -146,7 +146,7 @@ test("the page: a worker's answer draws fresh (the chart at its end), a redraw o
   assert.match(show, /if \(chart\) turnPick = timeOf\(chart, turnAt\);/);
   assert.match(fn(page, "selectTurn"), /turnPick = timeOf\(chart, i\);/);
   // the map rooms carry their index in the map
-  assert.match(fn(page, "drawShown"), /quest: \{ id: r\.questId, rare: r\.isRare \}, fight: k \}/);
+  assert.match(fn(page, "drawShown"), /quest: \{ id: r\.questId, rare: r\.isRare \}, \.\.\.ids\[k\] \}/); // U79: roomIds
 });
 
 // ---------------------------------------------------------------- 2. a run switch in All: the same time, the same place
@@ -176,8 +176,10 @@ test("the chart: a run switch to a run that ended sooner lands on its last fight
   const b = box();
   const sel = worst.runStarts[FIVE] + 2;
   drawHpChart(b, worst, { selected: sel }, false);
-  scrollOf(b).scrollLeft = 200;
-  const before = chartLayout(worst, HP_W).xs[sel] - 200;
+  // U79: the selected turn in view (one off screen gives way to the fight in the middle of the box, battle-u79)
+  const left = Math.round(chartLayout(worst, HP_W).xs[sel] - 100);
+  scrollOf(b).scrollLeft = left;
+  const before = chartLayout(worst, HP_W).xs[sel] - left;
   const to = clampStep(short, timeOf(worst, sel));
   assert.equal(to, short.steps.length - 1);
   drawHpChart(b, short, { selected: to, follow: true }, false);

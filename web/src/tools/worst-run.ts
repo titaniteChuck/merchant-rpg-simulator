@@ -140,7 +140,7 @@ export interface RunTrace {
 
 /**
  * The runs' outcomes, the worst and the best one's index, and the traces a pick can show (U74: the first, the worst
- * and the best run's, by run index; at most 3, never all of them).
+ * and the best run's, by run index; at most 3, never all of them; U79: the Random run's, randomRun, not the first's).
  */
 export interface WorstRuns {
   outcomes: RunOutcome[];
@@ -151,10 +151,21 @@ export interface WorstRuns {
   errors: number;
 }
 
-/** U74: the run index a pick shows (random: the first run); -1 without runs. */
+/**
+ * U79: the Random run's index: the first run (0, 1, 2 …) that is neither the worst nor the best run (U74 had run 0,
+ * which could be either). Among `n` runs; fewer than three runs: the first that is neither, else run 0; -1 without
+ * runs. All runs equal (worst = best = run 0): run 1.
+ */
+export function randomRun(n: number, worst: number, best: number): number {
+  if (n <= 0) return -1;
+  for (let k = 0; k < n; k++) if (k !== worst && k !== best) return k;
+  return 0;
+}
+
+/** U74: the run index a pick shows (U79: random, randomRun); -1 without runs. */
 export function pickedRun(runs: Pick<WorstRuns, "outcomes" | "worst" | "best">, pick: RunPick): number {
   if (!runs.outcomes.length) return -1;
-  return pick === "worst" ? runs.worst : pick === "best" ? runs.best : 0;
+  return pick === "worst" ? runs.worst : pick === "best" ? runs.best : randomRun(runs.outcomes.length, runs.worst, runs.best);
 }
 
 /** U74: the trace a pick shows (undefined without runs). */
@@ -162,9 +173,11 @@ export const pickedTrace = (runs: WorstRuns, pick: RunPick): RunTrace | undefine
 
 /**
  * Trace `n` fights or map runs of this party (seeds fightSeed(seed0, 0..n-1), run 0 being Simulate's first) and keep
- * the traces of the first, the worst and the best run only (U74; U70 kept the worst one's): a pick switches between
- * them without running again, and at most 4 traces are held at once. Throws when every map run fails in the game's
- * code.
+ * the traces of the Random, the worst and the best run only (U74; U70 kept the worst one's): a pick switches between
+ * them without running again. U79: the Random run (randomRun) is known only at the end, and it is one of the first
+ * three runs (at most two of them are the worst or the best), so runs 0-2 are kept while tracing (at most 6 traces held
+ * at once: the three, the worst, the best and the newest) and the end keeps three. Throws when every map run fails
+ * in the game's code.
  */
 export function traceWorst(sim: Sim, target: { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } },
   front: Row, back: Row, n = WORST_RUNS, seed0 = 1): WorstRuns {
@@ -175,8 +188,8 @@ export function traceWorst(sim: Sim, target: { quest?: { id: number; rare: boole
     const k = outcomes.push(o) - 1;
     if (worst < 0 || compareRuns(o, outcomes[worst]) < 0) worst = k;
     if (best < 0 || compareRuns(o, outcomes[best]) > 0) best = k;
-    if (k === 0 || k === worst || k === best) traces[k] = t;
-    for (const i of Object.keys(traces).map(Number)) if (i !== 0 && i !== worst && i !== best) delete traces[i];
+    if (k < 3 || k === worst || k === best) traces[k] = t;
+    for (const i of Object.keys(traces).map(Number)) if (i >= 3 && i !== worst && i !== best) delete traces[i];
   };
   for (let k = 0; k < n; k++) {
     const seed = fightSeed(seed0, k);
@@ -198,5 +211,7 @@ export function traceWorst(sim: Sim, target: { quest?: { id: number; rare: boole
     } else throw new Error("nothing to simulate");
   }
   if (!outcomes.length) throw new Error(`all ${n} runs failed in game code: ${firstError}`);
+  const random = randomRun(outcomes.length, worst, best);
+  for (const i of Object.keys(traces).map(Number)) if (i !== random && i !== worst && i !== best) delete traces[i];
   return { outcomes, worst, best, traces, errors };
 }
