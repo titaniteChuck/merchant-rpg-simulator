@@ -521,6 +521,7 @@ function init(): void {
   showOrbControls();
   initSaveSource({
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: (text) => loadSave(text),
+    heroOverlay: false, // U78: "You have" counts the save's real gear, not the gear of heroes edited on the site
     onForget: () => {
       state.owned = null;
       state.filters.ownedOnly = false;

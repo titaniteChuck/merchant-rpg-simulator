@@ -182,6 +182,65 @@ flowchart LR
 - Item names with modifiers (U34): "[Prefix] Item +N" everywhere (inventory, counter, maps, hero gear, crafters, CSV),
   `modItemName` in `names.ts` (see [Languages](#languages)); name columns sort by the base name.
 - No "… page in the wiki →" links next to a name that is already a link (U34): a name link opens its wiki page.
+- Hero creation and editing (U78). The save file is never changed: edits live in an overlay beside it.
+  - Data model (`web/src/ui/hero-overlay.ts`, pure apart from its storage): one overlay per save, under the save's
+    kept name (localStorage `merchant:hero-overlay:<name>`: the save itself is in IndexedDB, `save-store.ts`, but the
+    overlay must be read synchronously while a page decodes the save). `edits`: per save hero id, only the fields that
+    differ from the save (`EDIT_KEYS`: name, class, level, prestigeLevel, exp, attackList, passiveSelect, skillSet,
+    currentSkillSet, heroInventory; `patchOf`; an edit brought back to the save's values drops the entry). `created`:
+    whole raw heroes in the save's format (compact item strings, skill indices), ids from 1000 up (`nextHeroId`, clear
+    of the game's 1, 2, 3 …). `applyOverlay` returns a new decoded save: edits over the save's heroes, created heroes
+    appended (one whose id the save has since taken is left out). Reset = `resetHero` (the edit dropped), Delete =
+    `deleteHero`. Blocked or damaged storage reads an empty overlay and a write does nothing (the edit lasts until the
+    page is left). Forget keeps the overlay (like the battle page's party per save name); loading the same file name
+    again finds it.
+  - Every tool sees the edited heroes: `tools/save.ts` `loadSaveText` runs an optional hook (`setSaveRawHook`) on the
+    decoded save; `initSaveSource` (`save-source.ts`) installs `overlayHook` and names the save (`setActiveSave`)
+    before each `load`, so the Simulator, Solver (its cache key hashes the pool's raw heroes, so an edit gives a new
+    key), Levelling and Farming read the merged heroes without any change of their own. Profit opts out
+    (`heroOverlay: false`: its "You have" counts the gear the save really holds). Node tools and tests
+    have no hook. The save viewer decodes the file itself (`decodeSaveText`), keeps it for Reset, and merges.
+  - Heroes list: "＋ Create" above the table (`#hero=new`); a created hero has a dashed "new" chip after its name, an
+    edited one "edited" (title: not in / unchanged in the save file).
+  - Hero page: Edit at the top right of the card, plus Reset (an edited save hero, with confirm) or Delete (a created
+    hero, with confirm); in edit mode (`#hero=<id>&edit`, `#hero=new`) Save and Cancel (Cancel on a new hero goes back
+    to the list; leaving the page drops an unsaved edit). Edit mode (`save-hero-edit.ts`): Name, Class, Asc (0–2,
+    the hero's prestigeLevel 1–3; Asc 2 behind the Frozen Tome, `isVisible("prestige")`) and Level (1 to the tier's top:
+    50, 50, 60, so lvl 51–60 need Asc 2; another Asc clamps the level; a new level sets exp 0) as selects; the
+    passive and each turn of the rotation as the Simulator's pickers (`pick-list.ts`, AP-greyed choices through
+    `budgetOptions` / `skillFits`). Rules in `hero-edit.ts`: a class change starts from the class's default rotation and
+    first passive (gear kept; both skill sets rewritten); passive "None" below lvl 10; after any change a skill not
+    unlocked becomes Basic and, over the AP budget, the last costly skills too (`fitRotation`), so the game never falls
+    back to the default rotation. Skills are written as indices into the class's skill list, in the current skill set
+    too. A created hero: level 1, Asc 0, the first visible class (Warrior), the class's Worn starting gear made as the
+    game makes it (`Equipment` by name, isNew), Basic rotation, no passive, idle, named "New hero".
+  - Gear in edit mode (`hero-gear.ts`): each slot one line (scrolls sideways if narrow), pickers in order Prefix, Item,
+    Suffix, Rank, Asc (selects with short faces, `shortPick`, the open list with effects); Item opens the slot's table
+    under the gear list, full width: region chips (checkboxes, unticked = left out), then the slot's real items
+    (no placeholder rows, expansions filtered) at most the hero's level, highest level first, columns Item (rarity
+    colour), Lvl, Bonus stats (the item's base bonus ranges). A row picks the item and resets rank to B (D for a Worn
+    item), Asc 0, no prefix, no suffix (`pickItem`). Options follow the wiki's rules (`validAscs`, `validPrefixes`,
+    `validSuffixes`): a Worn item rank D only and no modifier, a trinket no suffix, suffixes up to the Enchanter's top
+    for the Asc (an Asc change drops a suffix it can't take, `withGear`). A changed slot is built as the wiki builds an
+    item's figures (`equipmentAt`: crafter level 60, seed 1, then prefix and suffix) and written back as the game's
+    compact string (`compactOf`, the inverse of `readEquipmentCompact`; Lua `%.14g` numbers); untouched slots keep
+    their saved strings.
+  - Stats: computed by the engine like every tool (`rawView`: `heroViews` on a one-hero save, `api.newHero` +
+    `heroStats`). In edit mode each changed stat reads "<old> → <new> ▲/▼", the new value `--good` when higher and
+    `--bad` when lower (AA on both themes; the arrow and the accessible "was …, higher" text carry it without colour);
+    old = the hero when the edit started. The radar keeps the old shape on top with its dots and draws the new one
+    under it as a layer (`.radar-new`, dashed, `--skill`); an axis whose new value beats the save's best takes it as
+    its rim and the old shape is drawn on that rim (`radarDiff` in `hero-diff.ts`); Crit and Acc keep their fixed rims;
+    a changed axis's end reads "→ <new>". The radar is open while editing.
+  - Scrolling: the stat grid is now a full-width bar under the head, sticky at the top of the viewport (`.hero-stat-bar`);
+    the hero card no longer clips or lifts on hover (`overflow: clip`, no transform) so it can. Once the radar's own
+    place has scrolled out of view above, it floats at the bottom right as a preview (`save-hero-float.ts`,
+    `.hero-radar-slot.floating`): min(28vw, 220px) wide; on a phone (600 px and less) min(36vw, 136px), slightly
+    transparent and `pointer-events: none`, so a tap goes through it to the control under it. Its place keeps its
+    height meanwhile.
+  - Tests: `web/test/save-u78.test.ts` (overlay merge, storage, hook, reset, delete, create defaults, level and skill
+    rules, engine stats, compact round trip of the save's items, item table filter and sort, picker resets, stat diff
+    text and tones, radar rescaling and layer order, actions, float rule). CSS block `U78`.
 
 ## Battle simulator
 

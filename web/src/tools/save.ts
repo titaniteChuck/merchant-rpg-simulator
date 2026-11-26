@@ -167,6 +167,16 @@ export function parseSave(raw: Any): Save {
   };
 }
 
+/**
+ * U78: a change applied to every decoded save before it is parsed (the hero overlay of the save viewer's edited and
+ * created heroes, ui/hero-overlay.ts, installed by ui/save-source.ts); none by default (Node tools and tests).
+ */
+let rawHook: ((raw: Any) => Any) | null = null;
+export function setSaveRawHook(hook: ((raw: Any) => Any) | null): void {
+  rawHook = hook;
+}
+
 export function loadSaveText(text: string): Save {
-  return parseSave(decodeSaveText(text));
+  const raw = decodeSaveText(text);
+  return parseSave(rawHook ? rawHook(raw) : raw);
 }

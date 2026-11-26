@@ -7,7 +7,7 @@
 import "./nav.ts";
 import * as api from "../sim/api.ts";
 import { itemName as englishItemName } from "../tools/engine.ts";
-import { loadSaveText, type Save } from "../tools/save.ts";
+import { decodeSaveText, parseSave, type Save } from "../tools/save.ts";
 import { languageReady, onLanguageChange, rerenderKeeping } from "./language.ts";
 import { ITEM_TYPE_PLURALS, itemName as shownItemName } from "./names.ts";
 import {
@@ -17,13 +17,20 @@ import {
 import { radar, type RadarAxis } from "./radar.ts";
 import { initSaveSource, type SaveSource } from "./save-source.ts";
 import { saveWizard, wizardRoute } from "./save-wizard.ts";
-import { badgeFor } from "./expansion-state.ts";
+import { badgeFor, isVisible } from "./expansion-state.ts";
 import { helpTip } from "./wiki-help.ts";
 import { itemLink, loadWikiText, passiveLink, passiveText, skillAp, skillDesc, skillLink } from "./wiki-data.ts";
 import {
-  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, INVENTORY_KINDS, inventoryKindMatch, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, gridStats, summary, toCsv, withAllTables,
+  ALL_TABLES_FILE, type ApBudget, crafterRows, type CsvTable, gearRows, GRADES_BEST_FIRST, type HeroView, heroViews, INVENTORY_KINDS, inventoryKindMatch, inventoryRows, itemLabel, mapEssenceOf, mapRows, type Row, ascOutlineText, summary, toCsv, withAllTables,
   savedMods,
 } from "./save-tables.ts";
+import {
+  applyOverlay, deleteHero, emptyOverlay, type HeroMark, heroMark, type HeroOverlay, isCreated, nextHeroId, readOverlay, resetHero, saveHero, writeOverlay,
+} from "./hero-overlay.ts";
+import { classIds, newHeroRaw } from "./hero-edit.ts";
+import { type EditHooks, type EditSession, gearEditor, headEditor, skillsEditor } from "./save-hero-edit.ts";
+import { heroActions, markPill, radarWithDiff, rawView, statGridDiff } from "./save-hero-page.ts";
+import { floatRadar } from "./save-hero-float.ts";
 
 let dataReady: Promise<void> | null = null;
 function loadData(): Promise<void> {
@@ -139,15 +146,8 @@ export function statRadar(stats: Record<string, number>, best: Best, title: stri
 }
 const STATUS_TONE: Record<string, string> = { idle: "t-green", "on a map": "t-violet", "on a quest": "t-blue" };
 
-/** R2 F15: the combat stats as a compact number grid (4 per row); each radar stat's tooltip names the save's best. */
-function statGrid(stats: Record<string, number>, best: Best, hasApBudget: boolean): HTMLElement {
-  return el("dl", { class: "stats hero-stat-grid" }, ...gridStats(stats, hasApBudget).map((k) => {
-    const x = stats[k];
-    const b = best[k];
-    const attrs: Record<string, string> = b?.who ? { title: `${STAT_LABELS[k] ?? k}: best in this save ${fmt.format(b.max)} (${b.who})` } : {};
-    return el("div", attrs, el("dt", {}, GRID_LABELS[k] ?? STAT_LABELS[k] ?? k), el("dd", {}, k === "critMod" ? `×${x.toFixed(2)}` : fmt.format(x)));
-  }));
-}
+// R2 F15: the combat stats as a compact number grid (4 per row), each radar stat's tooltip naming the save's best:
+// save-hero-page.ts statGridDiff (U78: with the edit's "<old> → <new>").
 
 /** The hero page's gear "?" (R2 F16, U46): the name's colour is the rarity, the card's frame the ascension. */
 const GEAR_HELP = ["The item's name has its rarity colour.",
@@ -203,20 +203,34 @@ function avatar(v: HeroView, size = ""): HTMLElement {
   return withAsc(el("span", { class: `avatar ${size}`.trim() }, name.slice(0, 1).toUpperCase()), heroAsc(v.row.asc), name);
 }
 
-/** One hero in full (save.html#hero=<id>): radar and stats beside rotation, passive and gear. */
-function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLElement {
+/** U78: the hero page's edit state, when editing: the session and the hero's view before the edit. */
+interface DetailEdit { session: EditSession; before: HeroView }
+
+/**
+ * One hero in full (save.html#hero=<id>): stats, radar, passive, rotation and gear. U78: the stat grid sits under the
+ * head, full width and sticky; the radar floats at the bottom right once scrolled past (save-hero-float.ts); Edit,
+ * Reset / Delete at the top right, and in edit mode (`edit`) the controls of save-hero-edit.ts, the stats as
+ * "<old> → <new>" and the new radar shape under the old one.
+ */
+function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save, edit?: DetailEdit): HTMLElement {
   const r = v.row;
   const name = String(r.name);
+  const id = edit ? edit.session.id : heroId(v, sv);
+  const mark = overlay ? heroMark(overlay, id) : null;
+  const old = edit?.before.stats ?? undefined;
   // R2 F15: the numbers first (a compact grid), the radar folded under them (open on wide screens, 200 px at most on
-  // a phone). R1 F37: AP only in the rotation's budget line when there is one; crit damage reads "×2.00".
+  // a phone; U78: open while editing). R1 F37: AP only in the rotation's budget line when there is one; crit damage reads "×2.00".
   const radarBox = (st: Record<string, number>) => {
-    const d = el("details", { class: "hero-radar" }, el("summary", {}, "Radar against the save's best"),
-      statRadar(st, best, `${name}'s combat stats`, 340));
-    d.open = typeof matchMedia === "function" && matchMedia("(min-width: 761px)").matches;
+    const slot = el("div", { class: "hero-radar-slot" }, old
+      ? radarWithDiff(RADAR_STATS, STAT_LABELS, old, st, best, `${name}'s combat stats`, 340)
+      : statRadar(st, best, `${name}'s combat stats`, 340));
+    const d = el("details", { class: "hero-radar" }, el("summary", {}, "Radar against the save's best"), slot);
+    d.open = Boolean(edit) || (typeof matchMedia === "function" && matchMedia("(min-width: 761px)").matches);
+    queueMicrotask(() => floatRadar(slot, d));
     return d;
   };
-  const stats = v.stats
-    ? el("div", { class: "hero-stats" }, statGrid(v.stats, best, Boolean(v.ap)), radarBox(v.stats))
+  const grid = v.stats ? statGridDiff(v.stats, best, Boolean(v.ap), { ...STAT_LABELS, ...GRID_LABELS }, old) : null;
+  const stats = v.stats ? el("div", { class: "hero-stats" }, radarBox(v.stats))
     : el("p", { class: "muted" }, `Stats unavailable: ${v.statsError}`);
   // Two columns: weapon, head, body | hands, feet, trinket (gearGrid in dom.ts).
   // R2 F54: no gear at all is one muted line, not six empty slots.
@@ -229,23 +243,43 @@ function heroDetail(v: HeroView, best: Best, views: HeroView[], sv: Save): HTMLE
       el("span", { class: "meta" }, gradeBadge(String(g.grade)))), { label: `${name}'s equipment` });
   const k = views.indexOf(v);
   const nav = (w: HeroView | undefined, label: string) => (w ? el("a", { href: heroHref(heroId(w, sv)), class: "secondary-link" }, label) : el("span"));
+  const hooks: EditHooks = {
+    change: (draft, focus) => {
+      if (!edit) return;
+      edit.session.draft = draft;
+      redrawDetail(focus);
+    },
+    redraw: (focus) => redrawDetail(focus),
+  };
+  const ed = edit ? skillsEditor(edit.session, hooks) : null;
+  const actions = heroActions({
+    editing: Boolean(edit), mark, name,
+    edit: () => void (location.hash = `${heroHref(id)}&edit`),
+    save: () => saveEdit(),
+    cancel: () => void (location.hash = edit?.session.isNew ? "#heroes" : heroHref(id)),
+    drop: () => dropHero(id, mark),
+  });
   return el("div", { class: "hero-detail-page" },
-    el("nav", { class: "hero-nav", "aria-label": "Heroes" }, el("a", { href: "#heroes", class: "secondary-link" }, "← All heroes"),
+    edit ? el("nav", { class: "hero-nav", "aria-label": "Heroes" }) : el("nav", { class: "hero-nav", "aria-label": "Heroes" }, el("a", { href: "#heroes", class: "secondary-link" }, "← All heroes"),
       el("span", { class: "hero-nav-step" }, nav(views[k - 1], `‹ ${views[k - 1]?.row.name ?? ""}`), nav(views[k + 1], `${views[k + 1]?.row.name ?? ""} ›`))),
-    el("article", { class: `card hero hero-detail cls-${v.cls}` },
+    el("article", { class: `card hero hero-detail cls-${v.cls}${edit ? " editing" : ""}` },
       el("header", { class: "hero-head" }, avatar(v, "big"),
         el("div", {}, el("h2", {}, name),
           // U46: quests and deaths are chips next to the level and status.
           el("div", { class: "sub" }, pill(String(r.class)), ...[badgeFor("class", v.cls)].filter((x): x is HTMLElement => x !== null), pill(`Lvl ${r.level}`, "plain"),
-            pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate"), ...heroCounts(r)))),
+            pill(String(r.status), STATUS_TONE[String(r.status)] ?? "t-slate"), ...heroCounts(r), ...markPill(mark))),
+        actions),
+      ...(edit ? [headEditor(edit.session, hooks)] : []),
+      ...(grid ? [el("section", { class: "hero-stat-bar", "aria-label": "Combat stats" }, el("p", { class: "section-label" }, "Combat stats"), grid)] : []),
       el("div", { class: "hero-detail-grid" },
-        el("section", {}, el("p", { class: "section-label" }, "Combat stats"), stats),
+        el("section", {}, stats),
         el("section", { class: "hero-detail-side" },
           // Passive first, then the rotation with its AP budget, then the gear.
-          passiveLine(String(r.passive || "")),
+          ed ? ed.passive : passiveLine(String(r.passive || "")),
           el("div", {}, el("div", { class: "rot-head" }, el("p", { class: "section-label" }, "Rotation"), ...(v.ap ? [apBudget(v.ap)] : [])),
-            rotationRows(v.rotation)),
-          el("div", {}, el("p", { class: "section-label" }, "Gear ", helpTip(GEAR_HELP, "the gear frames")), gear)))));
+            ed ? ed.rotation : rotationRows(v.rotation)),
+          el("div", {}, el("p", { class: "section-label" }, "Gear ", helpTip(GEAR_HELP, "the gear frames")),
+            edit ? gearEditor(edit.session, hooks) : gear)))));
 }
 
 /** The gear card's ascension frame class (U46): " gear-asc asc-1" / " gear-asc asc-2" (style.css), "" for 0. */
@@ -261,18 +295,27 @@ export function heroCounts(r: Cells): HTMLElement[] {
   return [pill(`⚔️ ${plural(n("quests"), "quest")}`, "plain hero-count"), pill(`💀 ${plural(n("deaths"), "death")}`, "plain hero-count")];
 }
 
-/** The heroes as a sortable table; each name opens the hero's page. */
+/**
+ * The heroes as a sortable table; each name opens the hero's page. U78: "+ Create" above it (a new hero's page in edit
+ * mode), and a small "new" / "edited" chip after the name of a hero created or edited on this site.
+ */
 function renderHeroes(views: HeroView[], sv: Save): HTMLElement {
-  if (!views.length) return el("p", { class: "muted" }, "No heroes in this save.");
+  const create = el("button", { type: "button", class: "secondary he-create", title: "A new hero, kept on this site beside the save" }, "＋ Create");
+  create.addEventListener("click", () => void (location.hash = NEW_HERO_HASH));
+  const bar = el("div", { class: "toolbar he-list-bar" }, create);
+  if (!views.length) return el("div", {}, bar, el("p", { class: "muted" }, "No heroes in this save."));
+  const marks = new Map(views.map((v) => [Number(heroId(v, sv)), overlay ? heroMark(overlay, heroId(v, sv)) : null]));
   const rows: Cells[] = views.map((v) => ({
     k: views.indexOf(v), id: heroId(v, sv), name: String(v.row.name), cls: v.cls, class: String(v.row.class), level: Number(v.row.level),
     asc: heroAsc(v.row.asc), status: String(v.row.status), passive: String(v.row.passive || ""), quests: Number(v.row.quests), deaths: Number(v.row.deaths),
     ...Object.fromEntries(["maxHP", "atk", "matk", "def", "mdef", "acc", "crit", "maxActionPoints"].map((s) => [s, v.stats?.[s] ?? null])),
   }));
   const num = (key: string, label: string) => ({ key, label, num: true });
-  return el("div", {},
+  return el("div", {}, bar,
     table(rows, [
-      { key: "name", label: "Hero", render: (x) => el("a", { href: heroHref(x.id), class: `hero-link cls-${x.cls}` }, avatar(views[Number(x.k)], "small"), String(x.name)) },
+      { key: "name", label: "Hero", render: (x) => el("span", { class: "nowrap" },
+        el("a", { href: heroHref(x.id), class: `hero-link cls-${x.cls}` }, avatar(views[Number(x.k)], "small"), String(x.name)),
+        ...markPill(marks.get(Number(x.id)) ?? null)) },
       { key: "class", label: "Class", render: (x) => el("span", { class: `cls-${x.cls}` }, pill(String(x.class)), badgeFor("class", Number(x.cls)) ?? "") },
       num("level", "Lvl"), { key: "asc", label: "Asc", num: true, render: (x) => ascSwatch(x.asc) },
       num("maxHP", "HP"), num("atk", "Atk"), num("matk", "Matk"), num("def", "Def"), num("mdef", "Mdef"), num("acc", "Acc"), num("crit", "Crit"),
@@ -407,6 +450,15 @@ const tabOf = (hash: string): Tab => TABS.find((t) => tabHash(t) === hash.toLowe
 let current: { sv: Save; views: HeroView[] } | null = null;
 /** The page's save source (initSaveSource): the wizard's "Pick a file" and "Example save". */
 let source: SaveSource | null = null;
+/**
+ * U78: the save as read from the file (never changed), its kept name, and its hero overlay (hero-overlay.ts: the heroes
+ * edited or created here). `current` is the save with the overlay merged; `session` the hero being edited.
+ */
+let base: { raw: Save["raw"]; name: string } | null = null;
+let overlay: HeroOverlay | null = null;
+let session: EditSession | null = null;
+/** U78: the page of a hero being created (save.html#hero=new, in edit mode). */
+const NEW_HERO_HASH = "#hero=new";
 
 /** U35: the menus' save sections (second row) only show once a save is loaded (style.css "menus + drawer"). */
 const markLoaded = (on: boolean) => {
@@ -414,19 +466,82 @@ const markLoaded = (on: boolean) => {
   else delete document.documentElement.dataset.saveLoaded;
 };
 
-function render(sv: Save, fileName: string): void {
-  void fileName;
+/** The save with its overlay merged (heroes edited or created on this site), as every page of the site reads it. */
+function merge(): void {
+  if (!base) return;
+  const sv = parseSave(applyOverlay(base.raw, overlay ?? emptyOverlay()));
   current = { sv, views: heroViews(sv) };
+}
+
+function render(raw: Save["raw"], fileName: string): void {
+  base = { raw, name: fileName };
+  overlay = readOverlay(fileName);
+  session = null;
+  merge();
   markLoaded(true);
   route();
 }
 
+/** U78: keep the overlay (its storage can refuse: the change then lasts until the page is left) and show it. */
+function commit(next: HeroOverlay): void {
+  overlay = next;
+  if (base) writeOverlay(base.name, next);
+  merge();
+}
+
+/** U78: Save in edit mode: the draft into the overlay, then the hero's page. */
+function saveEdit(): void {
+  if (!session || !base || !overlay) return;
+  const own = base.raw.hero.find((h: { id: unknown }) => Number(h.id) === session!.id);
+  const id = session.id;
+  commit(saveHero(overlay, session.isNew || isCreated(overlay, id) ? undefined : own, session.draft));
+  session = null;
+  location.hash = heroHref(id);
+}
+
+/** U78: Reset (a save hero back to the save) or Delete (a created hero), confirmed by the buttons. */
+function dropHero(id: number, mark: HeroMark): void {
+  if (!overlay) return;
+  commit(mark === "created" ? deleteHero(overlay, id) : resetHero(overlay, id));
+  if (mark === "created") location.hash = "#heroes";
+  else route();
+}
+
+/** U78: the edit page drawn again from the session (scroll kept, the focus back on the control that changed). */
+function redrawDetail(focus?: string): void {
+  const y = window.scrollY;
+  route(true);
+  window.scrollTo(0, y);
+  if (focus) $("#result").querySelector<HTMLElement>(`[data-focus-key="${focus}"]`)?.focus();
+}
+
+/** The first class the visitor can see (Warrior), for a new hero. */
+const firstClass = () => classIds().find((c) => isVisible("class", c)) ?? 1;
+
+/**
+ * U78: the edit session for the route: the hero's (save.html#hero=<id>&edit), a new hero's (#hero=new), kept while the
+ * route stays; null elsewhere (leaving the page drops an unsaved edit).
+ */
+function sessionFor(hash: string, sv: Save): EditSession | null {
+  if (hash === NEW_HERO_HASH) {
+    if (session?.isNew) return session;
+    const raw = newHeroRaw(firstClass(), nextHeroId(base?.raw, overlay ?? emptyOverlay()));
+    return { id: raw.id, isNew: true, before: raw, draft: structuredClone(raw), openSlot: null, excluded: new Set() };
+  }
+  const m = /^#hero=(\d+)&edit$/.exec(hash);
+  const raw = m ? sv.raw.hero.find((h: { id: unknown }) => String(h.id) === m[1]) : undefined;
+  if (!raw) return null;
+  if (session && !session.isNew && session.id === Number(raw.id)) return session;
+  return { id: Number(raw.id), isNew: false, before: structuredClone(raw), draft: structuredClone(raw), openSlot: null, excluded: new Set() };
+}
+
 /**
  * save.html#open (#open=pc, #open=mobile) shows the "Open your save" wizard, with or without a save (U46);
- * #hero=<id> one hero; #overview, #heroes, #inventory, #maps, #crafters a section; anything else (no hash) the Overview.
+ * #hero=<id> one hero (U78: #hero=<id>&edit editing it, #hero=new a new one); #overview, #heroes, #inventory, #maps,
+ * #crafters a section; anything else (no hash) the Overview.
  * Every load the visitor starts, here or on another page, lands on #overview (U52, save-source.ts overviewAfterLoad).
  */
-function route(): void {
+function route(keepScroll = false): void {
   const wiz = wizardRoute(location.hash);
   // The wizard takes the no-save picker's place and hides the Save pages' chip row (style.css html.wiz-open). U52: not
   // "save-wizard", the wizard section's own class: its 640 px max-width then also narrowed the whole page.
@@ -439,12 +554,15 @@ function route(): void {
   }
   if (!current) return void $("#result").replaceChildren();
   const { sv, views } = current;
-  const m = /^#hero=(\d+)$/.exec(location.hash);
-  const v = m ? views.find((x) => String(heroId(x, sv)) === m[1]) : undefined;
+  session = sessionFor(location.hash, sv);
+  const mode = sv.raw.gameMode || "Standard";
+  const m = /^#hero=(\d+)(?:&edit)?$/.exec(location.hash);
+  const v = session ? rawView(session.draft, mode) : m ? views.find((x) => String(heroId(x, sv)) === m[1]) : undefined;
   if (v) {
-    $("#result").replaceChildren(heroDetail(v, bestOf(views), views, sv));
+    const edit = session ? { session, before: rawView(session.before, mode) } : undefined;
+    $("#result").replaceChildren(heroDetail(v, bestOf(views), views, sv, edit));
     document.title = `${v.row.name} · Save viewer · Merchant RPG Simulator`;
-    window.scrollTo(0, 0);
+    if (!keepScroll) window.scrollTo(0, 0);
     return;
   }
   document.title = "Save Viewer · Merchant RPG Simulator";
@@ -455,23 +573,26 @@ function route(): void {
   const name = tabOf(location.hash);
   $("#result").replaceChildren(el("section", { class: "panel", "aria-label": name }, panels[name]()));
 }
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", () => route());
 
 function showError(msg: string): void {
   $("#result").replaceChildren(el("p", { class: "error", role: "alert" }, msg));
 }
 
-/** Parse and show a save (from a file or from the browser's storage); throws when it isn't one. */
+/**
+ * Parse and show a save (from a file or from the browser's storage); throws when it isn't one. U78: decoded without
+ * the overlay (the page keeps the file's state for Reset and merges the overlay itself).
+ */
 async function loadSave(text: string, name: string): Promise<void> {
   await Promise.all([loadData(), loadWikiText(), languageReady]); // skill effects in the rotation rows; game names (U29)
-  let sv: Save;
+  let raw: Save["raw"];
   try {
-    sv = loadSaveText(text);
+    raw = decodeSaveText(text);
   } catch {
     throw new Error("this is not a Merchant save. Pick PlayerData.txt, Slot2Data.txt … Slot5Data.txt or one of their backups.");
   }
-  if (!sv.raw || !Array.isArray(sv.raw.hero)) throw new Error("this file has no heroes. Is it a PlayerData / SlotNData save?");
-  render(sv, name);
+  if (!raw || !Array.isArray(raw.hero)) throw new Error("this file has no heroes. Is it a PlayerData / SlotNData save?");
+  render(raw, name);
 }
 
 function init(): void {
@@ -479,6 +600,9 @@ function init(): void {
     input: $<HTMLInputElement>("#file"), drop: $("#drop"), status: $("#save-status"), load: loadSave,
     onForget: () => {
       current = null;
+      base = null;
+      overlay = null;
+      session = null;
       markLoaded(false);
       route(); // the wizard stays when it is open
     },
@@ -491,7 +615,7 @@ function init(): void {
   onLanguageChange(() => {
     if (!current) return;
     current = { sv: current.sv, views: heroViews(current.sv) };
-    rerenderKeeping($("#result"), route);
+    rerenderKeeping($("#result"), () => route(true));
   });
 }
 

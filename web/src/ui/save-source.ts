@@ -45,6 +45,8 @@ import { chooseSave, bindSaveInput } from "./save-file.ts";
 import { forgetSave, getHandle, getSave, HAS_SAVE_CLASS, putSave, rereadHandle, setSaveFlag, type SaveHandle } from "./save-store.ts";
 import { helpTip } from "./wiki-help.ts";
 import { OPEN_HREF } from "./save-wizard.ts";
+import { setSaveRawHook } from "../tools/save.ts";
+import { overlayHook, setActiveSave } from "./hero-overlay.ts";
 
 /** U46: the Save dropdown's open entries lead to the "Open your save" wizard (save.html#open, save-wizard.ts). */
 export function openWizard(): void {
@@ -105,6 +107,11 @@ export interface SaveSourceOptions {
   load: (text: string, name: string) => Promise<void>;
   /** Called after "Forget" (the page clears what it showed). */
   onForget?: () => void;
+  /**
+   * U78: false = this page reads the save file as is, without the heroes edited or created in the save viewer
+   * (hero-overlay.ts); default true.
+   */
+  heroOverlay?: boolean;
   /** More entries for the save menu (e.g. the save viewer's CSV exports), asked for each time the menu opens. */
   menuExtras?: () => { title: string; items: { label: string; hint: string; run: () => void }[] };
 }
@@ -138,6 +145,9 @@ function age(ms: number): string {
 export interface SaveSource { choose: () => void; useExample: () => Promise<void> }
 
 export function initSaveSource(o: SaveSourceOptions): SaveSource {
+  // U78: every page's loadSaveText merges the heroes edited or created in the save viewer (hero-overlay.ts) for the
+  // save being loaded, named before each o.load. A page that counts what the save owns (Profit) opts out.
+  setSaveRawHook(o.heroOverlay === false ? null : overlayHook);
   const showError = (msg: string) => o.status.replaceChildren(el("p", { class: "error", role: "alert" }, msg));
   // The drop zone, with the <details> that wraps it on some pages.
   const dropBlock = (o.drop.closest("details") as HTMLElement | null) ?? o.drop;
@@ -250,6 +260,7 @@ export function initSaveSource(o: SaveSourceOptions): SaveSource {
     o.status.replaceChildren(el("p", { class: "muted" }, "Reading…"));
     try {
       const text = await file.text();
+      setActiveSave(file.name);
       await o.load(text, file.name);
       void noteSave(text, file.name);
       const savedAt = Date.now();
@@ -283,6 +294,7 @@ export function initSaveSource(o: SaveSourceOptions): SaveSource {
 
   const forget = async () => {
     await forgetSave();
+    setActiveSave(null);
     void noteSave(null);
     setLoaded(false);
     o.status.replaceChildren(el("p", { class: "muted small" }, "The save was removed from this browser."));
@@ -315,6 +327,7 @@ export function initSaveSource(o: SaveSourceOptions): SaveSource {
       return void noteSave(null);
     }
     try {
+      setActiveSave(s.name);
       await o.load(s.text, s.name);
       void noteSave(s.text, s.name);
       await loaded(s.name, s.savedAt);

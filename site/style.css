@@ -2512,3 +2512,72 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 .solve-cache { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .solve-cache[hidden] { display: none; }
 /* end U75 */
+/* U78 */
+/* Hero creation and editing in the Save viewer. The hero page's card no longer clips or lifts on hover, so the stat
+   bar can stick and the radar float. Actions top right; edit controls; "<old> → <new>" stats (--good / --bad, AA on
+   both themes, with an arrow); the new radar shape under the old one, dashed in the skill blue; gear lines and the
+   item table; the radar's floating preview (min(28vw, 220px); phones: min(36vw, 136px), taps pass through it). */
+.card.hero.hero-detail { overflow: visible; overflow: clip; }
+.card.hero.hero-detail:hover { transform: none; }
+.hero-detail .hero-head { flex-wrap: wrap; }
+.he-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-self: flex-start; }
+.he-actions .primary, .he-actions .secondary { padding: 5px 14px; }
+.he-danger:hover { border-color: var(--bad); color: var(--bad); }
+.hero-detail.editing { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.he-mark { font-size: 0.7rem; padding: 0 7px; border: 1px dashed var(--border); background: none; color: var(--muted); font-weight: 650; }
+.hero-link + .he-mark { margin-left: 6px; }
+.he-list-bar { margin-bottom: 10px; }
+.he-list-bar .he-create { margin-left: 0; }
+
+.hero-stat-bar { position: sticky; top: 0; z-index: 20; margin: 14px -4px 0; padding: 6px 4px 8px; background: var(--card);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.hero-stat-bar .section-label { margin: 0 0 4px; }
+.sd { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 2px; }
+.sd-old { color: var(--muted); font-weight: 600; font-size: 0.85em; }
+.sd-to { color: var(--muted); font-weight: 600; }
+.sd-up .sd-new, .sd-up .sd-arrow { color: var(--good); }
+.sd-down .sd-new, .sd-down .sd-arrow { color: var(--bad); }
+.sd-arrow { font-size: 0.75em; }
+
+.radar-layer.radar-new { fill: color-mix(in srgb, var(--skill) 16%, transparent); stroke: var(--skill); stroke-width: 2; stroke-dasharray: 5 3; }
+.hero-radar-slot.floating > .radar-fig { position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  width: min(28vw, 220px); max-width: none; margin: 0; padding: 4px; box-sizing: border-box; background: var(--card);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-hover); }
+@media (max-width: 600px) {
+  .hero-radar-slot.floating > .radar-fig { width: min(36vw, 136px); right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    pointer-events: none; opacity: 0.94; }
+}
+
+.he-head { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 12px; }
+.he-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.he-label { color: var(--muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.he-field input[type="text"] { font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 7px 12px; min-width: 0; width: 14em; max-width: 100%; box-sizing: border-box; }
+.he-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.he-passive .section-label { margin: 0; }
+.he-rotation { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.he-turn { padding: 3px 6px; border-radius: 8px; background: var(--card-2); }
+.he-turn > .n { width: 1.4em; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.he-turn > .pk-btn { flex: 1 1 0; min-width: 0; text-align: left; margin-left: 0; }
+
+.he-gear-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.he-gear-line { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding: 3px 4px; border-radius: 8px; }
+.he-gear-line.open { background: var(--card-2); }
+.he-gear-line .slot-ico { flex: none; }
+.he-gear-line .short-pick { flex: none; }
+.he-gear-line select:disabled { opacity: 0.55; }
+.he-item-btn { flex: 1 1 8em; min-width: 6em; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; text-align: left; }
+.he-item-btn .item { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.he-caret { color: var(--muted); font-size: 0.75rem; }
+.he-items { margin-top: 10px; }
+.he-regions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip-check { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px 2px 6px; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 0.8rem; font-weight: 650; cursor: pointer; }
+.chip-check:has(input:not(:checked)) { color: var(--muted); border-style: dashed; }
+.he-items-wrap { max-height: min(55vh, 420px); overflow: auto; }
+.he-items-table { width: 100%; }
+.he-items-table tbody tr { cursor: pointer; }
+.he-items-table tbody tr:hover, .he-items-table tbody tr.current { background: var(--card-2); }
+.he-pick-item { padding: 2px 4px; border: 0; background: none; text-align: left; font-weight: 650; }
+.he-bonus { color: var(--muted); font-size: 0.85rem; }
+/* end U78 */
