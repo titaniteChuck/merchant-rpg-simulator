@@ -152,7 +152,7 @@ test("the Solver's table: the Party cell a small table, no rough, no Scrolls or 
 
 test("CSS: the U74 block; hero cells reach AA in both themes; the chips' and rough's rules are gone", () => {
   assert.ok(block.length > 200);
-  assert.ok(css.trimEnd().endsWith("/* end U74 */"), "the last block");
+  assert.ok(css.lastIndexOf("/* end U74 */") > css.lastIndexOf("/* end U73 */"), "after U73 (U76 follows)");
   assert.doesNotMatch(css, /\.solver-lead|\.rough-wrap|\.solver-party \.hero-chip|\.solver-scrolls|\.no-scrolls|\.solver-row/);
   assert.match(block, /td\.sp-hero[^{]*\{\s*color: var\(--fg\); font-weight: 650; background: color-mix\(in srgb, var\(--c, var\(--accent\)\) 30%, var\(--pill-base\)\); \}/);
   const tint = 0.3;
@@ -221,12 +221,12 @@ test("the page: the picker on the Simulator only, remembered, switching draws an
   assert.match(page, /let runPick: RunPick = \(\(\) => \{\s*try \{\s*return parsePick\(localStorage\.getItem\(PICK_KEY\)\);\s*\} catch \{\s*return DEFAULT_PICK;\s*\}\s*\}\)\(\);/);
   const set = fn(page, "setPick");
   assert.match(set, /runPick = p;\s*try \{\s*localStorage\.setItem\(PICK_KEY, p\);\s*\} catch/);
-  assert.match(set, /drawShown\(\);/);
+  assert.match(set, /drawShown\(\{ who \}\);/, "U76: the actor's step kept");
   assert.doesNotMatch(set, /renderPlan|startRuns|postMessage|autoRun/, "a pick never runs again");
   // the Solver's Show: the first run (Random)
   assert.match(page, /const pickNow = \(\): RunPick => \(state\.mode\.key === "simulate" \? runPick : DEFAULT_PICK\);/);
   assert.match(fn(page, "drawShown"), /const run = pickedTrace\(runs, pickNow\(\)\);/);
-  assert.match(fn(page, "showHp"), /pick: state\.mode\.key === "simulate" \? \{ value: runPick, onPick: setPick \} : null \}\);/);
+  assert.match(fn(page, "showHp"), /pick: state\.mode\.key === "simulate" \? \{ value: runPick, onPick: setPick \} : null, follow: Boolean\(keep\) \}, !keep \|\| clamped\);/);
   // the pick is not part of the runs' key (the request): the same request, the same runs
   assert.doesNotMatch(fn(page, "autoRun"), /pick/i);
   // stale-run cancellation kept

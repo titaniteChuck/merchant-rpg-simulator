@@ -78,7 +78,7 @@ test("the panel: three rows (toggle, enemy or map, its modifiers), no \"?\", no 
   assert.match(target, /mods\.append\(amount\);/);
   assert.match(target, /\{ class: "opp-controls" \}, q, mods, capNote\(\)\)/);
   // a map: ascension, grade, prefix, suffix; a map of the save carries its own (the row hidden)
-  assert.match(target, /mods\.append\(asc, grade, pre, suf\);/);
+  assert.match(target, /mods\.append\(asc, grade, shortPick\(pre\), shortPick\(suf\)\);/);
   assert.match(target, /\{ class: "opp-controls" \}, m, mods, capNote\(\)\)/);
   assert.match(target, /mods\.hidden = own;/);
   assert.doesNotMatch(code(target), /helpTip|sizeNote|amount-note|map-facts|facts|select\.scroll|class: "scroll"|opp-scrolls|SCROLL_IDS/);
@@ -116,7 +116,7 @@ test("no \"Front row\", \"Back row\" or \"Opponent\" titles; the columns keep th
 
 // ---------------------------------------------------------------- 3. a catalog map's prefix and suffix
 test("prefix and suffix pickers: the wiki's lists and effects, the suffixes following the ascension", () => {
-  assert.match(fn(page, "mapPrefixOptions"), /\["0", "No prefix"\], \.\.\.validPrefixes\("map", id\)\.map\([^)]*\): \[string, string\] => \[String\(p\), `\[\$\{prefixTag\(p\)\}\] · \$\{prefixEffect\("map", id, p\)\}`\]\)/);
+  assert.match(fn(page, "mapPrefixOptions"), /\["0", "No prefix"\], \.\.\.validPrefixes\("map", id\)\.map\([^)]*\): ModOption => \[String\(p\), `\[\$\{prefixTag\(p\)\}\] · \$\{prefixEffect\("map", id, p\)\}`, prefixTag\(p\)\]\)/);
   assert.match(fn(page, "mapSuffixOptions"), /\["0", "No suffix"\], \.\.\.validSuffixes\("map", id, asc\)/);
   assert.match(fn(page, "mapSuffixOptions"), /suffixEffect\("map", x\)/);
   // a choice the new list doesn't hold goes back to none; nothing to pick, no picker

@@ -178,7 +178,7 @@ test("a new trace keeps the picked turn when the fight still has it, else turn 0
   assert.equal(pickStep(odinData, { run: 3, turn: 1 }), 0);
   assert.equal(pickStep(odinData, null), 0);
   const show = fn(page, "showHp");
-  assert.match(show, /turnAt = chart \? pickStep\(chart, turnPick\) : 0;/);
+  assert.match(show, /turnAt = chart \? \(keep \? clampStep\(chart, want\) : pickStep\(chart, want\)\) : 0;/, "U76: a run switch clamps instead");
   assert.match(page, /let turnPick: \{ run: number; turn: number \} = \{ run: 0, turn: 0 \};/, "turn 0 by default");
   // the redraw after an edit draws the marker where the cards are
   const b = box();
@@ -306,7 +306,7 @@ test("a map run: each room keeps its turn 0 (U66: on the x of the last room's la
   for (const st of d.steps) assert.equal(d.runs[st.run].quest!.id, runs[st.run].quest.id);
   const card = fn(page, "drawEnemyCard");
   assert.match(card, /const run = chart\.runs\[at\.run\];\n\s*if \(run\.quest\) foe = \{ \.\.\.run\.quest, n: 1, room: run\.room \};/);
-  assert.match(page, /quest: \{ id: r\.questId, rare: r\.isRare \} \}\] : \[\]\)\), members\);/);
+  assert.match(page, /quest: \{ id: r\.questId, rare: r\.isRare \} \}\] : \[\]\)\), members, false, keep\);/);
 });
 
 // ---------------------------------------------------------------- 5. the enemy card and the controls

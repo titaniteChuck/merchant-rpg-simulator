@@ -363,6 +363,36 @@ export function select(attrs: Record<string, string>, options: ([string, string]
   return s;
 }
 
+/**
+ * U76: a <select> whose closed face shows a short label while its options keep their full text (what the open list,
+ * the native iOS / Android picker and a screen reader read). The select sits transparent over the label (`.short-pick`,
+ * the label aria-hidden), so a tap or a click opens it as any select and the keys work on it; the box is as wide as the
+ * short label. Each option's short text is its `data-short` (none: its own text). shortLabel follows the value on a
+ * change; call it after setting the value or the options from code.
+ */
+export function shortPick(s: HTMLSelectElement): HTMLElement {
+  const text = el("span", { class: "short-text", "aria-hidden": "true" });
+  const box = el("span", { class: "short-pick" }, text, s);
+  s.addEventListener("change", () => shortLabel(s));
+  shortLabel(s);
+  return box;
+}
+/** U76: the short text of a select's chosen option: its `data-short`, else its own text ("" without one). */
+export function shortOf(s: HTMLSelectElement): string {
+  const o = chosen(s);
+  return o ? o.getAttribute("data-short") ?? o.textContent ?? "" : "";
+}
+const chosen = (s: HTMLSelectElement) => [...s.querySelectorAll("option")].find((x) => (x.getAttribute("value") ?? x.textContent) === s.value);
+/** U76: shortPick's label set to the chosen option's short text (its full text on hover), hidden with its select. */
+export function shortLabel(s: HTMLSelectElement): void {
+  const box = s.parentNode as HTMLElement | null;
+  if (!box?.classList?.contains("short-pick")) return;
+  box.hidden = s.hidden;
+  const text = box.querySelector(".short-text");
+  if (text) text.textContent = shortOf(s);
+  box.title = chosen(s)?.textContent ?? "";
+}
+
 // ---------------------------------------------------------------- ability rows and gear (U22)
 /** An action-point cost as the compact badge of the wiki's skill rows ("?" when unknown). */
 export function apBadge(ap: number | undefined): HTMLElement {

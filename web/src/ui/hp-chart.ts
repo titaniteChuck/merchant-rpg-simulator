@@ -42,6 +42,9 @@
  * sticky host when it gives one): the step arrows walk the selected turn's actions in game order, wrapping; picking a
  * turn lands on its last step (its end). Turn 0 has none (the step arrows disabled).
  *
+ * U76: a run switch (Worst / Random / Best) keeps the turn (clampStep), the actor's step (keepStep), the zoom (zoomAfter
+ * `follow`) and the scroll; two touch edge zones at the scroll box's visible edges (edgeZones) pan the chart natively.
+ *
  * Pure parts (hpData, pickStep, fightLayout, chartLayout, nearestStep, stepAfterKey, plotted; U68 minTurnWidth,
  * zoomOf, windowOf, axisTop, fightTabs, scrollForSpan, lerp, ease, lerpView, linePath, turnText) are separate from the
  * drawing (hpChart, drawHpChart) so tests check the series, the states, the layout and the selection without a browser.
@@ -269,6 +272,46 @@ export function hpData(runs: HpRun[], fighters: HpFighter[]): HpChartData | null
 export function pickStep(d: HpChartData, want: { run: number; turn: number } | null): number {
   const i = want ? d.steps.findIndex((s) => s.run === want.run && s.turn === want.turn) : -1;
   return i < 0 ? 0 : i;
+}
+
+/**
+ * U76: the step a run switch (Worst / Random / Best) lands on, the turn shown before (`want`) kept: the same fight
+ * and turn when the new run has them; past the end of that fight in the new run: its last turn; a fight the new run
+ * never reached (a map run that ends sooner): the last fight's last turn. No memory per run: the turn kept is the one
+ * shown.
+ */
+export function clampStep(d: HpChartData, want: { run: number; turn: number }): number {
+  const i = d.steps.findIndex((s) => s.run === want.run && s.turn === want.turn);
+  if (i >= 0) return i;
+  const run = Math.max(0, want.run);
+  if (run >= d.runs.length) return d.steps.length - 1;
+  const first = d.runStarts[run], last = run + 1 < d.runStarts.length ? d.runStarts[run + 1] - 1 : d.steps.length - 1;
+  return want.turn < 0 ? first : last;
+}
+
+/**
+ * U76: the in-turn step a run switch keeps: the same actor's step in the new run's turn (`who` the actor shown
+ * before; its index may differ when someone fell), else null (the turn's end).
+ */
+export function keepStep(d: HpChartData, i: number, who: number | null): number | null {
+  if (who === null) return null;
+  const k = stepsOf(d, i).findIndex((s) => s.who === who);
+  return k < 0 ? null : k;
+}
+
+/** U76: the edge zones' width (px): a horizontal swipe that starts there scrolls the chart (native pan). */
+export const EDGE_PX = 28;
+type Zone = { at: number; width: number };
+/**
+ * U76: where the two touch edge zones go over the plot (px from the track's left), at the scroll box's visible left
+ * and right edges: `scroll` its scrollLeft, `view` its width, `gutter` the y axis's width in px (the left zone covers
+ * what is seen of it, so a swipe on the axis scrolls too). Null when the chart doesn't scroll (or has no width): no
+ * zones, a drag anywhere moves the turn cursor. A zone takes at most a quarter of the box.
+ */
+export function edgeZones(scroll: number, view: number, overflow: boolean, gutter = 0, edge = EDGE_PX): { left: Zone; right: Zone } | null {
+  if (!overflow || !(view > 0)) return null;
+  const at = Math.max(0, scroll), cap = view / 4, e = Math.min(edge, cap);
+  return { left: { at, width: Math.min(cap, Math.max(e, gutter - at)) }, right: { at: at + view - e, width: e } };
 }
 
 /** U65: the step a key moves to (←/↓ one back, →/↑ one on, Page Up / Down five, Home, End); null for another key. */
@@ -597,8 +640,8 @@ export function runPicker(p: RunPickOption): HTMLElement {
   return seg;
 }
 
-/** U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page). */
-const revealers = new WeakMap<HTMLElement, (smooth: boolean) => void>();
+/** U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page; U76: it also places the edge zones). */
+const revealers = new WeakMap<HTMLElement, (smooth: boolean, move: boolean) => void>();
 const reducedMotion = (): boolean =>
   typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const motion = (): ScrollBehavior => (reducedMotion() ? "auto" : "smooth");
@@ -681,10 +724,26 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   // U66: the scroll box: the fight tabs and the plot, one width (W px when wider than the box: 1 unit = 1 px).
   const track = el("div", { class: "hp-track" });
   const scroller = el("div", { class: "hp-scroll" }, track);
+  // U76: two touch edge zones over the plot, at the box's visible edges (edgeZones): `touch-action: pan-x pan-y`
+  // there, so a swipe that starts on them scrolls the chart natively; a tap or a mouse on them acts as on the plot.
+  const edgeL = el("div", { class: "hp-edge", "aria-hidden": "true", hidden: "" });
+  const edgeR = el("div", { class: "hp-edge", "aria-hidden": "true", hidden: "" });
+  const placeEdges = () => {
+    const z = edgeZones(scroller.scrollLeft || 0, scroller.clientWidth || 0, L.overflow && zoom === null, M.l);
+    for (const [e, at] of [[edgeL, z?.left], [edgeR, z?.right]] as const) {
+      e.hidden = !at;
+      if (at) {
+        e.style.left = `${r1(at.at)}px`;
+        e.style.width = `${r1(at.width)}px`;
+      }
+    }
+  };
+  scroller.addEventListener("scroll", placeEdges, { passive: true });
   const setOverflow = () => {
     scroller.classList.toggle("overflow", L.overflow);
     if (L.overflow) track.style.width = `${L.W}px`;
     else if (track.style.width) track.style.width = "";
+    placeEdges();
   };
   const revealSpan = (left: number, w: number, smooth: boolean) => {
     if (zoom !== null || !L.overflow || !(scroller.clientWidth > 0)) return;
@@ -896,18 +955,25 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
     const [lo, hi] = windowOf(d, zoom);
     return nearestStep(((clientX - box.left) / box.width) * view.W, view.xs, lo, hi);
   };
-  plot.addEventListener("pointermove", (e: Event) => {
+  const onMove = (e: Event) => {
     const i = stepOf((e as PointerEvent).clientX);
     if (i !== null) show(i);
-  });
-  plot.addEventListener("pointerleave", hide);
+  };
   // U65: a click or a tap picks the turn; the keys move it. U68: in All, a click also zooms on the turn's room.
-  plot.addEventListener("click", (e: Event) => {
+  const onClick = (e: Event) => {
     const i = stepOf((e as MouseEvent).clientX);
     if (i === null) return;
     if (zoom === null) setZoom(d.steps[i].run);
     choose(i);
-  });
+  };
+  // U76: the edge zones hear the same (a swipe started there pans instead: no click, the browser cancels the pointer)
+  for (const t of [plot, edgeL, edgeR]) {
+    t.addEventListener("pointermove", onMove);
+    t.addEventListener("pointerleave", hide);
+    t.addEventListener("click", onClick);
+  }
+  // as a click on the plot focuses it (the keys then move the turn)
+  for (const t of [edgeL, edgeR]) t.addEventListener("click", () => plot.focus({ preventScroll: true }));
   plot.addEventListener("keydown", (e: Event) => {
     const k = e as KeyboardEvent;
     const i = stepAfterKey(k.key, sel, n);
@@ -915,7 +981,7 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
     k.preventDefault();
     choose(i);
   });
-  track.append(fights, el("div", { class: "hp-plot" }, plot, readout));
+  track.append(fights, el("div", { class: "hp-plot" }, plot, edgeL, edgeR, readout));
   // U66: the legend: each fighter's colour and name, nothing else.
   const legend = el("ul", { class: "hp-legend" }, ...d.series.map((s) =>
     el("li", { class: seriesClass(s) }, el("span", { class: "hp-swatch", "aria-hidden": "true" }), el("span", { class: "hp-name" }, s.name))));
@@ -948,7 +1014,10 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   const fig = el("figure", { class: "hp-chart" }, el("div", { class: "hp-head" }, tabs, ...(o.pick ? [runPicker(o.pick)] : [])),
     el("div", { id: "hp-panel", role: "tabpanel", "aria-label": CHART_TABS.find((t) => t.id === tab)!.label },
       el("p", { id: "hp-sum", class: "visually-hidden" }, summary), scroller, nav, legend, fold));
-  revealers.set(fig, reveal);
+  revealers.set(fig, (smooth, move) => {
+    if (move) reveal(smooth);
+    placeEdges();
+  });
   return fig;
 }
 
@@ -999,7 +1068,19 @@ type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) =
   /** U73: where the turn and step controls go (the page's sticky host); none: under the plot, in the box. */
   nav?: HTMLElement | null;
   /** U74: the run picker in the head (the Simulator); none: no picker. */
-  pick?: RunPickOption | null };
+  pick?: RunPickOption | null;
+  /** U76: a run switch: a zoom on goes on to the selected turn's fight (clampStep may land in another one). */
+  follow?: boolean };
+
+/**
+ * U68 / U76: the zoom of a redraw without one given: the last one while the selected step is in that fight, else All;
+ * `follow` (a run switch): any zoom on stays on, on the selected step's fight.
+ */
+export function zoomAfter(d: HpChartData, selected: number, last: number | null, follow = false): number | null {
+  const run = d.steps[selected]?.run;
+  if (last === null || run === undefined) return null;
+  return zoomOf(d, follow || run === last ? run : null);
+}
 /** U65: what each box last drew, its width and selection, to draw it again on a tab change or a resize. */
 const drawn = new WeakMap<HTMLElement, { d: HpChartData | null; o: DrawOptions; width: number }>();
 
@@ -1033,7 +1114,7 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   }
   const width = chartWidth(box.clientWidth ?? 0);
   const selected = o.selected ?? 0;
-  const zoom = o.zoom !== undefined ? o.zoom : d && d.steps[selected]?.run === lastZoom ? lastZoom : null;
+  const zoom = o.zoom !== undefined ? o.zoom : d ? zoomAfter(d, selected, lastZoom, Boolean(o.follow)) : null;
   const memo = { d, o: { ...o, zoom }, width };
   drawn.set(box, memo);
   const onSelect = (i: number) => {
@@ -1066,7 +1147,7 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   if (fig) {
     const sc = fig.querySelector<HTMLElement>(".hp-scroll");
     if (sc && scrolled) sc.scrollLeft = scrolled;
-    if (reveal) revealers.get(fig)?.(false);
+    revealers.get(fig)?.(false, reveal);
   }
   const back = focused === "fold" ? box.querySelector("details.hp-fold")?.querySelector<HTMLElement>("summary")
     : focused === "plot" ? box.querySelector<HTMLElement>("svg.hp-svg") : focused === "tab" ? box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')

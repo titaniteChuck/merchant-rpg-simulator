@@ -852,6 +852,44 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     Party cell (empty slots are left out, as the chips did); the Solver's Show has no picker (Random only); the
     worker's message names stay U70's.
 
+- U76, the chart and the opponent panel on a phone (the Simulator; the panel and the chart's code are shared with the
+  Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`, `dom.ts`; tests `web/test/battle-u76.test.ts`, the U65, U72 and
+  U74 tests updated; CSS in the `U76` block, the last one of `style.css`):
+  - No blue on a tap: the chart's box and the sticky turn controls have `-webkit-tap-highlight-color: transparent`, no
+    text or SVG selection and no iOS callout (`user-select: none`; the Table fold's table stays selectable); the run
+    picker's option gets no ring after a tap (U70's `data-pointer` rule extended to `.seg-opt:has(input:focus)`). The
+    keyboard's `:focus-visible` rings stay.
+  - A run switch (Worst / Random / Best) keeps the turn, the actor's step, the zoom and the scroll; only the lines and
+    the cards' data change. The rule (`clampStep`, pure): the same fight and turn when the new run has them; past the
+    end of that fight in the new run, its last turn; a fight the new run never reached (a map run that ends sooner),
+    the last fight's last turn. The step: the same actor's step in the new run's turn (`keepStep`; an actor that
+    doesn't act there, the turn's end). A zoom on stays on the selected turn's fight (`zoomAfter` with `follow`, so a
+    clamp into another room zooms there). The scroll is kept as it was; only a clamped turn is brought into view. No
+    memory per run: the turn kept is the one shown (`setPick` → `drawShown({ who })` → `showHp(…, keep)`). An edit (a
+    new trace) is unchanged: the same turn, else turn 0 (`pickStep`), the turn's end. The HP / Damage dealt / Heals
+    tabs already kept the turn, the step, the zoom and the scroll (`drawHpChart`'s memo); a test now checks it.
+  - The map's modifiers row fits a 360 px phone: the ascension reads "asc 0" / "asc 1", the grade "D" … "S"; the
+    prefix and suffix pickers show a short face when closed, the prefix's name ("Ardent") and the suffix's short form
+    ("+1"), while their options keep the full text with the effect (the open list, the native iOS / Android pickers,
+    screen readers). `shortPick` (`dom.ts`): the select sits transparent over an `aria-hidden` label (`.short-pick`,
+    `.short-text`, a drawn chevron), so a tap or a click opens the real select and the keys work on it; the label
+    follows a change, and `fillMods` / a value set from code call `shortLabel`; the full text is the box's tooltip;
+    the box is hidden with its select. Each option's short text is its `data-short`. The row is one line
+    (`flex-wrap: nowrap`): the ascension and grade keep their width, the prefix and suffix shrink to an ellipsis;
+    smaller paddings under 560 px. The quest size ("×1" …) was short already.
+  - Touch scrolling: while the chart is wider than its box, two edge zones (`.hp-edge`, `touch-action: pan-x pan-y`)
+    lie over the plot at the scroll box's visible left and right edges (`edgeZones`, pure: 28 px, `EDGE_PX`; the left
+    one covers what is seen of the y axis's 38 px gutter; at most a quarter of the box each; none when the chart fits
+    or is zoomed), moved on every scroll. A horizontal swipe that starts there pans the chart natively (momentum
+    included); elsewhere the plot keeps `touch-action: pan-y` and a drag moves the cursor as before. The zones hear
+    the plot's own click and pointer handlers (and focus the plot on a click), so a tap or a mouse on them acts
+    exactly as on the plot.
+  - Judgement calls: an edit still falls back to turn 0 (only the run switch clamps, as asked); the step is matched by
+    actor, not by index (an earlier fall shifts the indexes); a run switch scrolls only when it had to clamp; the
+    asc / grade options are short in the open list too (plain selects, the labels as asked); "No prefix" / "No
+    suffix" stay as the empty choice's face; the edge zones are overlays (native pan) rather than a decision at
+    `pointerdown` (a browser fixes `touch-action` when the touch starts, so it can't be switched then).
+
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,
   the last one of `style.css`):

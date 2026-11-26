@@ -49,7 +49,7 @@ import {
 } from "../tools/worst-run.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
-import { $, el, expansionMark, fmt1, heroAsc, lv, lvStart, pct, rateTone, select, toast } from "./dom.ts";
+import { $, el, expansionMark, fmt1, heroAsc, lv, lvStart, pct, rateTone, select, shortLabel, shortPick, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { type CardRow, type CardTurn, fighterCard, paintCard } from "./fighter-card.ts";
 import { cardTurnOf, stepStates } from "./card-turn.ts";
@@ -60,7 +60,7 @@ import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, timelineOf } from "./timeline.ts";
 import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
-import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep, stepsOf } from "./hp-chart.ts";
+import { clampStep, drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, keepStep, pickStep, stepsOf } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { prefixEffect, suffixEffect, validPrefixes, validSuffixes } from "./wiki-config.ts";
@@ -646,14 +646,15 @@ function renderTarget(): void {
     update();
   } else {
     const m = select({ id: "map", "aria-label": "Map" }, mapOptions(state.sv));
-    const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "No ascension"], ["1", "Ascension 1"]]);
-    const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), `Grade ${g}`]));
+    const asc = select({ id: "map-asc", "aria-label": "Map ascension" }, [["0", "asc 0"], ["1", "asc 1"]]);
+    const grade = select({ id: "map-grade", "aria-label": "Map grade" }, GRADES.map((g, i): [string, string] => [String(i + 1), g]));
     grade.value = "3";
     // U72: a catalog map's prefix and suffix, the wiki's lists and effects (wiki-config.ts, as its map pages); the run
     // gets them in its MapSpec (targetOf), so the engine applies them (sim/map.ts applyPrefix / applySuffix).
     const pre = select({ id: "map-prefix", "aria-label": "Map prefix" }, [["0", "No prefix"]]);
     const suf = select({ id: "map-suffix", "aria-label": "Map suffix" }, [["0", "No suffix"]]);
-    mods.append(asc, grade, pre, suf);
+    // U76: short faces on a phone's row: the prefix's name, the suffix's "+1" (the open list keeps the effects)
+    mods.append(asc, grade, shortPick(pre), shortPick(suf));
     const listed = { pre: "", suf: "" };
     const sync = () => {
       const own = m.value.startsWith("own:");
@@ -733,19 +734,22 @@ function drawEnemyCard(): void {
 }
 
 /** U72: a catalog map's prefixes as the wiki lists them: "No prefix", then "[Titan] · essence ×1.3, enemy HP +240". */
-function mapPrefixOptions(id: number): [string, string][] {
-  return [["0", "No prefix"], ...validPrefixes("map", id).map((p): [string, string] => [String(p), `[${prefixTag(p)}] · ${prefixEffect("map", id, p)}`])];
+function mapPrefixOptions(id: number): ModOption[] {
+  return [["0", "No prefix"], ...validPrefixes("map", id).map((p): ModOption => [String(p), `[${prefixTag(p)}] · ${prefixEffect("map", id, p)}`, prefixTag(p)])];
 }
 /** U72: a catalog map's suffixes at an ascension, as the wiki lists them: "No suffix", then "+3 · essence and Enemy × ×1.3". */
-function mapSuffixOptions(id: number, asc: number): [string, string][] {
-  return [["0", "No suffix"], ...validSuffixes("map", id, asc).map((x): [string, string] => [String(x), `${suffixName(x)} · ${suffixEffect("map", x)}`])];
+function mapSuffixOptions(id: number, asc: number): ModOption[] {
+  return [["0", "No suffix"], ...validSuffixes("map", id, asc).map((x): ModOption => [String(x), `${suffixName(x)} · ${suffixEffect("map", x)}`, suffixName(x)])];
 }
+/** U76: a modifier option: value, full text (the open list), short text (the closed face, shortPick; none: the full). */
+type ModOption = [string, string, string?];
 /** U72: a modifier picker's options, the choice kept when still offered (else none); hidden with nothing to pick. */
-function fillMods(s: HTMLSelectElement, opts: [string, string][]): void {
+function fillMods(s: HTMLSelectElement, opts: ModOption[]): void {
   const was = s.value;
-  s.replaceChildren(...opts.map(([v, label]) => el("option", { value: v }, label)));
+  s.replaceChildren(...opts.map(([v, label, short]) => el("option", { value: v, ...(short ? { "data-short": short } : {}) }, label)));
   s.value = opts.some(([v]) => v === was) ? was : "0";
   s.hidden = opts.length < 2;
+  shortLabel(s);
 }
 
 /**
@@ -923,23 +927,25 @@ function setPick(p: RunPick): void {
   try {
     localStorage.setItem(PICK_KEY, p);
   } catch { /* storage blocked: the choice lasts this page view */ }
-  drawShown();
+  // U76: the turn, the actor's step, the zoom and the scroll stay (a turn past the new run's end: its last one)
+  const who = chart && stepAt !== null ? stepsOf(chart, turnAt)[stepAt]?.who ?? null : null;
+  drawShown({ who });
 }
 
 /** The shown runs' picked one (U74; U70: the worst) in the chart (and so the cards), names in the language of the moment. */
-function drawShown(): void {
+function drawShown(keep?: { who: number | null }): void {
   if (!shown) return;
   const { req, runs, members } = shown;
   const run = pickedTrace(runs, pickNow());
   if (req.quest && run?.quest) {
     const t = req.quest;
-    showHp([{ trace: run.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members);
+    showHp([{ trace: run.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members, false, keep);
   } else if (run?.map) {
     const rooms = run.map;
     const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
     // U61: every fought room of the run, in map order.
     showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
-      quest: { id: r.questId, rare: r.isRare } }] : [])), members);
+      quest: { id: r.questId, rare: r.isRare } }] : [])), members, false, keep);
   } else showHp(null, members);
   drawStats();
 }
@@ -1015,7 +1021,7 @@ function navHost(): HTMLElement | null {
  * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U74: the picked one of the
  * shown runs). Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
  */
-function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): void {
+function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false, keep?: { who: number | null }): void {
   const box = hpBox();
   const fighters = members.map((m) => ({ who: locationOf(m.row, m.i), name: m.name, cls: m.cls }));
   chart = runs ? hpData(runs, fighters) : null;
@@ -1023,12 +1029,16 @@ function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): voi
   chartNames = new Map(fighters.map((f) => [f.who, f.name]));
   // U70: which save hero each place held in these runs (a card whose hero changed since shows its own stats).
   chartHeroes = new Map(members.map((m) => [locationOf(m.row, m.i), m.idx]));
-  // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0.
-  turnAt = chart ? pickStep(chart, turnPick) : 0;
+  // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0. U76: a run switch
+  // (`keep`) clamps it instead (clampStep: past the new run's end, its last turn) and keeps the actor's step.
+  const want = turnPick;
+  turnAt = chart ? (keep ? clampStep(chart, want) : pickStep(chart, want)) : 0;
   if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
-  stepAt = null; // U73: a new trace shows the turn's end
+  const clamped = Boolean(chart) && (turnPick.run !== want.run || turnPick.turn !== want.turn);
+  // U73: a new trace shows the turn's end; U76: a run switch keeps the same actor's step when the turn is kept
+  stepAt = chart && keep && !clamped ? keepStep(chart, turnAt, keep.who) : null;
   if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost(),
-    pick: state.mode.key === "simulate" ? { value: runPick, onPick: setPick } : null });
+    pick: state.mode.key === "simulate" ? { value: runPick, onPick: setPick } : null, follow: Boolean(keep) }, !keep || clamped);
   paintTurn();
 }
 
