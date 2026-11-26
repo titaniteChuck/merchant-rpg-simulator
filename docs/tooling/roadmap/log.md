@@ -126,3 +126,4 @@
 - **Update**: U76 done (5f04954): chart and opponent panel on phones (no tap highlight on the chart, run and tab switches keep the turn, zoom and scroll, short map-row labels, edge-swipe scroll zones). U75 (Solver result cache and resumable search) added as in progress.
 - **Update**: U75 done (d6f9103): the Solver keeps its findings per setup in localStorage, a stopped or finished search resumes, Reset clears; merged after U76.
 - **Update**: U77 done (69902d6): the chart starts at its end, a run switch keeps the fight and turn at the same screen x, the zoom is kept by room; Save back as a top-level menu entry; the Inventory's Maps and On the counter filters removed. U78 (hero creation and editing in the Save viewer) added as in progress.
+- **Update**: U78 done (dde6ea3): hero creation and editing in the Save viewer; merged after U77.
