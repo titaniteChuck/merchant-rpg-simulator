@@ -248,6 +248,7 @@ test("CSS: the U66 block follows U65's (later blocks such as U67 may come after 
   const block = css.slice(css.indexOf("/* U66 */"), css.indexOf("/* end U66 */"));
   assert.ok(block.length > 200);
   assert.ok(css.indexOf("/* U66 */") > css.indexOf("/* end U65 */"), "U66 after U65");
-  for (const sel of [".hp-scroll", ".hp-fight", ".hp-step", ".sim-bar .party-tools"]) assert.ok(block.includes(sel), sel);
+  for (const sel of [".hp-scroll", ".hp-fight", ".hp-step"]) assert.ok(block.includes(sel), sel);
+  assert.ok(!block.includes(".party-tools"), "U72: Clear all and its #party-tools rules are gone");
   assert.doesNotMatch(block.replace(/\/\*[\s\S]*?\*\//g, ""), /#[0-9a-f]{3,6}\b/i);
 });
