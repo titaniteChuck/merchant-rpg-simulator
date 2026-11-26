@@ -28,6 +28,8 @@
  * traced runs in the worker (debounced; a newer change drops the run on its way), and the chart and the cards show the
  * worst of them (tools/worst-run.ts). On the Simulator, four sticky figures over the runs sit between the Simulate
  * panel and the party (#sim-stats: win rate, grade when won, heroes dead, life left).
+ * U73: `‹ Turn X ›` and `‹ <actor> k/n ›` (the turn's actions in game order) in #hp-nav, sticky under the figures; at a
+ * step the cards show the state right after that action (turnView), the actor's card marked.
  *
  * Expansions (U28): the enemy and map pickers and the scrolls leave out content of expansions the visitor hides
  * (expansion-state.ts); the save's own maps always stay. Options of expansion content end with ❄ / ✒. The opponent
@@ -45,7 +47,7 @@ import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker
 import { $, duration, el, expansionMark, fmt1, gradeBadge, heroAsc, LV, lv, lvStart, pct, pill, rateTone, select, toast } from "./dom.ts";
 import { isHidden, isVisible, needsOf, subscribe } from "./expansion-state.ts";
 import { type CardRow, type CardTurn, fighterCard, paintCard } from "./fighter-card.ts";
-import { cardTurnOf } from "./card-turn.ts";
+import { cardTurnOf, stepStates } from "./card-turn.ts";
 import type { PickOption } from "./pick-list.ts";
 import { initSearch, type PartyMember } from "./battle-search.ts";
 import { linkedOpponent, SIMULATOR_PAGE, simulatorPartyFrom, type StoredParty, withoutOpponentQuery } from "./battle-links.ts";
@@ -53,7 +55,7 @@ import { migrateOldLocks } from "./solver-heroes.ts";
 import { type PageTarget, problemOf, rulesOf, rulesText } from "./battle-rules.ts";
 import { loadTimelineData, timelineOf } from "./timeline.ts";
 import { locationLabel, locationOf, mapRoomTabs } from "./battle-plan.ts";
-import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep } from "./hp-chart.ts";
+import { drawHpChart, type FighterState, type HpChartData, hpData, type HpRun, pickStep, stepsOf } from "./hp-chart.ts";
 import { defaultQuest, defaultSlots, enemyGroups, enemyStats, enemyTurns, includedSlots, isFightable, parseQuestValue, questEntries, questValue, type SlotRef } from "./battle-setup.ts";
 import { helpTip } from "./wiki-help.ts";
 import { mapRooms, mapTreasure } from "../tools/quest-stats.ts";
@@ -750,7 +752,7 @@ function drawEnemyCard(): void {
   const d = G.questData[foe.id];
   // U70: a quest enemy changed since the runs shown (the new ones are on their way): its own stats, not the old fight's.
   const run = at ? chart?.runs[at.run] : undefined;
-  const now = run?.quest && (run.quest.id !== foe.id || run.quest.rare !== foe.rare) ? undefined : at?.states[0];
+  const now = run?.quest && (run.quest.id !== foe.id || run.quest.rare !== foe.rare) ? undefined : turnView()?.states[0];
   const name = `${enemyName(String(foe.id), foe.rare) ?? d?.name ?? foe.id}${foe.rare ? " (rare)" : ""}`;
   host.replaceChildren(fighterCard({
     kind: "enemy", classes: foe.rare ? "rare" : "",
@@ -1011,6 +1013,27 @@ function hpBox(): HTMLElement | null {
 }
 
 /**
+ * U73: the turn and step controls' host (#hp-nav), made once in the Party view's grid right after the chart's column:
+ * sticky under the Simulator's figures (style.css U73; their height kept in --sim-stats-h on #setup), over the cards.
+ */
+function navHost(): HTMLElement | null {
+  const col = document.querySelector<HTMLElement>("#hp-col");
+  if (!col) return null;
+  let nav = document.querySelector<HTMLElement>("#hp-nav");
+  if (!nav) {
+    nav = el("div", { id: "hp-nav", class: "hp-nav-host", hidden: "" });
+    col.after(nav);
+    const stats = document.querySelector<HTMLElement>("#sim-stats"), setup = document.querySelector<HTMLElement>("#setup");
+    if (stats && setup) {
+      const put = () => setup.style.setProperty("--sim-stats-h", `${stats.offsetHeight}px`);
+      put();
+      if (typeof ResizeObserver !== "undefined") new ResizeObserver(put).observe(stats);
+    }
+  }
+  return nav;
+}
+
+/**
  * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U70: the worst of the
  * shown runs). Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
  */
@@ -1025,7 +1048,8 @@ function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): voi
   // U65: the turn the cards show: the one picked before when this fight still has it, else turn 0.
   turnAt = chart ? pickStep(chart, turnPick) : 0;
   if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
-  if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn });
+  stepAt = null; // U73: a new trace shows the turn's end
+  if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost() });
   paintTurn();
 }
 
@@ -1038,13 +1062,38 @@ let chartNames = new Map<number, string>();
 let chartHeroes = new Map<number, number>();
 let turnAt = 0;
 let turnPick: { run: number; turn: number } = { run: 0, turn: 0 };
+/** U73: the step within the selected turn (its index in stepsOf), null: the turn's end (its last step). */
+let stepAt: number | null = null;
 
 /** U65: a click, a tap or a key on the chart picked another turn: the cards show it (nothing is traced again). */
 function selectTurn(i: number): void {
   if (!chart?.steps[i]) return;
   turnAt = i;
   turnPick = { run: chart.steps[i].run, turn: chart.steps[i].turn };
+  stepAt = null; // U73: a turn picked lands on its end, its last step
   paintTurn();
+}
+
+/** U73: a step arrow picked step `k` of the selected turn: the cards show the state right after that action. */
+function selectStep(k: number): void {
+  stepAt = k;
+  paintTurn();
+}
+
+/**
+ * U73: what the cards show at the chart's step: the turn's end (the chart's states, `upTo` none) or, at a step before
+ * the last, every fighter right after that action (stepStates; `upTo` its last action counted); `actor` the step's
+ * fighter. Undefined without a chart.
+ */
+function turnView(): { at: HpChartData["steps"][number]; states: Record<number, FighterState>; upTo?: number; actor: number | null } | undefined {
+  const at = chart?.steps[turnAt];
+  if (!chart || !at) return undefined;
+  const steps = stepsOf(chart, turnAt);
+  if (!steps.length) return { at, states: at.states, actor: null };
+  const k = stepAt === null || stepAt >= steps.length ? steps.length - 1 : stepAt;
+  if (k === steps.length - 1) return { at, states: at.states, actor: steps[k].who };
+  const trace = chart.runs[at.run].trace;
+  return { at, states: stepStates(trace, at.turn, steps[k].upTo, at.states), upTo: steps[k].upTo, actor: steps[k].who };
 }
 
 /**
@@ -1053,7 +1102,8 @@ function selectTurn(i: number): void {
  * doesn't fight (left out, no fight to show, U70: not the hero of the shown runs) gets its own stats back, nothing else.
  */
 function paintTurn(): void {
-  const at = chart?.steps[turnAt];
+  const view = turnView();
+  const at = view?.at;
   const inc = fighting().included;
   document.querySelectorAll<HTMLElement>("#party [data-slot]").forEach((card) => {
     const key = card.dataset.slot ?? "";
@@ -1061,7 +1111,7 @@ function paintTurn(): void {
     const raw = heroRaw(idx);
     if (!raw) return;
     const w = locationOf(key.startsWith("front") ? "front" : "back", Number(key.slice(-1)));
-    const now = at?.states[w];
+    const now = view?.states[w];
     const inFight = at && now && inc.has(key) && chartHeroes.get(w) === idx;
     paintCard(card, inFight
       ? { stats: now.stats ? { ...now.stats, maxHP: now.maxHP } : heroCardStats(idx, raw), ...turnOfCard(at, w, now) }
@@ -1076,7 +1126,10 @@ function paintTurn(): void {
  */
 function turnOfCard(at: HpChartData["steps"][number], who: number, now: FighterState): Omit<CardTurn, "stats"> {
   const nameOf = (w: number) => (w ? chartNames.get(w) ?? locationLabel(w) : chart?.runs[at.run]?.enemy ?? "Enemy");
-  return { hp: now.hp, active: now.active, ...cardTurnOf(chart?.runs[at.run]?.trace, at.turn, who, nameOf) };
+  // U73: at a step within the turn, the state right after its action; the acting fighter's card marked
+  const view = turnView();
+  return { hp: now.hp, active: now.active, acting: view?.actor === who,
+    ...cardTurnOf(chart?.runs[at.run]?.trace, at.turn, who, nameOf, view?.upTo) };
 }
 
 // ---------------------------------------------------------------- the page's own parts (U41)

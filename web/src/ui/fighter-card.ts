@@ -20,6 +20,7 @@
  *   the heals in green (outcomeParts).
  *
  * U65: paintCard puts another turn's state on a card in place (the pickers, an open list and the focus stay).
+ * U73: or a step within the turn (the state right after one action); the acting fighter's card is marked `acting`.
  * The text builders (statCell, modText, modTip, hpDeltaText, hpDeltaTip, outcomeText, outcomeParts) are pure, for the
  * tests. U71: the tooltips have no header and no caster names; their values coloured (TipLine), the signs kept.
  */
@@ -328,6 +329,8 @@ export interface CardTurn {
   active?: number | null;
   /** U67: what came of its action this turn. */
   outcome?: CardOutcome | null;
+  /** U73: the fighter acting at the chart's step (the turn's last action when a whole turn is picked). */
+  acting?: boolean;
 }
 
 export interface FighterCardSpec {
@@ -368,6 +371,8 @@ export function fighterCard(s: FighterCardSpec): HTMLElement {
  */
 export function paintCard(card: HTMLElement, t: CardTurn): void {
   card.querySelectorAll(".fc-out").forEach((x) => x.remove());
+  // U73: the step's actor: its card marked (style.css U73), its played row and outcome as every acted one's
+  card.classList.toggle("acting", Boolean(t.acting));
   const kind = card.classList.contains("fc-enemy") ? "enemy" : "hero";
   const grid = statGrid(t.stats, kind, { ...(t.hp !== undefined ? { hp: t.hp } : {}), ...(t.mods ? { mods: t.mods } : {}),
     ...(t.hpDelta ? { hpDelta: t.hpDelta } : {}) });

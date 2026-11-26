@@ -210,7 +210,7 @@ test("the chart and the cards: the worst run; a hero changed since shows its own
   assert.match(shown, /showHp\(rooms\.flatMap/);
   assert.match(fn(page, "showHp"), /chartHeroes = new Map\(members\.map\(\(m\) => \[locationOf\(m\.row, m\.i\), m\.idx\]\)\);/);
   assert.match(fn(page, "paintTurn"), /const inFight = at && now && inc\.has\(key\) && chartHeroes\.get\(w\) === idx;/);
-  assert.match(fn(page, "drawEnemyCard"), /\(run\.quest\.id !== foe\.id \|\| run\.quest\.rare !== foe\.rare\) \? undefined : at\?\.states\[0\]/);
+  assert.match(fn(page, "drawEnemyCard"), /\(run\.quest\.id !== foe\.id \|\| run\.quest\.rare !== foe\.rare\) \? undefined : turnView\(\)\?\.states\[0\]/);
 });
 
 test("the four figures: one row of tiles, short labels on a phone, dashes without runs, busy while runs wait", () => {

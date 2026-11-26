@@ -126,7 +126,8 @@ test("the chart reads a trace's turn ends; run 0 of the worst-of runs is Simulat
   const show = fn(page, "showHp");
   assert.doesNotMatch(show, /trace(Fight|MapRun)|new Sim/, "the chart never simulates");
   assert.match(show, /chart = runs \? hpData\(runs, fighters\) : null;/);
-  assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn \}\);/);
+  // U73: and the step within the turn, its arrows and the sticky host of the turn and step controls
+  assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost\(\) \}\);/);
   assert.match(fn(page, "drawShown"), /showHp\(rooms\.flatMap\(\(r, k\): HpRun\[\] => \(r\.trace \? \[\{ trace: r\.trace,/, "a map run: every fought room");
   // the box: made once in its column (U65: #hp-col, the first row; U62: the third column; until then #opp-col)
   assert.match(fn(page, "hpBox"), /col\.querySelector<HTMLElement>\("#hp-chart"\)/);

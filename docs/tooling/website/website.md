@@ -728,6 +728,46 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     pooled over every standing hero of every run, not averaged per run; the busy state dims only (no spinner, nothing
     moves); `battle-plan.ts`'s plan grid stays (pure, tested) though no page draws it now.
 
+- U73, the Party view's turn navigation (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `card-turn.ts`,
+  `fighter-card.ts`, `battle-page.ts` (the chart's controls and the cards' wiring only); tests
+  `web/test/battle-u73.test.ts`, the U61, U65, U67, U69 and U70 tests updated; CSS in the `U73` block, the last one of
+  `style.css`):
+  - In-turn steps: beside `‹ Turn X ›` a second control `‹ <actor> k/n ›` (`.hp-act`, "Previous action" / "Next
+    action", the label `stepText`: the actor's legend name or the run's own enemy, `actorName`, then "2/5" muted). The
+    steps of a turn (`turnSteps` in `card-turn.ts`, `stepsOf` in `hp-chart.ts`) are its actions in game order, one per
+    fighter that acted (a stunned one too); a dead fighter's record is no step, it counts in the step before it
+    (`upTo`), so the last step is exactly the turn's end. The step arrows wrap within the turn (`stepWrap`: › on the
+    last goes to the first, ‹ on the first to the last) and never change the turn; the chart's marker stays on it.
+    Picking a turn (‹ ›, a click or tap, the keys, a fight tab) lands on its last step, the turn's end (the cards as
+    before U73). Turn 0 has no step: "–", both arrows disabled. A new trace (an edit) shows the turn's end again.
+  - The cards at a step: every fighter right after that action (`stepStates`: HP, max HP and live stats of its last
+    record up to then; the row played by every fighter that acted by then), and the card readers take the same
+    moment (`modsAt`, `hpAt`, `hpDeltaAt`, `outcomeAt`, `cardTurnOf` with `upTo`: the stat parts, HP's change since the
+    last turn's end, the outcomes of the actions so far). The step's actor has its card ringed and its played row
+    outlined in the accent (`CardTurn.acting`, `.fc.acting`). The last step uses the chart's own turn-end states
+    (`turnView` in `battle-page.ts`).
+  - The trace: nothing new to record. Every action already carries every fighter's HP, max HP, live stats and stat
+    parts after it (U65 / U67 `life`, `mods`), and U70 keeps only the worst run's trace, so the memory is unchanged.
+    Tests check the snapshots (every fighter, every action) and that the step states and readers match them.
+  - Sticky: the two controls (`.hp-nav`, one line at every width, the labels shortened with an ellipsis) sit in
+    `#hp-nav` (`navHost`, made once right after `#hp-col` in `#setup-grid`), a grid row between the chart and the
+    cards whose area runs to the grid's end (`grid-row: 2 / -1`, the row itself `--hp-nav-h` 36 px), so it sticks
+    while the cards scroll by: `top` the figures' height (`--sim-stats-h` on `#setup`, kept by a `ResizeObserver` on
+    `#sim-stats`; 0 on the Solver), opaque (`--bg`), z-index 30 as the figures (under the floating picker, 55, and the
+    tooltips, 60). The opponent card's sticky top on wide screens moves under both. No chart: the host is hidden and
+    the grid has no nav row. `drawHpChart(…, { nav })` moves the controls there; without a host (tests) they stay
+    under the plot. A click on an arrow leaves no focus ring (`focusMode` on the host too).
+  - Legend: one compact wrapping row of swatch + name items (flex, no grid of 150 px columns); a name never breaks
+    per character (U61's `overflow-wrap: anywhere` did on a phone), it ends in an ellipsis at worst.
+  - Cards on phones: no text selection or iOS callout on a long press (`.fc`: `user-select: none`,
+    `-webkit-user-select`, `-webkit-touch-callout: none`), so a long press only shows the tooltip; form fields keep
+    theirs.
+  - Judgement calls: the controls moved from right under the plot to under the legend and the Table fold (the
+    sticky row must be a grid row that spans the cards); at a step every fighter that already acted keeps its played
+    row and outcome (so the last step reads exactly as the turn's end), the actor told apart by its ringed card; an
+    edit goes back to the turn's end rather than keep a step whose actions may have changed; no keyboard shortcut for
+    the steps (the arrows are buttons in the tab order).
+
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,
   the last one of `style.css`):

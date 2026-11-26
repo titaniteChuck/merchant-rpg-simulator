@@ -168,7 +168,7 @@ test("turn selection: a click or tap picks the nearest turn, the keys move it; a
   key("Home"); // already there: nothing new
   assert.deepEqual(picks, [5, 6, 7, 6, n - 1, 0]);
   // the page: the pick goes to the cards (no new trace)
-  assert.match(fn(page, "selectTurn"), /turnPick = \{ run: chart\.steps\[i\]\.run, turn: chart\.steps\[i\]\.turn \};\n\s*paintTurn\(\);/);
+  assert.match(fn(page, "selectTurn"), /turnPick = \{ run: chart\.steps\[i\]\.run, turn: chart\.steps\[i\]\.turn \};\n\s*stepAt = null;[^\n]*\n\s*paintTurn\(\);/);
   assert.doesNotMatch(fn(page, "selectTurn") + fn(page, "paintTurn"), /renderPlan|renderParty|planTrace|mapTrace/);
 });
 
@@ -235,7 +235,8 @@ test("the cards at a turn: HP, the engine's live stats, the effects and the row 
   assert.equal(card.querySelectorAll("span.fc-mod-btn").length, 0, "no fight: the card's own stats only");
   // the page paints every hero card and the enemy's from the chart's step (the Flows' trace)
   const paint = fn(page, "paintTurn");
-  assert.match(paint, /const at = chart\?\.steps\[turnAt\];/);
+  assert.match(paint, /const view = turnView\(\);\n\s*const at = view\?\.at;/, "U73: the turn's end, or a step within it");
+  assert.match(fn(page, "turnView"), /const at = chart\?\.steps\[turnAt\];/);
   assert.match(paint, /paintCard\(card, inFight/);
   assert.match(paint, /stats: now\.stats \? \{ \.\.\.now\.stats, maxHP: now\.maxHP \}/);
   assert.match(paint, /\.\.\.turnOfCard\(at, w, now\)/, "U67: HP, modifiers, effects, outcome");
@@ -341,7 +342,7 @@ test("the enemy card shows one enemy, no picker; the opponent's controls are in 
   }
   assert.match(block, /\.setup-grid \{[^}]*grid-template-columns: minmax\(0, 2fr\) minmax\(260px, 1fr\);\s*grid-template-areas: "hp hp" "party opp"; \}/);
   assert.match(block, /@media \(max-width: 960px\) \{\s*\.setup-grid \{ grid-template-columns: minmax\(0, 1fr\); grid-template-areas: "hp" "party" "opp"; \}/);
-  assert.equal(css.match(/\.setup-grid \{/g)!.length, 2, "one set of grid rules");
+  assert.equal(css.match(/\.setup-grid \{/g)!.length, 4, "one set of grid rules, U73's nav row added");
   // the chart is as wide as its box (the viewBox follows it), its text keeps its size
   assert.match(read("web/src/ui/hp-chart.ts"), /const width = chartWidth\(box\.clientWidth \?\? 0\);/);
 });

@@ -273,7 +273,7 @@ test("card: no HP bar; the stats two per row with the modifier focusable and its
 
 test("page: the cards take the modifiers, effects and outcome from the trace; CSS: two per row, HP across, phone two cards per row", () => {
   const turn = fn(page, "turnOfCard");
-  assert.match(turn, /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, nameOf\)/);
+  assert.match(turn, /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, nameOf, view\?\.upTo\)/);
   assert.match(fn(page, "paintTurn"), /\.\.\.turnOfCard\(at, w, now\)/);
   assert.match(fn(page, "drawEnemyCard"), /turn: turnOfCard\(at, 0, now\)/);
   assert.doesNotMatch(page, /chartRuns/, "the cards read the chart\'s own fought runs (chart.runs[i].trace)");

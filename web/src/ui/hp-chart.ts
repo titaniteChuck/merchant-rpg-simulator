@@ -38,12 +38,17 @@
  * - Accessible: the plot is a slider ("Turn", the arrow keys, Home, End) described by a one-sentence summary; a
  *   "Table" fold lists the open tab's values per turn.
  *
+ * U73: `‹ <actor> k/n ›` beside `‹ Turn X ›` (`.hp-nav`, both under the plot; drawHpChart moves them to the page's
+ * sticky host when it gives one): the step arrows walk the selected turn's actions in game order, wrapping; picking a
+ * turn lands on its last step (its end). Turn 0 has none (the step arrows disabled).
+ *
  * Pure parts (hpData, pickStep, fightLayout, chartLayout, nearestStep, stepAfterKey, plotted; U68 minTurnWidth,
  * zoomOf, windowOf, axisTop, fightTabs, scrollForSpan, lerp, ease, lerpView, linePath, turnText) are separate from the
  * drawing (hpChart, drawHpChart) so tests check the series, the states, the layout and the selection without a browser.
  */
 import { locationLabel, statusOf, type TimelineChip, type TracedFight, planTimeline } from "./battle-plan.ts";
 import { roomBarWheel, scrollToShow } from "./battle-layout.ts";
+import { stepWrap, type TurnStep, turnSteps } from "./card-turn.ts";
 import { el, fmt, fmtCompact } from "./dom.ts";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -452,6 +457,24 @@ export function turnText(d: HpChartData, i: number): string {
   return `${/^\d+$/.test(head) ? `Room ${head}` : head} · Turn ${st.turn}`;
 }
 
+/** U73: the steps of chart step `i`'s turn (its run's trace; turn 0: none). */
+export const stepsOf = (d: HpChartData, i: number): TurnStep[] =>
+  d.steps[i] ? turnSteps(d.runs[d.steps[i].run]?.trace ?? { actions: [] }, d.steps[i].turn) : [];
+
+/** U73: a fighter's name in run `run`: a hero's legend name, the run's own enemy (a map room's). */
+export function actorName(d: HpChartData, run: number, who: number): string {
+  if (!who) return d.runs[run]?.enemy ?? "Enemy";
+  return d.series.find((s) => s.who === who)?.name ?? locationLabel(who);
+}
+
+/** U73: the step control's text at chart step `i`, step `k` (null: the last): the actor and "k/n"; null without steps. */
+export function stepText(d: HpChartData, i: number, k: number | null): { name: string; count: string } | null {
+  const steps = stepsOf(d, i);
+  if (!steps.length) return null;
+  const at = k === null || k < 0 || k >= steps.length ? steps.length - 1 : k;
+  return { name: actorName(d, d.steps[i].run, steps[at].who), count: `${at + 1}/${steps.length}` };
+}
+
 /** The one-sentence summary of the HP tab (U65: the plot's description; also per tab, chartSummary). */
 export function hpSummary(d: HpChartData): string {
   return chartSummary(d, "hp");
@@ -551,6 +574,10 @@ export interface ChartOptions {
   /** U68: the map room zoomed on (its run index), null or none: All. */
   zoom?: number | null;
   onZoom?: (zoom: number | null) => void;
+  /** U73: the step within the selected turn (its index in stepsOf), null or none: the last (the turn's end). */
+  step?: number | null;
+  /** U73: a step arrow picked step `k` of the selected turn (a turn picked says onSelect: its last step). */
+  onStep?: (k: number) => void;
 }
 
 /** U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page). */
@@ -571,6 +598,8 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   const width = o.width ?? HP_W;
   const n = d.steps.length;
   let sel = Math.max(0, Math.min(n - 1, o.selected ?? 0));
+  // U73: the step within the turn; null: the last one (the turn's end, where a turn picked lands)
+  let sub: number | null = o.step ?? null;
   // U68: a zoom is on the selected turn's room (a stale one gives way to All)
   let zoom = zoomOf(d, o.zoom);
   if (zoom !== null && d.steps[sel].run !== zoom) zoom = null;
@@ -611,6 +640,27 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   const prev = stepBtn(-1), next = stepBtn(1);
   const turnLabel = el("span", { class: "hp-turn-text", "aria-live": "polite" });
   const turnBox = el("div", { class: "hp-turn", role: "group", "aria-label": "Selected turn" }, prev, turnLabel, next);
+  // U73: ‹ <actor> k/n ›, the selected turn's actions in game order, wrapping; disabled without any (turn 0).
+  const actBtn = (dir: -1 | 1) => {
+    const label = dir < 0 ? "Previous action" : "Next action";
+    const b = el("button", { type: "button", class: "secondary hp-step hp-act-step", "data-act": String(dir), "aria-label": label, title: label },
+      svg("svg", { viewBox: "0 0 16 16", width: 16, height: 16, "aria-hidden": "true", focusable: "false" },
+        svg("path", { d: dir < 0 ? "M10 3L5 8l5 5" : "M6 3l5 5-5 5", fill: "none", stroke: "currentColor", "stroke-width": 2,
+          "stroke-linecap": "round", "stroke-linejoin": "round" })));
+    b.addEventListener("click", () => {
+      const m = stepsOf(d, sel).length;
+      if (!m) return;
+      sub = stepWrap(sub ?? m - 1, dir, m);
+      paint();
+      o.onStep?.(sub);
+    });
+    return b;
+  };
+  const actPrev = actBtn(-1), actNext = actBtn(1);
+  const actName = el("span", { class: "hp-act-name" }), actCount = el("span", { class: "hp-act-count" });
+  const actLabel = el("span", { class: "hp-turn-text hp-act-text", "aria-live": "polite" }, actName, actCount);
+  const actBox = el("div", { class: "hp-act", role: "group", "aria-label": "Selected action" }, actPrev, actLabel, actNext);
+  const nav = el("div", { class: "hp-nav" }, turnBox, actBox);
   // U66: the scroll box: the fight tabs and the plot, one width (W px when wider than the box: 1 unit = 1 px).
   const track = el("div", { class: "hp-track" });
   const scroller = el("div", { class: "hp-scroll" }, track);
@@ -679,6 +729,13 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
       else b.removeAttribute("aria-current");
     }
     turnLabel.textContent = turnText(d, sel);
+    // U73: the step: its actor and k/n ("–" at turn 0), the arrows off without steps
+    const st = stepText(d, sel, sub);
+    actName.textContent = st ? st.name : "–";
+    actCount.textContent = st ? ` ${st.count}` : "";
+    actBox.setAttribute("title", st ? `${st.name}, action ${st.count}` : "No action");
+    setOff(actPrev, !st);
+    setOff(actNext, !st);
     // a button that reaches its end gives the focus to the other one
     const active = (globalThis.document as Document | undefined)?.activeElement;
     setOff(prev, sel <= 0);
@@ -788,6 +845,7 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   const choose = (i: number) => {
     if (i === sel) return;
     sel = i;
+    sub = null; // U73: a turn picked shows its end, its last step
     // U68: zoomed, the zoom follows the turn into another room (the keys, ‹ ›)
     if (zoom !== null && d.steps[i].run !== zoom) setZoom(d.steps[i].run);
     paint();
@@ -872,7 +930,7 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
   });
   const fig = el("figure", { class: "hp-chart" }, el("div", { class: "hp-head" }, tabs),
     el("div", { id: "hp-panel", role: "tabpanel", "aria-label": CHART_TABS.find((t) => t.id === tab)!.label },
-      el("p", { id: "hp-sum", class: "visually-hidden" }, summary), scroller, turnBox, legend, fold));
+      el("p", { id: "hp-sum", class: "visually-hidden" }, summary), scroller, nav, legend, fold));
   revealers.set(fig, reveal);
   return fig;
 }
@@ -896,7 +954,23 @@ export function focusMode(box: HTMLElement): void {
   box.addEventListener("keydown", () => delete box.dataset.pointer, true);
 }
 
-type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) => void; zoom?: number | null };
+/** U73: the selector of the turn or step arrow `active` is, when it is one in `nav`; else null. */
+function navButtonOf(nav: HTMLElement | null | undefined, active: Element | null | undefined): string | null {
+  let x: Node | null | undefined = active;
+  while (x && x !== nav) x = x.parentNode;
+  if (!nav || !x || !active) return null;
+  for (const k of ["data-dir", "data-act"]) {
+    const v = active.getAttribute(k);
+    if (v !== null) return `[${k}="${v}"]`;
+  }
+  return null;
+}
+
+type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) => void; zoom?: number | null;
+  /** U73: the step within the selected turn (null: its end) and the step arrows' callback. */
+  step?: number | null; onStep?: (k: number) => void;
+  /** U73: where the turn and step controls go (the page's sticky host); none: under the plot, in the box. */
+  nav?: HTMLElement | null };
 /** U65: what each box last drew, its width and selection, to draw it again on a tab change or a resize. */
 const drawn = new WeakMap<HTMLElement, { d: HpChartData | null; o: DrawOptions; width: number }>();
 
@@ -917,9 +991,13 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const focused = !active ? null : fold && fold.querySelector("summary") === active ? "fold"
     : box.querySelector("svg.hp-svg") === active ? "plot" : box.querySelector('[role="tab"][aria-selected="true"]') === active ? "tab" : null;
   const lastZoom = drawn.get(box)?.o.zoom ?? null;
+  // U73: a focused turn or step arrow in the nav host gets the focus back after the redraw
+  const navBtn = navButtonOf(o.nav, active);
   box.hidden = Boolean(o.hide);
+  if (o.nav) o.nav.hidden = Boolean(o.hide) || !d;
   if (o.hide) {
     box.replaceChildren();
+    o.nav?.replaceChildren();
     drawn.delete(box);
     return;
   }
@@ -930,7 +1008,12 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   drawn.set(box, memo);
   const onSelect = (i: number) => {
     memo.o.selected = i;
+    memo.o.step = null;
     o.onSelect?.(i);
+  };
+  const onStep = (k: number) => {
+    memo.o.step = k;
+    o.onStep?.(k);
   };
   const onZoom = (z: number | null) => {
     memo.o.zoom = z;
@@ -940,8 +1023,16 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
     drawHpChart(box, d, memo.o, false);
     box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   };
-  const fig = d ? hpChart(d, { tab: tabNow, selected, onSelect, onTab, tableOpen, width, zoom, onZoom }) : null;
+  const fig = d ? hpChart(d, { tab: tabNow, selected, onSelect, onTab, tableOpen, width, zoom, onZoom, step: o.step ?? null, onStep }) : null;
   box.replaceChildren(fig ?? el("p", { class: "muted small hp-empty" }, HP_EMPTY));
+  // U73: the turn and step controls in the page's sticky host
+  if (o.nav) {
+    const nav = fig?.querySelector<HTMLElement>(".hp-nav");
+    nav?.remove();
+    o.nav.replaceChildren(...(nav ? [nav] : []));
+    focusMode(o.nav);
+    if (navBtn) o.nav.querySelector<HTMLElement>(navBtn)?.focus();
+  }
   if (fig) {
     const sc = fig.querySelector<HTMLElement>(".hp-scroll");
     if (sc && scrolled) sc.scrollLeft = scrolled;

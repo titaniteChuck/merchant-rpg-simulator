@@ -2417,3 +2417,53 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
    accent ring for the keyboard. */
 .hp-chart-box :focus:not(:focus-visible), .hp-chart-box[data-pointer] :focus { outline: none; }
 /* end U70 */
+
+/* U73 */
+/* The chart's legend (hp-chart.ts): one compact wrapping row of swatch + name items; a name never breaks per
+   character (U61's overflow-wrap: anywhere did on a phone), at worst an ellipsis. */
+.hp-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.hp-legend li { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 0; min-width: 0; max-width: 100%; }
+.hp-legend .hp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+/* ‹ Turn X › and ‹ <actor> k/n › on one line (.hp-nav). In the Party view they sit in #hp-nav (battle-page.ts
+   navHost), a row of the grid between the chart and the cards whose area runs to the grid's end, so it sticks under
+   the Simulator's figures (--sim-stats-h, their height; 0 on the Solver) while the cards scroll by: opaque, the
+   figures' layer (30), under the floating picker (55) and the tooltips (60). */
+.hp-nav { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 6px 18px; min-width: 0; margin: 4px 0 0; }
+.hp-nav > .hp-turn { margin: 0; min-width: 0; }
+.hp-act { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.hp-act .hp-step { display: inline-grid; place-items: center; flex: none; width: 30px; height: 28px; padding: 0; }
+.hp-act .hp-step svg { display: block; }
+.hp-nav .hp-turn-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-turn > .hp-turn-text { flex: 0 1 auto; min-width: 7ch; }
+.hp-act-text { display: inline-flex; min-width: 9ch; max-width: 22ch; justify-content: center; }
+.hp-act-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hp-act-count { flex: none; white-space: pre; color: var(--muted); }
+.setup-grid { --hp-nav-h: 36px; grid-template-areas: "hp hp" "nav nav" "party opp"; grid-template-rows: auto var(--hp-nav-h) auto; }
+.setup-grid > .hp-nav-host { grid-row: 2 / -1; grid-column: 1 / -1; align-self: start; height: var(--hp-nav-h); min-width: 0;
+  display: flex; align-items: center; justify-content: center; position: sticky; top: var(--sim-stats-h, 0px); z-index: 30;
+  background: var(--bg); }
+.setup-grid > .hp-nav-host > .hp-nav { margin: 0; max-width: 100%; }
+.setup-grid > .hp-nav-host[hidden] { display: none; }
+.setup-grid:not(:has(> .hp-nav-host:not([hidden]))) { grid-template-areas: "hp hp" "party opp"; grid-template-rows: auto auto; }
+/* The opponent's card (sticky on wide screens) under the figures and the controls. */
+#setup .setup-grid:has(> .hp-nav-host:not([hidden])) > .opp-col { top: calc(var(--sim-stats-h, 0px) + var(--hp-nav-h) + 12px); }
+/* No focus ring after a click or a tap on the arrows (hp-chart.ts focusMode), the keyboard's ring kept. */
+.hp-nav-host :focus:not(:focus-visible), .hp-nav-host[data-pointer] :focus { outline: none; }
+/* The step's actor: its card ringed, its played row outlined. */
+.fc.acting { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.fc.acting .fc-row.active { outline: 2px solid var(--accent); outline-offset: -1px; }
+/* Cards: a long press shows the tooltip and selects no text (no iOS callout either); the form fields keep theirs. */
+.fc { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.fc input, .fc select, .fc textarea { -webkit-user-select: text; user-select: text; }
+@media (max-width: 960px) {
+  .setup-grid { grid-template-areas: "hp" "nav" "party" "opp"; grid-template-rows: auto var(--hp-nav-h) auto auto; }
+  .setup-grid:not(:has(> .hp-nav-host:not([hidden]))) { grid-template-areas: "hp" "party" "opp"; grid-template-rows: auto auto auto; }
+}
+@media (max-width: 560px) {
+  .hp-nav { gap: 4px 8px; }
+  .hp-nav .hp-turn, .hp-act { gap: 2px; }
+  .hp-nav .hp-step { width: 26px; }
+  .hp-nav .hp-turn-text { font-size: 0.8rem; }
+  .hp-act-text { min-width: 6ch; max-width: 16ch; }
+}
+/* end U73 */

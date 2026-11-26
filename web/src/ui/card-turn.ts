@@ -4,13 +4,15 @@
  * turn did (fighter-card.ts CardOutcome). U69: and its HP change during the turn, by source (fighter-card.ts HpDelta).
  * Read from the same trace the chart and the Flows use (sim/api.ts TraceMod, TraceOutcome, TraceHit); pure, for the
  * tests.
+ * U73: every reader takes an optional `upTo`, the index in `actions` of the last action counted (a step within the
+ * turn: the state right after that action); none: the turn's end, as before. turnSteps lists a turn's steps.
  */
 import type { TraceCalc, TraceMod, TraceOutcome } from "../sim/api.ts";
 import { effectName } from "./battle-calc.ts";
 import type { CardOutcome, HpDelta, HpSource, ModPart, StatMods } from "./fighter-card.ts";
 import { itemNameFromEnglish, passiveName } from "./names.ts";
 
-type Life = { who: number; hp?: number; mods?: TraceMod[] };
+type Life = { who: number; hp?: number; maxHP?: number; stats?: Record<string, number>; mods?: TraceMod[] };
 type Calc = Pick<TraceCalc, "kind" | "from" | "to" | "src" | "hpBefore" | "hpAfter"> & { missed?: boolean };
 /** What this module reads of a traced fight (tools/fight-trace.ts FightTrace). */
 export interface CardTrace {
@@ -19,12 +21,67 @@ export interface CardTrace {
   start?: { life: Life[] };
 }
 
-/** The fighter's stat parts at the end of `turn` (turn 0: the start): its last record up to then. */
-export function modsAt(trace: CardTrace, turn: number, who: number): TraceMod[] {
+/** U73: whether action `i` of a trace comes after the moment (the end of `turn`, or action `upTo` within it). */
+const past = (a: { turn: number }, i: number, turn: number, upTo?: number) => a.turn > turn || (upTo !== undefined && i > upTo);
+
+/**
+ * U73: one step of a turn, an action in game order: who acted (0 the enemy), its index in `actions` (`at`), and the
+ * last index the step's state counts (`upTo`: its own, or the last of the dead fighters' records that follow it, so
+ * the turn's last step is the turn's end).
+ */
+export interface TurnStep {
+  who: number;
+  at: number;
+  upTo: number;
+}
+
+/**
+ * U73: a turn's steps, in game order: one per fighter that acted (a stunned one too; a dead one's record is no step).
+ * Turn 0 and a turn without a standing fighter's action: none.
+ */
+export function turnSteps(trace: Pick<CardTrace, "actions">, turn: number): TurnStep[] {
+  const steps: TurnStep[] = [];
+  if (turn <= 0) return steps;
+  trace.actions.forEach((a, i) => {
+    if (a.turn !== turn) return;
+    if (a.did !== null) steps.push({ who: a.who, at: i, upTo: i });
+    else if (steps.length) steps[steps.length - 1].upTo = i;
+  });
+  return steps;
+}
+
+/** U73: the step the step arrows go to: one on or back, wrapping within the turn (› on the last: the first). */
+export const stepWrap = (at: number, dir: -1 | 1, n: number): number => (n > 0 ? (((at + dir) % n) + n) % n : 0);
+
+/** U73: the state of each fighter in `base` (the turn's end, hp-chart.ts FighterState) right after action `upTo` of
+ * `turn`: HP, max HP and live stats of its last record up to then, the row it played if it acted by then. Anything
+ * else (the effects, no card shows them since U69) stays the base's. */
+export function stepStates<S extends { hp: number; maxHP: number; stats?: Record<string, number>; active: number | null }>(
+  trace: CardTrace, turn: number, upTo: number, base: Record<number, S>): Record<number, S> {
+  const out: Record<number, S> = {};
+  for (const [k, s] of Object.entries(base)) {
+    const who = Number(k);
+    let life: Life | undefined = trace.start?.life.find((l) => l.who === who);
+    let active: number | null = null;
+    for (const [i, a] of trace.actions.entries()) {
+      if (past(a, i, turn, upTo)) break;
+      const l = a.life?.find((x) => x.who === who);
+      if (l) life = l;
+      if (a.turn === turn && a.who === who && typeof a.did === "string") active = (turn - 1) % 5;
+    }
+    out[who] = { ...s, ...(life?.hp !== undefined ? { hp: Math.max(0, life.hp) } : {}), ...(life?.maxHP !== undefined ? { maxHP: life.maxHP } : {}),
+      ...(life?.stats ? { stats: { ...life.stats } } : {}), active };
+  }
+  return out;
+}
+
+/** The fighter's stat parts at the end of `turn` (turn 0: the start): its last record up to then. U73: or right
+ * after action `upTo`. */
+export function modsAt(trace: CardTrace, turn: number, who: number, upTo?: number): TraceMod[] {
   let mods: TraceMod[] | undefined = trace.start?.life.find((l) => l.who === who)?.mods;
   if (turn > 0) {
-    for (const a of trace.actions) {
-      if (a.turn > turn) break;
+    for (const [i, a] of trace.actions.entries()) {
+      if (past(a, i, turn, upTo)) break;
       const l = a.life?.find((x) => x.who === who);
       if (l) mods = l.mods;
     }
@@ -74,9 +131,9 @@ export function statMods(mods: TraceMod[]): StatMods {
  * What the fighter's action of `turn` did, on its rotation row ((turn − 1) mod 5): the effect that took it, or each
  * target's damage, healing, misses and crits. Null at turn 0, when it didn't act (down) or has no record.
  */
-export function outcomeAt(trace: CardTrace, turn: number, who: number, nameOf: (who: number) => string): CardOutcome | null {
+export function outcomeAt(trace: CardTrace, turn: number, who: number, nameOf: (who: number) => string, upTo?: number): CardOutcome | null {
   if (turn <= 0) return null;
-  const a = trace.actions.find((x) => x.turn === turn && x.who === who && x.did !== null);
+  const a = trace.actions.find((x, i) => x.turn === turn && x.who === who && x.did !== null && !past(x, i, turn, upTo));
   if (!a) return null;
   const row = (turn - 1) % 5;
   if (a.did === false) return { row, lost: a.by ? effectName(a.by) : "stunned", targets: [] };
@@ -84,11 +141,11 @@ export function outcomeAt(trace: CardTrace, turn: number, who: number, nameOf: (
 }
 
 /** U69: the fighter's HP at the end of `turn` (turn 0: the start), its last record up to then (0 when down); null: none. */
-export function hpAt(trace: CardTrace, turn: number, who: number): number | null {
+export function hpAt(trace: CardTrace, turn: number, who: number, upTo?: number): number | null {
   let hp = trace.start?.life.find((l) => l.who === who)?.hp;
   if (turn > 0) {
-    for (const a of trace.actions) {
-      if (a.turn > turn) break;
+    for (const [i, a] of trace.actions.entries()) {
+      if (past(a, i, turn, upTo)) break;
       const l = a.life?.find((x) => x.who === who);
       if (l?.hp !== undefined) hp = l.hp;
     }
@@ -102,13 +159,13 @@ export function hpAt(trace: CardTrace, turn: number, who: number): number | null
  * damage or heal over time under its effect's name): the HP each really took or gave (no overkill, no overheal; nothing
  * on a fighter already down). Null at turn 0 or without HP records.
  */
-export function hpDeltaAt(trace: CardTrace, turn: number, who: number): HpDelta | null {
+export function hpDeltaAt(trace: CardTrace, turn: number, who: number, upTo?: number): HpDelta | null {
   if (turn <= 0) return null;
-  const now = hpAt(trace, turn, who), before = hpAt(trace, turn - 1, who);
+  const now = hpAt(trace, turn, who, upTo), before = hpAt(trace, turn - 1, who);
   if (now === null || before === null) return null;
   const taken = new Map<string, number>(), healed = new Map<string, number>();
-  for (const a of trace.actions) {
-    if (a.turn !== turn) continue;
+  for (const [i, a] of trace.actions.entries()) {
+    if (a.turn !== turn || past(a, i, turn, upTo)) continue;
     for (const h of a.hits ?? []) {
       if (h.who !== who) continue;
       for (const c of h.calc ?? []) {
@@ -129,8 +186,9 @@ export function hpDeltaAt(trace: CardTrace, turn: number, who: number): HpDelta 
  * A card's state at a turn beyond the chart's (battle-page.ts paintTurn, drawEnemyCard): the stats' modifier parts,
  * what came of its action, U69: its HP change. No trace: nothing more (U69: no effects list).
  */
-export function cardTurnOf(trace: CardTrace | undefined, turn: number, who: number, nameOf: (who: number) => string):
+export function cardTurnOf(trace: CardTrace | undefined, turn: number, who: number, nameOf: (who: number) => string, upTo?: number):
   { mods?: StatMods; outcome: CardOutcome | null; hpDelta?: HpDelta | null } {
   if (!trace) return { outcome: null };
-  return { mods: statMods(modsAt(trace, turn, who)), outcome: outcomeAt(trace, turn, who, nameOf), hpDelta: hpDeltaAt(trace, turn, who) };
+  return { mods: statMods(modsAt(trace, turn, who, upTo)), outcome: outcomeAt(trace, turn, who, nameOf, upTo),
+    hpDelta: hpDeltaAt(trace, turn, who, upTo) };
 }

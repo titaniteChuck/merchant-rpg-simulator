@@ -271,7 +271,7 @@ test("HP: the modifier is the turn's net HP change, its damage and heals by sour
   const tipBox = body().children.find((x) => x.id === "tip")!;
   assert.equal(tipBox.textContent, hpDeltaTipLines(both).join(""));
   // the page passes it through cardTurnOf (turnOfCard), paintCard puts it on the grid
-  assert.match(fn(page, "turnOfCard"), /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, nameOf\)/);
+  assert.match(fn(page, "turnOfCard"), /cardTurnOf\(chart\?\.runs\[at\.run\]\?\.trace, at\.turn, who, nameOf, view\?\.upTo\)/);
   assert.match(cardSrc, /\.\.\.\(t\.hpDelta \? \{ hpDelta: t\.hpDelta \} : \{\}\)/);
 });
 
