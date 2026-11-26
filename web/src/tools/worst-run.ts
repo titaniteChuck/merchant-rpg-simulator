@@ -1,9 +1,11 @@
 /**
  * U70: the Battle Simulator's automatic runs. Every change that matters to the fight runs WORST_RUNS traced fights (or
- * map runs) with the seeds Simulate used (fightSeed(1, 0..n-1)); the page draws the worst of them in its chart and
- * cards, and four figures over all of them (win rate, grade when won, heroes dead, life left).
+ * map runs) with the seeds Simulate used (fightSeed(1, 0..n-1)); the page draws one of them in its chart and cards
+ * (U74: the run the picker asks for, Worst / Random / Best, Random being the first run and the default; U70 drew the
+ * worst), and four figures over all of them (win rate, grade when won, heroes dead, life left: over every run).
  *
- * Pure parts (outcomeOfFight, outcomeOfMap, compareRuns, worstRun, runStats, gradeLetter) apart from the runner
+ * Pure parts (outcomeOfFight, outcomeOfMap, compareRuns, worstRun, bestRun, pickedRun, parsePick, runStats,
+ * gradeLetter) apart from the runner
  * (traceWorst), so tests check the ordering and the figures without the engine.
  */
 import { fightSeed } from "./combat.ts";
@@ -103,36 +105,85 @@ const GRADES = ["D", "C", "B", "A", "S"];
 /** An average grade as the nearest letter. */
 export const gradeLetter = (g: number): string => GRADES[Math.min(4, Math.max(0, Math.round(g) - 1))];
 
-/** The runs' outcomes, the worst one's index and its trace: a quest's fight or a map run's rooms. */
+/**
+ * U74: which of the runs the chart and the cards show: the worst (compareRuns), a random one (the first run, index 0:
+ * nothing picks it, so it is a draw like any other), or the best (compareRuns reversed). The Simulator's picker; the
+ * Solver's Show always uses "random".
+ */
+export type RunPick = "worst" | "random" | "best";
+export const RUN_PICKS: { id: RunPick; label: string }[] = [
+  { id: "worst", label: "Worst" }, { id: "random", label: "Random" }, { id: "best", label: "Best" },
+];
+/** U74: the default pick. */
+export const DEFAULT_PICK: RunPick = "random";
+/** U74: a remembered pick; anything else (nothing stored, an old or foreign value) is the default. */
+export const parsePick = (v: unknown): RunPick => (v === "worst" || v === "best" || v === "random" ? v : DEFAULT_PICK);
+
+/**
+ * U74: the best run's index: compareRuns reversed (a win before any loss; among wins the highest grade, then the
+ * fewest heroes down, then the most life left on the survivors; among losses the one that gets furthest); a tie keeps
+ * the earlier run; -1 without runs.
+ */
+export function bestRun(outcomes: RunOutcome[]): number {
+  let b = -1;
+  outcomes.forEach((o, k) => {
+    if (b < 0 || compareRuns(o, outcomes[b]) > 0) b = k;
+  });
+  return b;
+}
+
+/** One traced run: a quest's fight or a map run's rooms. */
+export interface RunTrace {
+  quest?: FightTrace;
+  map?: MapRoomTrace[];
+}
+
+/**
+ * The runs' outcomes, the worst and the best one's index, and the traces a pick can show (U74: the first, the worst
+ * and the best run's, by run index; at most 3, never all of them).
+ */
 export interface WorstRuns {
   outcomes: RunOutcome[];
   worst: number;
-  quest?: FightTrace;
-  map?: MapRoomTrace[];
+  best: number;
+  traces: Record<number, RunTrace>;
   /** Map runs the game's own code failed on (left out, as evaluateMap does). */
   errors: number;
 }
 
+/** U74: the run index a pick shows (random: the first run); -1 without runs. */
+export function pickedRun(runs: Pick<WorstRuns, "outcomes" | "worst" | "best">, pick: RunPick): number {
+  if (!runs.outcomes.length) return -1;
+  return pick === "worst" ? runs.worst : pick === "best" ? runs.best : 0;
+}
+
+/** U74: the trace a pick shows (undefined without runs). */
+export const pickedTrace = (runs: WorstRuns, pick: RunPick): RunTrace | undefined => runs.traces[pickedRun(runs, pick)];
+
 /**
  * Trace `n` fights or map runs of this party (seeds fightSeed(seed0, 0..n-1), run 0 being Simulate's first) and keep
- * the worst one's trace only. Throws when every map run fails in the game's code.
+ * the traces of the first, the worst and the best run only (U74; U70 kept the worst one's): a pick switches between
+ * them without running again, and at most 4 traces are held at once. Throws when every map run fails in the game's
+ * code.
  */
 export function traceWorst(sim: Sim, target: { quest?: { id: number; rare: boolean; amount: number }; map?: { spec: MapSpec; scrolls: Scroll[] } },
   front: Row, back: Row, n = WORST_RUNS, seed0 = 1): WorstRuns {
   const outcomes: RunOutcome[] = [];
-  let worst = -1, errors = 0, firstError = "";
-  let quest: FightTrace | undefined, map: MapRoomTrace[] | undefined;
+  let worst = -1, best = -1, errors = 0, firstError = "";
+  const traces: Record<number, RunTrace> = {};
+  const keep = (o: RunOutcome, t: RunTrace) => {
+    const k = outcomes.push(o) - 1;
+    if (worst < 0 || compareRuns(o, outcomes[worst]) < 0) worst = k;
+    if (best < 0 || compareRuns(o, outcomes[best]) > 0) best = k;
+    if (k === 0 || k === worst || k === best) traces[k] = t;
+    for (const i of Object.keys(traces).map(Number)) if (i !== 0 && i !== worst && i !== best) delete traces[i];
+  };
   for (let k = 0; k < n; k++) {
     const seed = fightSeed(seed0, k);
     if (target.quest) {
       const t = target.quest;
       const r = traceFightRun(sim, t.id, front, back, { rare: t.rare, amount: t.amount, seed });
-      const o = outcomeOfFight(r.result);
-      outcomes.push(o);
-      if (worst < 0 || compareRuns(o, outcomes[worst]) < 0) {
-        worst = outcomes.length - 1;
-        quest = r.trace;
-      }
+      keep(outcomeOfFight(r.result), { quest: r.trace });
     } else if (target.map) {
       let r;
       try {
@@ -143,14 +194,9 @@ export function traceWorst(sim: Sim, target: { quest?: { id: number; rare: boole
         firstError ||= String((e as Error)?.message ?? e).split("\n")[0];
         continue;
       }
-      const o = outcomeOfMap(r.result);
-      outcomes.push(o);
-      if (worst < 0 || compareRuns(o, outcomes[worst]) < 0) {
-        worst = outcomes.length - 1;
-        map = r.rooms;
-      }
+      keep(outcomeOfMap(r.result), { map: r.rooms });
     } else throw new Error("nothing to simulate");
   }
   if (!outcomes.length) throw new Error(`all ${n} runs failed in game code: ${firstError}`);
-  return { outcomes, worst, ...(quest ? { quest } : {}), ...(map ? { map } : {}), errors };
+  return { outcomes, worst, best, traces, errors };
 }

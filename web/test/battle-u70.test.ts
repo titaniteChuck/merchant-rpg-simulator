@@ -99,7 +99,7 @@ const sim = new Sim(sv.raw.gameMode || "Standard");
 const IDX = [[8, 0, 4], [5, 1, 2]] as const;
 const party = () => IDX.map((row) => row.map((i) => sim.hero(sv.raw.hero[i])));
 
-test("traceWorst (a quest): 20 runs on Simulate's seeds, the worst one's trace; the engine's results unchanged", () => {
+test("traceWorst (a quest): 20 runs on Simulate's seeds, the worst one's trace (U74: kept with the first and the best); the engine's results unchanged", () => {
   assert.equal(WORST_RUNS, 20);
   const quest = 53;
   const [f, b] = party();
@@ -109,9 +109,9 @@ test("traceWorst (a quest): 20 runs on Simulate's seeds, the worst one's trace; 
   assert.equal(w.errors, 0);
   // the trace is that run's own fight (its seed), and run 0 is Simulate's first fight
   const [f2, b2] = party();
-  assert.deepEqual(w.quest, traceFight(sim, quest, [...f2], [...b2], { seed: fightSeed(1, w.worst) }));
-  assert.equal(w.quest!.won, w.outcomes[w.worst].won);
-  assert.equal(w.quest!.turns, w.outcomes[w.worst].turns);
+  assert.deepEqual(w.traces[w.worst].quest, traceFight(sim, quest, [...f2], [...b2], { seed: fightSeed(1, w.worst) }));
+  assert.equal(w.traces[w.worst].quest!.won, w.outcomes[w.worst].won);
+  assert.equal(w.traces[w.worst].quest!.turns, w.outcomes[w.worst].turns);
   // the same 20 fights as an evaluation of 20 (seeds fightSeed(1, 0..19)): same win rate, same average grade
   const [f3, b3] = party();
   const ev = evaluate(sim, quest, [...f3], [...b3], 20);
@@ -128,11 +128,12 @@ test("traceWorst (a map run): the worst run's rooms, each fought room traced", (
   const spec = { id: 1, prestigeLevel: 0, grade: 3 };
   const w = traceWorst(sim, { map: { spec, scrolls: [] } }, [...f], [...b], 4);
   assert.equal(w.outcomes.length + w.errors, 4);
-  assert.ok(w.map && w.map.length > 0);
+  const map = w.traces[w.worst].map;
+  assert.ok(map && map.length > 0);
   const [f2, b2] = party();
   const again = traceMapRun(sim, spec, [...f2], [...b2], { seed: fightSeed(1, w.worst) });
-  assert.deepEqual(w.map, again);
-  assert.equal(w.map!.filter((r) => r.trace).length > 0, true);
+  assert.deepEqual(map, again);
+  assert.equal(map!.filter((r) => r.trace).length > 0, true);
   assert.throws(() => traceWorst(sim, {}, [...f], [...b], 1), /nothing to simulate/);
 });
 
@@ -148,7 +149,7 @@ test("the worker answers a worst-of request with its id; an error carries the id
     assert.ok(r.ok && r.kind === "worst", JSON.stringify(r).slice(0, 200));
     assert.equal(r.id, 7);
     assert.equal(r.runs.outcomes.length, 5);
-    assert.ok(r.runs.quest);
+    assert.ok(r.runs.traces[0].quest);
     // structured-cloneable (it crosses the worker boundary)
     assert.deepEqual(structuredClone(r.runs), r.runs);
     const bad = await runBattle({ gameMode: "Standard", front, back, n: 2, worst: true, id: 8, quest: { id: 999999, rare: false, amount: 1 } });
@@ -206,9 +207,10 @@ test("a run still going is dropped for a newer one; a stale answer is ignored", 
   assert.equal(page.match(/cancelRuns\(\);\n\s*shown = null;\n\s*runError = null;/g)?.length, 3, "no fight, a new save, Forget");
 });
 
-test("the chart and the cards: the worst run; a hero changed since shows its own stats", () => {
+test("the chart and the cards: the picked run (U74; U70: the worst); a hero changed since shows its own stats", () => {
   const shown = fn(page, "drawShown");
-  assert.match(shown, /showHp\(\[\{ trace: runs\.quest, enemy: /);
+  assert.match(shown, /const run = pickedTrace\(runs, pickNow\(\)\);/);
+  assert.match(shown, /showHp\(\[\{ trace: run\.quest, enemy: /);
   assert.match(shown, /showHp\(rooms\.flatMap/);
   assert.match(fn(page, "showHp"), /chartHeroes = new Map\(members\.map\(\(m\) => \[locationOf\(m\.row, m\.i\), m\.idx\]\)\);/);
   assert.match(fn(page, "paintTurn"), /const inFight = at && now && inc\.has\(key\) && chartHeroes\.get\(w\) === idx;/);

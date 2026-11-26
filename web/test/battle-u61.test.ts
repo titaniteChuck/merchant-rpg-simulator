@@ -122,12 +122,12 @@ test("the chart reads a trace's turn ends; run 0 of the worst-of runs is Simulat
   const [f, b] = party();
   const again = traceFight(sim, 72, [...f], [...b], { seed: fightSeed(1, 0) });
   assert.deepEqual(hpData([{ trace: again, enemy: "Odin" }], fighters), d);
-  // battle-page.ts (U70): the chart draws the worker's worst run, never a fight of its own
+  // battle-page.ts (U70): the chart draws one of the worker's runs (U74: the picked one), never a fight of its own
   const show = fn(page, "showHp");
   assert.doesNotMatch(show, /trace(Fight|MapRun)|new Sim/, "the chart never simulates");
   assert.match(show, /chart = runs \? hpData\(runs, fighters\) : null;/);
   // U73: and the step within the turn, its arrows and the sticky host of the turn and step controls
-  assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost\(\) \}\);/);
+  assert.match(show, /drawHpChart\(box, chart, \{ hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost\(\),\s*pick: /);
   assert.match(fn(page, "drawShown"), /showHp\(rooms\.flatMap\(\(r, k\): HpRun\[\] => \(r\.trace \? \[\{ trace: r\.trace,/, "a map run: every fought room");
   // the box: made once in its column (U65: #hp-col, the first row; U62: the third column; until then #opp-col)
   assert.match(fn(page, "hpBox"), /col\.querySelector<HTMLElement>\("#hp-chart"\)/);

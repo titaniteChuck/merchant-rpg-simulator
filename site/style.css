@@ -1148,13 +1148,6 @@ a.xp-badge:hover, a.xp-badge:focus-visible { background: var(--card-2); }
 .solver-table button { white-space: nowrap; }
 .solver-table button.loaded { border-color: var(--accent); }
 .solver-table button[disabled] { opacity: 0.45; cursor: not-allowed; }
-.solver-party { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.solver-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.solver-row .row-ico { width: 1.4em; text-align: center; }
-.solver-party .hero-chip { font-size: 0.75rem; padding: 1px 8px; }
-.solver-party .rough { align-self: flex-start; font-size: 0.7rem; cursor: help; }
-.solver-scrolls { font-size: 0.82rem; }
-.solver-table .no-scrolls { font-size: 0.7rem; white-space: nowrap; cursor: help; }
 .solver-loaded { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .party-problem { margin: 0 0 8px; }
 /* plan: what the enemy does to the heroes */
@@ -1480,11 +1473,6 @@ ul.cards-other > li p { font-size: 0.85rem; margin-bottom: 0; }
 .empty-slots > .fc + .fc { margin-top: 14px; }
 /* F34: one status line over the solver's table. */
 .solve-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
-/* F35: the row icon stays on its first chip's line; "rough" with its "?". */
-.solver-lead { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.solver-row .solver-lead .row-ico { width: auto; }
-.rough-wrap { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; }
-.solver-party .rough-wrap .rough { font-size: 0.7rem; }
 /* end r2-c */
 
 /* profit p1: options at two columns on a phone; segmented grade / who pays; first column sticky on narrow tables */
@@ -2470,3 +2458,19 @@ button.wiz-choice { width: 100%; font-weight: inherit; line-height: inherit; }
 /* The Simulator's panel holds only the opponent now: no rule under it. */
 .run-box > .opp-row:last-child { padding-bottom: 0; border-bottom: 0; }
 /* end U72 */
+/* U74 */
+/* The Solver's Party cell: a small table, rows Back / Front / Scrolls, a cell per hero (its class colour as the
+   background: 30% over the pill base, --fg text, AA in both themes) or per scroll; an empty line one "–" cell. The
+   result table's own cell rules (padding, a shown row's gold) don't reach it. */
+.solver-table .solver-party { width: auto; border-collapse: separate; border-spacing: 2px; font-size: 0.78rem; margin: -2px; }
+.solver-table .solver-party th, .solver-table .solver-party td {
+  position: static; padding: 1px 7px; border: 0; border-radius: 6px; white-space: nowrap; line-height: 1.35; }
+.solver-table .solver-party th { padding-left: 0; background: none; color: var(--muted); font-size: 0.7rem; font-weight: 700; }
+.solver-table .solver-party td.sp-hero, .solver-table tr.loaded .solver-party td.sp-hero {
+  color: var(--fg); font-weight: 650; background: color-mix(in srgb, var(--c, var(--accent)) 30%, var(--pill-base)); }
+.solver-table .solver-party td.sp-scroll, .solver-table tr.loaded .solver-party td.sp-scroll { background: var(--card-2); }
+.solver-table .solver-party td.sp-none, .solver-table tr.loaded .solver-party td.sp-none { background: none; color: var(--muted); }
+/* The Simulator's run picker (Worst / Random / Best) in the chart's head, beside its tabs. */
+.hp-head > .hp-pick { margin: 0 0 4px; }
+.hp-pick .seg-opt { padding: 2px 10px; font-size: 0.78rem; }
+/* end U74 */

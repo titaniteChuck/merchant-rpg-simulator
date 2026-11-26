@@ -8,8 +8,10 @@
  * - solveShortlist(): the solver's results worth showing: no 0 % result, within 25 % of the best (win and score), at
  *   most 5; U72 order (compareSolutions): win rate, then fewest heroes dead, then most life left, then fewest scrolls.
  * - includedSlots(): which filled slots fight, from the hero cards' include boxes and the opponent's size cap.
- * - solveStatus(), sizeHelp(), ROUGH_HELP (R2 F31, F34, F35): the Solver's texts, its one status line and its "?"s.
- * - solverFigures() (U51): a Solver row's grade, life left and heroes dead, from the setup's evaluation.
+ * - solveStatus(), sizeHelp() (R2 F31, F34): the Solver's texts, its one status line and its "?"s (U74: no "rough" chip,
+ *   ROUGH_HELP deleted).
+ * - solverFigures() (U51): a Solver row's grade, life remaining (U74 lifeRemaining) and heroes dead, from the setup's
+ *   evaluation; partyLines() (U74): its Party cell's Back / Front / Scrolls lines.
  */
 import { G } from "../sim/data.ts";
 import { Enemy } from "../sim/enemy.ts";
@@ -95,35 +97,69 @@ const GRADE_ABC = ["D", "C", "B", "A", "S"];
 /**
  * U51: a Solver row's grade, life left and heroes dead, from what the evaluation already measured (combat.ts
  * evaluate / evaluateMap): `grade` the average grade of the won fights or runs as a letter (null when none was won),
- * `gradeAvg` that average (1 = D … 5 = S); `life` the party's HP left at the end, as a share of its max HP (fallen
- * heroes count 0), on average; `dead` the heroes down at the end, on average (the sum of the heroes' death rates), of
- * `size` heroes.
+ * `gradeAvg` that average (1 = D … 5 = S); `life` the life remaining (U74, lifeRemaining: the average HP left of the
+ * heroes still standing at the end, fallen heroes left out; null when nobody ever stands; U51 to U73: the party's HP
+ * over its max HP, fallen heroes counting 0); `dead` the heroes down at the end, on average (the sum of the heroes'
+ * death rates), of `size` heroes.
  */
-export function solverFigures(ev: { win: number; grade: number; hp_left: number; heroes: Record<string, { death_rate: number }> }):
-  { grade: string | null; gradeAvg: number; life: number; dead: number; size: number } {
+export function solverFigures(ev: { win: number; grade: number; heroes: Record<string, LifeHero> }):
+  { grade: string | null; gradeAvg: number; life: number | null; dead: number; size: number } {
   const heroes = Object.values(ev.heroes ?? {});
   const won = ev.win > 0 && ev.grade > 0;
   return {
     grade: won ? GRADE_ABC[Math.min(4, Math.max(0, Math.round(ev.grade) - 1))] : null,
     gradeAvg: won ? ev.grade : 0,
-    life: Math.max(0, Math.min(1, Number(ev.hp_left) || 0)),
+    life: lifeRemaining(ev),
     dead: heroes.reduce((a, h) => a + (Number(h.death_rate) || 0), 0),
     size: heroes.length,
   };
 }
 
-/** U72: a solution's figures the order reads (an evaluation without heroes or hp_left counts as none dead, no life). */
-type Ranked = { ev: { win: number; hp_left?: number; heroes?: Record<string, { death_rate: number }> }; scrolls?: readonly number[] | null };
+/** U74: what lifeRemaining reads of a hero's evaluation (combat.ts HeroEval). */
+export type LifeHero = { death_rate: number; hp_left_frac?: number };
+
+/**
+ * U74: life remaining, the Simulator's "Life left" (worst-run.ts runStats) from an evaluation: the average HP left, as a
+ * share of max HP, of every hero still standing at the end of every fight or run (fallen heroes left out). The
+ * evaluation already has each hero's HP share at the end averaged over the runs with a fall as 0 (`hp_left_frac`) and
+ * its death rate, so it is Σ hp_left_frac / Σ (1 − death_rate): the standing heroes' HP shares over their count.
+ * Null when nobody ever stands (or no heroes). The engine's own `hp_left` (the party's HP over its max HP, a fall
+ * counting 0; the search's score uses it) is left as it is.
+ */
+export function lifeRemaining(ev: { heroes?: Record<string, LifeHero> }): number | null {
+  const heroes = Object.values(ev.heroes ?? {});
+  const standing = heroes.reduce((a, h) => a + Math.max(0, 1 - (Number(h.death_rate) || 0)), 0);
+  if (standing < 1e-9) return null;
+  const hp = heroes.reduce((a, h) => a + Math.max(0, Number(h.hp_left_frac) || 0), 0);
+  return Math.max(0, Math.min(1, hp / standing));
+}
+
+/**
+ * U74: a Solver result's Party cell, three lines: the back row's heroes, the front row's (each in slot order, empty
+ * slots left out), then the scrolls the run uses (repeats kept; none on a quest). An empty line has no ids.
+ */
+export function partyLines(c: { layout: { front: readonly (number | null)[]; back: readonly (number | null)[] }; scrolls?: readonly number[] | null }):
+  { label: "Back" | "Front" | "Scrolls"; kind: "hero" | "scroll"; ids: number[] }[] {
+  const heroes = (row: readonly (number | null)[]) => row.filter((id): id is number => id !== null);
+  return [
+    { label: "Back", kind: "hero", ids: heroes(c.layout.back) },
+    { label: "Front", kind: "hero", ids: heroes(c.layout.front) },
+    { label: "Scrolls", kind: "scroll", ids: [...(c.scrolls ?? [])] },
+  ];
+}
+
+/** U72: a solution's figures the order reads (an evaluation without heroes counts as none dead, no life). */
+type Ranked = { ev: { win: number; heroes?: Record<string, LifeHero> }; scrolls?: readonly number[] | null };
 
 /**
  * U72: the Solver's order of two solutions: the higher win rate first (100 % first), then the fewest heroes dead on
- * average, then the most life left (the party's HP at the end): the best run wins every time, nobody dies and it ends
- * at full health. Then the fewest scrolls (none first, E25); a tie is 0, so a stable sort keeps the solver's own order
- * (the fewest heroes, then its score).
+ * average, then the most life remaining (U74: lifeRemaining, the shown "Life remaining"; none standing counts 0): the
+ * best run wins every time, nobody dies and it ends at full health. Then the fewest scrolls (none first, E25); a tie is
+ * 0, so a stable sort keeps the solver's own order (the fewest heroes, then its score).
  */
 export function compareSolutions(a: Ranked, b: Ranked): number {
   const dead = (c: Ranked) => Object.values(c.ev.heroes ?? {}).reduce((n, h) => n + (Number(h.death_rate) || 0), 0);
-  const life = (c: Ranked) => Math.max(0, Math.min(1, Number(c.ev.hp_left) || 0));
+  const life = (c: Ranked) => lifeRemaining(c.ev) ?? 0;
   const near = (x: number) => (Math.abs(x) < 1e-9 ? 0 : x);
   return near(b.ev.win - a.ev.win) || near(dead(a) - dead(b)) || near(life(b) - life(a)) || scrollCount(a) - scrollCount(b);
 }
@@ -231,14 +267,6 @@ export function effectiveDamage(ev: { heroes: Record<string, { dmg: number }>; e
 }
 
 // ---------------------------------------------------------------- R2: the Solver's texts (F31, F34, F35)
-/**
- * R2 F35: what a "rough" setup is (PartyConfig.tuned false, tools/parties.ts): it got only the quick screening with
- * the default layout, never the tuning of rows, order, rotations and scrolls.
- */
-export const ROUGH_HELP = "Rough: only screened, not tuned. Its rows are the default ones (the sturdiest heroes in front) and each hero plays "
-  + "its own rotation and passive, on a quick evaluation with fewer fights. The solver tunes a party size only once it comes near winning, "
-  + "so this size was far from winning, or the time ran out before its turn. Show it to tune it by hand, or solve again with more time.";
-
 /** R2 F31: the "?" of the "Party 1 – 5" sizes: what they are, and the opponent's limit (`cap` heroes, 6 = none). */
 export function sizeHelp(cap: number): string[] {
   return ["The smallest and the largest party to try: parties grow one hero at a time from the smallest.",

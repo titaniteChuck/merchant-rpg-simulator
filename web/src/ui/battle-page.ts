@@ -25,8 +25,9 @@
  *
  * U70: Flow 2, Flow 3 and their tabs are gone: the Party view is the only view. No Simulate button, runs count or result
  * tiles: every change that matters to the fight (party, rotations, passives, opponent, map, scrolls) runs WORST_RUNS
- * traced runs in the worker (debounced; a newer change drops the run on its way), and the chart and the cards show the
- * worst of them (tools/worst-run.ts). On the Simulator, four sticky figures over the runs sit between the Simulate
+ * traced runs in the worker (debounced; a newer change drops the run on its way), and the chart and the cards show one
+ * of them (tools/worst-run.ts; U74: the run picker's, Worst / Random / Best, Random the first run, on the Simulator;
+ * the first run on the Solver; U70: the worst). On the Simulator, four sticky figures over the runs sit between the Simulate
  * panel and the party (#sim-stats: win rate, grade when won, heroes dead, life left).
  * U73: `‹ Turn X ›` and `‹ <actor> k/n ›` (the turn's actions in game order) in #hp-nav, sticky under the figures; at a
  * step the cards show the state right after that action (turnView), the actor's card marked.
@@ -43,7 +44,9 @@ import { dataJson, dataWorker } from "./data-files.ts";
 import { G } from "../sim/data.ts";
 import { maxQuestAmount } from "../tools/combat.ts";
 import type { MapSpec, Scroll } from "../tools/engine.ts";
-import { gradeLetter, type RunStats, runStats, WORST_RUNS, type WorstRuns } from "../tools/worst-run.ts";
+import {
+  DEFAULT_PICK, gradeLetter, parsePick, pickedTrace, type RunPick, type RunStats, runStats, WORST_RUNS, type WorstRuns,
+} from "../tools/worst-run.ts";
 import { loadSaveText, type Save } from "../tools/save.ts";
 import type { BattleRequest, BattleResponse, SkillChoice } from "./battle-worker.ts";
 import { $, el, expansionMark, fmt1, heroAsc, lv, lvStart, pct, rateTone, select, toast } from "./dom.ts";
@@ -901,15 +904,38 @@ function startRuns(next: AutoRun): void {
   worker.postMessage({ ...next.req, id });
 }
 
-/** The shown runs' worst one in the chart (and so the cards), names in the language of the moment. */
+/** U74: the run picker's remembered choice (localStorage, this browser only). */
+const PICK_KEY = "battle-run-pick";
+let runPick: RunPick = (() => {
+  try {
+    return parsePick(localStorage.getItem(PICK_KEY));
+  } catch {
+    return DEFAULT_PICK;
+  }
+})();
+
+/** U74: the run the chart and cards show: the picker's on the Simulator, the first run (Random) on the Solver. */
+const pickNow = (): RunPick => (state.mode.key === "simulate" ? runPick : DEFAULT_PICK);
+
+/** U74: the picker changed: another of the shown runs, drawn again (nothing runs again), and the choice remembered. */
+function setPick(p: RunPick): void {
+  runPick = p;
+  try {
+    localStorage.setItem(PICK_KEY, p);
+  } catch { /* storage blocked: the choice lasts this page view */ }
+  drawShown();
+}
+
+/** The shown runs' picked one (U74; U70: the worst) in the chart (and so the cards), names in the language of the moment. */
 function drawShown(): void {
   if (!shown) return;
   const { req, runs, members } = shown;
-  if (req.quest && runs.quest) {
+  const run = pickedTrace(runs, pickNow());
+  if (req.quest && run?.quest) {
     const t = req.quest;
-    showHp([{ trace: runs.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members);
-  } else if (runs.map) {
-    const rooms = runs.map;
+    showHp([{ trace: run.quest, enemy: enemyName(String(t.id), t.rare) ?? "Enemy", quest: { id: t.id, rare: t.rare } }], members);
+  } else if (run?.map) {
+    const rooms = run.map;
     const tabs = mapRoomTabs(rooms, (id, rare) => enemyName(String(id), rare));
     // U61: every fought room of the run, in map order.
     showHp(rooms.flatMap((r, k): HpRun[] => (r.trace ? [{ trace: r.trace, enemy: enemyName(String(r.questId), r.isRare) ?? r.name, room: tabs[k].label,
@@ -986,7 +1012,7 @@ function navHost(): HTMLElement | null {
 }
 
 /**
- * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U70: the worst of the
+ * U61: draw the HP chart from traced fight(s): one quest fight, or a map run's fought rooms (U74: the picked one of the
  * shown runs). Only the chart's box is replaced. `runs` null: the empty line; `hide`: none.
  */
 function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): void {
@@ -1001,7 +1027,8 @@ function showHp(runs: HpRun[] | null, members: ChartMember[], hide = false): voi
   turnAt = chart ? pickStep(chart, turnPick) : 0;
   if (chart) turnPick = { run: chart.steps[turnAt].run, turn: chart.steps[turnAt].turn };
   stepAt = null; // U73: a new trace shows the turn's end
-  if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost() });
+  if (box) drawHpChart(box, chart, { hide, selected: turnAt, onSelect: selectTurn, step: stepAt, onStep: selectStep, nav: navHost(),
+    pick: state.mode.key === "simulate" ? { value: runPick, onPick: setPick } : null });
   paintTurn();
 }
 

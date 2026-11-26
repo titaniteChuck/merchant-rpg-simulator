@@ -25,9 +25,10 @@ const MAP = 22; // Grimal-Frentir Map, level 52
 const TITAN = 20; // prefix: enemy HP bonus
 
 // ---------------------------------------------------------------- 1. the Solver's order
-type Sol = { name: string; ev: { win: number; hp_left: number; heroes: Record<string, { death_rate: number }> }; score: number; scrolls?: number[] | null };
+type Sol = { name: string; ev: { win: number; heroes: Record<string, { death_rate: number; hp_left_frac: number }> }; score: number; scrolls?: number[] | null };
+/** U74: `life` is the life remaining (the standing heroes' average): each hero's HP share, a fall counting 0, is life × (1 − its death rate). */
 const sol = (name: string, win: number, dead: number[], life: number, scrolls: number[] | null = null, score = 1000): Sol => ({
-  name, ev: { win, hp_left: life, heroes: Object.fromEntries(dead.map((d, k) => [String(k), { death_rate: d }])) }, score, scrolls,
+  name, ev: { win, heroes: Object.fromEntries(dead.map((d, k) => [String(k), { death_rate: d, hp_left_frac: life * (1 - d) }])) }, score, scrolls,
 });
 const names = (r: { name: string }[]) => r.map((x) => x.name);
 
@@ -54,8 +55,8 @@ test("compareSolutions: then the fewest scrolls (none first); a full tie is 0 (t
   assert.equal(compareSolutions(sol("x", 0.8, [0.2], 0.5, [1]), sol("y", 0.8, [0.2], 0.5, [2])), 0);
   // float noise is a tie, not an order
   assert.equal(compareSolutions(sol("x", 0.1 + 0.2, [0], 1), sol("y", 0.3, [0], 1)), 0);
-  // an evaluation without heroes or hp_left: none dead, no life
-  assert.equal(compareSolutions({ ev: { win: 1 } }, { ev: { win: 1, hp_left: 0, heroes: {} } }), 0);
+  // an evaluation without heroes: none dead, no life
+  assert.equal(compareSolutions({ ev: { win: 1 } }, { ev: { win: 1, heroes: {} } }), 0);
 });
 
 test("solveShortlist: the U72 order before the cut to 5; the 25 % window unchanged", () => {

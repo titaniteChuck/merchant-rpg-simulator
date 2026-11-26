@@ -677,7 +677,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
   `battle-setup.ts`, `battle-search.ts`, `site/battle.html`, `site/solver.html`; tests `web/test/battle-u72.test.ts`, the
   v4, R2-C, U48, U65, U66 and U70 tests updated; CSS in the `U72` block, the last one of `style.css`):
   - The Solver's order (`compareSolutions`, pure, used by `solveShortlist`): the highest win rate first (100 % first),
-    then the fewest heroes dead on average (the sum of the heroes' death rates), then the most life left (`hp_left`),
+    then the fewest heroes dead on average (the sum of the heroes' death rates), then the most life left (`hp_left`; U74: `lifeRemaining`),
     then the fewest scrolls (E25), then the solver's own order (a stable sort: the fewest heroes, then its score).
     The best solution wins every time, nobody dies and it ends at full health. Differences under 1e-9 are ties. The 25 %
     window and the cut to 5 are unchanged; the order is applied before the cut. U36's "winners (90 % or more) first"
@@ -749,7 +749,7 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     engine's own result: `traceFightRun` / `traceMapRunResult` in `fight-trace.ts` return it beside the trace). A map
     run the game's code fails on is left out (as `evaluateMap`). The engine and its results are unchanged: the 20
     outcomes give the same win rate and grade as `evaluate(..., 20)`.
-  - The chart and the cards show the worst run. Until an answer comes the chart and cards keep the shown runs; a card
+  - The chart and the cards show the worst run (U74: the run picker's, Random the first run by default). Until an answer comes the chart and cards keep the shown runs; a card
     whose place now holds another hero (or an enemy card whose quest enemy changed) shows its own stats instead of the
     old fight's (`chartHeroes`, `paintTurn`, `drawEnemyCard`). With nothing shown yet, the chart's empty line.
   - The figures (the Simulator only, `#sim-stats`, a child of `#setup` between the Simulate panel's section and the
@@ -810,6 +810,47 @@ Two pages since U41, one code: the Simulator, `site/battle.html` + entry `web/sr
     row and outcome (so the last step reads exactly as the turn's end), the actor told apart by its ringed card; an
     edit goes back to the turn's end rather than keep a step whose actions may have changed; no keyboard shortcut for
     the steps (the arrows are buttons in the tab order).
+
+- U74, the run shown and the Solver's results (the Simulator and the Solver; `web/src/tools/worst-run.ts`,
+  `web/src/ui/battle-page.ts`, `hp-chart.ts`, `battle-setup.ts`, `battle-search.ts`, `battle-worker.ts` (a comment);
+  tests `web/test/battle-u74.test.ts`, the U51, U61, U70, U72 and R2-C tests updated; CSS in the `U74` block, the last
+  one of `style.css`):
+  - The run picker (the Simulator only): "Worst" / "Random" / "Best", a segmented control (`runPicker`, `.hp-pick`, a
+    radiogroup "Run shown": Tab enters on the checked option, the arrow keys move the choice) in the chart's head
+    beside the HP · Damage dealt · Heals tabs. Random is the first run (run index 0, nothing chooses it) and the
+    default; Worst is U70's worst run (`compareRuns`); Best the same order reversed (`bestRun`: a win before any loss,
+    the highest grade, then the fewest heroes down, then the most life left on the survivors; among losses the one
+    that gets furthest; a tie keeps the earlier run). Remembered in this browser (localStorage `battle-run-pick`, read
+    and written in try / catch; `parsePick`: anything else is Random). The Solver has no picker: its chart after Show
+    draws the first run (`pickNow`), as the Simulator's default.
+  - Switching never runs again: `traceWorst` keeps the traces of the first, the worst and the best run (`traces`, by
+    run index; at most 3 kept, at most 4 held while tracing), and a pick draws one of them (`pickedRun`,
+    `pickedTrace`; `setPick` calls `drawShown` only). The pick is not in the runs' key (`autoRun`), so the same fight
+    keeps its runs. Memory: three traces instead of one (U70), not twenty. The worker's request and answer keep U70's
+    names (`worst: true`, kind "worst"); stale-run cancellation unchanged.
+  - The figures (unchanged, checked): Win rate, Grade when won, Avg heroes dead and Life left are over all 20 runs
+    (`runStats` over every outcome), Life left the average HP left of every hero still standing at the end, pooled
+    over the runs, the fallen left out. The report "70 % Life left while the chart showed heroes dead or nearly
+    dead" was the worst run (the chart, U70) against the 20 runs' figures: nothing was wrong.
+  - The Solver's Party cell is a small table (`partyLines`, `.solver-party`): rows Back, Front (heroes in slot order,
+    empty slots left out) and Scrolls (repeats kept, wiki links), a cell per hero or scroll, the row names muted. A
+    hero's cell has its class colour as the background (30 % over `--pill-base`, `--fg` text: 6.9:1 at least, every
+    class, both themes; a shown row's gold doesn't reach it), its name and level in the tooltip. An empty line (no
+    scrolls, a quest) is one "–" cell, so every result is three lines high. Gone: the 🛡️ / 🏹 row icons, the hero
+    chips, the "rough" chip and its "?" (`ROUGH_HELP` deleted), the Scrolls column ("No scrolls" pill) and the
+    Progress column (a map run's rooms cleared); a quest keeps Turns.
+  - "Life remaining" (was "Life"): `lifeRemaining`, the average HP left of the heroes still standing at the end,
+    from the evaluation: Σ `hp_left_frac` / Σ (1 − `death_rate`) over the heroes (a fall's HP share is 0, so this is
+    the standing heroes' shares over their count), the Simulator's Life left from the same runs (a test checks both
+    on the same 20 seeds). "–" when nobody ever stands. Until U74 it was the engine's `hp_left` (the party's HP over its
+    max HP, a fall counting 0), which the search's score still uses (the engine and its results unchanged).
+    `compareSolutions`' "most life left" reads `lifeRemaining` (none standing: 0); `solverFigures().life` is it too.
+  - User decision recorded: the cards' stat modifiers keep counting the passive's and the gear's % (and every other
+    lasting part), not only temporary buffs and debuffs (U67 / U71 as they are).
+  - Judgement calls: Random is run 0 (a fixed seed: the same party shows the same run, nothing random per view);
+    the Solver keeps Turns for a quest (only Progress was asked out); a hero's slot position isn't shown in the
+    Party cell (empty slots are left out, as the chips did); the Solver's Show has no picker (Random only); the
+    worker's message names stay U70's.
 
 - U66, the Party view's chart, second pass (the Simulator and the Solver; `web/src/ui/hp-chart.ts`, `battle-page.ts`,
   `site/battle.html`; tests `web/test/battle-u66.test.ts`, the U61, U65 and U48 tests updated; CSS in the `U66` block,

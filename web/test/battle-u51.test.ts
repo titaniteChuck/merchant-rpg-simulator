@@ -15,18 +15,24 @@ const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const search = read("web/src/ui/battle-search.ts");
 
 // ---------------------------------------------------------------- 1. the Solver's rows
-test("solverFigures: the grade letter of the won fights, life left, heroes dead (sum of death rates)", () => {
-  const ev = { win: 0.8, grade: 3.6, hp_left: 0.42, heroes: { f0: { death_rate: 0.5 }, b0: { death_rate: 0.25 }, b1: { death_rate: 0 } } };
-  assert.deepEqual(solverFigures(ev), { grade: "A", gradeAvg: 3.6, life: 0.42, dead: 0.75, size: 3 });
+test("solverFigures: the grade letter of the won fights, life remaining, heroes dead (sum of death rates)", () => {
+  // U74: life remaining = the standing heroes' HP shares over their count: (0.2 + 0.3 + 0.55) / (0.5 + 0.75 + 1) = 1.05 / 2.25
+  const ev = { win: 0.8, grade: 3.6, heroes: { f0: { death_rate: 0.5, hp_left_frac: 0.2 }, b0: { death_rate: 0.25, hp_left_frac: 0.3 },
+    b1: { death_rate: 0, hp_left_frac: 0.55 } } };
+  const life = 1.05 / 2.25;
+  const f0 = solverFigures(ev);
+  assert.ok(Math.abs(f0.life! - life) < 1e-12);
+  assert.deepEqual({ ...f0, life: 0 }, { grade: "A", gradeAvg: 3.6, life: 0, dead: 0.75, size: 3 });
   // never won: no grade
-  assert.deepEqual(solverFigures({ ...ev, win: 0, grade: 0 }), { grade: null, gradeAvg: 0, life: 0.42, dead: 0.75, size: 3 });
+  assert.deepEqual({ ...solverFigures({ ...ev, win: 0, grade: 0 }), life: 0 }, { grade: null, gradeAvg: 0, life: 0, dead: 0.75, size: 3 });
   // the letters D (1) to S (5), clamped
   assert.equal(solverFigures({ ...ev, grade: 1 }).grade, "D");
   assert.equal(solverFigures({ ...ev, grade: 4.5 }).grade, "S");
   assert.equal(solverFigures({ ...ev, grade: 9 }).grade, "S");
-  // life stays a share
-  assert.equal(solverFigures({ ...ev, hp_left: 1.2 }).life, 1);
-  assert.equal(solverFigures({ ...ev, hp_left: Number.NaN }).life, 0);
+  // life stays a share; nobody standing: none
+  assert.equal(solverFigures({ ...ev, heroes: { f0: { death_rate: 0, hp_left_frac: 1.2 } } }).life, 1);
+  assert.equal(solverFigures({ ...ev, heroes: { f0: { death_rate: 0, hp_left_frac: Number.NaN } } }).life, 0);
+  assert.equal(solverFigures({ ...ev, heroes: { f0: { death_rate: 1, hp_left_frac: 0 } } }).life, null);
 });
 
 test("solverFigures on a real evaluation: the figures the search already measured", () => {
@@ -38,17 +44,20 @@ test("solverFigures on a real evaluation: the figures the search already measure
   const f = solverFigures(ev);
   assert.equal(f.size, 6);
   assert.ok(f.dead >= 0 && f.dead <= 6);
-  assert.equal(f.life, ev.hp_left);
+  // U74: the standing heroes' average, not the engine's party share (hp_left, where a fall counts 0)
+  const heroes = Object.values(ev.heroes);
+  const standing = heroes.reduce((a, h) => a + 1 - h.death_rate, 0);
+  if (standing > 0) assert.ok(Math.abs(f.life! - heroes.reduce((a, h) => a + h.hp_left_frac, 0) / standing) < 1e-12);
+  else assert.equal(f.life, null);
   assert.equal(f.grade === null, !(ev.win > 0));
 });
 
-test("the Solver's table: Win, Grade, Turns or Progress, Life, Dead; short heads with their tooltips", () => {
+test("the Solver's table: Win, Grade, Turns (a quest), Life remaining, Dead; heads with their tooltips", () => {
   const paint = search.slice(search.indexOf("const paint = () =>"), search.indexOf("if (!res.results.length)"));
-  assert.match(paint, /const head = \["", "Party", \.\.\.\(isMap \? \["Scrolls"\] : \[\]\), "Win", "Grade", isMap \? "Progress" : "Turns", "Life", "Dead"\];/);
+  // U74: no Scrolls or Progress column, "Life remaining" (was "Life")
+  assert.match(paint, /const head = \["", "Party", "Win", "Grade", \.\.\.\(isMap \? \[\] : \["Turns"\]\), "Life remaining", "Dead"\];/);
   assert.match(paint, /const f = solverFigures\(ev\);/);
   assert.match(paint, /gradeBadge\(f\.grade\)/);
   assert.match(paint, /pct\(f\.life, 0\)/);
-  for (const h of ["Grade", "Life", "Dead"]) assert.match(search, new RegExp(`  "${h}": "`), `${h} has a tooltip`);
-  // every head at most 8 letters (375 px)
-  for (const h of ["Party", "Scrolls", "Win", "Grade", "Progress", "Turns", "Life", "Dead"]) assert.ok(h.length <= 8);
+  for (const h of ["Grade", "Life remaining", "Dead"]) assert.match(search, new RegExp(`  "${h}": "`), `${h} has a tooltip`);
 });

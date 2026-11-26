@@ -40,7 +40,7 @@ export interface BattleRequest {
   n: number;
   quest?: { id: number; rare: boolean; amount: number };
   map?: { spec: MapSpec; scrolls: Scroll[] };
-  /** U70: trace the n runs and answer with the worst one's trace and every run's outcome (kind "worst"). */
+  /** U70: trace the n runs and answer with every run's outcome and (U74) the first, worst and best run's traces (kind "worst"). */
   worst?: boolean;
   /** U70: echoed in the answer, so the page can tell a stale answer. */
   id?: number;

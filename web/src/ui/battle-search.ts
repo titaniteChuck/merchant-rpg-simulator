@@ -19,14 +19,14 @@
  *
  * U36: the results table shows only the setups worth trying (battle-setup.ts solveShortlist): no 0 % result, within
  * 25 % of the best one found, at most 5. U72 order (compareSolutions): the highest win rate first, then the fewest
- * heroes dead, then the most life left, then the fewest scrolls (E25). A map run's Scrolls cell says "No scrolls" (a
- * pill) or the count and the scrolls.
+ * heroes dead, then the most life left, then the fewest scrolls (E25). (U74: no Scrolls column; the scrolls are the
+ * Party cell's third line.)
  *
  * R2 (mobile review): the sizes on one row, "Party 1 – 5", the opponent's limit in their "?" (F31); Include scrolls only
  * for a map run (F31); Show is the first column and a tap on the row shows too, no hero-count column, a quest's lowest
  * enemy HP under the win rate (F32); one status line, "3 setups ≥ 90 % · 5.0 s", the rest in its "?" (battle-setup.ts
  * solveStatus: a spent time budget is an ordinary end, only Cancel reads as stopped, F34); the row icon inline with its
- * first chip and a "?" on "rough" (F35).
+ * first chip and a "?" on "rough" (F35; U74: both gone with the chips).
  *
  * Expansions (U28): heroes of a hidden class start as Exclude.
  *
@@ -37,6 +37,11 @@
  *
  * U51: each row also shows the grade (a quest's too), the party's life left and the heroes dead at the end, on average
  * (battle-setup.ts solverFigures, from the setup's evaluation): Win, Grade, Turns or Progress, Life, Dead.
+ *
+ * U74: the Party cell is a small table, rows Back / Front / Scrolls (battle-setup.ts partyLines), a cell per hero in
+ * its class colour or per scroll, "–" for an empty line; no "rough" chip, no Scrolls or Progress column; "Life
+ * remaining" is the average HP left of the heroes still standing (battle-setup.ts lifeRemaining), as the Simulator's
+ * Life left.
  */
 import * as api from "../sim/api.ts";
 import type { FightEval, MapEval } from "../tools/combat.ts";
@@ -46,7 +51,7 @@ import type { Save } from "../tools/save.ts";
 import type { SearchRequest, SearchResponse, SkillChoice } from "./battle-worker.ts";
 import { dataWorker } from "./data-files.ts";
 import type { PartyRules } from "./battle-rules.ts";
-import { ROUGH_HELP, scrollCount, sizeHelp, solverFigures, solveShortlist, solveStatus } from "./battle-setup.ts";
+import { partyLines, sizeHelp, solverFigures, solveShortlist, solveStatus } from "./battle-setup.ts";
 import { bar, el, fmt, fmt1, gradeBadge, lv, pct, rateTone, segmented } from "./dom.ts";
 import { heroNames } from "./levelling-view.ts";
 import { className } from "./names.ts";
@@ -166,14 +171,12 @@ const isMapEval = (ev: FightEval | MapEval): ev is MapEval => "cleared" in ev;
 
 /** The solver table's column tooltips (R1 F20: no notes under the table). */
 const HEAD_TIPS: Record<string, string> = {
-  "Party": "The heroes by row (🏹 back, 🛡️ front). Tap a row, or its Show, to put the setup in the Party and Flow tabs.",
-  "Progress": "Rooms cleared per run.",
+  "Party": "The heroes by row (back, front), then the scrolls. Tap a row, or its Show, to put the setup in the Party view.",
   "Win": "Only setups within 25 % of the best one found are listed (never a 0 % one). On a quest a setup that can lose also shows the "
     + "lowest point the enemy's HP reached, on average (0 % = killed).",
   "Grade": "Average grade of the won fights (a map: of the won runs), D to S.",
-  "Life": "The party's HP left at the end, as a share of its max HP (fallen heroes count 0), on average.",
+  "Life remaining": "Average HP left of the heroes still standing at the end (fallen heroes left out).",
   "Dead": "Heroes down at the end, on average.",
-  "Scrolls": "The scrolls the run uses.",
 };
 
 /**
@@ -408,26 +411,20 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
     const box = el("div", { class: "solver-out" });
     // U36: only the setups worth trying (no 0 %, within 25 % of the best, at most 5); E25: the fewest scrolls first in each tier.
     const shown = solveShortlist(res.results);
-    const chip = (id: number) => {
+    // U74: the party as a small table, rows Back / Front / Scrolls (partyLines), one cell per hero (its class colour as
+    // the cell's background) or scroll; an empty line is one "–" cell, so every result is three rows high.
+    const heroCell = (id: number) => {
       const h = hero(id);
-      return el("span", { class: `pill hero-chip cls-${h?.class ?? 0}`, title: h ? `${h.name} · level ${h.level}` : `#${id}` }, h?.name ?? `#${id}`);
+      return el("td", { class: `sp-hero cls-${h?.class ?? 0}`, title: h ? `${h.name} · level ${h.level}` : `#${id}` }, h?.name ?? `#${id}`);
     };
-    // R2 F35: the row icon (with its tooltip) stays on the line of its first chip; "rough" has a "?" saying what it means.
-    const partyCell = (c: PartyConfig) => el("div", { class: "solver-party" },
-      ...(["back", "front"] as const).filter((row) => c.layout[row].some((id) => id !== null)).map((row) => {
-        const [first, ...rest] = c.layout[row].filter((id): id is number => id !== null).map(chip);
-        const what = row === "front" ? "Front row" : "Back row";
-        return el("div", { class: "solver-row" }, el("span", { class: "solver-lead" },
-          el("span", { class: "row-ico", title: what, role: "img", "aria-label": what }, row === "front" ? "🛡️" : "🏹"), first), ...rest);
-      }),
-      ...(c.tuned ? [] : [el("span", { class: "rough-wrap" }, el("span", { class: "pill t-orange rough" }, "rough"), helpTip(ROUGH_HELP, "rough setups"))]));
-    // E25: scroll use at a glance: "No scrolls" (a pill) or the count, then the scrolls.
-    const scrollCell = (c: PartyConfig) => {
-      const n = scrollCount(c);
-      return n
-        ? el("span", { class: "solver-scrolls" }, el("strong", {}, `${n} scroll${n === 1 ? "" : "s"}: `),
-          ...c.scrolls!.flatMap((id, k) => [...(k ? [", "] : []), itemLink("consumable", id)]))
-        : el("span", { class: "pill t-green no-scrolls", title: "This run needs no scrolls." }, "No scrolls");
+    const partyCell = (c: PartyConfig) => {
+      const lines = partyLines(c);
+      const span = Math.max(1, ...lines.map((l) => l.ids.length));
+      return el("table", { class: "solver-party" }, el("tbody", {}, ...lines.map((l) => el("tr", {},
+        el("th", { scope: "row" }, l.label),
+        ...(l.ids.length
+          ? l.ids.map((id) => (l.kind === "scroll" ? el("td", { class: "sp-scroll" }, itemLink("consumable", id)) : heroCell(id)))
+          : [el("td", { class: "sp-none", colspan: String(span) }, "–")])))));
     };
     const showSetup = (c: PartyConfig, k: number) => {
       // The first Show has nothing to put back (no party yet).
@@ -472,9 +469,10 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
           f.dead < 0.05 ? "0" : fmt1.format(f.dead));
         const tr = el("tr", { class: `${st.loaded === k ? "loaded" : ""}${problem ? "" : " row-link"}`.trim() },
           el("td", { class: "solver-show" }, b), el("td", {}, partyCell(c)),
-          ...(isMap ? [el("td", {}, scrollCell(c))] : []), el("td", { class: "num" }, win), el("td", { class: "num" }, grade),
-          el("td", { class: "num" }, isMapEval(ev) ? pct(ev.cleared, 0) : fmt1.format(ev.turns)),
-          el("td", { class: "num" }, pct(f.life, 0)), el("td", { class: "num" }, dead));
+          el("td", { class: "num" }, win), el("td", { class: "num" }, grade),
+          ...(isMapEval(ev) ? [] : [el("td", { class: "num" }, fmt1.format(ev.turns))]),
+          el("td", { class: "num" }, f.life === null ? el("span", { class: "muted", title: "Nobody left standing" }, "–") : pct(f.life, 0)),
+          el("td", { class: "num" }, dead));
         // R2 F32: a tap on the row is Show too (not on its links or buttons).
         if (!problem) tr.addEventListener("click", (e) => {
           if (!(e.target as Element).closest("a, button, summary")) b.click();
@@ -482,9 +480,10 @@ export function initSearch(ctx: SearchContext, mount: HTMLElement, form: HTMLEle
         return tr;
       });
       // R2 F32: Show first (on a phone it is on screen), no hero count (the chips count them), no lowest-enemy-HP column.
-      // U51: Grade, Life and Dead on every row (short heads for a phone; what they mean in their tooltips).
-      const head = ["", "Party", ...(isMap ? ["Scrolls"] : []), "Win", "Grade", isMap ? "Progress" : "Turns", "Life", "Dead"];
-      const nums = new Set(["Win", "Grade", "Turns", "Progress", "Life", "Dead"]);
+      // U51: Grade, Life and Dead on every row (short heads for a phone; what they mean in their tooltips). U74: the
+      // scrolls in the Party cell, no Progress (a map run's rooms cleared), "Life remaining".
+      const head = ["", "Party", "Win", "Grade", ...(isMap ? [] : ["Turns"]), "Life remaining", "Dead"];
+      const nums = new Set(["Win", "Grade", "Turns", "Life remaining", "Dead"]);
       box.replaceChildren(
         // R2 F34: the setup shown is the highlighted row ("✓ Shown"); this line only holds the undo, once there is one.
         ...(st.undo ? [el("p", { class: "result-note solver-loaded" }, st.undo)] : []),

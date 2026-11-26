@@ -3,10 +3,11 @@
 // per-hero table, the Solver's one-row sizes, Show first, folded empty slots, one status line and a "rough" that says
 // what it means; light-mode class badges at AA contrast. Page markup and code are read as text; no DOM. U70: the
 // result tiles, the per-hero table, the Flow's note and the room bar are gone (F24, F25 / F26, F28, F29 with them).
+// U74: the Solver's Party cell is a small table (no row icons, chips or "rough"): F35's test went with it.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ROUGH_HELP, sizeHelp, solveStatus, type SolveRun } from "../src/ui/battle-setup.ts";
+import { sizeHelp, solveStatus, type SolveRun } from "../src/ui/battle-setup.ts";
 import { rulesText } from "../src/ui/battle-rules.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -103,7 +104,7 @@ test("F31: Solver sizes on one row, the limit in their \"?\", scrolls only for a
 });
 
 test("F32: Show is the first column (and a row tap); no Heroes, # or Lowest enemy HP columns", () => {
-  assert.match(search, /const head = \["", "Party", \.\.\.\(isMap \? \["Scrolls"\] : \[\]\), "Win", "Grade", isMap \? "Progress" : "Turns", "Life", "Dead"\];/); // U51: + Grade, Life, Dead
+  assert.match(search, /const head = \["", "Party", "Win", "Grade", \.\.\.\(isMap \? \[\] : \["Turns"\]\), "Life remaining", "Dead"\];/); // U51: + Grade, Life, Dead; U74
   assert.doesNotMatch(search, /"Heroes"|"Lowest enemy HP"|"#"/);
   assert.match(search, /el\("td", \{ class: "solver-show" \}, b\), el\("td", \{\}, partyCell\(c\)\)/);
   assert.match(search, /if \(!\(e\.target as Element\)\.closest\("a, button, summary"\)\) b\.click\(\);/);
@@ -141,15 +142,6 @@ test("F34: one status line; a spent time budget is not a failure, a Cancel says 
   // The page: one line with its "?", no separate stopped / evaluations / searched-in lines.
   assert.doesNotMatch(search, /Stopped early|Searched in|is shown in the Party and Flow tabs below/);
   assert.match(search, /el\("p", \{ class: "small solve-summary", role: "status" \}, s\.line, " ", helpTip\(s\.help, "these results"\)\)/);
-});
-
-test("F35: the row icon is inline with its first chip; \"rough\" has a \"?\" that says what it means", () => {
-  assert.match(search, /el\("span", \{ class: "solver-lead" \},\s*el\("span", \{ class: "row-ico", title: what/);
-  assert.match(search, /helpTip\(ROUGH_HELP, "rough setups"\)/);
-  assert.match(ROUGH_HELP, /not tuned/);
-  assert.match(ROUGH_HELP, /sturdiest heroes in front/);
-  assert.match(ROUGH_HELP, /time ran out/);
-  assert.match(r2c, /\.solver-lead \{[^}]*white-space: nowrap/);
 });
 
 test("kept: the E25 order, the AP limit toast and the Scribe hiding", () => {

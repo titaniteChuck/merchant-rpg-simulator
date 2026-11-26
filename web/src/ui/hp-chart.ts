@@ -1,6 +1,6 @@
 /**
- * U61: the Party view's chart of a traced fight (U70: the worst of the runs battle-page.ts renderPlan asks for; until
- * U70 the Flow tabs drew the same trace).
+ * U61: the Party view's chart of a traced fight (U70: one of the runs battle-page.ts renderPlan asks for, U74: the one the
+ * run picker asks for, Worst / Random / Best, beside the tabs on the Simulator; until U70 the Flow tabs drew the same trace).
  * U65: above the hero and opponent cards, full width; three tabs on one x axis, HP · Damage dealt · Heals; a click,
  * a tap or the arrow keys pick the turn the cards below show (the state at that turn's end, turn 0 the start).
  * U66: one fight tab per fight over the plot, Turn −1 / Turn +1 buttons, per-turn damage and heals, a hero's line
@@ -49,7 +49,8 @@
 import { locationLabel, statusOf, type TimelineChip, type TracedFight, planTimeline } from "./battle-plan.ts";
 import { roomBarWheel, scrollToShow } from "./battle-layout.ts";
 import { stepWrap, type TurnStep, turnSteps } from "./card-turn.ts";
-import { el, fmt, fmtCompact } from "./dom.ts";
+import { el, fmt, fmtCompact, segmented } from "./dom.ts";
+import { parsePick, RUN_PICKS, type RunPick } from "../tools/worst-run.ts";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -578,6 +579,22 @@ export interface ChartOptions {
   step?: number | null;
   /** U73: a step arrow picked step `k` of the selected turn (a turn picked says onSelect: its last step). */
   onStep?: (k: number) => void;
+  /** U74: the run picker (Worst / Random / Best) in the chart's head, the Simulator only; none: no picker. */
+  pick?: RunPickOption | null;
+}
+
+/** U74: the run picker's value and what hears a new one. */
+export interface RunPickOption { value: RunPick; onPick: (p: RunPick) => void }
+
+/**
+ * U74: which of the runs the chart shows (`.hp-pick`, a segmented control: radios, so the arrow keys move the choice
+ * and Tab enters on the checked one), beside the HP · Damage dealt · Heals tabs.
+ */
+export function runPicker(p: RunPickOption): HTMLElement {
+  const seg = segmented("hp-run-pick", "Run shown", RUN_PICKS.map((r) => ({ value: r.id, label: r.label })), p.value,
+    (v) => p.onPick(parsePick(v)));
+  seg.classList.add("hp-pick");
+  return seg;
 }
 
 /** U66: each drawn chart's "bring this into view" (drawHpChart calls it once the chart is in the page). */
@@ -928,7 +945,7 @@ export function hpChart(d: HpChartData, o: ChartOptions = {}): HTMLElement {
     e.preventDefault();
     o.onTab?.(CHART_TABS[to].id);
   });
-  const fig = el("figure", { class: "hp-chart" }, el("div", { class: "hp-head" }, tabs),
+  const fig = el("figure", { class: "hp-chart" }, el("div", { class: "hp-head" }, tabs, ...(o.pick ? [runPicker(o.pick)] : [])),
     el("div", { id: "hp-panel", role: "tabpanel", "aria-label": CHART_TABS.find((t) => t.id === tab)!.label },
       el("p", { id: "hp-sum", class: "visually-hidden" }, summary), scroller, nav, legend, fold));
   revealers.set(fig, reveal);
@@ -954,6 +971,16 @@ export function focusMode(box: HTMLElement): void {
   box.addEventListener("keydown", () => delete box.dataset.pointer, true);
 }
 
+/** U74: `active` is in `box`'s run picker (its focus goes back to the checked option after a redraw). */
+export function inPicker(box: HTMLElement, active: Element | null | undefined): boolean {
+  let picker = false;
+  for (let x: Node | null | undefined = active; x; x = x.parentNode) {
+    if (x === box) return picker;
+    if ((x as Element).classList?.contains("hp-pick")) picker = true;
+  }
+  return false;
+}
+
 /** U73: the selector of the turn or step arrow `active` is, when it is one in `nav`; else null. */
 function navButtonOf(nav: HTMLElement | null | undefined, active: Element | null | undefined): string | null {
   let x: Node | null | undefined = active;
@@ -970,7 +997,9 @@ type DrawOptions = { hide?: boolean; selected?: number; onSelect?: (i: number) =
   /** U73: the step within the selected turn (null: its end) and the step arrows' callback. */
   step?: number | null; onStep?: (k: number) => void;
   /** U73: where the turn and step controls go (the page's sticky host); none: under the plot, in the box. */
-  nav?: HTMLElement | null };
+  nav?: HTMLElement | null;
+  /** U74: the run picker in the head (the Simulator); none: no picker. */
+  pick?: RunPickOption | null };
 /** U65: what each box last drew, its width and selection, to draw it again on a tab change or a resize. */
 const drawn = new WeakMap<HTMLElement, { d: HpChartData | null; o: DrawOptions; width: number }>();
 
@@ -989,7 +1018,8 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
   const tableOpen = fold ? fold.hasAttribute("open") : false;
   const active = (globalThis.document as Document | undefined)?.activeElement;
   const focused = !active ? null : fold && fold.querySelector("summary") === active ? "fold"
-    : box.querySelector("svg.hp-svg") === active ? "plot" : box.querySelector('[role="tab"][aria-selected="true"]') === active ? "tab" : null;
+    : box.querySelector("svg.hp-svg") === active ? "plot" : box.querySelector('[role="tab"][aria-selected="true"]') === active ? "tab"
+    : inPicker(box, active) ? "pick" : null;
   const lastZoom = drawn.get(box)?.o.zoom ?? null;
   // U73: a focused turn or step arrow in the nav host gets the focus back after the redraw
   const navBtn = navButtonOf(o.nav, active);
@@ -1023,7 +1053,7 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
     drawHpChart(box, d, memo.o, false);
     box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   };
-  const fig = d ? hpChart(d, { tab: tabNow, selected, onSelect, onTab, tableOpen, width, zoom, onZoom, step: o.step ?? null, onStep }) : null;
+  const fig = d ? hpChart(d, { tab: tabNow, selected, onSelect, onTab, tableOpen, width, zoom, onZoom, step: o.step ?? null, onStep, pick: o.pick ?? null }) : null;
   box.replaceChildren(fig ?? el("p", { class: "muted small hp-empty" }, HP_EMPTY));
   // U73: the turn and step controls in the page's sticky host
   if (o.nav) {
@@ -1039,7 +1069,8 @@ export function drawHpChart(box: HTMLElement, d: HpChartData | null, o: DrawOpti
     if (reveal) revealers.get(fig)?.(false);
   }
   const back = focused === "fold" ? box.querySelector("details.hp-fold")?.querySelector<HTMLElement>("summary")
-    : focused === "plot" ? box.querySelector<HTMLElement>("svg.hp-svg") : focused === "tab" ? box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') : null;
+    : focused === "plot" ? box.querySelector<HTMLElement>("svg.hp-svg") : focused === "tab" ? box.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    : focused === "pick" ? [...(box.querySelector(".hp-pick")?.querySelectorAll<HTMLInputElement>("input") ?? [])].find((i) => i.checked) : null;
   back?.focus();
   focusMode(box);
   if (typeof ResizeObserver !== "undefined" && !box.dataset.sized) {
